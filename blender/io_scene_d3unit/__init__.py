@@ -332,7 +332,8 @@ def do_import(context, filepath, do_anim=True, do_tex=True):
 def _load_t_image(tpath, base_name):
     td = t3.read_t(tpath)
     if td['format'] not in ('DXT1', 'DXT3', 'DXT5', 'A8R8G8B8',
-                            'X8R8G8B8'):
+                            'X8R8G8B8', 'R5G6B5', 'A1R5G5B5',
+                            'A4R4G4B4'):
         return None
     rgba = t3.decode_mip(td['mips'][0], td['format'], td['width'],
                          td['height'])
