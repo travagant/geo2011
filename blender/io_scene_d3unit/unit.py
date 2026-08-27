@@ -115,10 +115,26 @@ def load_unit(path):
     if not os.path.exists(gpath):
         raise FileNotFoundError('no .g file found for ' + path)
     g = g3.read_g(gpath)
-    apath = find_sibling(stem, '.a')
-    a = a3.read_a(apath) if apath else None
     acpath = find_sibling(stem, '.ac')
     ac = scn.parse_ac(acpath) if acpath else {'states': []}
+
+    # A unit can have several animation files (iadd, run, cast, lod...).
+    # Prefer the file referenced by the first animation state instead of
+    # picking an arbitrary alphabetic sibling.  This matters for assets such
+    # as AirElemental, where the main .ac explicitly points at *_iadd.a.
+    apath = find_sibling(stem, '.a')
+    if acpath:
+        directory = os.path.dirname(acpath) or '.'
+        for state in ac.get('states', []):
+            ref = state.get('file', '').replace('\\\\', '/')
+            ref_name = os.path.basename(ref)
+            if not ref_name:
+                continue
+            candidate = os.path.join(directory, ref_name)
+            if os.path.exists(candidate):
+                apath = candidate
+                break
+    a = a3.read_a(apath) if apath else None
     scpath = path if ext == '.scene' else stem + '.scene'
     sc = scn.parse_scene(scpath) if os.path.exists(scpath) else \
         {'gobjs': [], 'bones_file': ''}
@@ -143,7 +159,11 @@ def load_unit(path):
             for b in m['bones']:
                 if b['name'] not in gbonemats:
                     gbonemats[b['name']] = inv4(b['matrix'])
-        root_pos = transl(*g['meshes'][0]['header_floats'][0:3])
+        # A valid unit may contain animation tracks but no renderable mesh
+        # (for example an animation-only asset).  Do not dereference mesh 0
+        # while building its fallback root bind transform.
+        root_pos = (transl(*g['meshes'][0]['header_floats'][0:3])
+                    if g['meshes'] else ident4())
         for n in order:
             if n in gbonemats:
                 bind[n] = gbonemats[n]

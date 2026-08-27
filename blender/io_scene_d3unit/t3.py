@@ -110,6 +110,28 @@ def decode_mip(raw, fmt, w, h):
         for i in range(w * h):
             b, g, r, a = raw[4 * i:4 * i + 4]
             out[4 * i:4 * i + 4] = bytes((r, g, b, 255 if a == 0 else a))
+    elif fmt in ('R5G6B5', 'A1R5G5B5', 'A4R4G4B4'):
+        # The 16-bit formats are stored little-endian, with the same
+        # component order as their DirectX names.  These are used by many
+        # of the neutral/unit icons and were previously silently skipped.
+        for i in range(w * h):
+            v, = struct.unpack_from('<H', raw, 2 * i)
+            if fmt == 'R5G6B5':
+                r = ((v >> 11) & 31) * 255 // 31
+                g = ((v >> 5) & 63) * 255 // 63
+                b = (v & 31) * 255 // 31
+                a = 255
+            elif fmt == 'A1R5G5B5':
+                a = 255 if v & 0x8000 else 0
+                r = ((v >> 10) & 31) * 255 // 31
+                g = ((v >> 5) & 31) * 255 // 31
+                b = (v & 31) * 255 // 31
+            else:
+                a = ((v >> 12) & 15) * 17
+                r = ((v >> 8) & 15) * 17
+                g = ((v >> 4) & 15) * 17
+                b = (v & 15) * 17
+            out[4 * i:4 * i + 4] = bytes((r, g, b, a))
     else:
         raise NotImplementedError('decode for ' + fmt)
     return bytes(out)
