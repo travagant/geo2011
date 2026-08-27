@@ -118,9 +118,29 @@ def do_import(context, filepath, do_anim=True, do_tex=True):
     meshes, metas = g['meshes'], g['meta']
 
     # ------------------------------ skeleton
+    # A few shipped .a files contain several tracks with the same name
+    # (notably ``null`` and ``null_Bone_Tip``).  Blender bone names must be
+    # unique, so passing those names directly to edit_bones.new() aborts the
+    # whole import.  Keep the first occurrence's name intact and suffix the
+    # rest, while retaining the original name for bind/mesh lookup.
+    track_names = []
+    name_first = {}
     if a:
-        order = [t['name'] for t in a['track_data']]
-        parent_of = {t['name']: t['parent'] for t in a['track_data']}
+        used_names = set()
+        for t in a['track_data']:
+            original = t['name']
+            n = original
+            suffix = 1
+            while n in used_names:
+                n = '%s.%03d' % (original, suffix)
+                suffix += 1
+            used_names.add(n)
+            name_first.setdefault(original, n)
+            track_names.append(n)
+        order = track_names
+        parent_of = {}
+        for t, n in zip(a['track_data'], track_names):
+            parent_of[n] = name_first.get(t['parent'], t['parent'])
     else:
         order, parent_of = [], {}
         for m in meshes:
@@ -129,6 +149,11 @@ def do_import(context, filepath, do_anim=True, do_tex=True):
                     order.append(b['name'])
                     parent_of[b['name']] = 'Scene Root'
     bind = unit['bind_world']
+
+    # Track names are also used below when inserting animation curves.  This
+    # mapping is positional because duplicate source names cannot be used as
+    # dictionary keys.
+    anim_names = dict(zip((id(t) for t in a['track_data']), track_names)) if a else {}
 
     name = os.path.splitext(os.path.basename(filepath))[0]
     arm_data = bpy.data.armatures.new(name)
@@ -169,8 +194,27 @@ def do_import(context, filepath, do_anim=True, do_tex=True):
     bpy.ops.object.mode_set(mode='OBJECT')
 
     # ------------------------------ meshes
+    # The file header contains material records, not necessarily one record
+    # per geometry section.  Attach metadata by section name and synthesize a
+    # safe fallback for auxiliary sections (cloth, ribbons, weapons, ...).
+    # Older code used zip(metas, meshes), silently dropping valid sections and
+    # occasionally assigning the wrong texture.
+    headers_by_name = {m.get('name', ''): m for m in metas}
+    mesh_metas = []
+    for src in meshes:
+        attrs = dict(src['attrs'])
+        mesh_name = attrs.get('name', 'mesh')
+        header = headers_by_name.get(mesh_name)
+        diffuse = attrs.get('material0_diffuse', '')
+        material = os.path.splitext(os.path.basename(diffuse))[0] or mesh_name
+        mesh_metas.append({
+            'name': mesh_name,
+            'material': material,
+            'header': header,
+        })
+
     objs = {}
-    for i, (src, meta) in enumerate(zip(meshes, metas)):
+    for i, (src, meta) in enumerate(zip(meshes, mesh_metas)):
         co = [f2b(v['co']) for v in src['verts']]
         no = [f2b(v['no']) for v in src['verts']]
         uv = [(v['uv'][0], 1.0 - v['uv'][1]) for v in src['verts']]
@@ -236,15 +280,15 @@ def do_import(context, filepath, do_anim=True, do_tex=True):
         act = bpy.data.actions.new(name + '_d3')
         arm.animation_data_create()
         arm.animation_data.action = act
-        scales = {t['name']: t['scale'] for t in a['track_data']}
         for t in a['track_data']:
-            pb = arm.pose.bones.get(t['name'])
+            imported_name = anim_names[id(t)]
+            pb = arm.pose.bones.get(imported_name)
             if pb is None:
                 continue
             pb.rotation_mode = 'QUATERNION'
-            ml = arm.data.bones[t['name']].matrix_local
+            ml = arm.data.bones[imported_name].matrix_local
             for f, k in enumerate(t['keys']):
-                full = key_to_full_bl(*k, scales[t['name']], ml)
+                full = key_to_full_bl(*k, t['scale'], ml)
                 basis = ml.inverted() @ full
                 loc, rot, _s = basis.decompose()
                 pb.location = loc

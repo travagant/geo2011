@@ -143,7 +143,11 @@ def load_unit(path):
             for b in m['bones']:
                 if b['name'] not in gbonemats:
                     gbonemats[b['name']] = inv4(b['matrix'])
-        root_pos = transl(*g['meshes'][0]['header_floats'][0:3])
+        # A valid unit may contain animation tracks but no renderable mesh
+        # (for example an animation-only asset).  Do not dereference mesh 0
+        # while building its fallback root bind transform.
+        root_pos = (transl(*g['meshes'][0]['header_floats'][0:3])
+                    if g['meshes'] else ident4())
         for n in order:
             if n in gbonemats:
                 bind[n] = gbonemats[n]
