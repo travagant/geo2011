@@ -492,7 +492,6 @@ def _refresh_scene(src, dst, g):
 class EXPORT_SCENE_OT_d3unit(bpy.types.Operator):
     bl_idname = 'export_scene.d3unit'
     bl_label = 'Export Disciples III Unit (.g)'
-    bl_options = {'PRESERVE_CONTEXT'}
 
     filepath: StringProperty(subtype='FILE_PATH')
     filter_glob: StringProperty(default='*.g', options={'HIDDEN'})
@@ -523,7 +522,7 @@ class EXPORT_SCENE_OT_d3unit(bpy.types.Operator):
 class IMPORT_SCENE_OT_d3unit(bpy.types.Operator):
     bl_idname = 'import_scene.d3unit'
     bl_label = 'Import Disciples III Unit (.g)'
-    bl_options = {'PRESERVE_CONTEXT', 'UNDO'}
+    bl_options = {'UNDO'}
 
     filepath: StringProperty(subtype='FILE_PATH')
     filter_glob: StringProperty(default='*.g;*.scene', options={'HIDDEN'})

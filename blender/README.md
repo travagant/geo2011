@@ -27,7 +27,7 @@
   копируется `*.ac`, обновляется `*.scene`. Экспорт без правок
   воспроизводит `.g`/`.a` байт-в-байт.
 
-Требования: Blender 3.0+ (тестировалось на API 3.x/4.x; используется
+Требования: Blender 3.0+ (тестировалось на API 3.x/4.x/5.x; используется
 `mesh.normals_split_custom_set`, `image.pixels.foreach_set`,
 `Principled BSDF`).
 
