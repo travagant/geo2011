@@ -1,0 +1,7 @@
+alias "boar" {
+	sound 100, "$(Sounds)/wildboar/boaar_run_breath_003.wav", 100, 3;
+	sound 100, "$(Sounds)/wildboar/boaar_run_breath_002.wav", 100, 3;
+	sound 100, "$(Sounds)/wildboar/boaar_run_breath_001.wav", 100, 3;
+	sound 100, "$(Sounds)/wildboar/boaar_run_breath_000.wav", 100, 3;
+	sound 100, "$(Sounds)/wildboar/boaar_run_breath_004.wav", 100, 3;
+}

@@ -1,0 +1,669 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 90000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	shadowint 0.750000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	shadowcolor -16777216;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera -4.141209,14.126664,-8.496094,-0.099840,-1.807964,1.026184,-0.099840,-1.807964,1.026184,-4.141209,14.126664,-8.496094,0.995000,-12.164998,0.000000,3.770742;
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+	load_counter 1521;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 201 40881168
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.010000,-0.010000,-0.010000,0.010000,0.010000,0.010000
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_neutrals_airelemental" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 202 41584712
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 1048576
+	file "resources\characters\neutrals\airelemental\character_neutrals_airelemental.ac"
+	plvl 512
+	looktocamera 0;
+	child particles "R_ForeArm" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 204 42188904
+	bonesuid 202 41584712
+	coords 0.000000,0.000000,0.000000,0.000000,3.490659,0.000000
+	dwflags 8971371260328019969
+	psdwflags 7978
+	plvl 512
+	file "resources\fx\fx_resouces\textures\fx_clouds.t"
+	ps_number 6
+	ps_life 2.201000
+	gravity 9.820000
+	airres 0.000000
+	linesecv 0
+	ps_emissionspeed 3.000000
+	ps_emismult 1
+	ps_emittervol 0.100000,0.100000,0.800000
+	spinrand 2.000000
+	speedrand 0.100000
+	sinpr 0.000000
+	framesu 1
+	framesv 1
+	direction_randomizer_x 0.000000
+	direction_randomizer_y 0.000000
+	direction_randomizer_z 0.000000
+	sizerandomizer 0.500000
+	spinstartrandom 1
+	usingtrajectory 0
+	moveemit 0
+	moveemitv 0.500000
+	tech "particles"
+	dontfrustumprocess 0
+	objectemmitor 0
+	emittertype 1
+	dynamicstartuptime 0.000000
+	ps_spline_track "Alpha",0.000000,1.000000,3;0.000000,0.000000,0.350000,0.010000;0.324561,0.982456,1.020000,-0.140000;1.000000,0.000000,1.110000,-0.330000;
+	ps_spline_track "Size",0.000000,1.000000,3;0.000000,0.254386,0.030000,0.020000;0.449123,0.824561,1.110000,-0.050000;1.000000,0.298246,0.190000,-0.090000;
+	ps_spline_track "Speed",0.000000,0.500000,2;0.000000,0.480263,0.150000,0.020000;1.000000,0.039474,0.000000,0.010000;
+	ps_spline_track "Spin",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Y/X Ratio",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Mass",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Force",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave XFreq",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave YFreq",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave ZFreq",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave XPos",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave YPos",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave ZPos",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave XPhase",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave YPhase",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave ZPhase",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Red",0.000000,255.000000,1;0.000000,128.618423,0.000000,0.000000;
+	ps_spline_track "Green",0.000000,255.000000,1;0.000000,144.276321,0.000000,0.000000;
+	ps_spline_track "Blue",0.000000,255.000000,1;0.000000,255.000000,0.000000,0.000000;
+	boneslink "RightArm"
+}
+
+	child particles "L_ForeArm" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 206 42297200
+	bonesuid 202 41584712
+	coords 0.000000,0.000000,0.000000,0.000000,2.443461,0.000000
+	dwflags 8971371260328019969
+	psdwflags 7978
+	plvl 512
+	file "resources\fx\fx_resouces\textures\fx_clouds.t"
+	ps_number 6
+	ps_life 2.201000
+	gravity 9.820000
+	airres 0.000000
+	linesecv 0
+	ps_emissionspeed 3.000000
+	ps_emismult 1
+	ps_emittervol 0.100000,0.100000,0.800000
+	spinrand 2.000000
+	speedrand 0.100000
+	sinpr 0.000000
+	framesu 1
+	framesv 1
+	direction_randomizer_x 0.000000
+	direction_randomizer_y 0.000000
+	direction_randomizer_z 0.000000
+	sizerandomizer 0.500000
+	spinstartrandom 1
+	usingtrajectory 0
+	moveemit 0
+	moveemitv 0.500000
+	tech "particles"
+	dontfrustumprocess 0
+	objectemmitor 0
+	emittertype 1
+	dynamicstartuptime 0.000000
+	ps_spline_track "Alpha",0.000000,1.000000,3;0.000000,0.000000,0.350000,0.010000;0.324561,0.982456,1.020000,-0.140000;1.000000,0.000000,1.110000,-0.330000;
+	ps_spline_track "Size",0.000000,1.000000,3;0.000000,0.254386,0.030000,0.020000;0.449123,0.824561,1.110000,-0.050000;1.000000,0.298246,0.190000,-0.090000;
+	ps_spline_track "Speed",0.000000,0.500000,2;0.000000,0.480263,0.150000,0.020000;1.000000,0.039474,0.000000,0.010000;
+	ps_spline_track "Spin",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Y/X Ratio",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Mass",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Force",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave XFreq",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave YFreq",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave ZFreq",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave XPos",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave YPos",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave ZPos",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave XPhase",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave YPhase",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave ZPhase",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Red",0.000000,255.000000,1;0.000000,128.618423,0.000000,0.000000;
+	ps_spline_track "Green",0.000000,255.000000,1;0.000000,144.276321,0.000000,0.000000;
+	ps_spline_track "Blue",0.000000,255.000000,1;0.000000,255.000000,0.000000,0.000000;
+	boneslink "LeftArm"
+}
+
+	child gobj "LOD_neutrals_airelemental" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 229 42127920
+	dwflags 1053761
+	tech "model"
+	bonesuid 202 41584712
+	mesh_lods 1
+	"resources\characters\neutrals\airelemental\character_neutrals_airelemental_lod.g" 0 0.000000
+	coords 0.000000,2.833831,0.005191,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "437635088"
+	attr "dwParent" "53639264"
+	attr "name" "neutrals_airelemental"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutrals_airelemental.tga"
+	attr "material0_triangles_num" "5056"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "3453"
+	attr "weights_on_vertex" "2"
+	attr "bones_num" "38"
+	attr "vdshader" "dif_light2x"
+}
+
+	child particles "L_Spine" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 254 42326144
+	bonesuid 202 41584712
+	coords 0.000000,0.000000,0.300000,0.000000,3.141599,3.141599
+	dwflags 8971371260328019969
+	psdwflags 3882
+	plvl 512
+	file "Resources\FX\FX_Resouces\Textures\fx_dome_smoke_senkven.t"
+	ps_number 9
+	ps_life 3.001000
+	gravity 1.000000
+	airres 0.000000
+	linesecv 0
+	ps_emissionspeed 3.000000
+	ps_emismult 1
+	ps_emittervol 0.200000,0.400000,0.200000
+	spinrand 1.000000
+	speedrand 0.100000
+	sinpr 0.000000
+	framesu 8
+	framesv 8
+	direction_randomizer_x 0.000000
+	direction_randomizer_y 0.000000
+	direction_randomizer_z 0.000000
+	sizerandomizer 1.000000
+	spinstartrandom 1
+	usingtrajectory 0
+	moveemit 1
+	moveemitv 0.500000
+	tech "particles"
+	dontfrustumprocess 0
+	objectemmitor 0
+	emittertype 0
+	dynamicstartuptime 0.000000
+	ps_spline_track "Alpha",0.000000,0.500000,3;0.000000,0.000000,0.020000,0.010000;0.257895,0.221491,0.520000,0.000000;1.000000,0.000000,0.890000,-0.050000;
+	ps_spline_track "Size",0.000000,3.000000,2;0.000000,1.263158,2.860000,-0.070000;1.000000,3.000000,0.000000,0.000000;
+	ps_spline_track "Speed",0.000000,1.000000,2;0.000000,1.000000,-0.010000,0.030000;1.000000,0.021930,0.230000,0.000000;
+	ps_spline_track "Spin",0.000000,1.000000,2;0.000000,1.000000,0.000000,0.000000;1.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Y/X Ratio",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Mass",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Force",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave XFreq",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave YFreq",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave ZFreq",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave XPos",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave YPos",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave ZPos",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave XPhase",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave YPhase",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave ZPhase",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Red",0.000000,255.000000,1;0.000000,128.618423,0.000000,0.000000;
+	ps_spline_track "Green",0.000000,255.000000,1;0.000000,149.868423,0.000000,0.000000;
+	ps_spline_track "Blue",0.000000,255.000000,1;0.000000,255.000000,0.000000,0.000000;
+	boneslink "Spine"
+}
+
+	child particles "L_Hand" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 256 42379504
+	bonesuid 202 41584712
+	coords 0.000000,0.000000,0.000000,0.000000,2.792527,0.000000
+	dwflags 8971371260328017921
+	psdwflags 7978
+	plvl 512
+	file "resources\fx\fx_resouces\textures\fx_clouds.t"
+	ps_number 6
+	ps_life 2.201000
+	gravity 9.820000
+	airres 0.000000
+	linesecv 0
+	ps_emissionspeed 3.000000
+	ps_emismult 1
+	ps_emittervol 0.100000,0.100000,0.800000
+	spinrand 2.000000
+	speedrand 0.100000
+	sinpr 0.000000
+	framesu 1
+	framesv 1
+	direction_randomizer_x 0.000000
+	direction_randomizer_y 0.000000
+	direction_randomizer_z 0.000000
+	sizerandomizer 0.500000
+	spinstartrandom 1
+	usingtrajectory 0
+	moveemit 0
+	moveemitv 0.500000
+	tech "particles"
+	dontfrustumprocess 0
+	objectemmitor 0
+	emittertype 1
+	dynamicstartuptime 0.000000
+	ps_spline_track "Alpha",0.000000,1.000000,3;0.000000,0.000000,0.350000,0.010000;0.324561,0.982456,1.020000,-0.140000;1.000000,0.000000,1.110000,-0.330000;
+	ps_spline_track "Size",0.000000,1.000000,3;0.000000,0.254386,0.030000,0.020000;0.449123,0.824561,1.110000,-0.050000;1.000000,0.298246,0.190000,-0.090000;
+	ps_spline_track "Speed",0.000000,0.500000,2;0.000000,0.480263,0.150000,0.020000;1.000000,0.039474,0.000000,0.010000;
+	ps_spline_track "Spin",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Y/X Ratio",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Mass",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Force",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave XFreq",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave YFreq",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave ZFreq",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave XPos",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave YPos",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave ZPos",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave XPhase",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave YPhase",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave ZPhase",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Red",0.000000,255.000000,1;0.000000,128.618423,0.000000,0.000000;
+	ps_spline_track "Green",0.000000,255.000000,1;0.000000,144.276321,0.000000,0.000000;
+	ps_spline_track "Blue",0.000000,255.000000,1;0.000000,255.000000,0.000000,0.000000;
+	boneslink "LeftForeArm"
+}
+
+	child particles "L_Spine_glow" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 257 97533872
+	bonesuid 202 41584712
+	coords 0.000000,0.000000,0.000000,3.141593,0.000000,0.000000
+	dwflags 8971371260328017921
+	psdwflags 1850
+	plvl 512
+	file "resources\fx\fx_resouces\textures\p_dipdot128.t"
+	ps_number 4
+	ps_life 4.000000
+	gravity 1.000000
+	airres 0.000000
+	linesecv 0
+	ps_emissionspeed 1.000000
+	ps_emismult 1
+	ps_emittervol 0.200000,0.400000,0.200000
+	spinrand 1.000000
+	speedrand 0.100000
+	sinpr 0.000000
+	framesu 1
+	framesv 1
+	direction_randomizer_x 1.140000
+	direction_randomizer_y 1.140000
+	direction_randomizer_z 0.000000
+	sizerandomizer 2.000000
+	spinstartrandom 0
+	usingtrajectory 0
+	moveemit 1
+	moveemitv 0.500000
+	tech "particles"
+	dontfrustumprocess 0
+	objectemmitor 0
+	emittertype 0
+	dynamicstartuptime 0.000000
+	ps_spline_track "Alpha",0.000000,1.000000,3;0.000000,0.000000,0.810000,0.130000;0.501754,0.188596,0.570000,0.000000;1.000000,0.000000,0.910000,-0.120000;
+	ps_spline_track "Size",0.000000,4.000000,2;0.000000,3.947368,2.190000,0.010000;1.000000,1.964912,0.540000,-0.010000;
+	ps_spline_track "Speed",0.000000,1.000000,2;0.000000,0.258772,-0.020000,0.030000;1.000000,0.013158,2.020000,-0.190000;
+	ps_spline_track "Spin",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Y/X Ratio",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Mass",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Force",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave XFreq",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave YFreq",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave ZFreq",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave XPos",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave YPos",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave ZPos",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave XPhase",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave YPhase",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave ZPhase",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Red",0.000000,255.000000,1;0.000000,128.618423,0.000000,0.000000;
+	ps_spline_track "Green",0.000000,255.000000,1;0.000000,147.631577,0.000000,0.000000;
+	ps_spline_track "Blue",0.000000,255.000000,1;0.000000,255.000000,0.000000,0.000000;
+	boneslink "Spine"
+}
+
+	child particles "Head_glow" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 259 97630912
+	bonesuid 202 41584712
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 8971371260328017920
+	psdwflags 1834
+	plvl 512
+	file "resources\fx\fx_resouces\textures\fx_live_star.t"
+	ps_number 6
+	ps_life 4.001000
+	gravity 1.000000
+	airres 0.000000
+	linesecv 0
+	ps_emissionspeed 1.500000
+	ps_emismult 1
+	ps_emittervol 0.100000,0.100000,0.100000
+	spinrand 1.000000
+	speedrand 0.100000
+	sinpr 0.000000
+	framesu 1
+	framesv 1
+	direction_randomizer_x 0.100000
+	direction_randomizer_y 0.100000
+	direction_randomizer_z 0.000000
+	sizerandomizer 1.000000
+	spinstartrandom 1
+	usingtrajectory 0
+	moveemit 1
+	moveemitv 0.500000
+	tech "particles"
+	dontfrustumprocess 0
+	objectemmitor 0
+	emittertype 0
+	dynamicstartuptime 0.000000
+	ps_spline_track "Alpha",0.000000,1.000000,3;0.000000,0.000000,0.120000,-0.020000;0.333333,0.179825,0.930000,-0.180000;1.000000,0.000000,0.750000,-0.150000;
+	ps_spline_track "Size",0.000000,3.000000,2;0.000000,2.868421,2.300000,-0.130000;1.000000,1.513158,0.000000,0.000000;
+	ps_spline_track "Speed",0.000000,0.500000,2;0.000000,0.291667,2.180000,-0.030000;1.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Spin",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Y/X Ratio",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Mass",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Force",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave XFreq",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave YFreq",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave ZFreq",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave XPos",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave YPos",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave ZPos",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave XPhase",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave YPhase",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave ZPhase",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Red",0.000000,255.000000,1;0.000000,128.618423,0.000000,0.000000;
+	ps_spline_track "Green",0.000000,255.000000,1;0.000000,145.394730,0.000000,0.000000;
+	ps_spline_track "Blue",0.000000,255.000000,1;0.000000,255.000000,0.000000,0.000000;
+	boneslink "Head"
+}
+
+	child particles "R_Hand" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 261 97260816
+	bonesuid 202 41584712
+	coords 0.000000,0.000000,0.000000,0.000000,3.490659,0.000000
+	dwflags 8971371260328019969
+	psdwflags 7978
+	plvl 512
+	file "resources\fx\fx_resouces\textures\fx_clouds.t"
+	ps_number 6
+	ps_life 2.201000
+	gravity 9.820000
+	airres 0.000000
+	linesecv 0
+	ps_emissionspeed 3.000000
+	ps_emismult 1
+	ps_emittervol 0.100000,0.100000,0.800000
+	spinrand 2.000000
+	speedrand 0.100000
+	sinpr 0.000000
+	framesu 1
+	framesv 1
+	direction_randomizer_x 0.000000
+	direction_randomizer_y 0.000000
+	direction_randomizer_z 0.000000
+	sizerandomizer 0.500000
+	spinstartrandom 1
+	usingtrajectory 0
+	moveemit 0
+	moveemitv 0.500000
+	tech "particles"
+	dontfrustumprocess 0
+	objectemmitor 0
+	emittertype 1
+	dynamicstartuptime 0.000000
+	ps_spline_track "Alpha",0.000000,1.000000,3;0.000000,0.000000,0.350000,0.010000;0.324561,0.982456,1.020000,-0.140000;1.000000,0.000000,1.110000,-0.330000;
+	ps_spline_track "Size",0.000000,1.000000,3;0.000000,0.254386,0.030000,0.020000;0.449123,0.824561,1.110000,-0.050000;1.000000,0.298246,0.190000,-0.090000;
+	ps_spline_track "Speed",0.000000,0.500000,2;0.000000,0.480263,0.150000,0.020000;1.000000,0.039474,0.000000,0.010000;
+	ps_spline_track "Spin",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Y/X Ratio",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Mass",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Force",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave XFreq",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave YFreq",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave ZFreq",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave XPos",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave YPos",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave ZPos",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave XPhase",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave YPhase",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave ZPhase",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Red",0.000000,255.000000,1;0.000000,128.618423,0.000000,0.000000;
+	ps_spline_track "Green",0.000000,255.000000,1;0.000000,144.276321,0.000000,0.000000;
+	ps_spline_track "Blue",0.000000,255.000000,1;0.000000,255.000000,0.000000,0.000000;
+	boneslink "RightForeArm"
+}
+
+	child particles "Spine_up" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 262 97283568
+	bonesuid 202 41584712
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 8971371260328017921
+	psdwflags 3883
+	plvl 513
+	file "Resources\FX\FX_Resouces\Textures\fx_dome_smoke_senkven.t"
+	ps_number 12
+	ps_life 3.001000
+	gravity -0.250000
+	airres 0.000000
+	linesecv 0
+	ps_emissionspeed 4.000000
+	ps_emismult 1
+	ps_emittervol 0.300000,0.500000,0.800000
+	spinrand 1.000000
+	speedrand 0.300000
+	sinpr 0.000000
+	framesu 8
+	framesv 8
+	direction_randomizer_x 0.000000
+	direction_randomizer_y 0.000000
+	direction_randomizer_z 0.000000
+	sizerandomizer 0.500000
+	spinstartrandom 1
+	usingtrajectory 0
+	moveemit 1
+	moveemitv 0.500000
+	tech "particles"
+	dontfrustumprocess 0
+	objectemmitor 0
+	emittertype 1
+	dynamicstartuptime 0.000000
+	ps_spline_track "Alpha",0.000000,0.500000,3;0.000000,0.000000,0.020000,0.010000;0.214035,0.427632,0.520000,0.000000;1.000000,0.000000,1.390000,-0.070000;
+	ps_spline_track "Size",0.000000,3.000000,2;0.000000,1.263158,2.860000,-0.070000;1.000000,3.000000,0.000000,0.000000;
+	ps_spline_track "Speed",0.000000,0.500000,2;0.000000,0.171053,-0.010000,0.030000;1.000000,0.000000,0.230000,0.000000;
+	ps_spline_track "Spin",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Y/X Ratio",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Mass",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Force",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave XFreq",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave YFreq",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave ZFreq",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave XPos",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave YPos",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave ZPos",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave XPhase",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave YPhase",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave ZPhase",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Red",0.000000,255.000000,1;0.000000,128.618423,0.000000,0.000000;
+	ps_spline_track "Green",0.000000,255.000000,1;0.000000,149.868423,0.000000,0.000000;
+	ps_spline_track "Blue",0.000000,255.000000,1;0.000000,255.000000,0.000000,0.000000;
+	boneslink "Spine"
+}
+
+	child particles "Spine_lightning" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 263 97311736
+	bonesuid 202 41584712
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 8971371260328017921
+	psdwflags 3898
+	plvl 513
+	file "Resources\FX\FX_Resouces\Textures\lightning.t"
+	ps_number 1
+	ps_life 0.300000
+	gravity 1.000000
+	airres 0.000000
+	linesecv 0
+	ps_emissionspeed 2.000000
+	ps_emismult 1
+	ps_emittervol 0.250000,0.250000,1.500000
+	spinrand 3.000000
+	speedrand 1.000000
+	sinpr 0.000000
+	framesu 1
+	framesv 1
+	direction_randomizer_x 1.140000
+	direction_randomizer_y 1.140000
+	direction_randomizer_z 0.000000
+	sizerandomizer 0.100000
+	spinstartrandom 1
+	usingtrajectory 0
+	moveemit 1
+	moveemitv 0.500000
+	tech "particles2x"
+	dontfrustumprocess 0
+	objectemmitor 0
+	emittertype 0
+	dynamicstartuptime 0.000000
+	ps_spline_track "Alpha",0.000000,0.800000,4;0.000000,0.000000,0.030000,0.020000;0.619298,0.007018,-0.010000,0.020000;0.750877,0.800000,-0.020000,-0.010000;1.000000,0.000000,0.300000,-0.070000;
+	ps_spline_track "Size",1.000000,2.000000,2;0.000000,1.214912,0.010000,0.020000;1.000000,1.311404,2.330000,0.010000;
+	ps_spline_track "Speed",0.000000,1.000000,2;0.000000,0.258772,-0.020000,0.030000;1.000000,0.013158,2.020000,-0.190000;
+	ps_spline_track "Spin",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Y/X Ratio",0.000000,2.000000,2;0.000000,1.026316,1.870000,0.030000;1.000000,1.403509,0.000000,0.000000;
+	ps_spline_track "Mass",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Force",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave XFreq",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave YFreq",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave ZFreq",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave XPos",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave YPos",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave ZPos",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave XPhase",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave YPhase",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave ZPhase",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Red",0.000000,255.000000,1;0.000000,128.618423,0.000000,0.000000;
+	ps_spline_track "Green",0.000000,255.000000,1;0.000000,147.631577,0.000000,0.000000;
+	ps_spline_track "Blue",0.000000,255.000000,1;0.000000,255.000000,0.000000,0.000000;
+	boneslink "Spine"
+}
+
+}
+
+}
+

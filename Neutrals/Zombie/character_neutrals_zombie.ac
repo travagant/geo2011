@@ -1,0 +1,79 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\neutrals\zombie\character_neutrals_zombie_baseanims.a";
+frame0 1;
+frame1 120;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 3;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 3;
+meshfile "resources\characters\neutrals\zombie\character_neutrals_zombie.g";
+}
+state "Attack"
+{
+file "resources\characters\neutrals\zombie\character_neutrals_zombie_baseanims.a";
+frame0 120;
+frame1 160;
+fps 19.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 127 "resources\characters\neutrals\zombie\Aliases\zombie_attack.alias" " 100";
+event2 "Strike" 138 "" "";
+event2 "trail_start" 136 "" "";
+event2 "trail_end" 140 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\neutrals\zombie\character_neutrals_zombie.g";
+}
+state "Damage"
+{
+file "resources\characters\neutrals\zombie\character_neutrals_zombie_baseanims.a";
+frame0 160;
+frame1 190;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 160 "resources\characters\neutrals\zombie\Aliases\zombie_damage.alias" " 100";
+event2 "snd_Damage" 170 "Resources/Characters/neutrals/zombie/Aliases\Damage00.alias" " 60";
+link "Idle" 1; blend 0;
+link "Run" 0; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\zombie\character_neutrals_zombie.g";
+}
+state "Death"
+{
+file "resources\characters\neutrals\zombie\character_neutrals_zombie_baseanims.a";
+frame0 190;
+frame1 212;
+fps 12.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 194 "resources\characters\neutrals\zombie\Aliases\zombie_death.alias" " 80";
+event2 "snd_Die" 197 "resources\characters\neutrals\zombie\Aliases\gravel.alias" " 100";
+event2 "snd_Die" 202 "resources\characters\neutrals\zombie\Aliases\gravel_2.alias" " 100";
+event2 "snd_Die" 198 "resources\characters\neutrals\zombie\Aliases\medium_creature.alias" " 50";
+event2 "snd_Die" 204 "resources\characters\neutrals\zombie\Aliases\medium_creature_2.alias" " 50";
+event2 "snd_Die" 198 "resources\characters\neutrals\zombie\Aliases\human.alias" " 100";
+event2 "snd_Die" 204 "resources\characters\neutrals\zombie\Aliases\human_2.alias" " 100";
+meshfile "resources\characters\neutrals\zombie\character_neutrals_zombie.g";
+}
+state "Run"
+{
+file "resources\characters\neutrals\zombie\character_neutrals_zombie_baseanims.a";
+frame0 216;
+frame1 228;
+fps 15.000000;
+priority 256;
+flags 1;
+event2 "snd_Step" 217 "resources\characters\neutrals\zombie\Aliases\human.alias" " 70";
+event2 "snd_Step" 225 "resources\characters\neutrals\zombie\Aliases\human_2.alias" " 60";
+event2 "snd_Step" 229 "resources\characters\neutrals\zombie\Aliases\gravel.alias" " 60";
+event2 "snd_Step" 224 "resources\characters\neutrals\zombie\Aliases\gravel_2.alias" " 60";
+link "Idle" 0; blend 3;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\zombie\character_neutrals_zombie.g";
+}

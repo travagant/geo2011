@@ -1,0 +1,3 @@
+alias "Attack-scream" {
+	sound 100, "$(Sounds)/wildboar/attack_boar_000.wav", 100, 3;
+}

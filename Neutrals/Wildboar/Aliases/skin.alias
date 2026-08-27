@@ -1,0 +1,3 @@
+alias "skin" {
+	sound 100, "$(Sounds)/wildboar/boar_attack_breathe.wav", 100, 3;
+}
