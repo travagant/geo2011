@@ -93,11 +93,18 @@ def find_sibling(path, ext):
             return stem + e
     # also scan directory for  <anything>_baseanims.a style names
     d = os.path.dirname(path) or '.'
+    # Some shipped assets use a suffix such as ``_baseanims.a``.  Do not
+    # blindly pick the first sibling, though: directories often contain
+    # several units (and the wrong animation file can make Blender fail
+    # while constructing the action).  Only accept files whose stem is the
+    # requested stem plus a suffix, preferring the conventional baseanims.
+    base = os.path.basename(stem).lower()
     cands = [os.path.join(d, f) for f in sorted(os.listdir(d))
-             if f.lower().endswith(ext.lower())]
-    if cands:
-        return cands[0]
-    return None
+             if f.lower().endswith(ext.lower()) and
+             os.path.splitext(f)[0].lower().startswith(base + '_')]
+    cands.sort(key=lambda p: (not os.path.splitext(os.path.basename(p))[0]
+                              .lower().endswith('_baseanims'), p))
+    return cands[0] if cands else None
 
 
 def load_unit(path):

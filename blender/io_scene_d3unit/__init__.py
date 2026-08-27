@@ -108,6 +108,11 @@ def full_bl_to_key(full_bl, scale, ml):
 # ------------------------------------------------------------------ import
 def do_import(context, filepath, do_anim=True, do_tex=True):
     unit = unitmod.load_unit(filepath)
+    # A unit commonly has several sections that all reference the same
+    # texture.  Decoding and packing that 2048x2048 image for every section
+    # can consume hundreds of megabytes and makes Blender appear to crash.
+    # Keep one Blender image per source file for the duration of the import.
+    image_cache = {}
     g = unit['g']
     a = unit['a']
     meshes, metas = g['meshes'], g['meta']
@@ -213,7 +218,11 @@ def do_import(context, filepath, do_anim=True, do_tex=True):
         if do_tex:
             tpath = unit['tex'].get(meta['name'])
             if tpath:
-                img = _load_t_image(tpath, meta['material'])
+                img = image_cache.get(os.path.abspath(tpath))
+                if img is None:
+                    img = _load_t_image(tpath, meta['material'])
+                    if img is not None:
+                        image_cache[os.path.abspath(tpath)] = img
                 if img and bsdf:
                     ti = mat.node_tree.nodes.new('ShaderNodeTexImage')
                     ti.image = img
