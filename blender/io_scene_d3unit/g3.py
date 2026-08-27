@@ -78,8 +78,16 @@ class _Reader:
 
 
 def _find_attrs_start(data, start, limit=4096):
-    """Locate `u32 nattr ; u32 7 'dwNode\\0'` after *start*."""
-    p = data.find(b'dwNode\x00', start, start + limit)
+    """Locate ``u32 nattr ; u32 7 'dwNode\\0'`` after *start*.
+
+    Some game assets are truncated or use a different geometry variant.  Do
+    not let a malformed candidate turn into a gigantic allocation/unpack (or
+    a Blender crash); callers get a useful format error instead.
+    """
+    end = min(len(data), start + limit)
+    if start < 0 or start >= len(data):
+        raise ValueError('mesh section starts outside file at %d' % start)
+    p = data.find(b'dwNode\x00', start, end)
     while p != -1:
         nattr, = U32.unpack_from(data, p - 8)
         ln, = U32.unpack_from(data, p - 4)
@@ -145,7 +153,7 @@ def read_g(path):
     data = open(path, 'rb').read()
     r = _Reader(data)
     metas = []
-    while True:
+    while r.p + 12 <= len(data):
         v, aux, one = struct.unpack_from('<3I', data, r.p)
         if v != 3 or one != 1:
             break
@@ -161,13 +169,23 @@ def read_g(path):
         nattr_pos = a
         floats14_pos = nattr_pos - 56
         cnt4_pos = floats14_pos - 16
+        if cnt4_pos < sec_start or cnt4_pos + 16 > len(data):
+            raise ValueError('invalid mesh header at %d' % sec_start)
         nv, nf, shv, six = struct.unpack_from('<4I', data, cnt4_pos)
         prefix = list(struct.unpack('<%dI' % ((cnt4_pos - sec_start) // 4),
                                     data[sec_start:cnt4_pos]))
+        if floats14_pos + 56 > len(data):
+            raise ValueError('truncated mesh transform header at %d' % sec_start)
         hdr = struct.unpack_from('<14f', data, floats14_pos)
         attrs, p = read_attributes(data, a)
         ad = dict(attrs)
-        wov = int(ad.get('weights_on_vertex', 1))
+        try:
+            wov = int(ad.get('weights_on_vertex', 1))
+        except ValueError:
+            raise ValueError('invalid weights_on_vertex in mesh at %d' % sec_start)
+        if not 1 <= wov <= 32 or nv > (len(data) - p) // (40 + (4 * (wov - 1) + wov)):
+            raise ValueError('invalid vertex count/format in mesh at %d (nv=%d, wov=%d)' %
+                             (sec_start, nv, wov))
         nv2 = int(ad.get('vertexs_weights_num', nv))
         nf2 = int(ad.get('material0_triangles_num', nf))
         if nv2 != nv or nf2 != nf:
