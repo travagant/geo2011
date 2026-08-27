@@ -45,6 +45,7 @@ bl_info = {
 }
 
 import json
+import math
 import os
 
 import bpy
@@ -225,11 +226,40 @@ def do_import(context, filepath, do_anim=True, do_tex=True):
         ulo = me.uv_layers.new(name='UVMap')
         for loop in me.loops:
             ulo.data[loop.index].uv = uv[loop.vertex_index]
-        for p in me.polygons:
-            p.use_smooth = True
+        # In Blender 4.1+ polygon.use_smooth was removed; shading is now
+        # controlled via mesh.shade_smooth() / shade_flat() or the
+        # 'sharp_face' / 'sharp_edge' attributes.
         try:
-            me.normals_split_custom_set([no[l.vertex_index]
-                                         for l in me.loops])
+            me.shade_smooth()
+        except Exception:
+            for p in me.polygons:
+                try:
+                    p.use_smooth = True
+                except Exception:
+                    pass
+
+        # Custom split normals: the API changed across Blender versions.
+        # Blender 4.1 removed create_normals_split / calc_normals_split;
+        # Blender 5.x may segfault inside normals_split_custom_set when
+        # the normals contain NaN/Inf or the method was removed entirely.
+        # Sanitise the vectors, verify the method exists, and fall back
+        # silently so the import never crashes Blender.
+        def _safe_no(v):
+            x, y, z = v[0], v[1], v[2]
+            if (math.isnan(x) or math.isnan(y) or math.isnan(z)
+                    or math.isinf(x) or math.isinf(y) or math.isinf(z)):
+                return (0.0, 0.0, 0.0)
+            return (float(x), float(y), float(z))
+
+        _custom_normals = [_safe_no(no[l.vertex_index]) for l in me.loops]
+        try:
+            if hasattr(me, 'normals_split_custom_set'):
+                me.normals_split_custom_set(_custom_normals)
+            elif hasattr(me, 'normals_split_custom_set_from_vertices'):
+                # Fallback: per-vertex normals (less precise but safe).
+                _vnormals = [_safe_no(no[vi])
+                             for vi in range(len(no))]
+                me.normals_split_custom_set_from_vertices(_vnormals)
         except Exception:
             pass
         bone_names = [b['name'] for b in src['bones']]
