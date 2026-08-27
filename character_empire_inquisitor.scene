@@ -1,0 +1,105 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 90000.000000;
+	nearplane 0.100000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera 0.523752,2.054968,-1.604670,0.382102,1.602082,-0.724427,0.497529,1.971129,-1.441718,0.523752,2.054968,-1.604670,0.470000,18.690002,0.000000,0.185122;
+}
+
+group "Scene Root" 
+{
+	uid 47 26878012
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.010000,-0.010000,-0.010000,0.010000,0.010000,0.010000
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_empire_inquisitor" 
+{
+	uid 48 171864020
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 1048576
+	file "resources\characters\empire\inquisitor\character_empire_inquisitor.ac"
+	plvl 512
+	child gobj "empire_inquisitor" 
+{
+	uid 57 172111220
+	dwflags 1053697
+	tech "model"
+	bonesuid 48 171864020
+	mesh_lods 1
+	"resources\characters\empire\inquisitor\character_empire_inquisitor.g" 0 0.000000
+	coords 0.000000,0.905286,-0.002483,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "427786432"
+	attr "dwParent" "53639264"
+	attr "tech" "model_lightmap2X"
+	attr "twosided" "1"
+	attr "name" "empire_inquisitor"
+	attr "groupname" "Scene Root"
+	attr "techname" "model_lightmap2X"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_inquisitor.tga"
+	attr "material0_triangles_num" "4664"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "3693"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "22"
+}
+
+	child gobj "weapon_empire_inquisitor" 
+{
+	uid 61 173006468
+	dwflags 1054209
+	tech "model"
+	bonesuid 48 171864020
+	mesh_lods 1
+	"resources\characters\empire\inquisitor\character_empire_inquisitor.g" 1 0.000000
+	coords 0.915097,0.001236,0.000001,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "401845072"
+	attr "dwParent" "53639264"
+	attr "name" "weapon_empire_inquisitor"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "weapon_empire_inquisitor.tga"
+	attr "material0_triangles_num" "250"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "537"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+}
+
+	child 	goclass "VDGoWeaponTrace" "VDGoWeaponTrace" 
+{
+	uid 63 173010156
+	dwflags 1
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	texture "Resources\FX\FX_Resouces\Textures\Weapontrace\weapontrace_long2_blue_med.t"
+	tech "weapontrace"
+	lifetime 0.150000
+	maxdist 0.300000
+	bonetraceuid 48 171864020
+	fadeonevent 0
+	fadetime 1.000000
+	boneid 11
+	boneid 12
+}
+
+}
+
+}
+
