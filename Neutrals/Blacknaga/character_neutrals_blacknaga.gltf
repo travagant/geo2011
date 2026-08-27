@@ -1,0 +1,134 @@
+{
+  "asset": {
+    "version": "2.0",
+    "generator": "generated with dis3tool v1.1 by root.ext@gmail.com"
+  },
+  "scenes": [
+    {
+      "nodes": [
+        0
+      ]
+    }
+  ],
+  "scene": 0,
+  "nodes": [
+    {
+      "name": "neutrals_blacknaga",
+      "mesh": 0
+    }
+  ],
+  "accessors": [
+    {
+      "bufferView": 0,
+      "byteOffset": 0,
+      "componentType": 5125,
+      "count": 13281,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 0,
+      "componentType": 5126,
+      "count": 3448,
+      "type": "VEC3",
+      "min": [
+        -0.624533355,
+        -0.0308267213,
+        -0.3612184
+      ],
+      "max": [
+        0.624533355,
+        2.258186,
+        1.588199
+      ]
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 12,
+      "componentType": 5126,
+      "count": 3448,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 24,
+      "componentType": 5126,
+      "count": 3448,
+      "type": "VEC2"
+    }
+  ],
+  "meshes": [
+    {
+      "name": "neutrals_blacknaga",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 1,
+            "NORMAL": 2,
+            "TEXCOORD_0": 3
+          },
+          "indices": 0,
+          "mode": 4,
+          "material": 0
+        }
+      ]
+    }
+  ],
+  "bufferViews": [
+    {
+      "name": "mesh_indexes_neutrals_blacknaga",
+      "buffer": 0,
+      "byteOffset": 0,
+      "byteLength": 53124,
+      "target": 34963
+    },
+    {
+      "name": "mesh_vertexes_neutrals_blacknaga",
+      "buffer": 0,
+      "byteOffset": 53124,
+      "byteLength": 179296,
+      "byteStride": 52,
+      "target": 34962
+    },
+    {
+      "name": "mesh_bones_neutrals_blacknaga",
+      "buffer": 0,
+      "byteOffset": 232420,
+      "byteLength": 2432
+    }
+  ],
+  "buffers": [
+    {
+      "uri": "character_neutrals_blacknaga.bin",
+      "byteLength": 234852
+    }
+  ],
+  "images": [
+    {
+      "uri": "character_neutrals_blacknaga.dds"
+    }
+  ],
+  "textures": [
+    {
+      "source": 0
+    }
+  ],
+  "materials": [
+    {
+      "name": "material0",
+      "alphaMode": "MASK",
+      "pbrMetallicRoughness": {
+        "baseColorTexture": {
+          "index": 0,
+          "texCoord": 0
+        },
+        "metallicFactor": 0.0
+      },
+      "emissiveFactor": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ]
+}

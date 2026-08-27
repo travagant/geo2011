@@ -1,0 +1,92 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\neutrals\troll\character_neutrals_troll_baseanims.a";
+frame0 1;
+frame1 150;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 3;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 3;
+meshfile "resources\characters\neutrals\troll\character_neutrals_troll.g";
+}
+state "Attack"
+{
+file "resources\characters\neutrals\troll\character_neutrals_troll_baseanims.a";
+frame0 150;
+frame1 220;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 165 "resources\characters\neutrals\troll\Aliases\metal_step.alias" " 80";
+event2 "snd_Attack" 165 "resources\characters\neutrals\troll\Aliases\big_creature.alias" " 80";
+event2 "snd_Attack" 201 "resources\characters\neutrals\troll\Aliases\big_creature_2.alias" " 80";
+event2 "snd_Attack" 201 "resources\characters\neutrals\troll\Aliases\metal_step.alias" " 80";
+event2 "snd_Attack" 178 "resources\characters\neutrals\troll\Aliases\swoosh_01.alias" " 100";
+event2 "snd_Attack" 150 "Resources/Characters/neutrals/troll/Aliases\Attack00.alias" " 100";
+event2 "snd_Attack" 169 "Resources/Characters/neutrals/troll/Aliases\Attack01.alias" " 100";
+event2 "Strike" 179 "" "";
+event2 "trail_start" 176 "" "";
+event2 "trail_end" 180 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\neutrals\troll\character_neutrals_troll.g";
+}
+state "Damage"
+{
+file "resources\characters\neutrals\troll\character_neutrals_troll_baseanims.a";
+frame0 220;
+frame1 280;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 256 "Resources/Characters/neutrals/troll/Aliases\Damage00.alias" " 100";
+event2 "snd_Damage" 254 "Resources/Characters/neutrals/troll/Aliases\Damage01.alias" " 100";
+event2 "snd_Damage" 254 "resources\characters\neutrals\troll\Aliases\swoosh_01.alias" " 100";
+event2 "snd_Damage" 233 "Resources/Characters/neutrals/troll/Aliases\Damage02.alias" " 100";
+event2 "snd_Damage" 220 "Resources/Characters/neutrals/troll/Aliases\Damage03.alias" " 100";
+event2 "snd_Damage" 245 "Resources/Characters/neutrals/troll/Aliases\Damage04.alias" " 100";
+link "Idle" 1; blend 0;
+link "Run" 0; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\troll\character_neutrals_troll.g";
+}
+state "Death"
+{
+file "resources\characters\neutrals\troll\character_neutrals_troll_baseanims.a";
+frame0 280;
+frame1 355;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 345 "Resources/Characters/neutrals/troll/Aliases\Death00.alias" " 100";
+event2 "snd_Die" 343 "Resources/Characters/neutrals/troll/Aliases\Death01.alias" " 100";
+event2 "snd_Die" 344 "resources\characters\neutrals\troll\Aliases\big_creature.alias" " 80";
+event2 "snd_Die" 303 "resources\characters\neutrals\troll\Aliases\big_creature_2.alias" " 100";
+event2 "snd_Die" 303 "resources\characters\neutrals\troll\Aliases\metal_step.alias" " 80";
+event2 "snd_Die" 283 "resources\characters\neutrals\troll\Aliases\big_creature.alias" " 60";
+event2 "snd_Die" 283 "resources\characters\neutrals\troll\Aliases\metal_step.alias" " 40";
+event2 "snd_Die" 280 "Resources/Characters/neutrals/troll/Aliases\Death02.alias" " 100";
+meshfile "resources\characters\neutrals\troll\character_neutrals_troll.g";
+}
+state "Run"
+{
+file "resources\characters\neutrals\troll\character_neutrals_troll_baseanims.a";
+frame0 357;
+frame1 384;
+fps 15.000000;
+priority 256;
+flags 1;
+event2 "snd_Step" 363 "Resources/Characters/neutrals/troll/Aliases\metal_step.alias" " 80";
+event2 "snd_Step" 377 "Resources/Characters/neutrals/troll/Aliases\metal_step.alias" " 80";
+event2 "snd_Step" 363 "resources\characters\neutrals\troll\Aliases\big_creature.alias" " 90";
+event2 "snd_Step" 377 "resources\characters\neutrals\troll\Aliases\big_creature_2.alias" " 90";
+event2 "snd_Step" 363 "resources\characters\neutrals\troll\Aliases\gravel_2.alias" " 100";
+event2 "snd_Step" 377 "resources\characters\neutrals\troll\Aliases\gravel_2.alias" " 100";
+link "Idle" 0; blend 3;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\troll\character_neutrals_troll.g";
+}

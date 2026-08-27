@@ -1,0 +1,267 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 90000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera -0.606374,3.276505,-4.718785,-0.212605,0.896318,0.192818,-0.212605,0.896318,0.192818,-0.606374,3.276505,-4.718785,0.450000,0.080000,0.000000,5.472129;
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 667 31119976
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.010000,-0.010000,-0.010000,0.010000,0.010000,0.010000
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_neutrals_masterthug" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 668 102707192
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 1048576
+	file "resources\characters\neutrals\masterthug\character_neutrals_masterthug.ac"
+	plvl 512
+	looktocamera 0;
+	child gobj "neutrals_masterthug_chainmail" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 671 100461632
+	dwflags 1053761
+	tech "modelalphatest2x"
+	bonesuid 668 102707192
+	mesh_lods 1
+	"resources\characters\neutrals\masterthug\character_neutrals_masterthug.g" 0 0.000000
+	coords 0.000000,0.000000,0.021074,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 1;
+	blockshader "system\xshader\dif_at_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "337371856"
+	attr "dwParent" "53639184"
+	attr "morph" "1"
+	attr "tech" "modelalphatest"
+	attr "name" "neutrals_masterthug_chainmail"
+	attr "groupname" "Scene Root"
+	attr "techname" "modelalphatest"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutrals_masterthug_alpha.tga"
+	attr "material0_triangles_num" "820"
+	attr "morph_track" "1"
+}
+
+	child gobj "neutrals_masterthug_headchainmail" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 676 119214576
+	dwflags 1053761
+	tech "modelalphatest2x"
+	bonesuid 668 102707192
+	mesh_lods 1
+	"resources\characters\neutrals\masterthug\character_neutrals_masterthug.g" 1 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 1;
+	blockshader "system\xshader\dif_at_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "447230912"
+	attr "dwParent" "53639184"
+	attr "morph" "1"
+	attr "tech" "modelalphatest"
+	attr "name" "neutrals_masterthug_headchainmail"
+	attr "groupname" "Scene Root"
+	attr "techname" "modelalphatest"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutrals_masterthug_alpha.tga"
+	attr "material0_triangles_num" "80"
+	attr "morph_track" "1"
+}
+
+	child gobj "neutrals_masterthug" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 677 124073304
+	dwflags 1053761
+	tech "model"
+	bonesuid 668 102707192
+	mesh_lods 1
+	"resources\characters\neutrals\masterthug\character_neutrals_masterthug.g" 2 0.000000
+	coords 0.004146,0.941411,0.023135,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "448231472"
+	attr "dwParent" "53639184"
+	attr "name" "neutrals_masterthug"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutrals_masterthug_diffuse.tga"
+	attr "material0_triangles_num" "3948"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "3098"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "23"
+}
+
+	child gobj "weapon_neutrals_masterthug_right" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 678 40972856
+	dwflags 1053761
+	tech "model"
+	bonesuid 668 102707192
+	mesh_lods 1
+	"resources\characters\neutrals\masterthug\character_neutrals_masterthug.g" 3 0.000000
+	coords -0.474751,1.151672,0.400363,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "448275632"
+	attr "dwParent" "53639184"
+	attr "name" "weapon_neutrals_masterthug_right"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "weapon_neutrals_masterthug_diffuse.tga"
+	attr "material0_triangles_num" "150"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "143"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+}
+
+	child gobj "weapon_neutrals_masterthug_left" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 679 124660320
+	dwflags 1054273
+	tech "model"
+	bonesuid 668 102707192
+	mesh_lods 1
+	"resources\characters\neutrals\masterthug\character_neutrals_masterthug.g" 4 0.000000
+	coords 0.469226,1.155980,0.403592,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "428765696"
+	attr "dwParent" "53639184"
+	attr "name" "weapon_neutrals_masterthug_left"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "weapon_neutrals_masterthug_diffuse.tga"
+	attr "material0_triangles_num" "150"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "143"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+}
+
+	child 	goclass "VDGoWeaponTrace" "VDGoWeaponTrace" 
+{
+	uid 681 30676048
+	dwflags 1048577
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	texture "resources\fx\fx_resouces\textures\weapontrace\weapontrace_light_hi.t"
+	tech "weapontrace"
+	lifetime 0.200000
+	maxdist 0.100000
+	bonetraceuid 668 102707192
+	fadeonevent 0
+	fadetime 1.000000
+	boneid 12
+	boneid 13
+	boneid 14
+	boneid 15
+	boneid 11
+}
+
+	child 	goclass "VDGoWeaponTrace" "LeftArm_WeaponTrace" 
+{
+	uid 684 30994440
+	dwflags 1048577
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	texture "resources\fx\fx_resouces\textures\weapontrace\weapontrace_light.t"
+	tech "weapontrace"
+	lifetime 0.300000
+	maxdist 0.100000
+	bonetraceuid 668 102707192
+	fadeonevent 0
+	fadetime 1.000000
+	boneid 25
+	boneid 24
+	boneid 23
+	boneid 21
+	boneid 22
+}
+
+}
+
+}
+

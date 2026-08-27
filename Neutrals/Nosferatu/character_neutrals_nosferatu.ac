@@ -1,0 +1,107 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\neutrals\nosferatu\character_neutrals_nosferatu_iadd.a";
+frame0 1;
+frame1 120;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 3;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 3;
+meshfile "resources\characters\neutrals\nosferatu\character_neutrals_nosferatu.g";
+}
+state "Attack"
+{
+file "resources\characters\neutrals\nosferatu\character_neutrals_nosferatu_iadd.a";
+frame0 120;
+frame1 195;
+fps 18.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 120 "Resources/Characters/neutrals/nosferatu/Aliases\Attack00.alias" " 100";
+event2 "snd_Attack" 120 "resources\characters\neutrals\nosferatu\Aliases\moving_1.alias" " 100";
+event2 "snd_Attack" 161 "resources\characters\neutrals\nosferatu\Aliases\moving_3.alias" " 100";
+event2 "snd_Attack" 165 "Resources/Characters/neutrals/nosferatu/Aliases\Attack02.alias" " 100";
+event2 "snd_Attack" 165 "Resources/Characters/neutrals/nosferatu/Aliases\Attack01.alias" " 100";
+event2 "snd_Attack" 130 "Resources/Characters/neutrals/nosferatu/Aliases\Attack03.alias" " 100";
+event2 "snd_Attack" 152 "Resources/Characters/neutrals/nosferatu/Aliases\Attack04.alias" " 80";
+event2 "snd_Attack" 180 "Resources/Characters/neutrals/nosferatu/Aliases\Attack05.alias" " 80";
+event2 "snd_Attack" 164 "Resources/Characters/neutrals/nosferatu/Aliases\Attack06.alias" " 100";
+event2 "snd_Attack" 120 "Resources/Characters/neutrals/nosferatu/Aliases\Attack07.alias" " 100";
+event2 "trail_start" 163 "" "";
+event2 "trail_end" 168 "" "";
+event2 "fxcast" 120 "" "";
+event2 "FxStrike" 170 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\neutrals\nosferatu\character_neutrals_nosferatu.g";
+}
+state "Damage"
+{
+file "resources\characters\neutrals\nosferatu\character_neutrals_nosferatu_iadd.a";
+frame0 195;
+frame1 225;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 195 "Resources/Characters/neutrals/nosferatu/Aliases\Damage00.alias" " 100";
+event2 "snd_Damage" 195 "resources\characters\neutrals\nosferatu\Aliases\moving_1.alias" " 100";
+event2 "snd_Damage" 195 "Resources/Characters/neutrals/nosferatu/Aliases\Damage01.alias" " 100";
+event2 "snd_Damage" 195 "Resources/Characters/neutrals/nosferatu/Aliases\Damage02.alias" " 85";
+event2 "snd_Damage" 201 "Resources/Characters/neutrals/nosferatu/Aliases\Damage03.alias" " 85";
+event2 "snd_Damage" 202 "Resources/Characters/neutrals/nosferatu/Aliases\Damage04.alias" " 100";
+event2 "snd_Damage" 195 "Resources/Characters/neutrals/nosferatu/Aliases\Damage05.alias" " 100";
+link "Idle" 1; blend 0;
+link "Run" 0; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\nosferatu\character_neutrals_nosferatu.g";
+}
+state "Death"
+{
+file "resources\characters\neutrals\nosferatu\character_neutrals_nosferatu_iadd.a";
+frame0 225;
+frame1 297;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 225 "Resources/Characters/neutrals/nosferatu/Aliases\Death00.alias" " 100";
+event2 "snd_Die" 225 "resources\characters\neutrals\nosferatu\Aliases\moving_1.alias" " 100";
+event2 "snd_Die" 258 "Resources/Characters/neutrals/nosferatu/Aliases\Death01.alias" " 100";
+event2 "snd_Die" 241 "Resources/Characters/neutrals/nosferatu/Aliases\Death02.alias" " 100";
+event2 "snd_Die" 270 "Resources/Characters/neutrals/nosferatu/Aliases\Death03.alias" " 40";
+event2 "snd_Die" 231 "Resources/Characters/neutrals/nosferatu/Aliases\Death04.alias" " 100";
+event2 "snd_Die" 289 "Resources/Characters/neutrals/nosferatu/Aliases\Death05.alias" " 80";
+event2 "snd_Die" 257 "Resources/Characters/neutrals/nosferatu/Aliases\Death06.alias" " 100";
+event2 "snd_Die" 261 "resources\characters\neutrals\nosferatu\Aliases\moving_1.alias" " 100";
+event2 "snd_Die" 234 "Resources/Characters/neutrals/nosferatu/Aliases\Death07.alias" " 100";
+event2 "snd_Die" 257 "resources\characters\neutrals\nosferatu\Aliases\gravel.alias" " 100";
+event2 "snd_Die" 259 "resources\characters\neutrals\nosferatu\Aliases\gravel_2.alias" " 100";
+event2 "snd_Die" 277 "resources\characters\neutrals\nosferatu\Aliases\gravel_2.alias" " 100";
+event2 "snd_Die" 268 "resources\characters\neutrals\nosferatu\Aliases\gravel.alias" " 100";
+event2 "snd_Die" 228 "resources\characters\neutrals\nosferatu\Aliases\gravel.alias" " 100";
+meshfile "resources\characters\neutrals\nosferatu\character_neutrals_nosferatu.g";
+}
+state "Run"
+{
+file "resources\characters\neutrals\nosferatu\character_neutrals_nosferatu_run.a";
+frame0 1;
+frame1 24;
+fps 15.000000;
+priority 256;
+flags 1;
+event2 "snd_Step" 23 "Resources/Characters/neutrals/nosferatu/Aliases\Run02.alias" " 50";
+event2 "snd_Step" 7 "Resources/Characters/neutrals/nosferatu/Aliases\Run03.alias" " 20";
+event2 "snd_Step" 8 "Resources/Characters/neutrals/nosferatu/Aliases\Run04.alias" " 50";
+event2 "snd_Step" 7 "resources\characters\neutrals\nosferatu\Aliases\gravel_2.alias" " 100";
+event2 "snd_Step" 19 "resources\characters\neutrals\nosferatu\Aliases\gravel.alias" " 100";
+event2 "snd_Step" 7 "resources\characters\neutrals\nosferatu\Aliases\horse_step_3.alias" " 100";
+event2 "snd_Step" 20 "resources\characters\neutrals\nosferatu\Aliases\horse_step_3.alias" " 100";
+event2 "snd_Step" 7 "resources\characters\neutrals\nosferatu\Aliases\gravel.alias" " 100";
+event2 "snd_Step" 8 "resources\characters\neutrals\nosferatu\Aliases\gravel_2.alias" " 100";
+link "Idle" 0; blend 3;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\nosferatu\character_neutrals_nosferatu.g";
+}

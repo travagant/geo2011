@@ -1,0 +1,63 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\neutrals\imp\character_neutrals_imp_baseanims_lod.a";
+frame0 1;
+frame1 106;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 3;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 3;
+meshfile "resources\characters\neutrals\imp\character_neutrals_imp.g";
+}
+state "Attack"
+{
+file "resources\characters\neutrals\imp\character_neutrals_imp_baseanims_lod.a";
+frame0 106;
+frame1 136;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "Strike" 125 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\neutrals\imp\character_neutrals_imp.g";
+}
+state "Damage"
+{
+file "resources\characters\neutrals\imp\character_neutrals_imp_baseanims_lod.a";
+frame0 136;
+frame1 166;
+fps 15.000000;
+priority 256;
+flags 0;
+link "Idle" 1; blend 0;
+link "Run" 0; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\imp\character_neutrals_imp.g";
+}
+state "Death"
+{
+file "resources\characters\neutrals\imp\character_neutrals_imp_baseanims_lod.a";
+frame0 166;
+frame1 191;
+fps 15.000000;
+priority 256;
+flags 0;
+meshfile "resources\characters\neutrals\imp\character_neutrals_imp.g";
+}
+state "Run"
+{
+file "resources\characters\neutrals\imp\character_neutrals_imp_baseanims_lod.a";
+frame0 193;
+frame1 224;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Idle" 0; blend 3;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\imp\character_neutrals_imp.g";
+}

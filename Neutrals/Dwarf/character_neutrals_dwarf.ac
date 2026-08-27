@@ -1,0 +1,102 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\neutrals\dwarf\character_neutrals_dwarf_iadd.a";
+frame0 1;
+frame1 150;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 3;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 3;
+meshfile "resources\characters\neutrals\dwarf\character_neutrals_dwarf.g";
+}
+state "Attack"
+{
+file "resources\characters\neutrals\dwarf\character_neutrals_dwarf_iadd.a";
+frame0 150;
+frame1 200;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 150 "Resources/Characters/neutrals/dwarf/Aliases\Attack00.alias" " 100";
+event2 "snd_Attack" 167 "Resources/Characters/neutrals/dwarf/Aliases\Attack01.alias" " 100";
+event2 "snd_Attack" 166 "Resources/Characters/neutrals/dwarf/Aliases\Attack02.alias" " 100";
+event2 "snd_Attack" 179 "Resources/Characters/neutrals/dwarf/Aliases\Attack03.alias" " 100";
+event2 "snd_Attack" 150 "Resources/Characters/neutrals/dwarf/Aliases\Attack04.alias" " 100";
+event2 "snd_Attack" 168 "resources\characters\neutrals\dwarf\Aliases\human.alias" " 100";
+event2 "snd_Attack" 188 "resources\characters\neutrals\dwarf\Aliases\human_2.alias" " 100";
+event2 "snd_Attack" 168 "resources\characters\neutrals\dwarf\Aliases\medium_creature.alias" " 50";
+event2 "snd_Attack" 188 "resources\characters\neutrals\dwarf\Aliases\medium_creature_2.alias" " 50";
+event2 "snd_Attack" 168 "Resources/Characters/neutrals/dwarf/Aliases\Attack05.alias" " 100";
+event2 "snd_Attack" 168 "Resources/Characters/neutrals/dwarf/Aliases\Attack06.alias" " 100";
+event2 "Strike" 169 "" "";
+event2 "trail_start" 165 "" "";
+event2 "trail_end" 166 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\neutrals\dwarf\character_neutrals_dwarf.g";
+}
+state "Damage"
+{
+file "resources\characters\neutrals\dwarf\character_neutrals_dwarf_iadd.a";
+frame0 200;
+frame1 250;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 200 "Resources/Characters/neutrals/dwarf/Aliases\Damage00.alias" " 100";
+event2 "snd_Damage" 219 "Resources/Characters/neutrals/dwarf/Aliases\Damage01.alias" " 100";
+event2 "snd_Damage" 200 "Resources/Characters/neutrals/dwarf/Aliases\Damage02.alias" " 100";
+event2 "snd_Damage" 226 "Resources/Characters/neutrals/dwarf/Aliases\Damage03.alias" " 80";
+link "Idle" 1; blend 0;
+link "Run" 0; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\dwarf\character_neutrals_dwarf.g";
+}
+state "Death"
+{
+file "resources\characters\neutrals\dwarf\character_neutrals_dwarf_iadd.a";
+frame0 250;
+frame1 330;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 250 "Resources/Characters/neutrals/dwarf/Aliases\Death00.alias" " 100";
+event2 "snd_Die" 306 "Resources/Characters/neutrals/dwarf/Aliases\Death01.alias" " 80";
+event2 "snd_Die" 250 "Resources/Characters/neutrals/dwarf/Aliases\Death02.alias" " 100";
+event2 "snd_Die" 282 "Resources/Characters/neutrals/dwarf/Aliases\Death03.alias" " 100";
+event2 "snd_Die" 311 "Resources/Characters/neutrals/dwarf/Aliases\Death04.alias" " 100";
+event2 "snd_Die" 312 "Resources/Characters/neutrals/dwarf/Aliases\Death05.alias" " 100";
+event2 "snd_Die" 312 "resources\characters\neutrals\dwarf\Aliases\big_creature_2.alias" " 100";
+event2 "snd_Die" 250 "Resources/Characters/neutrals/dwarf/Aliases\Death06.alias" " 100";
+event2 "snd_Die" 255 "resources\characters\neutrals\dwarf\Aliases\human.alias" " 100";
+event2 "snd_Die" 259 "resources\characters\neutrals\dwarf\Aliases\human_2.alias" " 100";
+event2 "snd_Die" 255 "resources\characters\neutrals\dwarf\Aliases\medium_creature.alias" " 50";
+event2 "snd_Die" 259 "resources\characters\neutrals\dwarf\Aliases\medium_creature_2.alias" " 50";
+event2 "snd_Die" 282 "resources\characters\neutrals\dwarf\Aliases\medium_creature.alias" " 80";
+event2 "snd_Die" 313 "resources\characters\neutrals\dwarf\Aliases\gravel_2.alias" " 100";
+meshfile "resources\characters\neutrals\dwarf\character_neutrals_dwarf.g";
+}
+state "Run"
+{
+file "resources\characters\neutrals\dwarf\character_neutrals_dwarf_run.a";
+frame0 1;
+frame1 14;
+fps 15.000000;
+priority 256;
+flags 1;
+event2 "snd_Step" 10 "resources\characters\neutrals\dwarf\Aliases\medium_creature.alias" " 50";
+event2 "snd_Step" 3 "resources\characters\neutrals\dwarf\Aliases\medium_creature_2.alias" " 50";
+event2 "snd_Step" 10 "resources\characters\neutrals\dwarf\Aliases\human.alias" " 50";
+event2 "snd_Step" 3 "resources\characters\neutrals\dwarf\Aliases\human_2.alias" " 50";
+event2 "snd_Step" 3 "resources\characters\neutrals\dwarf\Aliases\gravel.alias" " 100";
+event2 "snd_Step" 10 "resources\characters\neutrals\dwarf\Aliases\gravel_2.alias" " 100";
+event2 "snd_Step" 2 "resources\characters\neutrals\dwarf\Aliases\plate.alias" " 50";
+event2 "snd_Step" 9 "resources\characters\neutrals\dwarf\Aliases\plate.alias" " 50";
+link "Idle" 0; blend 3;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\dwarf\character_neutrals_dwarf.g";
+}

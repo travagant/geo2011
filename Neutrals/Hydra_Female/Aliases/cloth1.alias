@@ -1,0 +1,4 @@
+alias "cloth1" {
+	sound 100, "$(Sounds)/clothes/cloth/cloth_02_03.wav", 100, 3;
+	sound 100, "$(Sounds)/clothes/cloth/cloth_01_06.wav", 100, 3;
+}

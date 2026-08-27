@@ -1,0 +1,127 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 30000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera 12.223064,3.113074,-7.134693,11.387080,3.123074,-6.586031,-0.488202,3.265123,1.207802,12.223064,3.113074,-7.134693,-0.010000,-0.990000,0.000000,20.000031;
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 551 31119976
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.100000,-0.100000,-0.100000,0.100000,0.100000,0.100000
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_neutrals_dragonred" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 552 102707192
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 0
+	file "resources\characters\neutrals\dragonred\character_neutrals_dragonred.ac"
+	plvl 512
+	looktocamera 0;
+	child gobj "character_neutrals_reddragon" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 555 119218184
+	dwflags 1053761
+	tech "model"
+	bonesuid 552 102707192
+	mesh_lods 1
+	"resources\characters\neutrals\dragonred\character_neutrals_dragonred.g" 0 0.000000
+	coords 0.000000,3.380186,2.917300,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "440564800"
+	attr "dwParent" "53704336"
+	attr "vdshader" "dif_light2x"
+	attr "name" "character_neutrals_reddragon"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutrals_dragonred.tga"
+	attr "material0_triangles_num" "2280"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "1659"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "35"
+}
+
+	child gobj "character_neutrals_reddragon_wings" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 559 40972856
+	dwflags 1056321
+	tech "model"
+	bonesuid 552 102707192
+	mesh_lods 1
+	"resources\characters\neutrals\dragonred\character_neutrals_dragonred.g" 1 0.000000
+	coords 0.000000,6.737175,1.969244,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 1;
+	blockshader "system\xshader\dif_at_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "440936944"
+	attr "dwParent" "53704336"
+	attr "vdshader" "dif_at_light2x"
+	attr "twosided" "1"
+	attr "name" "character_neutrals_reddragon_wings"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutrals_dragonred_alpha.tga"
+	attr "material0_triangles_num" "1128"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "814"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "34"
+}
+
+}
+
+}
+

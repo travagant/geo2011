@@ -1,0 +1,121 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 30000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	shadowint 0.750000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	shadowcolor -16777216;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	environment_map "";
+	environment_map_morning "Resources\Cubemaps\morning.t";
+	environment_map_noon "Resources\Cubemaps\day.t";
+	environment_map_evening "";
+	environment_map_night "";
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	globals "703a186a47086d5d15921a9f69354a07996f1083885a13108a4d135c7749255d";
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+	load_counter 723;
+	attr "playerside" "empire"
+	attr "save_icon" "resources\save\single_game_icon.t"
+	attr "mission_name" "newmap"
+	attr "building_level_cap" "1"
+	attr "units_level_cap" "1"
+	attr "briefing" ""
+	attr "nextmission" ""
+	attr "openvideo" ""
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 57 73468192
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -26.026222,-0.014175,-2.749352,53.250008,11.398904,68.524261
+	dwflags 262145
+	plvl 512
+	lodgroup 1
+	child group "Craker" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 1, 0;
+	fluctuation 0.000000, 1.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.100000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 233 73203884
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -2.156403,-3.202176,-2.176808,2.935060,0.884444,2.252676
+	dwflags 0
+	plvl 500
+	child bones "character_neutrals_craken_sea" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 1, 0;
+	fluctuation 0.000000, 0.250000, 0.000000;
+	fluctuationamplitude 0.000000, 0.250000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 58 73152860
+	coords 0.000000,-0.750000,0.000000,0.000000,0.000000,0.000000
+	dwflags 0
+	file "Resources\Characters\Neutrals\Craken\character_neutrals_craken_sea.ac"
+	plvl 512
+	looktocamera 0;
+	child gobj "neutrals_craken" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 65 87361728
+	dwflags 5185
+	tech "model"
+	bonesuid 58 73152860
+	mesh_lods 1
+	"Resources\Characters\Neutrals\Craken\character_neutrals_craken_sea.g" 0 0.000000
+	coords 0.000004,0.847555,0.616758,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\dif_light2x.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "388104560"
+	attr "dwParent" "97387680"
+	attr "vdshader" "dif_light2x"
+	attr "name" "neutrals_craken"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutrals_craken.tga"
+	attr "material0_triangles_num" "7738"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "5476"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "133"
+}
+
+}
+
+}
+
+}
+

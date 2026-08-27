@@ -1,0 +1,6 @@
+alias "medium_creature" {
+	sound 100, "$(Sounds)\footsteps\medium_creature\footsteps_medium_creature_layer_04.wav", 100, 3;
+	sound 100, "$(Sounds)\footsteps\medium_creature\footsteps_medium_creature_layer_03.wav", 100, 3;
+	sound 100, "$(Sounds)\footsteps\medium_creature\footsteps_medium_creature_layer_02.wav", 100, 3;
+	sound 100, "$(Sounds)\footsteps\medium_creature\footsteps_medium_creature_layer_01.wav", 100, 3;
+}

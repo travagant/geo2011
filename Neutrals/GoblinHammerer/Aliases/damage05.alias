@@ -1,0 +1,4 @@
+alias "Damage05" {
+	sound 100, "$(Sounds)/voices/neutrals/goblin/goblin_damage.wav", 100, 3;
+	sound 100, "$(Sounds)/voices/neutrals/goblin/goblin_death_1.wav", 100, 3;
+}

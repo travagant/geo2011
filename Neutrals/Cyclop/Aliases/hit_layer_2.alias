@@ -1,0 +1,4 @@
+alias "hit_layer_2" {
+	sound 100, "$(Sounds)/neutrals_cyclop/death_hit_011.wav", 100, 3;
+	sound 100, "$(Sounds)/neutrals_cyclop/death_hit_010.wav", 100, 3;
+}

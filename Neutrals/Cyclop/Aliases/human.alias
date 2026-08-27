@@ -1,0 +1,6 @@
+alias "human" {
+	sound 100, "$(Sounds)/footsteps/human/footsteps_human_01.wav", 100, 3;
+	sound 100, "$(Sounds)/footsteps/human/footsteps_human_02.wav", 100, 3;
+	sound 100, "$(Sounds)/footsteps/human/footsteps_human_03.wav", 100, 3;
+	sound 100, "$(Sounds)/footsteps/human/footsteps_human_04.wav", 100, 3;
+}

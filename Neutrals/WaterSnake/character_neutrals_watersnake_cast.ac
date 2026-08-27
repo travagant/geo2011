@@ -1,0 +1,15 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+
+state "Attack"
+{
+file "Resources\Characters\Neutrals\Watersnake\character_neutrals_watersnake_cast.a";
+frame0 0;
+frame1 160;
+fps 30.000000;
+priority 256;
+flags 0;
+event2 "FxStrike" 250 "" "";
+event2 "FxCast" 160 "" "";
+link "Idle" 1; blend 0;
+}

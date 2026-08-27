@@ -1,0 +1,275 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 30000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	shadowint 0.750000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	shadowcolor -16777216;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	environment_map "";
+	environment_map_morning "";
+	environment_map_noon "";
+	environment_map_evening "";
+	environment_map_night "";
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	globals "503a080a37181d9d45120a0f39555a67691f6043380a63708a5d338c7799955d";
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+	load_counter 208;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 57 73158656
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.147005,0.000000,-0.283913,0.330579,1.126818,0.211121
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_neutrals_goblinmage" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 96 73204132
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 0
+	file "Resources\Characters\Neutrals\Goblinmage\character_neutrals_goblinmage.ac"
+	plvl 512
+	looktocamera 0;
+	child gobj "Goblin_shaman" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 90 87556628
+	dwflags 5185
+	tech "model"
+	bonesuid 96 73204132
+	mesh_lods 1
+	"Resources\Characters\Neutrals\Goblinmage\character_neutrals_goblinmage.g" 0 0.000000
+	coords 0.000083,0.600139,-0.051505,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\dif_light2x.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "391605312"
+	attr "dwParent" "96208032"
+	attr "vdshader" "dif_light2x"
+	attr "name" "Goblin_shaman"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutrals_goblinmage.tga"
+	attr "material0_triangles_num" "3091"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "2426"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "60"
+}
+
+	child gobj "weapon_buben" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 91 87361668
+	dwflags 5185
+	tech "model"
+	bonesuid 96 73204132
+	mesh_lods 1
+	"Resources\Characters\Neutrals\Goblinmage\character_neutrals_goblinmage.g" 1 0.000000
+	coords -0.019437,0.230563,-0.006128,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\dif_light2x.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "391606408"
+	attr "dwParent" "96208032"
+	attr "vdshader" "dif_light2x"
+	attr "name" "weapon_buben"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutrals_goblinmage.tga"
+	attr "material0_triangles_num" "613"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "729"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+}
+
+	child gobj "weapon_bone" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 92 88238540
+	dwflags 5185
+	tech "model"
+	bonesuid 96 73204132
+	mesh_lods 1
+	"Resources\Characters\Neutrals\Goblinmage\character_neutrals_goblinmage.g" 2 0.000000
+	coords 0.010349,-0.007481,0.081762,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\dif_light2x.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "391608600"
+	attr "dwParent" "96208032"
+	attr "vdshader" "dif_light2x"
+	attr "name" "weapon_bone"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutrals_goblinmage.tga"
+	attr "material0_triangles_num" "132"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "78"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+}
+
+	child gobj "Goblin_shaman_hair" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 93 88236988
+	dwflags 5185
+	tech "model"
+	bonesuid 96 73204132
+	mesh_lods 1
+	"Resources\Characters\Neutrals\Goblinmage\character_neutrals_goblinmage.g" 3 0.000000
+	coords 0.000007,1.126730,-0.026224,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\dif_light2x.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "391611888"
+	attr "dwParent" "96208032"
+	attr "vdshader" "dif_light2x"
+	attr "name" "Goblin_shaman_hair"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutrals_goblinmage.tga"
+	attr "material0_triangles_num" "96"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "74"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+}
+
+	child gobj "Goblin_shaman_accesiory" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 94 87429392
+	dwflags 5185
+	tech "model"
+	bonesuid 96 73204132
+	mesh_lods 1
+	"Resources\Characters\Neutrals\Goblinmage\character_neutrals_goblinmage.g" 4 0.000000
+	coords -0.002098,0.800567,-0.032991,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\dif_light2x.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "391732448"
+	attr "dwParent" "96208032"
+	attr "vdshader" "dif_light2x"
+	attr "name" "Goblin_shaman_accesiory"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutrals_goblinmage.tga"
+	attr "material0_triangles_num" "426"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "441"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "8"
+}
+
+	child gobj "Goblin_shaman_cloth" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 95 87427840
+	dwflags 5185
+	tech "model"
+	bonesuid 96 73204132
+	mesh_lods 1
+	"Resources\Characters\Neutrals\Goblinmage\character_neutrals_goblinmage.g" 5 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\dif_light2x.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "391703952"
+	attr "dwParent" "96208032"
+	attr "vdshader" "dif_light2x"
+	attr "morph" "1"
+	attr "name" "Goblin_shaman_cloth"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutrals_goblinmage.tga"
+	attr "material0_triangles_num" "316"
+	attr "morph_track" "1"
+}
+
+}
+
+}
+

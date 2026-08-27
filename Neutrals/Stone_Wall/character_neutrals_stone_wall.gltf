@@ -1,0 +1,440 @@
+{
+  "asset": {
+    "version": "2.0",
+    "generator": "generated with dis3tool v1.1 by root.ext@gmail.com"
+  },
+  "scenes": [
+    {
+      "nodes": [
+        0,
+        1,
+        2
+      ]
+    }
+  ],
+  "scene": 0,
+  "nodes": [
+    {
+      "name": "Stone_Wall",
+      "mesh": 0,
+      "skin": 0
+    },
+    {
+      "name": "Stone_Wall01",
+      "mesh": 1,
+      "skin": 1
+    },
+    {
+      "name": "reference_down",
+      "rotation": [
+        0.0,
+        -1.509958E-07,
+        0.0,
+        1.0
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "children": [
+        3
+      ]
+    },
+    {
+      "name": "damage_center",
+      "rotation": [
+        0.0,
+        8.742278E-08,
+        0.0,
+        1.0
+      ],
+      "translation": [
+        0.0,
+        1.16170418,
+        0.0
+      ]
+    }
+  ],
+  "accessors": [
+    {
+      "bufferView": 0,
+      "byteOffset": 0,
+      "componentType": 5125,
+      "count": 204,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 0,
+      "componentType": 5126,
+      "count": 88,
+      "type": "VEC3",
+      "min": [
+        -0.7236007,
+        -0.09872781,
+        -0.8325139
+      ],
+      "max": [
+        0.513989449,
+        2.4295857,
+        0.749130666
+      ]
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 12,
+      "componentType": 5126,
+      "count": 88,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 24,
+      "componentType": 5126,
+      "count": 88,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 32,
+      "componentType": 5126,
+      "count": 88,
+      "type": "VEC4"
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 48,
+      "componentType": 5121,
+      "count": 88,
+      "type": "VEC4"
+    },
+    {
+      "bufferView": 2,
+      "byteOffset": 0,
+      "componentType": 5126,
+      "count": 1,
+      "type": "MAT4"
+    },
+    {
+      "bufferView": 3,
+      "byteOffset": 0,
+      "componentType": 5125,
+      "count": 1500,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 4,
+      "byteOffset": 0,
+      "componentType": 5126,
+      "count": 471,
+      "type": "VEC3",
+      "min": [
+        -0.7324287,
+        -0.151363239,
+        -0.8417231
+      ],
+      "max": [
+        0.5176031,
+        2.4295857,
+        0.776892841
+      ]
+    },
+    {
+      "bufferView": 4,
+      "byteOffset": 12,
+      "componentType": 5126,
+      "count": 471,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 4,
+      "byteOffset": 24,
+      "componentType": 5126,
+      "count": 471,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 4,
+      "byteOffset": 32,
+      "componentType": 5126,
+      "count": 471,
+      "type": "VEC4"
+    },
+    {
+      "bufferView": 4,
+      "byteOffset": 48,
+      "componentType": 5121,
+      "count": 471,
+      "type": "VEC4"
+    },
+    {
+      "bufferView": 5,
+      "byteOffset": 0,
+      "componentType": 5126,
+      "count": 1,
+      "type": "MAT4"
+    },
+    {
+      "bufferView": 6,
+      "byteOffset": 0,
+      "componentType": 5126,
+      "count": 63,
+      "type": "SCALAR",
+      "min": [
+        0.0
+      ],
+      "max": [
+        2.06666684
+      ]
+    },
+    {
+      "bufferView": 7,
+      "byteOffset": 0,
+      "componentType": 5126,
+      "count": 63,
+      "type": "VEC4"
+    },
+    {
+      "bufferView": 8,
+      "byteOffset": 0,
+      "componentType": 5126,
+      "count": 63,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 7,
+      "byteOffset": 1008,
+      "componentType": 5126,
+      "count": 63,
+      "type": "VEC4"
+    },
+    {
+      "bufferView": 8,
+      "byteOffset": 756,
+      "componentType": 5126,
+      "count": 63,
+      "type": "VEC3"
+    }
+  ],
+  "skins": [
+    {
+      "name": "skin0",
+      "inverseBindMatrices": 6,
+      "joints": [
+        2
+      ]
+    },
+    {
+      "name": "skin1",
+      "inverseBindMatrices": 13,
+      "joints": [
+        2
+      ]
+    }
+  ],
+  "meshes": [
+    {
+      "name": "Stone_Wall",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 1,
+            "NORMAL": 2,
+            "TEXCOORD_0": 3,
+            "WEIGHTS_0": 4,
+            "JOINTS_0": 5
+          },
+          "indices": 0,
+          "mode": 4,
+          "material": 0
+        }
+      ]
+    },
+    {
+      "name": "Stone_Wall01",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 8,
+            "NORMAL": 9,
+            "TEXCOORD_0": 10,
+            "WEIGHTS_0": 11,
+            "JOINTS_0": 12
+          },
+          "indices": 7,
+          "mode": 4,
+          "material": 1
+        }
+      ]
+    }
+  ],
+  "animations": [
+    {
+      "channels": [
+        {
+          "sampler": 0,
+          "target": {
+            "node": 2,
+            "path": "rotation"
+          }
+        },
+        {
+          "sampler": 1,
+          "target": {
+            "node": 2,
+            "path": "translation"
+          }
+        },
+        {
+          "sampler": 2,
+          "target": {
+            "node": 3,
+            "path": "rotation"
+          }
+        },
+        {
+          "sampler": 3,
+          "target": {
+            "node": 3,
+            "path": "translation"
+          }
+        }
+      ],
+      "samplers": [
+        {
+          "input": 14,
+          "output": 15,
+          "interpolation": "LINEAR"
+        },
+        {
+          "input": 14,
+          "output": 16,
+          "interpolation": "LINEAR"
+        },
+        {
+          "input": 14,
+          "output": 17,
+          "interpolation": "LINEAR"
+        },
+        {
+          "input": 14,
+          "output": 18,
+          "interpolation": "LINEAR"
+        }
+      ]
+    }
+  ],
+  "bufferViews": [
+    {
+      "name": "mesh_indexes_Stone_Wall",
+      "buffer": 0,
+      "byteOffset": 0,
+      "byteLength": 816,
+      "target": 34963
+    },
+    {
+      "name": "mesh_vertexes_Stone_Wall",
+      "buffer": 0,
+      "byteOffset": 816,
+      "byteLength": 4576,
+      "byteStride": 52,
+      "target": 34962
+    },
+    {
+      "name": "mesh_bones_Stone_Wall",
+      "buffer": 0,
+      "byteOffset": 5392,
+      "byteLength": 64
+    },
+    {
+      "name": "mesh_indexes_Stone_Wall01",
+      "buffer": 0,
+      "byteOffset": 5456,
+      "byteLength": 6000,
+      "target": 34963
+    },
+    {
+      "name": "mesh_vertexes_Stone_Wall01",
+      "buffer": 0,
+      "byteOffset": 11456,
+      "byteLength": 24492,
+      "byteStride": 52,
+      "target": 34962
+    },
+    {
+      "name": "mesh_bones_Stone_Wall01",
+      "buffer": 0,
+      "byteOffset": 35948,
+      "byteLength": 64
+    },
+    {
+      "name": "frames",
+      "buffer": 0,
+      "byteOffset": 36012,
+      "byteLength": 252
+    },
+    {
+      "name": "bones_rotate",
+      "buffer": 0,
+      "byteOffset": 36264,
+      "byteLength": 2016
+    },
+    {
+      "name": "bones_translate",
+      "buffer": 0,
+      "byteOffset": 38280,
+      "byteLength": 1512
+    }
+  ],
+  "buffers": [
+    {
+      "uri": "character_neutrals_stone_wall.bin",
+      "byteLength": 39792
+    }
+  ],
+  "images": [
+    {
+      "uri": "fx_spell_wall_earth.dds"
+    }
+  ],
+  "textures": [
+    {
+      "source": 0
+    }
+  ],
+  "materials": [
+    {
+      "name": "material0",
+      "alphaMode": "MASK",
+      "pbrMetallicRoughness": {
+        "baseColorTexture": {
+          "index": 0,
+          "texCoord": 0
+        },
+        "metallicFactor": 0.0
+      },
+      "emissiveFactor": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "material1",
+      "alphaMode": "MASK",
+      "pbrMetallicRoughness": {
+        "baseColorTexture": {
+          "index": 0,
+          "texCoord": 0
+        },
+        "metallicFactor": 0.0
+      },
+      "emissiveFactor": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ]
+}

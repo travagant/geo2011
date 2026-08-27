@@ -1,0 +1,12 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "Resources\Characters\Neutrals\Watersnake\character_neutrals_watersnake_sea.a";
+frame0 1;
+frame1 160;
+fps 15.000000;
+priority 256;
+flags 1;
+meshfile "Resources\Characters\Neutrals\Watersnake\character_neutrals_watersnake_sea.g";
+}

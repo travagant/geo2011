@@ -1,0 +1,3 @@
+alias "voice" {
+	sound 100, "$(Sounds)/octopus/octopus1.wav", 100, 3;
+}

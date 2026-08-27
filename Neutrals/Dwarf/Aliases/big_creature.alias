@@ -1,0 +1,8 @@
+alias "big_creature" {
+	sound 100, "$(Sounds)/footsteps/big_creature/footsteps_big_creature_layer_01.wav", 100, 3;
+	sound 100, "$(Sounds)/footsteps/big_creature/footsteps_big_creature_layer_02.wav", 100, 3;
+	sound 100, "$(Sounds)/footsteps/big_creature/footsteps_big_creature_layer_03.wav", 100, 3;
+	sound 100, "$(Sounds)/footsteps/big_creature/footsteps_big_creature_layer_04.wav", 100, 3;
+	sound 100, "$(Sounds)/footsteps/big_creature/footsteps_big_creature_layer_05.wav", 100, 3;
+	sound 100, "$(Sounds)/footsteps/big_creature/footsteps_big_creature_layer_06.wav", 100, 3;
+}

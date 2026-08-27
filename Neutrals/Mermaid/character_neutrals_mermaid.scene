@@ -1,0 +1,90 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 30000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera -1.427629,2.622987,-4.143181,0.317625,0.542963,0.042964,0.317625,0.542963,0.042964,-1.427629,2.622987,-4.143181,0.430000,0.395000,0.000000,5.199596;
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 50 29188104
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.010000,-0.010000,-0.010000,0.010000,0.010000,0.010000
+	dwflags 1
+	plvl 512
+	lodgroup 1
+esourcefile "",-1
+	child bones "character_neutrals_mermaid" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 51 29533024
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 0
+	file "resources\characters\neutrals\mermaid\character_neutrals_mermaid.ac"
+	plvl 512
+	child gobj "neutral_mermaid" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 66 29520472
+	dwflags 1054209
+	tech "model"
+	bonesuid 51 29533024
+	mesh_lods 1
+	"resources\characters\neutrals\mermaid\character_neutrals_mermaid.g" 0 0.000000
+	coords 0.000000,1.113680,0.613490,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "324668592"
+	attr "dwParent" "53705248"
+	attr "vdshader" "dif_light2x"
+	attr "name" "neutral_mermaid"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutrals_mermaid.tga"
+	attr "material0_triangles_num" "4427"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "3436"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "38"
+}
+
+}
+
+}
+

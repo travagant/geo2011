@@ -1,0 +1,103 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\neutrals\kraken\character_neutrals_kraken_iadd.a";
+frame0 6;
+frame1 300;
+fps 30.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 3;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 3;
+meshfile "resources\characters\neutrals\kraken\character_neutrals_kraken.g";
+}
+state "Attack"
+{
+file "resources\characters\neutrals\kraken\character_neutrals_kraken_iadd.a";
+frame0 300;
+frame1 420;
+fps 30.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 327 "resources\characters\neutrals\kraken\Aliases\kraken_attack_1.alias" " 100";
+event2 "snd_Attack" 380 "resources\characters\neutrals\kraken\Aliases\kraken_attack_2.alias" " 100";
+event2 "snd_Attack" 324 "resources\characters\neutrals\kraken\Aliases\big_creature.alias" " 100";
+event2 "snd_Attack" 402 "resources\characters\neutrals\kraken\Aliases\big_creature_2.alias" " 100";
+event2 "snd_Attack" 325 "resources\characters\neutrals\kraken\Aliases\gravel.alias" " 100";
+event2 "snd_Attack" 403 "resources\characters\neutrals\kraken\Aliases\gravel_2.alias" " 100";
+event2 "snd_Attack" 328 "resources\characters\neutrals\kraken\Aliases\swoosh_01.alias" " 100";
+event2 "snd_Attack" 328 "Resources/Characters/neutrals/kraken/Aliases\Attack00.alias" " 100";
+event2 "snd_Attack" 328 "Resources/Characters/neutrals/kraken/Aliases\Attack01.alias" " 100";
+event2 "snd_Attack" 323 "Resources/Characters/neutrals/kraken/Aliases\Attack02.alias" " 100";
+event2 "snd_Attack" 398 "Resources/Characters/neutrals/kraken/Aliases\Attack03.alias" " 100";
+event2 "Strike" 334 "" "";
+event2 "trail_start" 324 "" "";
+event2 "trail_end" 335 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\neutrals\kraken\character_neutrals_kraken.g";
+}
+state "Damage"
+{
+file "resources\characters\neutrals\kraken\character_neutrals_kraken_iadd.a";
+frame0 420;
+frame1 500;
+fps 30.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 420 "resources\characters\neutrals\kraken\Aliases\kraken_damage.alias" " 100";
+event2 "snd_Damage" 474 "resources\characters\neutrals\kraken\Aliases\kraken_damage_2.alias" " 100";
+event2 "snd_Damage" 433 "resources\characters\neutrals\kraken\Aliases\big_creature_2.alias" " 100";
+event2 "snd_Damage" 485 "resources\characters\neutrals\kraken\Aliases\big_creature.alias" " 100";
+event2 "snd_Damage" 420 "Resources/Characters/neutrals/kraken/Aliases\Damage00.alias" " 100";
+event2 "snd_Damage" 480 "Resources/Characters/neutrals/kraken/Aliases\Damage01.alias" " 100";
+link "Idle" 1; blend 0;
+link "Run" 0; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\kraken\character_neutrals_kraken.g";
+}
+state "Death"
+{
+file "resources\characters\neutrals\kraken\character_neutrals_kraken_iadd.a";
+frame0 500;
+frame1 604;
+fps 30.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 500 "resources\characters\neutrals\kraken\Aliases\kraken_death_1.alias" " 100";
+event2 "snd_Die" 559 "resources\characters\neutrals\kraken\Aliases\kraken_death_2.alias" " 100";
+event2 "snd_Die" 512 "resources\characters\neutrals\kraken\Aliases\big_creature.alias" " 100";
+event2 "snd_Die" 528 "resources\characters\neutrals\kraken\Aliases\big_creature_2.alias" " 100";
+event2 "snd_Die" 580 "resources\characters\neutrals\kraken\Aliases\medium_creature.alias" " 100";
+event2 "snd_Die" 582 "resources\characters\neutrals\kraken\Aliases\big_creature_2.alias" " 100";
+event2 "snd_Die" 584 "resources\characters\neutrals\kraken\Aliases\big_creature.alias" " 100";
+event2 "snd_Die" 586 "resources\characters\neutrals\kraken\Aliases\medium_creature_2.alias" " 100";
+event2 "snd_Die" 589 "resources\characters\neutrals\kraken\Aliases\medium_creature.alias" " 100";
+event2 "snd_Die" 515 "resources\characters\neutrals\kraken\Aliases\gravel.alias" " 100";
+event2 "snd_Die" 527 "resources\characters\neutrals\kraken\Aliases\gravel_2.alias" " 100";
+event2 "snd_Die" 580 "resources\characters\neutrals\kraken\Aliases\gravel_2.alias" " 100";
+event2 "snd_Die" 585 "resources\characters\neutrals\kraken\Aliases\gravel.alias" " 100";
+event2 "snd_Die" 591 "resources\characters\neutrals\kraken\Aliases\gravel_2.alias" " 100";
+event2 "snd_Die" 500 "Resources/Characters/neutrals/kraken/Aliases\Death00.alias" " 100";
+event2 "snd_Die" 578 "Resources/Characters/neutrals/kraken/Aliases\Death01.alias" " 100";
+event2 "snd_Die" 581 "Resources/Characters/neutrals/kraken/Aliases\Death02.alias" " 100";
+meshfile "resources\characters\neutrals\kraken\character_neutrals_kraken.g";
+}
+state "Run"
+{
+file "resources\characters\neutrals\kraken\character_neutrals_kraken_run.a";
+frame0 1;
+frame1 18;
+fps 15.000000;
+priority 256;
+flags 1;
+event2 "snd_Step" 5 "resources\characters\neutrals\kraken\Aliases\big_creature.alias" " 100";
+event2 "snd_Step" 14 "resources\characters\neutrals\kraken\Aliases\big_creature_2.alias" " 100";
+event2 "snd_Step" 14 "resources\characters\neutrals\kraken\Aliases\gravel_2.alias" " 100";
+event2 "snd_Step" 5 "resources\characters\neutrals\kraken\Aliases\gravel.alias" " 100";
+link "Idle" 0; blend 3;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\kraken\character_neutrals_kraken.g";
+}

@@ -1,0 +1,97 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 30000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	shadowint 0.750000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	shadowcolor -16777216;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	environment_map "";
+	environment_map_morning "";
+	environment_map_noon "";
+	environment_map_evening "";
+	environment_map_night "";
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	globals "803a182a27988d2d25824a2f99753a37596f9073783a53906a3d436c6749652d";
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+	load_counter 120;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 4664 27283032
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.428237,0.000000,-0.554215,0.393769,1.681952,0.608468
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_neutrals_hydra_male" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 4679 51090444
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 0
+	file "Resources\Characters\Neutrals\Hydra_Male\character_neutrals_hydra_male.ac"
+	plvl 512
+	looktocamera 0;
+	child gobj "Hydra_Male" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 4678 50071172
+	dwflags 5185
+	tech "model"
+	bonesuid 4679 51090444
+	mesh_lods 1
+	"Resources\Characters\Neutrals\Hydra_Male\character_neutrals_hydra_male.g" 0 0.000000
+	coords 0.000000,0.926935,0.667834,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\default.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "391902352"
+	attr "dwParent" "97387680"
+	attr "vdshader" "dif_light2x"
+	attr "name" "Hydra_Male"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutrals_hydra_male.tga"
+	attr "material0_triangles_num" "4666"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "3409"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "49"
+}
+
+}
+
+}
+

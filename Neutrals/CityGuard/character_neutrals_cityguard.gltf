@@ -1,0 +1,520 @@
+{
+  "asset": {
+    "version": "2.0",
+    "generator": "generated with dis3tool v1.1 by root.ext@gmail.com"
+  },
+  "scenes": [
+    {
+      "nodes": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    }
+  ],
+  "scene": 0,
+  "nodes": [
+    {
+      "name": "neutrals_cityguard",
+      "mesh": 0
+    },
+    {
+      "name": "neutrals_spearman_cloth",
+      "mesh": 1
+    },
+    {
+      "name": "weapon_neutrals_cityguard",
+      "mesh": 2
+    },
+    {
+      "name": "weapon_neutrals_cityguard_shield",
+      "mesh": 3
+    },
+    {
+      "name": "neutrals_spearman_ribbon",
+      "mesh": 4
+    }
+  ],
+  "accessors": [
+    {
+      "bufferView": 0,
+      "byteOffset": 0,
+      "componentType": 5125,
+      "count": 10860,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 0,
+      "componentType": 5126,
+      "count": 2893,
+      "type": "VEC3",
+      "min": [
+        -0.7159355,
+        0.00182924687,
+        -0.285518646
+      ],
+      "max": [
+        0.71506995,
+        2.140456,
+        0.07821076
+      ]
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 12,
+      "componentType": 5126,
+      "count": 2893,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 24,
+      "componentType": 5126,
+      "count": 2893,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 3,
+      "byteOffset": 0,
+      "componentType": 5125,
+      "count": 672,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 4,
+      "byteOffset": 0,
+      "componentType": 5126,
+      "count": 144,
+      "type": "VEC3",
+      "min": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "max": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "bufferView": 4,
+      "byteOffset": 12,
+      "componentType": 5126,
+      "count": 144,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 4,
+      "byteOffset": 24,
+      "componentType": 5126,
+      "count": 144,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 5,
+      "byteOffset": 0,
+      "componentType": 5125,
+      "count": 402,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 6,
+      "byteOffset": 0,
+      "componentType": 5126,
+      "count": 135,
+      "type": "VEC3",
+      "min": [
+        -1.305573,
+        -0.0228112713,
+        -0.09028733
+      ],
+      "max": [
+        1.43631208,
+        0.0235652924,
+        0.114639245
+      ]
+    },
+    {
+      "bufferView": 6,
+      "byteOffset": 12,
+      "componentType": 5126,
+      "count": 135,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 6,
+      "byteOffset": 24,
+      "componentType": 5126,
+      "count": 135,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 8,
+      "byteOffset": 0,
+      "componentType": 5125,
+      "count": 384,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 9,
+      "byteOffset": 0,
+      "componentType": 5126,
+      "count": 137,
+      "type": "VEC3",
+      "min": [
+        -0.03755504,
+        -0.168003157,
+        -0.3099792
+      ],
+      "max": [
+        1.89459848,
+        -0.0290428177,
+        0.3690999
+      ]
+    },
+    {
+      "bufferView": 9,
+      "byteOffset": 12,
+      "componentType": 5126,
+      "count": 137,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 9,
+      "byteOffset": 24,
+      "componentType": 5126,
+      "count": 137,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 11,
+      "byteOffset": 0,
+      "componentType": 5125,
+      "count": 51,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 12,
+      "byteOffset": 0,
+      "componentType": 5126,
+      "count": 21,
+      "type": "VEC3",
+      "min": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "max": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "bufferView": 12,
+      "byteOffset": 12,
+      "componentType": 5126,
+      "count": 21,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 12,
+      "byteOffset": 24,
+      "componentType": 5126,
+      "count": 21,
+      "type": "VEC2"
+    }
+  ],
+  "meshes": [
+    {
+      "name": "neutrals_cityguard",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 1,
+            "NORMAL": 2,
+            "TEXCOORD_0": 3
+          },
+          "indices": 0,
+          "mode": 4,
+          "material": 0
+        }
+      ]
+    },
+    {
+      "name": "neutrals_spearman_cloth",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 5,
+            "NORMAL": 6,
+            "TEXCOORD_0": 7
+          },
+          "indices": 4,
+          "mode": 4,
+          "material": 1
+        }
+      ]
+    },
+    {
+      "name": "weapon_neutrals_cityguard",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 9,
+            "NORMAL": 10,
+            "TEXCOORD_0": 11
+          },
+          "indices": 8,
+          "mode": 4,
+          "material": 2
+        }
+      ]
+    },
+    {
+      "name": "weapon_neutrals_cityguard_shield",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 13,
+            "NORMAL": 14,
+            "TEXCOORD_0": 15
+          },
+          "indices": 12,
+          "mode": 4,
+          "material": 3
+        }
+      ]
+    },
+    {
+      "name": "neutrals_spearman_ribbon",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 17,
+            "NORMAL": 18,
+            "TEXCOORD_0": 19
+          },
+          "indices": 16,
+          "mode": 4,
+          "material": 4
+        }
+      ]
+    }
+  ],
+  "bufferViews": [
+    {
+      "name": "mesh_indexes_neutrals_cityguard",
+      "buffer": 0,
+      "byteOffset": 0,
+      "byteLength": 43440,
+      "target": 34963
+    },
+    {
+      "name": "mesh_vertexes_neutrals_cityguard",
+      "buffer": 0,
+      "byteOffset": 43440,
+      "byteLength": 150436,
+      "byteStride": 52,
+      "target": 34962
+    },
+    {
+      "name": "mesh_bones_neutrals_cityguard",
+      "buffer": 0,
+      "byteOffset": 193876,
+      "byteLength": 1408
+    },
+    {
+      "name": "mesh_indexes_neutrals_spearman_cloth",
+      "buffer": 0,
+      "byteOffset": 195284,
+      "byteLength": 2688,
+      "target": 34963
+    },
+    {
+      "name": "mesh_vertexes_neutrals_spearman_cloth",
+      "buffer": 0,
+      "byteOffset": 197972,
+      "byteLength": 4608,
+      "byteStride": 32,
+      "target": 34962
+    },
+    {
+      "name": "mesh_indexes_weapon_neutrals_cityguard",
+      "buffer": 0,
+      "byteOffset": 202580,
+      "byteLength": 1608,
+      "target": 34963
+    },
+    {
+      "name": "mesh_vertexes_weapon_neutrals_cityguard",
+      "buffer": 0,
+      "byteOffset": 204188,
+      "byteLength": 7020,
+      "byteStride": 52,
+      "target": 34962
+    },
+    {
+      "name": "mesh_bones_weapon_neutrals_cityguard",
+      "buffer": 0,
+      "byteOffset": 211208,
+      "byteLength": 64
+    },
+    {
+      "name": "mesh_indexes_weapon_neutrals_cityguard_shield",
+      "buffer": 0,
+      "byteOffset": 211272,
+      "byteLength": 1536,
+      "target": 34963
+    },
+    {
+      "name": "mesh_vertexes_weapon_neutrals_cityguard_shield",
+      "buffer": 0,
+      "byteOffset": 212808,
+      "byteLength": 7124,
+      "byteStride": 52,
+      "target": 34962
+    },
+    {
+      "name": "mesh_bones_weapon_neutrals_cityguard_shield",
+      "buffer": 0,
+      "byteOffset": 219932,
+      "byteLength": 64
+    },
+    {
+      "name": "mesh_indexes_neutrals_spearman_ribbon",
+      "buffer": 0,
+      "byteOffset": 219996,
+      "byteLength": 204,
+      "target": 34963
+    },
+    {
+      "name": "mesh_vertexes_neutrals_spearman_ribbon",
+      "buffer": 0,
+      "byteOffset": 220200,
+      "byteLength": 672,
+      "byteStride": 32,
+      "target": 34962
+    }
+  ],
+  "buffers": [
+    {
+      "uri": "character_neutrals_cityguard.bin",
+      "byteLength": 220872
+    }
+  ],
+  "images": [
+    {
+      "uri": "character_neutrals_cityguard.dds"
+    },
+    {
+      "uri": "character_neutrals_cityguard_cloth.dds"
+    },
+    {
+      "uri": "weapon_neutrals_cityguard_spear.dds"
+    },
+    {
+      "uri": "weapon_neutrals_cityguard_shield.dds"
+    }
+  ],
+  "textures": [
+    {
+      "source": 0
+    },
+    {
+      "source": 1
+    },
+    {
+      "source": 2
+    },
+    {
+      "source": 3
+    }
+  ],
+  "materials": [
+    {
+      "name": "material0",
+      "alphaMode": "MASK",
+      "pbrMetallicRoughness": {
+        "baseColorTexture": {
+          "index": 0,
+          "texCoord": 0
+        },
+        "metallicFactor": 0.0
+      },
+      "emissiveFactor": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "material1",
+      "alphaMode": "MASK",
+      "pbrMetallicRoughness": {
+        "baseColorTexture": {
+          "index": 1,
+          "texCoord": 0
+        },
+        "metallicFactor": 0.0
+      },
+      "emissiveFactor": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "material2",
+      "alphaMode": "MASK",
+      "pbrMetallicRoughness": {
+        "baseColorTexture": {
+          "index": 2,
+          "texCoord": 0
+        },
+        "metallicFactor": 0.0
+      },
+      "emissiveFactor": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "material3",
+      "alphaMode": "MASK",
+      "pbrMetallicRoughness": {
+        "baseColorTexture": {
+          "index": 3,
+          "texCoord": 0
+        },
+        "metallicFactor": 0.0
+      },
+      "emissiveFactor": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "material4",
+      "alphaMode": "MASK",
+      "pbrMetallicRoughness": {
+        "baseColorTexture": {
+          "index": 2,
+          "texCoord": 0
+        },
+        "metallicFactor": 0.0
+      },
+      "emissiveFactor": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ]
+}

@@ -1,0 +1,83 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\neutrals\orc\character_neutrals_orc_baseanims.a";
+frame0 1;
+frame1 144;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 3;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 3;
+gaestate "Attack";
+meshfile "resources\characters\neutrals\orc\character_neutrals_orc.g";
+}
+state "Attack"
+{
+file "resources\characters\neutrals\orc\character_neutrals_orc_baseanims.a";
+frame0 144;
+frame1 206;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 159 "resources\characters\neutrals\orc\Aliases\human.alias" " 70";
+event2 "snd_Attack" 197 "resources\characters\neutrals\orc\Aliases\human_2.alias" " 70";
+event2 "snd_Attack" 186 "resources\characters\neutrals\orc\Aliases\big_creature_2.alias" " 80";
+event2 "snd_Attack" 189 "resources\characters\neutrals\orc\Aliases\gravel_2.alias" " 100";
+event2 "snd_Attack" 167 "resources\characters\neutrals\orc\Aliases\swoosh_01.alias" " 100";
+event2 "snd_Attack" 155 "Resources/Characters/neutrals/orc/Aliases\Attack00.alias" " 100";
+event2 "Strike" 169 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\neutrals\orc\character_neutrals_orc.g";
+}
+state "Damage"
+{
+file "resources\characters\neutrals\orc\character_neutrals_orc_baseanims.a";
+frame0 206;
+frame1 238;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 217 "resources\characters\neutrals\orc\Aliases\human.alias" " 80";
+event2 "snd_Damage" 232 "resources\characters\neutrals\orc\Aliases\human_2.alias" " 80";
+event2 "snd_Damage" 206 "Resources/Characters/neutrals/orc/Aliases\Damage00.alias" " 100";
+link "Idle" 1; blend 0;
+link "Run" 0; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\orc\character_neutrals_orc.g";
+}
+state "Death"
+{
+file "resources\characters\neutrals\orc\character_neutrals_orc_baseanims.a";
+frame0 238;
+frame1 308;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 261 "resources\characters\neutrals\orc\Aliases\human.alias" " 80";
+event2 "snd_Die" 238 "Resources/Characters/neutrals/orc/Aliases\Death00.alias" " 100";
+meshfile "resources\characters\neutrals\orc\character_neutrals_orc.g";
+}
+state "Run"
+{
+file "resources\characters\neutrals\orc\character_neutrals_orc_baseanims.a";
+frame0 321;
+frame1 344;
+fps 15.000000;
+priority 256;
+flags 1;
+event2 "snd_Step" 325 "resources\characters\neutrals\orc\Aliases\human_2.alias" " 80";
+event2 "snd_Step" 329 "resources\characters\neutrals\orc\Aliases\human.alias" " 60";
+event2 "snd_Step" 336 "resources\characters\neutrals\orc\Aliases\human_2.alias" " 70";
+event2 "snd_Step" 341 "resources\characters\neutrals\orc\Aliases\human.alias" " 60";
+event2 "snd_Step" 325 "resources\characters\neutrals\orc\Aliases\gravel.alias" " 70";
+event2 "snd_Step" 329 "resources\characters\neutrals\orc\Aliases\gravel_2.alias" " 50";
+event2 "snd_Step" 336 "resources\characters\neutrals\orc\Aliases\gravel.alias" " 70";
+event2 "snd_Step" 341 "resources\characters\neutrals\orc\Aliases\gravel_2.alias" " 50";
+link "Idle" 0; blend 3;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\orc\character_neutrals_orc.g";
+}

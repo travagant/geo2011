@@ -1,0 +1,88 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\neutrals\polarbear\character_neutrals_polarbear_baseanims.a";
+frame0 1;
+frame1 100;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 3;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 5;
+meshfile "resources\characters\neutrals\polarbear\character_neutrals_polarbear.g";
+}
+state "Attack"
+{
+file "resources\characters\neutrals\polarbear\character_neutrals_polarbear_baseanims.a";
+frame0 100;
+frame1 210;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 126 "resources\characters\neutrals\polarbear\Aliases\polarbear_attack_1.alias" " 100";
+event2 "snd_Attack" 187 "resources\characters\neutrals\polarbear\Aliases\polarbear_attack_2.alias" " 100";
+event2 "snd_Attack" 132 "Resources/Characters/neutrals/polarbear/Aliases\Attack00.alias" " 100";
+event2 "snd_Attack" 133 "resources\characters\neutrals\polarbear\Aliases\big_creature.alias" " 100";
+event2 "snd_Attack" 133 "resources\characters\neutrals\polarbear\Aliases\gravel_2.alias" " 100";
+event2 "snd_Attack" 161 "resources\characters\neutrals\polarbear\Aliases\gravel.alias" " 100";
+event2 "snd_Attack" 161 "resources\characters\neutrals\polarbear\Aliases\medium_creature.alias" " 60";
+event2 "snd_Attack" 175 "resources\characters\neutrals\polarbear\Aliases\gravel_2.alias" " 100";
+event2 "snd_Attack" 109 "Resources/Characters/neutrals/polarbear/Aliases\Attack01.alias" " 100";
+event2 "Strike" 133 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\neutrals\polarbear\character_neutrals_polarbear.g";
+}
+state "Damage"
+{
+file "resources\characters\neutrals\polarbear\character_neutrals_polarbear_baseanims.a";
+frame0 210;
+frame1 240;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 210 "resources\characters\neutrals\polarbear\Aliases\polarbear_damage.alias" " 100";
+event2 "snd_Damage" 223 "resources\characters\neutrals\polarbear\Aliases\polarbear_damage_2.alias" " 100";
+link "Idle" 1; blend 0;
+link "Run" 0; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\polarbear\character_neutrals_polarbear.g";
+}
+state "Death"
+{
+file "resources\characters\neutrals\polarbear\character_neutrals_polarbear_baseanims.a";
+frame0 240;
+frame1 290;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 240 "resources\characters\neutrals\polarbear\Aliases\polarbear_death_1.alias" " 100";
+event2 "snd_Die" 257 "resources\characters\neutrals\polarbear\Aliases\polarbear_death_2.alias" " 100";
+event2 "snd_Die" 274 "Resources/Characters/neutrals/polarbear/Aliases\Death00.alias" " 100";
+event2 "snd_Die" 278 "resources\characters\neutrals\polarbear\Aliases\big_creature.alias" " 100";
+event2 "snd_Die" 276 "resources\characters\neutrals\polarbear\Aliases\big_creature_2.alias" " 100";
+meshfile "resources\characters\neutrals\polarbear\character_neutrals_polarbear.g";
+}
+state "Run"
+{
+file "resources\characters\neutrals\polarbear\character_neutrals_polarbear_baseanims.a";
+frame0 293;
+frame1 304;
+fps 15.000000;
+priority 256;
+flags 1;
+event2 "snd_Step" 294 "resources\characters\neutrals\polarbear\Aliases\medium_creature_2.alias" " 80";
+event2 "snd_Step" 301 "resources\characters\neutrals\polarbear\Aliases\medium_creature.alias" " 80";
+event2 "snd_Step" 302 "resources\characters\neutrals\polarbear\Aliases\human.alias" " 80";
+event2 "snd_Step" 293 "resources\characters\neutrals\polarbear\Aliases\human_2.alias" " 80";
+event2 "snd_Step" 294 "resources\characters\neutrals\polarbear\Aliases\gravel.alias" " 80";
+event2 "snd_Step" 301 "resources\characters\neutrals\polarbear\Aliases\gravel_2.alias" " 80";
+event2 "snd_Step" 302 "resources\characters\neutrals\polarbear\Aliases\gravel.alias" " 80";
+event2 "snd_Step" 293 "resources\characters\neutrals\polarbear\Aliases\gravel_2.alias" " 80";
+link "Idle" 0; blend 3;
+link "Run" 0; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\polarbear\character_neutrals_polarbear.g";
+}

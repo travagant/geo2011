@@ -1,0 +1,623 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 30000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	shadowint 0.750000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	shadowcolor -16777216;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	environment_map "";
+	environment_map_morning "";
+	environment_map_noon "";
+	environment_map_evening "";
+	environment_map_night "";
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	globals "005a188a57483d8d85721a8f79553a07093f1013984a13000a3d535c6769156d";
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+	load_counter 9;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 110 73825376
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -12.039650,-0.429367,-5.099914,15.423700,6.487854,11.971835
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_neutrals_craken" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 111 73859108
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 0
+	file "Resources\Characters\Neutrals\Craken\character_neutrals_craken.ac"
+	plvl 512
+	looktocamera 0;
+	child gobj "neutrals_craken" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 114 73926112
+	dwflags 5185
+	tech "model"
+	bonesuid 111 73859108
+	mesh_lods 1
+	"Resources\Characters\Neutrals\Craken\character_neutrals_craken.g" 0 0.000000
+	coords -0.364897,3.303563,3.264580,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\default.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "899794432"
+	attr "dwParent" "97387680"
+	attr "vdshader" "dif_light2x"
+	attr "name" "neutrals_craken"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutrals_craken.tga"
+	attr "material0_triangles_num" "7738"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "5476"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "133"
+}
+
+}
+
+	child group "hexinfo" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 124 90778128
+	coords 0.649524,0.000000,0.649524,0.000000,0.000000,0.000000
+	obbdata -0.649524,0.000000,-0.649524,-0.649524,0.000000,-0.649524
+	dwflags 512
+	plvl 500
+	attr "name" "hexinfo"
+	attr "parent" "Scene Root"
+	attr "dwNode" "777255496"
+	attr "dwParent" "97394872"
+	attr "group" "1"
+	resourcefile "Resources\Characters\Neutrals\Craken\character_neutrals_craken.g",0
+	child group "_pass_Point1332" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 125 90704448
+	coords 1.948553,0.000000,3.850474,0.000000,0.000000,0.000000
+	obbdata -2.598077,0.000000,-4.499998,-2.598077,0.000000,-4.499998
+	dwflags 0
+	plvl 500
+	attr "name" "_pass_Point1332"
+	attr "parent" "hexinfo"
+	attr "dwNode" "777256592"
+	attr "dwParent" "777255496"
+	resourcefile "Resources\Characters\Neutrals\Craken\character_neutrals_craken.g",1
+}
+
+	child group "_pass_Point1331" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 126 73862664
+	coords 5.845668,0.000000,1.600474,0.000000,0.000000,0.000000
+	obbdata -6.495192,0.000000,-2.249998,-6.495192,0.000000,-2.249998
+	dwflags 0
+	plvl 500
+	attr "name" "_pass_Point1331"
+	attr "parent" "hexinfo"
+	attr "dwNode" "777257688"
+	attr "dwParent" "777255496"
+	resourcefile "Resources\Characters\Neutrals\Craken\character_neutrals_craken.g",2
+}
+
+	child group "_pass_Point1330" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 127 73861724
+	coords 7.144703,0.000000,3.850479,0.000000,0.000000,0.000000
+	obbdata -7.794227,0.000000,-4.500003,-7.794227,0.000000,-4.500003
+	dwflags 0
+	plvl 500
+	attr "name" "_pass_Point1330"
+	attr "parent" "hexinfo"
+	attr "dwNode" "777258784"
+	attr "dwParent" "777255496"
+	resourcefile "Resources\Characters\Neutrals\Craken\character_neutrals_craken.g",3
+}
+
+	child group "_pass_Point1328" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 128 73860784
+	coords 4.546631,0.000000,3.850474,0.000000,0.000000,0.000000
+	obbdata -5.196155,0.000000,-4.499998,-5.196155,0.000000,-4.499998
+	dwflags 0
+	plvl 500
+	attr "name" "_pass_Point1328"
+	attr "parent" "hexinfo"
+	attr "dwNode" "777259880"
+	attr "dwParent" "777255496"
+	resourcefile "Resources\Characters\Neutrals\Craken\character_neutrals_craken.g",4
+}
+
+	child group "_pass_Point1324" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 129 97853356
+	coords -5.845676,0.000000,3.850468,0.000000,0.000000,0.000000
+	obbdata 5.196152,0.000000,-4.499992,5.196152,0.000000,-4.499992
+	dwflags 0
+	plvl 500
+	attr "name" "_pass_Point1324"
+	attr "parent" "hexinfo"
+	attr "dwNode" "777260976"
+	attr "dwParent" "777255496"
+	resourcefile "Resources\Characters\Neutrals\Craken\character_neutrals_craken.g",5
+}
+
+	child group "_pass_Point1306" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 130 97852416
+	coords -7.144711,0.000000,-2.899527,0.000000,0.000000,0.000000
+	obbdata 6.495188,0.000000,2.250003,6.495188,0.000000,2.250003
+	dwflags 0
+	plvl 500
+	attr "name" "_pass_Point1306"
+	attr "parent" "hexinfo"
+	attr "dwNode" "777262072"
+	attr "dwParent" "777255496"
+	resourcefile "Resources\Characters\Neutrals\Craken\character_neutrals_craken.g",6
+}
+
+	child group "_c_pass_Point031" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 131 97851476
+	coords -5.845676,0.000000,-0.649522,0.000000,0.000000,0.000000
+	obbdata 5.196152,0.000000,-0.000002,5.196152,0.000000,-0.000002
+	dwflags 0
+	plvl 500
+	attr "name" "_c_pass_Point031"
+	attr "parent" "hexinfo"
+	attr "dwNode" "777263168"
+	attr "dwParent" "777255496"
+	resourcefile "Resources\Characters\Neutrals\Craken\character_neutrals_craken.g",7
+}
+
+	child group "_pass_Point1305" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 132 97850536
+	coords -7.144711,0.000000,1.600478,0.000000,0.000000,0.000000
+	obbdata 6.495188,0.000000,-2.250002,6.495188,0.000000,-2.250002
+	dwflags 0
+	plvl 500
+	attr "name" "_pass_Point1305"
+	attr "parent" "hexinfo"
+	attr "dwNode" "777264264"
+	attr "dwParent" "777255496"
+	resourcefile "Resources\Characters\Neutrals\Craken\character_neutrals_craken.g",8
+}
+
+	child group "_pass_Point1303" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 133 97849596
+	coords -4.546636,0.000000,-2.899527,0.000000,0.000000,0.000000
+	obbdata 3.897112,0.000000,2.250003,3.897112,0.000000,2.250003
+	dwflags 0
+	plvl 500
+	attr "name" "_pass_Point1303"
+	attr "parent" "hexinfo"
+	attr "dwNode" "777265360"
+	attr "dwParent" "777255496"
+	resourcefile "Resources\Characters\Neutrals\Craken\character_neutrals_craken.g",9
+}
+
+	child group "_pass_Point1302" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 134 97848656
+	coords -5.845674,0.000000,-5.149527,0.000000,0.000000,0.000000
+	obbdata 5.196150,0.000000,4.500003,5.196150,0.000000,4.500003
+	dwflags 0
+	plvl 500
+	attr "name" "_pass_Point1302"
+	attr "parent" "hexinfo"
+	attr "dwNode" "777266456"
+	attr "dwParent" "777255496"
+	resourcefile "Resources\Characters\Neutrals\Craken\character_neutrals_craken.g",10
+}
+
+	child group "_pass_Point1299" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 135 97847716
+	coords -1.948557,0.000000,-2.899526,0.000000,0.000000,0.000000
+	obbdata 1.299033,0.000000,2.250002,1.299033,0.000000,2.250002
+	dwflags 0
+	plvl 500
+	attr "name" "_pass_Point1299"
+	attr "parent" "hexinfo"
+	attr "dwNode" "777267552"
+	attr "dwParent" "777255496"
+	resourcefile "Resources\Characters\Neutrals\Craken\character_neutrals_craken.g",11
+}
+
+	child group "_pass_Point1297" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 136 97846776
+	coords 1.948556,-0.000000,-0.649521,0.000000,0.000000,0.000000
+	obbdata -2.598080,0.000000,-0.000003,-2.598080,0.000000,-0.000003
+	dwflags 0
+	plvl 500
+	attr "name" "_pass_Point1297"
+	attr "parent" "hexinfo"
+	attr "dwNode" "777268648"
+	attr "dwParent" "777255496"
+	resourcefile "Resources\Characters\Neutrals\Craken\character_neutrals_craken.g",12
+}
+
+	child group "_pass_Point1296" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 137 97845836
+	coords 0.649518,-0.000000,-2.899522,0.000000,0.000000,0.000000
+	obbdata -1.299042,0.000000,2.249998,-1.299042,0.000000,2.249998
+	dwflags 0
+	plvl 500
+	attr "name" "_pass_Point1296"
+	attr "parent" "hexinfo"
+	attr "dwNode" "777269744"
+	attr "dwParent" "777255496"
+	resourcefile "Resources\Characters\Neutrals\Craken\character_neutrals_craken.g",13
+}
+
+	child group "_pass_Point1293" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 138 97923192
+	coords 5.845668,-0.000000,-2.899521,0.000000,0.000000,0.000000
+	obbdata -6.495192,0.000000,2.249997,-6.495192,0.000000,2.249997
+	dwflags 0
+	plvl 500
+	attr "name" "_pass_Point1293"
+	attr "parent" "hexinfo"
+	attr "dwNode" "777270840"
+	attr "dwParent" "777255496"
+	resourcefile "Resources\Characters\Neutrals\Craken\character_neutrals_craken.g",14
+}
+
+	child group "_pass_Point1292" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 139 97922252
+	coords 4.546631,-0.000000,-0.649516,0.000000,0.000000,0.000000
+	obbdata -5.196155,0.000000,-0.000008,-5.196155,0.000000,-0.000008
+	dwflags 0
+	plvl 500
+	attr "name" "_pass_Point1292"
+	attr "parent" "hexinfo"
+	attr "dwNode" "777271936"
+	attr "dwParent" "777255496"
+	resourcefile "Resources\Characters\Neutrals\Craken\character_neutrals_craken.g",15
+}
+
+	child group "_pass_Point1291" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 140 97921312
+	coords 3.247594,-0.000000,-2.899521,0.000000,0.000000,0.000000
+	obbdata -3.897118,0.000000,2.249997,-3.897118,0.000000,2.249997
+	dwflags 0
+	plvl 500
+	attr "name" "_pass_Point1291"
+	attr "parent" "hexinfo"
+	attr "dwNode" "777273032"
+	attr "dwParent" "777255496"
+	resourcefile "Resources\Characters\Neutrals\Craken\character_neutrals_craken.g",16
+}
+
+	child group "_pass_Point1290" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 141 97920372
+	coords -3.247600,-0.000000,3.850478,0.000000,0.000000,0.000000
+	obbdata 2.598076,0.000000,-4.500002,2.598076,0.000000,-4.500002
+	dwflags 0
+	plvl 500
+	attr "name" "_pass_Point1290"
+	attr "parent" "hexinfo"
+	attr "dwNode" "777274128"
+	attr "dwParent" "777255496"
+	resourcefile "Resources\Characters\Neutrals\Craken\character_neutrals_craken.g",17
+}
+
+	child group "_pass_Point1289" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 142 97919432
+	coords 0.649515,-0.000000,1.600469,0.000000,0.000000,0.000000
+	obbdata -1.299039,0.000000,-2.249993,-1.299039,0.000000,-2.249993
+	dwflags 0
+	plvl 500
+	attr "name" "_pass_Point1289"
+	attr "parent" "hexinfo"
+	attr "dwNode" "777275224"
+	attr "dwParent" "777255496"
+	resourcefile "Resources\Characters\Neutrals\Craken\character_neutrals_craken.g",18
+}
+
+	child group "_pass_Point1288" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 143 97918492
+	coords -0.649523,-0.000000,3.850468,0.000000,0.000000,0.000000
+	obbdata -0.000001,0.000000,-4.499992,-0.000001,0.000000,-4.499992
+	dwflags 0
+	plvl 500
+	attr "name" "_pass_Point1288"
+	attr "parent" "hexinfo"
+	attr "dwNode" "777276320"
+	attr "dwParent" "777255496"
+	resourcefile "Resources\Characters\Neutrals\Craken\character_neutrals_craken.g",19
+}
+
+	child group "_pass_Point1286" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 144 97917552
+	coords -1.948562,-0.000000,1.600469,0.000000,0.000000,0.000000
+	obbdata 1.299038,0.000000,-2.249993,1.299038,0.000000,-2.249993
+	dwflags 0
+	plvl 500
+	attr "name" "_pass_Point1286"
+	attr "parent" "hexinfo"
+	attr "dwNode" "777277416"
+	attr "dwParent" "777255496"
+	resourcefile "Resources\Characters\Neutrals\Craken\character_neutrals_craken.g",20
+}
+
+	child group "_pass_Point1285" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 145 97916612
+	coords -4.546640,-0.000000,1.600473,0.000000,0.000000,0.000000
+	obbdata 3.897116,0.000000,-2.249997,3.897116,0.000000,-2.249997
+	dwflags 0
+	plvl 500
+	attr "name" "_pass_Point1285"
+	attr "parent" "hexinfo"
+	attr "dwNode" "777278512"
+	attr "dwParent" "777255496"
+	resourcefile "Resources\Characters\Neutrals\Craken\character_neutrals_craken.g",21
+}
+
+	child group "_pass_Point1284" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 146 97915672
+	coords -3.247600,-0.000000,-0.649517,0.000000,0.000000,0.000000
+	obbdata 2.598076,0.000000,-0.000007,2.598076,0.000000,-0.000007
+	dwflags 0
+	plvl 500
+	attr "name" "_pass_Point1284"
+	attr "parent" "hexinfo"
+	attr "dwNode" "777279608"
+	attr "dwParent" "777255496"
+	resourcefile "Resources\Characters\Neutrals\Craken\character_neutrals_craken.g",22
+}
+
+	child group "_pass_Point1283" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 147 97914732
+	coords 3.247594,0.000000,1.600474,0.000000,0.000000,0.000000
+	obbdata -3.897118,0.000000,-2.249998,-3.897118,0.000000,-2.249998
+	dwflags 0
+	plvl 500
+	attr "name" "_pass_Point1283"
+	attr "parent" "hexinfo"
+	attr "dwNode" "777280704"
+	attr "dwParent" "777255496"
+	resourcefile "Resources\Characters\Neutrals\Craken\character_neutrals_craken.g",23
+}
+
+	child group "_pass_Point1282" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 148 97913792
+	coords 7.144712,0.000000,-0.649521,0.000000,0.000000,0.000000
+	obbdata -7.794236,0.000000,-0.000003,-7.794236,0.000000,-0.000003
+	dwflags 0
+	plvl 500
+	attr "name" "_pass_Point1282"
+	attr "parent" "hexinfo"
+	attr "dwNode" "777281800"
+	attr "dwParent" "777255496"
+	resourcefile "Resources\Characters\Neutrals\Craken\character_neutrals_craken.g",24
+}
+
+}
+
+}
+

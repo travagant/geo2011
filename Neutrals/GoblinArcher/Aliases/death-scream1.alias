@@ -1,0 +1,3 @@
+alias "death-scream1" {
+	sound 100, "$(Sounds)/goblinarcher/death-scream-first.wav", 100, 3;
+}

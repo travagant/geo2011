@@ -1,0 +1,277 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 30000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	shadowint 0.750000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	shadowcolor -16777216;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	environment_map "";
+	environment_map_morning "";
+	environment_map_noon "";
+	environment_map_evening "";
+	environment_map_night "";
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	globals "805a388a77989d5d15422a8f29758a97996f3023288a03300a6d030c9729255d";
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+	load_counter 325;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 69 74280264
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.958030,-7.318441,-1.497248,1.180484,2.822559,0.736073
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_neutrals_cyclop" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 70 74331036
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 0
+	file "Resources\Characters\Neutrals\Cyclop\character_neutrals_cyclop.ac"
+	plvl 512
+	looktocamera 0;
+	child gobj "neutrals_cyclops_alpha" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 77 74233548
+	dwflags 5697
+	tech "model"
+	bonesuid 70 74331036
+	mesh_lods 1
+	"Resources\Characters\Neutrals\Cyclop\character_neutrals_cyclop.g" 0 0.000000
+	coords -0.011408,1.688939,-0.068024,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "System\XShader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "System\XShader\dif_at_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "388169040"
+	attr "dwParent" "97387680"
+	attr "vdshader" "dif_ab_light2x"
+	attr "name" "neutrals_cyclops_alpha"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutrals_cyclops_alpha.tga"
+	attr "material0_triangles_num" "536"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "486"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "14"
+}
+
+	child gobj "neutrals_cyclops" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 89 89461060
+	dwflags 5185
+	tech "model"
+	bonesuid 70 74331036
+	mesh_lods 1
+	"Resources\Characters\Neutrals\Cyclop\character_neutrals_cyclop.g" 1 0.000000
+	coords 0.000000,1.582658,-0.080092,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "System\XShader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "388170136"
+	attr "dwParent" "97387680"
+	attr "vdshader" "dif_light2x"
+	attr "name" "neutrals_cyclops"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutrals_cyclops.tga"
+	attr "material0_triangles_num" "2524"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "1874"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "49"
+}
+
+	child gobj "neutrals_cyclops_armor" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 103 92681908
+	dwflags 5185
+	tech "model"
+	bonesuid 70 74331036
+	mesh_lods 1
+	"Resources\Characters\Neutrals\Cyclop\character_neutrals_cyclop.g" 2 0.000000
+	coords -0.304842,1.329401,0.007214,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "System\XShader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "System\XShader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "388171232"
+	attr "dwParent" "97387680"
+	attr "vdshader" "dif_light2x"
+	attr "name" "neutrals_cyclops_armor"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutrals_cyclops.tga"
+	attr "material0_triangles_num" "1196"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "928"
+	attr "weights_on_vertex" "2"
+	attr "bones_num" "11"
+}
+
+	child gobj "neutrals_cyclops_alpha_3" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 104 92680356
+	dwflags 5185
+	tech "model"
+	bonesuid 70 74331036
+	mesh_lods 1
+	"Resources\Characters\Neutrals\Cyclop\character_neutrals_cyclop.g" 3 0.000000
+	coords 0.000000,2.024160,0.454817,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "System\XShader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "System\XShader\dif_ab_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "388172328"
+	attr "dwParent" "97387680"
+	attr "vdshader" "dif_ab_light2x"
+	attr "name" "neutrals_cyclops_alpha_3"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutrals_cyclops_alpha.tga"
+	attr "material0_triangles_num" "48"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "96"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "6"
+}
+
+	child gobj "neutrals_cyclops_alpha_1" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 105 92678804
+	dwflags 5185
+	tech "model"
+	bonesuid 70 74331036
+	mesh_lods 1
+	"" -1 0.000000
+	coords -1.308083,1.487450,0.139041,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "System\XShader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "System\XShader\dif_ab_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "388176712"
+	attr "dwParent" "97387680"
+	attr "vdshader" "dif_ab_light2x"
+	attr "name" "neutrals_cyclops_alpha_1"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutrals_cyclops_alpha.tga"
+	attr "material0_triangles_num" "42"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "66"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "6"
+}
+
+	child gobj "neutrals_cyclops_alpha_2" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 107 92677252
+	dwflags 5185
+	tech "model"
+	bonesuid 70 74331036
+	mesh_lods 1
+	"" -1 0.000000
+	coords 1.038517,1.859185,0.127325,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "System\XShader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "System\XShader\dif_ab_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "388177808"
+	attr "dwParent" "97387680"
+	attr "vdshader" "dif_ab_light2x"
+	attr "name" "neutrals_cyclops_alpha_2"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutrals_cyclops_alpha.tga"
+	attr "material0_triangles_num" "92"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "140"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "9"
+}
+
+}
+
+}
+

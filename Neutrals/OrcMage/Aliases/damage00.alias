@@ -1,0 +1,4 @@
+alias "Damage00" {
+	sound 100, "$(Sounds)/weapons/swooshes/swoosh_08.wav", 100, 3;
+	sound 100, "$(Sounds)/weapons/swooshes/swoosh_07.wav", 100, 3;
+}

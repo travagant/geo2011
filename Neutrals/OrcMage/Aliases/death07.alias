@@ -1,0 +1,6 @@
+alias "Death07" {
+	sound 100, "$(Sounds)/addon/skeleton/bones2.wav", 100, 3;
+	sound 100, "$(Sounds)/addon/skeleton/bones13.wav", 100, 3;
+	sound 100, "$(Sounds)/addon/skeleton/bones18.wav", 100, 3;
+	sound 100, "$(Sounds)/addon/skeleton/bones9.wav", 100, 3;
+}

@@ -1,0 +1,4 @@
+alias "shot" {
+	sound 100, "$(Sounds)/goblinarcher/bow_shot4.wav", 100, 3;
+	sound 100, "$(Sounds)/goblinarcher/bow_shot3.wav", 100, 3;
+}

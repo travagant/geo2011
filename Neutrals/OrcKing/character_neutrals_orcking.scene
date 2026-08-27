@@ -1,0 +1,216 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 90000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera -0.040768,1.270069,-1.955177,-0.132840,1.125576,-0.969964,-0.268201,0.913149,0.478462,-0.040768,1.270069,-1.955177,0.145000,6.190002,0.000000,5.774256;
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 734 31119976
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.010000,-0.010000,-0.010000,0.010000,0.010000,0.010000
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_neutrals_orcking" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 735 102707192
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 1048576
+	file "resources\characters\neutrals\orcking\character_neutrals_orcking.ac"
+	plvl 512
+	looktocamera 0;
+	child gobj "neutrals_orcking_hair" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 738 100828288
+	dwflags 1055809
+	tech "model"
+	bonesuid 735 102707192
+	mesh_lods 1
+	"resources\characters\neutrals\orcking\character_neutrals_orcking.g" 1 0.000000
+	coords 0.000210,1.691347,0.100510,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 1;
+	blockshader "system\xshader\dif_at_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "492046272"
+	attr "dwParent" "53770176"
+	attr "vdshader" "dif_at_light2x"
+	attr "name" "neutrals_orcking_hair"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutrals_orcking_alpha.tga"
+	attr "material0_triangles_num" "340"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "234"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "9"
+	attr "twosided" "1"
+}
+
+	child gobj "shield_neutral_orcking" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 744 119959000
+	dwflags 1053761
+	tech "model"
+	bonesuid 735 102707192
+	mesh_lods 1
+	"resources\characters\neutrals\orcking\character_neutrals_orcking.g" 2 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "492194912"
+	attr "dwParent" "53770176"
+	attr "vdshader" "dif_light2x"
+	attr "name" "shield_neutral_orcking"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "weapon_neutrals_orcking_shield.tga"
+	attr "material0_triangles_num" "253"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "405"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+}
+
+	child gobj "neutrals_orcking" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 745 100461632
+	dwflags 1055809
+	tech "model"
+	bonesuid 735 102707192
+	mesh_lods 1
+	"resources\characters\neutrals\orcking\character_neutrals_orcking.g" 0 0.000000
+	coords 0.000310,0.941501,-0.088593,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "491874000"
+	attr "dwParent" "53770176"
+	attr "twosided" "1"
+	attr "vdshader" "dif_light2x"
+	attr "name" "neutrals_orcking"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutrals_orcking_diffuse.tga"
+	attr "material0_triangles_num" "4658"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "3150"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "45"
+}
+
+	child gobj "weapon_neutral_orcking" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 746 124073240
+	dwflags 1054273
+	tech "model"
+	bonesuid 735 102707192
+	mesh_lods 1
+	"resources\characters\neutrals\orcking\character_neutrals_orcking.g" 3 0.000000
+	coords 0.451339,0.000008,0.000649,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "492229808"
+	attr "dwParent" "53770176"
+	attr "name" "weapon_neutral_orcking"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "weapon_neutrals_orcking_sword.tga"
+	attr "material0_triangles_num" "120"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "130"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+	attr "vdshader" "dif_light2x"
+}
+
+	child 	goclass "VDGoWeaponTrace" "VDGoWeaponTrace" 
+{
+	uid 748 30994440
+	dwflags 1
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	texture "resources\fx\fx_resouces\textures\weapontrace\weapontrace_light_yellow_hi.t"
+	tech "weapontrace"
+	lifetime 0.200000
+	maxdist 0.100000
+	bonetraceuid 735 102707192
+	fadeonevent 0
+	fadetime 1.000000
+	boneid 37
+	boneid 38
+}
+
+}
+
+}
+

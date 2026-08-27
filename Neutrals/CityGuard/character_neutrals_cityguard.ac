@@ -1,0 +1,69 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\neutrals\spearman\character_neutrals_spearman_baseanims.a";
+frame0 1;
+frame1 160;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 3;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 3;
+meshfile "resources\characters\neutrals\cityguard\character_neutrals_cityguard.g";
+}
+state "Attack"
+{
+file "resources\characters\neutrals\spearman\character_neutrals_spearman_baseanims.a";
+frame0 160;
+frame1 212;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "Strike" 179 "" "";
+event2 "snd_Attack" 176 "" "";
+link "Idle" 1; blend 0;
+link "Damage" 0; blend 0;
+meshfile "resources\characters\neutrals\cityguard\character_neutrals_cityguard.g";
+}
+state "Damage"
+{
+file "resources\characters\neutrals\spearman\character_neutrals_spearman_baseanims.a";
+frame0 212;
+frame1 254;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 212 "" "";
+link "Idle" 1; blend 0;
+link "Run" 0; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\cityguard\character_neutrals_cityguard.g";
+}
+state "Death"
+{
+file "resources\characters\neutrals\spearman\character_neutrals_spearman_baseanims.a";
+frame0 254;
+frame1 314;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 254 "" "";
+meshfile "resources\characters\neutrals\cityguard\character_neutrals_cityguard.g";
+}
+state "Run"
+{
+file "resources\characters\neutrals\spearman\character_neutrals_spearman_baseanims.a";
+frame0 335;
+frame1 346;
+fps 15.000000;
+priority 256;
+flags 1;
+event2 "snd_Step" 337 "" "";
+event2 "snd_Step" 343 "" "";
+link "Idle" 0; blend 3;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\cityguard\character_neutrals_cityguard.g";
+}

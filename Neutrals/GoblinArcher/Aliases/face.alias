@@ -1,0 +1,7 @@
+alias "face" {
+	sound 100, "$(Sounds)/addon/eldervampire/face_punch_03.wav", 100, 3;
+	sound 100, "$(Sounds)/addon/eldervampire/face_punch_02.wav", 100, 3;
+	sound 100, "$(Sounds)/goblinarcher/face_fight_000.wav", 100, 3;
+	sound 100, "$(Sounds)/goblinarcher/face_fight_001.wav", 100, 3;
+	sound 100, "$(Sounds)/goblinarcher/face_fight_002.wav", 100, 3;
+}

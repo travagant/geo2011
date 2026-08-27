@@ -1,0 +1,78 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\neutrals\dragonbone\character_neutrals_dragonbone_baseanims.a";
+frame0 1;
+frame1 220;
+fps 20.000000;
+priority 256;
+flags 1;
+event2 "New Event" 0 "" "";
+link "Attack" 0; blend 5;
+link "Damage" 0; blend 4;
+link "Death" 0; blend 4;
+link "Run" 0; blend 0;
+gaestate "Death";
+meshfile "resources\characters\neutrals\dragonbone\character_neutrals_dragonbone.g";
+}
+state "Attack"
+{
+file "resources\characters\neutrals\dragonbone\character_neutrals_dragonbone_baseanims.a";
+frame0 220;
+frame1 320;
+fps 17.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 220 "resources\characters\neutrals\dragonbone\Aliases\dragonbone_attack_1.alias" " 100";
+event2 "snd_Attack" 251 "resources\characters\neutrals\dragonbone\Aliases\dragonbone_attack_2.alias" " 100";
+event2 "snd_Attack" 266 "resources\characters\neutrals\dragonbone\Aliases\big_creature.alias" " 100";
+event2 "Strike" 88 "" "";
+event2 "fxcast" 220 "" "";
+event2 "FxStrike" 270 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\neutrals\dragonbone\character_neutrals_dragonbone.g";
+}
+state "Damage"
+{
+file "resources\characters\neutrals\dragonbone\character_neutrals_dragonbone_baseanims.a";
+frame0 320;
+frame1 360;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 339 "resources\characters\neutrals\dragonbone\Aliases\dragonbone_damage.alias" " 100";
+event2 "snd_Damage" 320 "Resources/Characters/neutrals/dragonbone/Aliases\Damage00.alias" " 100";
+link "Idle" 1; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\dragonbone\character_neutrals_dragonbone.g";
+}
+state "Death"
+{
+file "resources\characters\neutrals\dragonbone\character_neutrals_dragonbone_baseanims.a";
+frame0 360;
+frame1 420;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 360 "resources\characters\neutrals\dragonbone\Aliases\dragonbone_death.alias" " 100";
+event2 "snd_Die" 402 "resources\characters\neutrals\dragonbone\Aliases\big_creature_2.alias" " 100";
+event2 "snd_Die" 405 "resources\characters\neutrals\dragonbone\Aliases\big_creature.alias" " 100";
+event2 "snd_Die" 416 "resources\characters\neutrals\dragonbone\Aliases\medium_creature.alias" " 100";
+event2 "snd_Die" 416 "resources\characters\neutrals\dragonbone\Aliases\gravel_2.alias" " 100";
+event2 "snd_Die" 397 "Resources/Characters/neutrals/dragonbone/Aliases\Death00.alias" " 100";
+event2 "snd_Die" 411 "Resources/Characters/neutrals/dragonbone/Aliases\Death01.alias" " 100";
+meshfile "resources\characters\neutrals\dragonbone\character_neutrals_dragonbone.g";
+}
+state "Run"
+{
+file "resources\characters\neutrals\dragonbone\character_neutrals_dragonbone_baseanims.a";
+frame0 0;
+frame1 0;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Idle" 0; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\dragonbone\character_neutrals_dragonbone.g";
+}

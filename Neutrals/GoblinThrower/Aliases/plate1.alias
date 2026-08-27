@@ -1,0 +1,6 @@
+alias "plate1" {
+	sound 100, "$(Sounds)/clothes/plate/plate_8.wav", 100, 3;
+	sound 100, "$(Sounds)/clothes/plate/plate_1.wav", 100, 3;
+	sound 100, "$(Sounds)/clothes/plate/plate_2.wav", 100, 3;
+	sound 100, "$(Sounds)/clothes/plate/plate_3.wav", 100, 3;
+}

@@ -1,0 +1,32 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\neutrals\stone_wall\character_neutrals_stone_wall.a";
+frame0 1;
+frame1 30;
+fps 15.000000;
+priority 256;
+flags 1;
+meshfile "resources\characters\neutrals\stone_wall\character_neutrals_stone_wall.g";
+}
+state "Damage"
+{
+file "resources\characters\neutrals\stone_wall\character_neutrals_stone_wall.a";
+frame0 1;
+frame1 30;
+fps 15.000000;
+priority 256;
+flags 0;
+meshfile "resources\characters\neutrals\stone_wall\character_neutrals_stone_wall.g";
+}
+state "Death"
+{
+file "resources\characters\neutrals\stone_wall\character_neutrals_stone_wall.a";
+frame0 30;
+frame1 62;
+fps 30.000000;
+priority 256;
+flags 0;
+meshfile "resources\characters\neutrals\stone_wall\character_neutrals_stone_wall.g";
+}

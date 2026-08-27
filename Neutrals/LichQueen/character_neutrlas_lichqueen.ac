@@ -1,0 +1,72 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\neutrals\lichqueen\character_neutrals_lichqueen_baseanims.a";
+frame0 1;
+frame1 120;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 4;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 4;
+meshfile "resources\characters\neutrals\lichqueen\character_neutrals_lichqueen.g";
+}
+state "Attack"
+{
+file "resources\characters\neutrals\lichqueen\character_neutrals_lichqueen_baseanims.a";
+frame0 120;
+frame1 170;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 142 "" "";
+event2 "fxcast" 120 "" "";
+event2 "FxStrike" 144 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\neutrals\lichqueen\character_neutrals_lichqueen.g";
+}
+state "Damage"
+{
+file "resources\characters\neutrals\lichqueen\character_neutrals_lichqueen_baseanims.a";
+frame0 170;
+frame1 200;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 0 "" "";
+link "Idle" 1; blend 0;
+link "Run" 0; blend 0;
+link "Damage" 0; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\lichqueen\character_neutrals_lichqueen.g";
+}
+state "Death"
+{
+file "resources\characters\neutrals\lichqueen\character_neutrals_lichqueen_baseanims.a";
+frame0 200;
+frame1 245;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 0 "" "";
+meshfile "resources\characters\neutrals\lichqueen\character_neutrals_lichqueen.g";
+}
+state "Run"
+{
+file "resources\characters\neutrals\lichqueen\character_neutrals_lichqueen_baseanims.a";
+frame0 248;
+frame1 275;
+fps 15.000000;
+priority 256;
+flags 1;
+event2 "snd_Step" 252 "" "";
+event2 "snd_Step" 259 "" "";
+event2 "snd_Step" 266 "(null)" "(null)";
+event2 "snd_Step" 273 "(null)" "(null)";
+link "Idle" 0; blend 4;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\lichqueen\character_neutrals_lichqueen.g";
+}

@@ -1,0 +1,3 @@
+alias "bone" {
+	sound 100, "$(Sounds)/addon/skeleton/bones_death_004.wav", 100, 3;
+}

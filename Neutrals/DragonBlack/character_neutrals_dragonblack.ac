@@ -1,0 +1,74 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\neutrals\dragonblack\character_neutrals_dragonblack_baseanims.a";
+frame0 1;
+frame1 220;
+fps 20.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 3;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 3;
+gaestate "Attack";
+meshfile "resources\characters\neutrals\dragonblack\character_neutrals_dragonblack.g";
+}
+state "Attack"
+{
+file "resources\characters\neutrals\dragonblack\character_neutrals_dragonblack_baseanims.a";
+frame0 220;
+frame1 320;
+fps 17.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 240 "resources\characters\neutrals\dragonblack\Aliases\dragonblack_attack.alias" " 100";
+event2 "snd_Attack" 234 "Resources/Characters/neutrals/dragonblack/Aliases\Attack00.alias" " 100";
+event2 "snd_Attack" 272 "Resources/Characters/neutrals/dragonblack/Aliases\Attack01.alias" " 100";
+event2 "fxcast" 220 "" "";
+event2 "FxStrike" 280 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\neutrals\dragonblack\character_neutrals_dragonblack.g";
+}
+state "Damage"
+{
+file "resources\characters\neutrals\dragonblack\character_neutrals_dragonblack_baseanims.a";
+frame0 320;
+frame1 360;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 320 "Resources/Characters/neutrals/dragonblack/Aliases\Damage00.alias" " 100";
+event2 "snd_Damage" 320 "Resources/Characters/neutrals/dragonblack/Aliases\Damage01.alias" " 100";
+link "Idle" 1; blend 3;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\dragonblack\character_neutrals_dragonblack.g";
+}
+state "Death"
+{
+file "resources\characters\neutrals\dragonblack\character_neutrals_dragonblack_baseanims.a";
+frame0 360;
+frame1 420;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 389 "Resources/Characters/neutrals/dragonblack/Aliases\Death00.alias" " 100";
+event2 "snd_Die" 360 "Resources/Characters/neutrals/dragonblack/Aliases\Death01.alias" " 100";
+event2 "snd_Die" 403 "resources\characters\neutrals\dragonblack\Aliases\big_creature_2.alias" " 100";
+event2 "snd_Die" 405 "resources\characters\neutrals\dragonblack\Aliases\big_creature.alias" " 100";
+event2 "snd_Die" 360 "Resources/Characters/neutrals/dragonblack/Aliases\Death02.alias" " 100";
+meshfile "resources\characters\neutrals\dragonblack\character_neutrals_dragonblack.g";
+}
+state "Run"
+{
+file "resources\characters\neutrals\dragonblack\character_neutrals_dragonblack_baseanims.a";
+frame0 172;
+frame1 200;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Idle" 0; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\dragonblack\character_neutrals_dragonblack.g";
+}

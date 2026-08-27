@@ -1,0 +1,6 @@
+alias "step_back" {
+	sound 100, "$(Sounds)/footsteps/medium_creature_2/footsteps_medium_creature_2_layer_01.wav", 100, 3;
+	sound 100, "$(Sounds)/footsteps/medium_creature_2/footsteps_medium_creature_2_layer_02.wav", 100, 3;
+	sound 100, "$(Sounds)/footsteps/medium_creature_2/footsteps_medium_creature_2_layer_03.wav", 100, 3;
+	sound 100, "$(Sounds)/footsteps/medium_creature_2/footsteps_medium_creature_2_layer_04.wav", 100, 3;
+}

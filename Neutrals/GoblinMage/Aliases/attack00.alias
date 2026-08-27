@@ -1,0 +1,4 @@
+alias "Attack00" {
+	sound 100, "$(Sounds)/sound_damage/dmg_wood_arrow.wav", 100, 3;
+	sound 100, "$(Sounds)/sound_damage/dmg_wood_arrow_1.wav", 100, 3;
+}

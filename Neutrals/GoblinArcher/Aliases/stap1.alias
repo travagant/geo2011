@@ -1,0 +1,6 @@
+alias "stap1" {
+	sound 100, "$(Sounds)/goblinarcher/run_stap_000.wav", 100, 3;
+	sound 100, "$(Sounds)/goblinarcher/run_stap_001.wav", 100, 3;
+	sound 100, "$(Sounds)/goblinarcher/run_stap_002.wav", 100, 3;
+	sound 100, "$(Sounds)/goblinarcher/run_stap_004.wav", 100, 3;
+}

@@ -1,0 +1,98 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "Resources\Characters\Neutrals\GoblinThrower\character_neutrals_goblinthrower.a";
+frame0 1;
+frame1 65;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 0;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 4;
+meshfile "Resources\Characters\Neutrals\GoblinThrower\character_neutrals_goblinthrower.g";
+}
+state "Attack"
+{
+file "Resources\Characters\Neutrals\GoblinThrower\character_neutrals_goblinthrower.a";
+frame0 65;
+frame1 113;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 73 "Resources/Characters/empire/imperialassassin/Aliases/cloth1.alias" " 50";
+event2 "snd_Attack" 85 "Resources/Characters/empire/imperialassassin/Aliases/cloth2.alias" " 40";
+event2 "Strike" 80 "" "";
+event2 "snd_Attack" 76 "resources/sounds/alias/gravel.alias" "-10";
+event2 "snd_Attack" 78 "resources/sounds/alias/gravel_2.alias" " 10";
+event2 "snd_Attack" 76 "resources/sounds/alias/human.alias" "-10";
+event2 "snd_Attack" 78 "resources/sounds/alias/human_2.alias" " 10";
+event2 "snd_Attack" 73 "Resources/Characters/neutrals/goblinthrower/Aliases/plate1.alias" " 40";
+event2 "snd_Attack" 84 "Resources/Characters/neutrals/goblinthrower/Aliases/swoosh.alias" " 50";
+event2 "snd_Attack" 83 "Resources/Characters/neutrals/goblinthrower/Aliases/plate1.alias" " 40";
+event2 "snd_Attack" 70 "Resources/Characters/neutrals/goblinthrower/Aliases/Attack00.alias" " 50";
+event2 "snd_Attack" 83 "Resources/Characters/neutrals/goblinthrower/Aliases/Attack01.alias" " 90";
+link "Idle" 1; blend 0;
+meshfile "Resources\Characters\Neutrals\GoblinThrower\character_neutrals_goblinthrower.g";
+}
+state "Damage"
+{
+file "Resources\Characters\Neutrals\GoblinThrower\character_neutrals_goblinthrower.a";
+frame0 113;
+frame1 149;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 118 "resources/sounds/alias/cloth2.alias" " 40";
+event2 "snd_Damage" 120 "resources/sounds/alias/gravel.alias" " 40";
+event2 "snd_Damage" 120 "resources/sounds/alias/human.alias" " 40";
+event2 "snd_Damage" 137 "resources/sounds/alias/gravel_2.alias" " 40";
+event2 "snd_Damage" 137 "resources/sounds/alias/human_2.alias" " 40";
+event2 "snd_Damage" 119 "resources/sounds/alias/plate2.alias" " 60";
+event2 "snd_Damage" 137 "resources/sounds/alias/plate2.alias" " 20";
+event2 "snd_Damage" 116 "resources/sounds/alias/plate2.alias" " 10";
+event2 "snd_Damage" 135 "resources/sounds/alias/cloth2.alias" " 60";
+event2 "snd_Damage" 116 "Resources/Characters/neutrals/goblinthrower/Aliases/Damage05.alias" " 90";
+link "Idle" 1; blend 0;
+link "Run" 1; blend 0;
+gaestate "Idle";
+meshfile "Resources\Characters\Neutrals\GoblinThrower\character_neutrals_goblinthrower.g";
+}
+state "Death"
+{
+file "Resources\Characters\Neutrals\GoblinThrower\character_neutrals_goblinthrower.a";
+frame0 149;
+frame1 173;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 154 "Resources/Characters/empire/imperialassassin/Aliases\Death01.alias" " 50";
+event2 "snd_Die" 151 "Resources/Characters/neutrals/goblinthrower/Aliases/Death02.alias" " 100";
+event2 "snd_Die" 152 "resources/sounds/alias/plate2.alias" " 20";
+event2 "snd_Die" 155 "resources/sounds/alias/plate2.alias" " 10";
+event2 "snd_Die" 161 "resources/sounds/alias/plate2.alias" " 20";
+event2 "snd_Die" 162 "Resources/Characters/empire/imperialassassin/Aliases/Death01.alias" " 30";
+meshfile "Resources\Characters\Neutrals\GoblinThrower\character_neutrals_goblinthrower.g";
+}
+state "Run"
+{
+file "Resources\Characters\Neutrals\GoblinThrower\character_neutrals_goblinthrower.a";
+frame0 179;
+frame1 188;
+fps 15.000000;
+priority 256;
+flags 1;
+event2 "snd_Step" 179 "resources\characters\empire\imperialassassin\Aliases\gravel.alias" " 60";
+event2 "snd_Step" 184 "resources\characters\empire\imperialassassin\Aliases\gravel_2.alias" " 40";
+event2 "snd_Step" 179 "resources/sounds/alias/human.alias" " 60";
+event2 "snd_Step" 184 "resources/sounds/alias/human_2.alias" " 40";
+event2 "snd_Step" 179 "resources/sounds/alias/cloth2.alias" " 40";
+event2 "snd_Step" 179 "resources/sounds/alias/plate2.alias" " 30";
+event2 "snd_Step" 183 "resources/sounds/alias/plate2.alias" " 20";
+event2 "snd_Step" 183 "resources/sounds/alias/cloth2.alias" " 40";
+link "Idle" 0; blend 4;
+gaestate "Idle";
+meshfile "Resources\Characters\Neutrals\GoblinThrower\character_neutrals_goblinthrower.g";
+}

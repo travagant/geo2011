@@ -1,0 +1,7 @@
+alias "face" {
+	sound 100, "$(Sounds)/neutrals_hydra_famale/hydra_face_hit_000.wav", 100, 3;
+	sound 100, "$(Sounds)/neutrals_hydra_famale/hydra_face_hit_001.wav", 100, 3;
+	sound 100, "$(Sounds)/neutrals_hydra_famale/hydra_face_hit_002.wav", 100, 3;
+	sound 100, "$(Sounds)/neutrals_hydra_famale/hydra_face_hit_003.wav", 100, 3;
+	sound 100, "$(Sounds)/neutrals_hydra_famale/hydra_face_hit_004.wav", 100, 3;
+}

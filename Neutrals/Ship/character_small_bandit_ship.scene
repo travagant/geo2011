@@ -1,0 +1,133 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 30000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	shadowint 0.750000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	shadowcolor -16777216;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	environment_map "";
+	environment_map_morning "";
+	environment_map_noon "";
+	environment_map_evening "";
+	environment_map_night "";
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	globals "107a883a07787d5d55321a0f79053a37195f3073585a93607a5d032c0779955d";
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+	load_counter 235;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 891 58413624
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata 0.000000,-0.089535,0.000000,0.000000,0.000000,0.000000
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_small_bandit_ship" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 892 58415388
+	coords 0.000000,0.000000,0.000000,0.000000,1.570796,0.000000
+	dwflags 0
+	file "Resources\Characters\Neutrals\Ship\character_small_bandit_ship.ac"
+	plvl 512
+	looktocamera 0;
+	child gobj "small_bandit_ship" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 895 57935560
+	dwflags 5185
+	tech "model"
+	bonesuid 892 58415388
+	mesh_lods 1
+	"Resources\Characters\Neutrals\Ship\character_small_bandit_ship.g" 0 0.000000
+	coords 0.388553,0.317990,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "System\XShader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "390830176"
+	attr "dwParent" "97387680"
+	attr "vdshader" "dif_light2x"
+	attr "name" "small_bandit_ship"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_small_bandit_ship.tga"
+	attr "material0_triangles_num" "320"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "246"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+}
+
+	child gobj "small_bandit_ship_cloth" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 899 58407196
+	dwflags 5185
+	tech "model"
+	bonesuid 892 58415388
+	mesh_lods 1
+	"Resources\Characters\Neutrals\Ship\character_small_bandit_ship.g" 1 0.000000
+	coords -0.686321,0.400051,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "System\XShader\dif_at_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "390857576"
+	attr "dwParent" "97387680"
+	attr "vdshader" "dif_at_light2x"
+	attr "name" "small_bandit_ship_cloth"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_small_bandit_ship.tga"
+	attr "material0_triangles_num" "92"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "90"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+}
+
+}
+
+}
+

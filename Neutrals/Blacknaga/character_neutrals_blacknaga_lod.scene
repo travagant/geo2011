@@ -1,0 +1,101 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 30000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera 0.543517,4.199076,3.571470,-0.127623,0.816237,0.287502,-0.127623,0.816237,0.287502,0.543517,4.199076,3.571470,0.790000,-2.940000,0.000000,2.474801;
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 70 29913208
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.010000,-0.010000,-0.010000,0.010000,0.010000,0.010000
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_neutrals_blacknaga" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 71 30247536
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 1048576
+	file "resources\characters\neutrals\blacknaga\character_neutrals_blacknaga.ac"
+	plvl 512
+	looktocamera 0;
+	child gobj "lod_character_neutrals_blacknaga" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 86 38425656
+	dwflags 1053697
+	tech "model"
+	bonesuid 71 30247536
+	mesh_lods 1
+	"resources\characters\neutrals\blacknaga\character_neutrals_blacknaga_lod.g" 0 0.000000
+	coords 0.000000,1.113680,0.613490,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "324668592"
+	attr "dwParent" "53705248"
+	attr "Mass" "0,000000"
+	attr "Ellasticity" "0,300000"
+	attr "Friction" "0,300000"
+	attr "Unyielding" "0"
+	attr "Phantom" "0"
+	attr "Simulation_Geometry" "2"
+	attr "Proxy_Geometry" "<None>"
+	attr "Use_Display_Proxy" "0"
+	attr "Disable_Collisions" "0"
+	attr "Inactive" "0"
+	attr "Display_Proxy" "<None>"
+	attr "name" "neutral_blacknaga"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutrals_blacknaga.tga"
+	attr "material0_triangles_num" "4427"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "3436"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "38"
+	attr "vdshader" "dif_light2x"
+}
+
+}
+
+}
+
