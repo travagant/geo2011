@@ -233,22 +233,22 @@ def do_import(context, filepath, do_anim=True, do_tex=True):
         except Exception:
             pass
         bone_names = [b['name'] for b in src['bones']]
+        ob = bpy.data.objects.new(meta['name'], me)
+        context.collection.objects.link(ob)
         if src['wov'] > 1:
             for k, bn in enumerate(bone_names):
                 if bn not in arm.data.bones:
                     continue
-                me.vertex_groups.new(name=bn)
+                ob.vertex_groups.new(name=bn)
             for vi, vd in enumerate(src['verts']):
                 for b, w in zip(vd['bones'], vd['weights']):
                     if w > 1e-6 and b < len(bone_names):
-                        vg = me.vertex_groups.get(bone_names[b])
+                        vg = ob.vertex_groups.get(bone_names[b])
                         if vg:
                             vg.add([vi], w, 'REPLACE')
         elif bone_names and bone_names[0] in arm.data.bones:
-            vg = me.vertex_groups.new(name=bone_names[0])
+            vg = ob.vertex_groups.new(name=bone_names[0])
             vg.add(list(range(len(co))), 1.0, 'REPLACE')
-        ob = bpy.data.objects.new(meta['name'], me)
-        context.collection.objects.link(ob)
         mod = ob.modifiers.new('D3 Skin', 'ARMATURE')
         mod.object = arm
         ob.parent = arm
@@ -369,7 +369,7 @@ def _geom_from_object(ob, src):
     wov = src['wov']
     bone_names = [b['name'] for b in src['bones']]
     wts = [[] for _ in range(n)]
-    for vg in me.vertex_groups:
+    for vg in ob.vertex_groups:
         if vg.name in bone_names:
             bi = bone_names.index(vg.name)
             for el in vg.elements:
