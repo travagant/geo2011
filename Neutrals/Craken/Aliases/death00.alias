@@ -1,4 +1,0 @@
-alias "Death00" {
-	sound 100, "$(Sounds)/neutrals_craken/scream-craken-damage-death.wav", 100, 3;
-	sound 100, "$(Sounds)/neutrals_craken/death_krik_000.wav", 100, 3;
-}

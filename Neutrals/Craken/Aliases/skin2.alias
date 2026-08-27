@@ -1,3 +1,0 @@
-alias "Skin2" {
-	sound 100, "$(Sounds)/neutrals_craken/blood_bath_rever02.wav", 100, 3;
-}

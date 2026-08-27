@@ -1,6 +1,0 @@
-alias "Attack-scream-long" {
-	sound 100, "$(Sounds)/wildboar/attack-scream-long.wav", 100, 3;
-	sound 100, "$(Sounds)/wildboar/attack-scream2.wav", 100, 3;
-	sound 100, "$(Sounds)/wildboar/attack-scream1.wav", 100, 3;
-	sound 100, "$(Sounds)/wildboar/attack-scream4.wav", 100, 3;
-}

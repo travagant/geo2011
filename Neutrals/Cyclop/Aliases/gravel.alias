@@ -1,8 +1,0 @@
-alias "gravel" {
-	sound 100, "$(Sounds)/footsteps/gravel/footsteps_gravel_layer_01.wav", 100, 3;
-	sound 100, "$(Sounds)/footsteps/gravel/footsteps_gravel_layer_02.wav", 100, 3;
-	sound 100, "$(Sounds)/footsteps/gravel/footsteps_gravel_layer_03.wav", 100, 3;
-	sound 100, "$(Sounds)/footsteps/gravel/footsteps_gravel_layer_04.wav", 100, 3;
-	sound 100, "$(Sounds)/footsteps/gravel/footsteps_gravel_layer_05.wav", 100, 3;
-	sound 100, "$(Sounds)/footsteps/gravel/footsteps_gravel_layer_06.wav", 100, 3;
-}

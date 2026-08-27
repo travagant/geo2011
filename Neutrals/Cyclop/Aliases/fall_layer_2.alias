@@ -1,3 +1,0 @@
-alias "fall_layer_2" {
-	sound 100, "$(Sounds)/neutrals_cyclop/fall_death_004.wav", 100, 3;
-}

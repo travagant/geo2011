@@ -1,3 +1,0 @@
-alias "Run00" {
-	sound 100, "$(Sounds)/clothes/cloth/cloth_04_03.wav", 100, 3;
-}

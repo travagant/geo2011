@@ -1,6 +1,0 @@
-alias "Damage02" {
-	sound 100, "$(Sounds)/wildboar/damage_groan_000.wav", 100, 3;
-	sound 100, "$(Sounds)/wildboar/damage_groan_001.wav", 100, 3;
-	sound 100, "$(Sounds)/wildboar/damage_groan_002.wav", 100, 3;
-	sound 100, "$(Sounds)/wildboar/damage_groan_003.wav", 100, 3;
-}

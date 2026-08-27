@@ -1,3 +1,0 @@
-alias "Attack05" {
-	sound 100, "$(Sounds)/rod-1.wav", 100, 3;
-}

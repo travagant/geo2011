@@ -1,3 +1,0 @@
-alias "Attack-background" {
-	sound 100, "$(Sounds)/neutrals_craken/attack-podklad.wav", 100, 3;
-}

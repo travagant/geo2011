@@ -1,3 +1,0 @@
-alias "Death09" {
-	sound 100, "$(Sounds)/voices/neutrals/orc/orc_death.wav", 100, 3;
-}

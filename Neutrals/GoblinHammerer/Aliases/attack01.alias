@@ -1,3 +1,0 @@
-alias "Attack01" {
-	sound 100, "$(Sounds)/goblinarcher/attack-inhaile2.wav", 100, 3;
-}

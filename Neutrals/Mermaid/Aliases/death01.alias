@@ -1,7 +1,0 @@
-alias "Death01" {
-	sound 100, "$(Sounds)\voices\neutrals\mermaid\mermaid_m_1.wav", 100, 3;
-	sound 100, "$(Sounds)\voices\neutrals\mermaid\mermaid_m_2.wav", 100, 3;
-	sound 100, "$(Sounds)\voices\neutrals\mermaid\mermaid_m_3.wav", 100, 3;
-	sound 100, "$(Sounds)\voices\neutrals\mermaid\mermaid_m_4.wav", 100, 3;
-	sound 100, "$(Sounds)\voices\neutrals\mermaid\mermaid_m_5.wav", 100, 3;
-}

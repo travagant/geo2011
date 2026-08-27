@@ -1,3 +1,0 @@
-alias "Damage04" {
-	sound 100, "$(Sounds)/weapons/swooshes/swoosh_01.wav", 100, 3;
-}

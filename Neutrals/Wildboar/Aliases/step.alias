@@ -1,4 +1,0 @@
-alias "step" {
-	sound 100, "$(Sounds)/wildboar/horse_001.wav", 100, 3;
-	sound 100, "$(Sounds)/wildboar/horse_000.wav", 100, 3;
-}

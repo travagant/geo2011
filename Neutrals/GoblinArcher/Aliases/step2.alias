@@ -1,5 +1,0 @@
-alias "step2" {
-	sound 100, "$(Sounds)/goblinarcher/run_stap_012.wav", 100, 3;
-	sound 100, "$(Sounds)/goblinarcher/run_stap_013.wav", 100, 3;
-	sound 100, "$(Sounds)/goblinarcher/run_stap_011.wav", 100, 3;
-}

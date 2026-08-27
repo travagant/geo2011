@@ -1,3 +1,0 @@
-alias "run1" {
-	sound 100, "$(Sounds)/neutrals_hydra_famale/hydra_run_001.wav", 100, 3;
-}

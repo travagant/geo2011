@@ -1,5 +1,0 @@
-alias "krik" {
-	sound 100, "$(Sounds)/neutrals_craken/scream-craken-damage.wav", 100, 3;
-	sound 100, "$(Sounds)/neutrals_craken/scream-craken-damage2.wav", 100, 3;
-	sound 100, "$(Sounds)/neutrals_craken/scream-craken-damage3.wav", 100, 3;
-}

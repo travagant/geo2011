@@ -1,3 +1,0 @@
-alias "Damage02" {
-	sound 100, "$(Sounds)/octopus/bird-demage5.wav", 100, 3;
-}

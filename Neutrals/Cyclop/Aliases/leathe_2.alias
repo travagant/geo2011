@@ -1,3 +1,0 @@
-alias "leathe_2" {
-	sound 100, "$(Sounds)/neutrals_cyclop/leather_death_001.wav", 100, 3;
-}

@@ -1,3 +1,0 @@
-alias "Attack00" {
-	sound 100, "$(Sounds)/voices/neutrals/goblin/goblin_attack_1.wav", 100, 3;
-}

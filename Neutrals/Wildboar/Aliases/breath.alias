@@ -1,5 +1,0 @@
-alias "breath" {
-	sound 100, "$(Sounds)/wildboar/boar-breath001.wav", 50, 3;
-	sound 100, "$(Sounds)/wildboar/boar-breath002.wav", 50, 3;
-	sound 100, "$(Sounds)/wildboar/boar-breath003.wav", 50, 3;
-}

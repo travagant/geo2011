@@ -1,5 +1,0 @@
-alias "fight" {
-	sound 100, "$(Sounds)/addon/figter/dmage_strike1.wav", 100, 3;
-	sound 100, "$(Sounds)/addon/figter/dmage_strike2.wav", 100, 3;
-	sound 100, "$(Sounds)/goblinarcher/face_fight_003.wav", 100, 3;
-}

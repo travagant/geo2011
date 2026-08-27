@@ -1,3 +1,0 @@
-alias "Birds-background2" {
-	sound 100, "$(Sounds)/neutrals_craken/bird-attack3-01.wav", 100, 3;
-}

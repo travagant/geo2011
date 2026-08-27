@@ -1,7 +1,0 @@
-alias "metal2" {
-	sound 100, "$(Sounds)/goblinarcher/run_stap_metal_010.wav", 50, 3;
-	sound 100, "$(Sounds)/goblinarcher/run_stap_metal_011.wav", 50, 3;
-	sound 100, "$(Sounds)/goblinarcher/run_stap_metal_012.wav", 50, 3;
-	sound 100, "$(Sounds)/goblinarcher/run_metal_004.wav", 100, 3;
-	sound 100, "$(Sounds)/goblinarcher/run_metal_001.wav", 100, 3;
-}

@@ -1,6 +1,0 @@
-alias "Damage04" {
-	sound 100, "$(Sounds)/goblinarcher/cloth-002.wav", 100, 3;
-	sound 100, "$(Sounds)/goblinarcher/cloth-007.wav", 100, 3;
-	sound 100, "$(Sounds)/goblinarcher/cloth-008.wav", 100, 3;
-	sound 100, "$(Sounds)/goblinarcher/cloth-009.wav", 100, 3;
-}

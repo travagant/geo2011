@@ -1,3 +1,0 @@
-alias "Attack" {
-	sound 100, "$(Sounds)/neutrals_craken/earth_damage1.wav", 100, 3;
-}

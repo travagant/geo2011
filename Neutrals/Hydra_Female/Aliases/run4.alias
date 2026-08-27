@@ -1,7 +1,0 @@
-alias "run4" {
-	sound 100, "$(Sounds)/neutrals_hydra_famale/hydra_run_012.wav", 100, 3;
-	sound 100, "$(Sounds)/neutrals_hydra_famale/hydra_run_013.wav", 100, 3;
-	sound 100, "$(Sounds)/neutrals_hydra_famale/hydra_run_014.wav", 100, 3;
-	sound 100, "$(Sounds)/neutrals_hydra_famale/hydra_run_003.wav", 100, 3;
-	sound 100, "$(Sounds)/neutrals_hydra_famale/hydra_run_015.wav", 100, 3;
-}

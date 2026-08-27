@@ -1,3 +1,0 @@
-alias "step_front" {
-	sound 100, "$(Sounds)/wildboar/boar_stap_back.wav", 100, 3;
-}

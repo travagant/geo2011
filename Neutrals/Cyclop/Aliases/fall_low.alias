@@ -1,3 +1,0 @@
-alias "fall_low" {
-	sound 100, "$(Sounds)/neutrals_cyclop/attack_stone_000.wav", 100, 3;
-}

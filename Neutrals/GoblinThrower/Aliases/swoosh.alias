@@ -1,4 +1,0 @@
-alias "swoosh" {
-	sound 100, "$(Sounds)/weapons/swooshes/swoosh_01.wav", 100, 3;
-	sound 100, "$(Sounds)/weapons/swooshes/swoosh_02.wav", 100, 3;
-}
