@@ -5,6 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "d3tool"
 version = "0.1.0"
+requires-python = ">=3.8"
 description = "Disciples 3 / dis3tool bidirectional reverse tooling (glTF <-> GM .g/.a/.scene/.ac)"
 readme = "README.md"
 requires-python = ">=3.8"
