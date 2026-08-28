@@ -202,6 +202,43 @@ def test_forward_export_matches_gltf():
                         for x, y in zip(r, m)), label
 
 
+def test_forward_export_weights_normalized():
+    """Forward-exported glTF WEIGHTS_0 must sum to 1.0 per vertex (deduped by
+    joint).  This guards the two bugs that used to trip the Khronos validator:
+    3-slot skins being truncated to 2 (collapsing a real influence onto a
+    duplicate joint) and float32 residuals leaving e.g. 0.9999995.
+    """
+    import tempfile
+    base = os.path.join(REPO, "Neutrals", "Zombie",
+                        "character_neutrals_zombie")
+    mesh = gfile.parse_geometry_file(open(base + ".g", "rb").read())
+    an = animmod.parse_anim(open(base + "_baseanims.a", "rb").read())
+
+    with tempfile.TemporaryDirectory() as d:
+        gp = os.path.join(d, "u.gltf")
+        gltf_out.write_gltf_to(gp, mesh, an)
+        doc = json.load(open(gp, "r", encoding="utf-8"))
+        binb = open(os.path.join(d, "u.bin"), "rb").read()
+
+        def acc(index, ncomp, fmt):
+            a = doc["accessors"][index]
+            bv = doc["bufferViews"][a["bufferView"]]
+            off = bv.get("byteOffset", 0) + a.get("byteOffset", 0)
+            stride = bv.get("byteStride", ncomp * struct.calcsize(fmt))
+            return [struct.unpack_from("<" + fmt * ncomp, binb, off + i * stride)
+                    for i in range(a["count"])]
+
+        w = acc(doc["meshes"][0]["primitives"][0]["attributes"]["WEIGHTS_0"], 4, "f")
+        j = acc(doc["meshes"][0]["primitives"][0]["attributes"]["JOINTS_0"], 4, "B")
+        for i, (wi, ji) in enumerate(zip(w, j)):
+            # dis3tool keeps a non-zero joint even in a zero-weight slot, so the
+            # validator deduplicates by joint before summing.
+            sums = {}
+            for ww, jj in zip(wi, ji):
+                sums[jj] = sums.get(jj, 0.0) + ww
+            assert abs(sum(sums.values()) - 1.0) < 1e-5, (i, wi, ji)
+
+
 def test_exported_gltf_is_structurally_valid():
     import tempfile
     base = os.path.join(REPO, "Neutrals", "AirElemental",

@@ -84,9 +84,22 @@ def write_gltf(
         nrm = v.normal
         if any(math.isnan(x) or math.isinf(x) for x in nrm):
             nrm = (0.0, 0.0, 1.0)
+        # Normalise the 4 weight slots so they sum to exactly 1.0 as float32,
+        # matching the reference dis3tool export.  The `.g` stores weights as
+        # float32 and keeps a tiny residual, so the naive sum can read e.g.
+        # 0.9999995, which the Khronos validator rejects.  We drop weight
+        # components that are effectively zero, then renormalise.
+        w = list(v.gltf_weights)
+        # drop negligible influences (the real dis3tool exporter collapses them)
+        w = [x if x > 1e-4 else 0.0 for x in w]
+        s = float(sum(w))
+        if s > 0.0:
+            w = [x / s for x in w]
+        # float32-quantise so the stored buffer is exact
+        w = [struct.unpack("<f", struct.pack("<f", x))[0] for x in w]
         vbuf += struct.pack(
             "<3f3f2f4f4B",
-            *v.position, *nrm, *v.uv, *v.gltf_weights,
+            *v.position, *nrm, *v.uv, *w,
             *[int(x) & 0xFF for x in v.gltf_joints],
         )
     ibuf = b"".join(struct.pack("<I", x) for x in mesh.indices)
@@ -221,32 +234,33 @@ def write_gltf(
             if kids:
                 node["children"] = kids
             node_list.append(node)
+        # dis3tool keeps the mesh node childless and puts the skeleton root as a
+        # *sibling* in the scene (scene nodes = [mesh, skeleton_root]).  Nesting
+        # the skeleton under the mesh makes the Khronos validator evaluate the
+        # skin differently and flags the same joint as duplicated.
         root = order[0] if order else None
-        if root is not None:
-            node_list[0]["children"] = [name_to_idx[root]]
         # add any skin bones not animated as extra nodes (rare)
         for bi, b in enumerate(bones):
             if b.name not in name_to_idx:
                 idx = len(node_list)
                 name_to_idx[b.name] = idx
                 node_list.append({"name": b.name})
+        scene_children_idx = [name_to_idx[root]] if root is not None else []
     else:
         # no animation: the `.g` does not store a hierarchy (that lives in the
-        # `.a`), so build a flat skeleton — every bone is a child of the mesh
-        # node.  This keeps the skin valid for static exports.
+        # `.a`), so build a flat skeleton as a scene sibling of the mesh node.
         name_to_idx = {b.name: i + 1 for i, b in enumerate(bones)}
         for b in bones:
             node = {"name": b.name, "rotation": [0.0, 0.0, 0.0, 1.0],
                     "translation": [0.0, 0.0, 0.0]}
             node_list.append(node)
-        node_list[0]["children"] = [name_to_idx[bones[0].name]] if bones else []
+        scene_children_idx = [name_to_idx[bones[0].name]] if bones else []
 
     # ---- skin ----
     skin_joints = [name_to_idx.get(b.name, 1 + i) for i, b in enumerate(bones)]
     node_list[0]["mesh"] = 0
     node_list[0]["skin"] = 0
     skin = {"joints": skin_joints, "inverseBindMatrices": 6}
-
     # ---- animation channels ----
     channels = []
     samplers = []
@@ -277,7 +291,9 @@ def write_gltf(
     doc = {
         "asset": {"version": "2.0", "generator": "d3tool (geo2011 reverse)"},
         "scene": 0,
-        "scenes": [{"nodes": [0]}],
+        # mesh node (0) plus the skeleton root(s) as scene siblings, mirroring
+        # dis3tool.  This keeps the skin graph fully reachable from the scene.
+        "scenes": [{"nodes": [0] + scene_children_idx}],
         "nodes": node_list,
         "skins": [skin],
         "meshes": [{"name": mesh.name, "primitives": [prim]}],
