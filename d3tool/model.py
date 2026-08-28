@@ -65,7 +65,9 @@ class Vertex:
         # dis3tool resets a joint index to 0 in any influence slot whose weight
         # is effectively zero (padding).  Keeping the raw `.g` bone index there
         # makes the Khronos validator flag the vertex as having a joint index
-        # used with zero weight (and report duplicate joints).
+        # used with zero weight (and report duplicate joints).  The threshold
+        # must match the weight-packing threshold in gltf_out.py (1e-4), so a
+        # weight that is dropped there also has its joint zeroed here.
         w = self.influence_weights()
         b = list(self.bones)
         while len(b) < 4:
@@ -73,7 +75,7 @@ class Vertex:
         out = []
         for k in range(4):
             ww = w[k] if k < len(w) else 0.0
-            out.append(b[k] if ww > 1e-6 else 0)
+            out.append(b[k] if ww > 1e-4 else 0)
         return (out[0], out[1], out[2], out[3])
 
 
