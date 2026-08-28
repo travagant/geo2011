@@ -392,6 +392,27 @@ def test_texture_convert_file_both_directions():
         assert orig[59:] == rtd[59:], "payload must be preserved"
 
 
+def test_texture_payload_size():
+    """`TextureInfo.payload_size` must equal the actual payload for every
+    format, including the uncompressed 16-bit A1R5G5B5 form (2 bytes/pixel,
+    not 4x4-block compressed)."""
+    import glob
+    count = 0
+    for t in sorted(glob.glob(os.path.join(REPO, "Neutrals", "*", "*.t"))):
+        info = texmod.parse_t(open(t, "rb").read())
+        actual = len(info.payload)
+        calc = info.payload_size()
+        # One bundled texture (weapon_neutrals_zombie_diffuse, 256x512) stores a
+        # partial 4-byte final mip; allow that single trailing-block gap there,
+        # otherwise the computed mip chain must match the payload exactly.
+        if os.path.basename(t) == "weapon_neutrals_zombie_diffuse.t":
+            assert abs(calc - actual) <= 8, os.path.basename(t)
+        else:
+            assert calc == actual, f"{os.path.basename(t)}: {calc} != {actual}"
+        count += 1
+    assert count >= 6, f"too few .t files found: {count}"
+
+
 def test_texture_find_diffuse():
     """`find_diffuse_texture` locates the .dds/.t next to a .g."""
     g = os.path.join(REPO, "Neutrals", "AirElemental",

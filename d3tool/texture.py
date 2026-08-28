@@ -85,6 +85,14 @@ class TextureInfo:
         return _T_FMT_TO_DDS[self.gm_format][1]
 
     def payload_size(self) -> int:
+        # DXT formats are 4x4 block compressed (8/16 bytes per block).  The
+        # 16-bit A1R5G5B5 form is uncompressed: 2 bytes *per pixel*, so the
+        # payload is width*height*2 for each mip (no /4 block rounding).
+        if self.r5g5b5:
+            return sum(
+                max(1, self.width // 2 ** i) * max(1, self.height // 2 ** i) * 2
+                for i in range(max(self.mip_count, 1))
+            )
         return sum(
             ((max(1, self.width // 2 ** i) + 3) // 4)
             * ((max(1, self.height // 2 ** i) + 3) // 4)
