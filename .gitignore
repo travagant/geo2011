@@ -1,2 +1,8 @@
 __pycache__/
 *.pyc
+out/
+*.egg-info/
+build/
+dist/
+*.spec
+release/d3tool-dist/

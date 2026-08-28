@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "d3tool"
+version = "0.1.0"
+requires-python = ">=3.8"
+description = "Disciples 3 / dis3tool bidirectional reverse tooling (glTF <-> GM .g/.a/.scene/.ac)"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [{ name = "d3tool contributors" }]
+keywords = ["disciples3", "dis3tool", "gltf", "geo2011", "reverse-engineering"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Topic :: Multimedia :: Graphics :: 3D Modeling",
+]
+
+[project.scripts]
+d3tool = "d3tool.cli:main"
+
+[tool.setuptools]
+py-modules = []
+packages = ["d3tool"]
