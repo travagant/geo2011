@@ -94,8 +94,19 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int, anim: bool = T
         fh.write(g_bytes)
 
     # scene
-    scene_text = scenemod.write_scene(sm.name, base, res, attrs)
-    with open(os.path.join(out_dir, base + ".scene"), "w", encoding="utf-8") as fh:
+    out_scene = os.path.join(out_dir, base + ".scene")
+    src_dir = os.path.dirname(gltf_path)
+    src_scene = os.path.join(src_dir, base + ".scene")
+    if os.path.exists(src_scene):
+        # Reuse the original scene verbatim so asset-specific particle
+        # emitters and the GUI camera are preserved (they are authoring data
+        # not present in the glTF).
+        with open(src_scene, "r", encoding="utf-8") as fh:
+            scene_text = fh.read()
+    else:
+        scene_text = scenemod.write_scene(sm.name, base, res, attrs,
+                                          gobj_name=sm.name)
+    with open(out_scene, "w", encoding="utf-8") as fh:
         fh.write(scene_text)
 
     # ac

@@ -60,7 +60,9 @@ For `character_neutrals_airelemental.gltf` the exporter writes:
 * `character_neutrals_airelemental.g` — the GM geometry (positions, normals,
   UVs, indices, skeleton as inverse-bind matrices, skin weights).
 * `character_neutrals_airelemental.scene` — scene tree referencing the `.g` and
-  `.ac`.
+  `.ac`.  When the source unit folder already has a `.scene`, the exporter
+  reuses it verbatim (so its particle emitters and GUI camera are preserved);
+  otherwise a faithful, particle-free scene is generated.
 * `character_neutrals_airelemental.ac` — animation config (states, frame
   ranges, links).
 * `character_neutrals_airelemental_iadd.a` — the animation binary rebuilt from

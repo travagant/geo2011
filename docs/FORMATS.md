@@ -180,8 +180,18 @@ group "Scene Root"
         ...
 ```
 The `.g` is referenced as a `gobj`; the `.ac` is referenced by the parent
-`bones` node; particle emitters can be attached to bones via
-`child particles "BoneName"`.
+`bones` node; particle emitters are attached to bones via
+`child particles "BoneName"` blocks, each with a `boneslink "<Bone>"`, a `file`
+(texture), and numerous `ps_*`/`ps_spline_track` parameters.
+
+Particle emitters (and the GUI-camera/glow settings) are **authoring data** that
+is not present in the geometry/glTF, so a reverse export cannot reconstruct
+them.  `d3tool/scene.py` therefore does two things:
+
+* if the source unit folder already has a `<base>.scene`, the exporter reuses
+  it verbatim (preserving every particle emitter and the camera);
+* otherwise it generates a faithful, particle-free scene (correct
+  `bones`/`gobj` node names, full `globalsettings`, attribute block).
 
 ---
 

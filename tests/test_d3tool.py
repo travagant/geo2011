@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import d3tool
 from d3tool import anim as animmod
-from d3tool import gfile, gltf, ac as acmod, gltf_out
+from d3tool import gfile, gltf, ac as acmod, gltf_out, scene as scenemod
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -157,6 +157,25 @@ def test_exported_gltf_is_structurally_valid():
         gltf_out.write_gltf_to(gp, mesh, an)
         errors, warnings, info = gltf_out.validate_gltf(gp)
         assert errors == 0, f"exported glTF must be structurally clean, got {errors}"
+
+
+def test_scene_generation():
+    attrs = {"name": "neutrals_airelemental", "bones_num": "38",
+             "vertexs_weights_num": "3453", "weights_on_vertex": "2",
+             "material0_triangles_num": "5056"}
+    text = scenemod.write_scene(
+        "neutrals_airelemental", "character_neutrals_airelemental",
+        "resources\\characters\\neutrals\\airelemental", attrs,
+        gobj_name="neutrals_airelemental")
+    assert 'child bones "character_neutrals_airelemental"' in text
+    assert 'child gobj "neutrals_airelemental"' in text
+    assert ("resources\\characters\\neutrals\\airelemental"
+            "\\character_neutrals_airelemental.ac") in text
+    assert ("resources\\characters\\neutrals\\airelemental"
+            "\\character_neutrals_airelemental.g") in text
+    assert 'guicamera' in text
+    # no particle emitters in the generated (they are authoring data)
+    assert 'child particles' not in text
 
 
 def test_analyze_gltf():
