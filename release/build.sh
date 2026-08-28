@@ -9,9 +9,9 @@ find build_stage/d3tool -name __pycache__ -type d -exec rm -rf {} + 2>/dev/null 
 cat > build_stage/__main__.py <<'PYEOF'
 #!/usr/bin/env python3
 import sys
-from d3tool.cli import main
+from d3tool.cli import _run
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(_run())
 PYEOF
 python3 -m zipapp build_stage -p "/usr/bin/env python3" -o release/d3tool-dist/d3tool
 chmod +x release/d3tool-dist/d3tool

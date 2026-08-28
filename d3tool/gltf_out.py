@@ -25,6 +25,10 @@ from .anim import AnimFile, BoneAnim
 from .model import SkinnedMesh
 
 
+class _BufferShortError(Exception):
+    """Raised internally when an accessor would read past the buffer."""
+
+
 def _u32(idx: int) -> bytes:
     return struct.pack("<I", idx)
 
@@ -361,16 +365,27 @@ def validate_gltf(path: str, base_dir: Optional[str] = None) -> Tuple[int, int, 
     with open(path, "r", encoding="utf-8") as fh:
         doc = json.load(fh)
     errors = warnings = info = 0
-    buf_uri = doc.get("buffers", [{}])[0].get("uri", "")
+    # An empty / trivially-incomplete document (no asset/version or no scenes)
+    # should not pass silently: report it rather than return 0 errors.
+    if doc.get("asset", {}).get("version") is None:
+        errors += 1
+        warnings += 1
+        info = 0
+        return errors, warnings, info
+    nacc = len(doc.get("accessors", []))
+    # guard against a missing / malformed buffer without raising
+    buf_uri = doc.get("buffers", [{}])[0].get("uri", "") if doc.get("buffers") else ""
     bin_data = b""
     if buf_uri:
         bp = os.path.join(base_dir, buf_uri)
         if os.path.exists(bp):
             bin_data = open(bp, "rb").read()
+            declared = doc["buffers"][0].get("byteLength")
+            if declared is not None and len(bin_data) < declared:
+                errors += 1
         else:
             errors += 1
 
-    nacc = len(doc.get("accessors", []))
     # every accessor must reference a valid bufferView and its data must fit
     # within that bufferView.  accessor.byteOffset is relative to the view;
     # the view's own byteOffset is relative to the buffer.
@@ -401,6 +416,10 @@ def validate_gltf(path: str, base_dir: Optional[str] = None) -> Tuple[int, int, 
         bv = doc["bufferViews"][a["bufferView"]]
         off = bv.get("byteOffset", 0) + a.get("byteOffset", 0)
         stride = bv.get("byteStride", ncomp * 4)
+        if off + a["count"] * stride > len(bin_data):
+            # data does not fit in the buffer; mark via a sentinel the caller
+            # can count instead of crashing with struct.error.
+            raise _BufferShortError(off, a["count"], stride, len(bin_data))
         return [
             struct.unpack_from("<" + "f" * ncomp, bin_data, off + i * stride)
             for i in range(a["count"])
@@ -413,8 +432,12 @@ def validate_gltf(path: str, base_dir: Optional[str] = None) -> Tuple[int, int, 
             j_idx = attrs.get("JOINTS_0")
             if w_idx is None:
                 continue
-            weights = _read_float_accessor(w_idx, 4)
-            joints = _read_float_accessor(j_idx, 4) if j_idx is not None else None
+            try:
+                weights = _read_float_accessor(w_idx, 4)
+                joints = _read_float_accessor(j_idx, 4) if j_idx is not None else None
+            except _BufferShortError:
+                errors += 1
+                continue
             for i, wrow in enumerate(weights):
                 if joints is not None:
                     sums = {}

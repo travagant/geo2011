@@ -282,6 +282,34 @@ def test_exported_gltf_is_structurally_valid():
         assert errors == 0, f"exported glTF must be structurally clean, got {errors}"
 
 
+def test_validate_gltf_hardened():
+    """`validate_gltf` must not crash on malformed / truncated input."""
+    import tempfile
+    with tempfile.TemporaryDirectory() as d:
+        # valid file is clean
+        base = os.path.join(REPO, "Neutrals", "AirElemental",
+                            "character_neutrals_airelemental")
+        mesh = gfile.parse_geometry_file(open(base + ".g", "rb").read())
+        an = animmod.parse_anim(open(base + "_iadd.a", "rb").read())
+        gp = os.path.join(d, "u.gltf")
+        gltf_out.write_gltf_to(gp, mesh, an)
+        assert gltf_out.validate_gltf(gp)[0] == 0
+
+        # truncated .bin -> reports an error, does not raise struct.error
+        with open(os.path.join(d, "u.bin"), "rb") as fh:
+            good = fh.read()
+        with open(os.path.join(d, "u.bin"), "wb") as fh:
+            fh.write(good[:100])
+        errors, _, _ = gltf_out.validate_gltf(gp)
+        assert errors >= 1
+
+        # incomplete doc (no asset/version) -> error
+        bad = os.path.join(d, "bad.gltf")
+        with open(bad, "w") as fh:
+            fh.write("{}")
+        assert gltf_out.validate_gltf(bad)[0] >= 1
+
+
 def test_scene_generation():
     attrs = {"name": "neutrals_airelemental", "bones_num": "38",
              "vertexs_weights_num": "3453", "weights_on_vertex": "2",

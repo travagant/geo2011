@@ -17,8 +17,10 @@ import argparse
 import glob
 import json
 import os
+import struct
 import sys
 import textwrap
+import traceback
 
 from . import __version__
 from . import ac as acmod
@@ -34,8 +36,12 @@ from . import ui as ui
 # --------------------------------------------------------------------------- #
 #  analyze
 # --------------------------------------------------------------------------- #
-def _analyze_unit(path: str) -> None:
-    """Print a human-readable analysis of one unit folder."""
+def _analyze_unit(path: str) -> int:
+    """Print a human-readable analysis of one unit folder.
+
+    Returns 0 on success, 1 when nothing usable was found or a file failed to
+    parse (so the exit code can be used by scripts).
+    """
     ui.banner()
     ui.section(f"Analysis  {path}")
 
@@ -45,7 +51,8 @@ def _analyze_unit(path: str) -> None:
     gltf_files = sorted(glob.glob(os.path.join(path, "*.gltf")))
     if not (g_files or ac_files or a_files or gltf_files):
         ui.fail(f"no Disciples 3 assets found in {path}")
-        return
+        return 1
+    had_error = 0
 
     g_rows, a_rows, ac_rows, gltf_rows = [], [], [], []
 
@@ -62,6 +69,7 @@ def _analyze_unit(path: str) -> None:
                            mesh.material_diffuse + flag))
         except Exception as exc:  # noqa: BLE001
             ui.fail(f"{os.path.basename(g)}: parse error {exc}")
+            had_error = 1
 
     for a in a_files:
         try:
@@ -72,6 +80,7 @@ def _analyze_unit(path: str) -> None:
                            an.bones[0].name if an.bones else "-"))
         except Exception as exc:  # noqa: BLE001
             ui.fail(f"{os.path.basename(a)}: parse error {exc}")
+            had_error = 1
 
     for ac in ac_files:
         try:
@@ -82,6 +91,7 @@ def _analyze_unit(path: str) -> None:
                                 f"{st.frame0}–{st.frame1}", st.file))
         except Exception as exc:  # noqa: BLE001
             ui.fail(f"{os.path.basename(ac)}: parse error {exc}")
+            had_error = 1
 
     for gltf in gltf_files:
         try:
@@ -93,6 +103,7 @@ def _analyze_unit(path: str) -> None:
                               str(len(m.frames))))
         except Exception as exc:  # noqa: BLE001
             ui.fail(f"{os.path.basename(gltf)}: parse error {exc}")
+            had_error = 1
 
     if g_rows:
         ui.table(g_rows, headers=[".g geometry", "verts", "tris", "bones",
@@ -104,6 +115,7 @@ def _analyze_unit(path: str) -> None:
     if gltf_rows:
         ui.table(gltf_rows, headers=[".gltf export", "verts", "tris", "bones",
                                      "frames"])
+    return had_error
 
 
 # --------------------------------------------------------------------------- #
@@ -168,8 +180,16 @@ def _export_textures(gltf_path: str, out_dir: str, base: str,
         out_t = os.path.join(out_dir, stem + ".t")
         with open(src, "rb") as fh:
             data = fh.read()
+        # If the source asset ships a native .t next to the .dds, reuse its
+        # header so the emitted .t round-trips byte-identically (the @24/@52
+        # flags are not stored in a .dds and cannot be reconstructed).
+        src_t = os.path.join(gltf_dir, stem + ".t")
+        orig_header = None
+        if os.path.exists(src_t):
+            with open(src_t, "rb") as fh:
+                orig_header = fh.read()[:59]
         with open(out_t, "wb") as fh:
-            fh.write(texmod.dds_to_t(data, None, os.path.basename(src)))
+            fh.write(texmod.dds_to_t(data, orig_header, os.path.basename(src)))
         if not quiet:
             ui.wrote(out_t, "converted from .dds")
         if first is None:
@@ -477,7 +497,7 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
 
     if args.cmd == "analyze":
-        _analyze_unit(args.path)
+        return _analyze_unit(args.path)
     elif args.cmd == "export":
         _export(args.gltf, args.out, args.weights_on_vertex,
                 anim=not args.no_anim)
@@ -486,7 +506,16 @@ def main(argv=None) -> int:
     elif args.cmd == "bundle":
         _bundle(args.folder, args.out, args.weights_on_vertex)
     elif args.cmd == "validate":
-        errors, warnings, infos = gltfout.validate_gltf(args.gltf)
+        if not os.path.exists(args.gltf):
+            ui.section("glTF structure check")
+            ui.fail(f"no such file: {args.gltf}")
+            return 1
+        try:
+            errors, warnings, infos = gltfout.validate_gltf(args.gltf)
+        except (ValueError, json.JSONDecodeError, OSError) as exc:
+            ui.section("glTF structure check")
+            ui.fail(f"could not parse {args.gltf}: {exc}")
+            return 1
         ui.section("glTF structure check")
         ui.table([("errors", str(errors)), ("warnings", str(warnings)),
                   ("accessors", str(infos))])
@@ -512,5 +541,18 @@ def main(argv=None) -> int:
     return 0
 
 
+def _run(argv=None) -> int:
+    """`main` with the argument dispatch wrapped so any user-facing error is
+    reported cleanly rather than as a raw Python traceback."""
+    try:
+        return main(argv)
+    except (ValueError, json.JSONDecodeError, OSError, struct.error) as exc:
+        ui.section("error")
+        ui.fail(str(exc))
+        if os.environ.get("D3TOOL_DEBUG"):
+            traceback.print_exc()
+        return 1
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(_run())
