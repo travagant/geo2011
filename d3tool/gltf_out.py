@@ -17,6 +17,7 @@ Coordinate-system mapping (confirmed against the bundled units):
 from __future__ import annotations
 
 import json
+import math
 import struct
 from typing import Dict, List, Optional, Tuple
 
@@ -78,9 +79,14 @@ def write_gltf(
     # ---- interleaved vertex data (stride 52) ----
     vbuf = bytearray()
     for v in mesh.vertices:
+        # Some source `.g` files carry NaN normals on a few vertices (e.g.
+        # Zombie LOD).  glTF does not allow NaN, so substitute a safe normal.
+        nrm = v.normal
+        if any(math.isnan(x) or math.isinf(x) for x in nrm):
+            nrm = (0.0, 0.0, 1.0)
         vbuf += struct.pack(
             "<3f3f2f4f4B",
-            *v.position, *v.normal, *v.uv, *v.gltf_weights,
+            *v.position, *nrm, *v.uv, *v.gltf_weights,
             *[int(x) & 0xFF for x in v.gltf_joints],
         )
     ibuf = b"".join(struct.pack("<I", x) for x in mesh.indices)
@@ -142,13 +148,16 @@ def write_gltf(
          "byteLength": vtx_len, "byteStride": 52, "target": 34962},
         {"name": "mesh_bones", "buffer": 0, "byteOffset": bone_off,
          "byteLength": bone_len},
-        {"name": "frames", "buffer": 0, "byteOffset": fr_off,
-         "byteLength": fr_len},
-        {"name": "bones_rotate", "buffer": 0, "byteOffset": rot_off,
-         "byteLength": rot_len},
-        {"name": "bones_translate", "buffer": 0, "byteOffset": tra_off,
-         "byteLength": tra_len},
     ]
+    if anim_bones:
+        bufferViews += [
+            {"name": "frames", "buffer": 0, "byteOffset": fr_off,
+             "byteLength": fr_len},
+            {"name": "bones_rotate", "buffer": 0, "byteOffset": rot_off,
+             "byteLength": rot_len},
+            {"name": "bones_translate", "buffer": 0, "byteOffset": tra_off,
+             "byteLength": tra_len},
+        ]
 
     # min/max for the POSITION accessor (required by glTF)
     xs = [v.position[0] for v in mesh.vertices]
@@ -222,21 +231,15 @@ def write_gltf(
                 name_to_idx[b.name] = idx
                 node_list.append({"name": b.name})
     else:
-        # no animation: minimal skeleton from skin bones
+        # no animation: the `.g` does not store a hierarchy (that lives in the
+        # `.a`), so build a flat skeleton — every bone is a child of the mesh
+        # node.  This keeps the skin valid for static exports.
         name_to_idx = {b.name: i + 1 for i, b in enumerate(bones)}
-        children: Dict[str, list] = {b.name: [] for b in bones}
-        parent = {b.name: b.parent for b in bones}
-        for b in bones:
-            if b.parent in name_to_idx and b.parent != b.name:
-                children[b.parent].append(b.name)
         for b in bones:
             node = {"name": b.name, "rotation": [0.0, 0.0, 0.0, 1.0],
                     "translation": [0.0, 0.0, 0.0]}
-            kids = [name_to_idx[c] for c in children.get(b.name, [])]
-            if kids:
-                node["children"] = kids
             node_list.append(node)
-        node_list[0]["children"] = [1]
+        node_list[0]["children"] = [name_to_idx[bones[0].name]] if bones else []
 
     # ---- skin ----
     skin_joints = [name_to_idx.get(b.name, 1 + i) for i, b in enumerate(bones)]
@@ -354,6 +357,42 @@ def validate_gltf(path: str, base_dir: Optional[str] = None) -> Tuple[int, int, 
         for j in s["joints"]:
             if j >= len(doc.get("nodes", [])):
                 errors += 1
+    # WEIGHTS_0 must sum to 1.0 per vertex (spec REQUIRES normalized weights).
+    # The Khronos validator flags non-normalized weight sums, which our own
+    # structural check must catch too.  We also mirror its dedup-by-joint rule:
+    # when the same joint index appears in several influence slots, the weights
+    # for those slots are summed (a vertex that maps two influences to the same
+    # joint only "uses" one joint, so the leftover weight must still total 1).
+    def _read_float_accessor(index: int, ncomp: int):
+        a = doc["accessors"][index]
+        bv = doc["bufferViews"][a["bufferView"]]
+        off = bv.get("byteOffset", 0) + a.get("byteOffset", 0)
+        stride = bv.get("byteStride", ncomp * 4)
+        return [
+            struct.unpack_from("<" + "f" * ncomp, bin_data, off + i * stride)
+            for i in range(a["count"])
+        ]
+
+    for mesh in doc.get("meshes", []):
+        for prim in mesh.get("primitives", []):
+            attrs = prim.get("attributes", {})
+            w_idx = attrs.get("WEIGHTS_0")
+            j_idx = attrs.get("JOINTS_0")
+            if w_idx is None:
+                continue
+            weights = _read_float_accessor(w_idx, 4)
+            joints = _read_float_accessor(j_idx, 4) if j_idx is not None else None
+            for i, wrow in enumerate(weights):
+                if joints is not None:
+                    sums = {}
+                    for w, j in zip(wrow, joints[i]):
+                        jv = int(j)
+                        sums[jv] = sums.get(jv, 0.0) + w
+                    total = sum(sums.values())
+                else:
+                    total = sum(wrow)
+                if abs(total - 1.0) > 1e-4:
+                    errors += 1
     # animation sampler inputs/outputs must have matching counts, and channel
     # output types must match the path (rotation=VEC4, translation=VEC3).
     for anim in doc.get("animations", []):

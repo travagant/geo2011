@@ -40,6 +40,10 @@ class Vertex:
     def influence_weights(self) -> Tuple[float, ...]:
         """Weights for the ``len(bones)`` influence slots (last implied)."""
         n = len(self.bones)
+        # A vertex with no stored influence slots is bound rigidly to the
+        # single bone (``weights_on_vertex == 1``): it must read as weight 1.0.
+        if n == 0:
+            return (1.0,)
         w = list(self.stored_weights[: n - 1])
         while len(w) < n - 1:
             w.append(0.0)
@@ -55,6 +59,9 @@ class Vertex:
 
     @property
     def gltf_joints(self) -> Tuple[int, int, int, int]:
+        # A vertex with no influence slots is rigid → joint 0 in the first slot.
+        if not self.bones:
+            return (0, 0, 0, 0)
         b = list(self.bones)
         while len(b) < 4:
             b.append(0)
@@ -119,3 +126,6 @@ class GltfModel:
     animation: Optional[dict] = None
     # node index -> {"rotation": [quat], "translation": [vec3]} per frame
     anim_channels: Dict[int, dict] = field(default_factory=dict)
+    # number of influence slots carried by the source glTF (2/3/4); used for
+    # fidelity when reverse-exporting (0 == auto-detect).
+    weights_on_vertex: int = 0

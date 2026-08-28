@@ -36,11 +36,34 @@ def _read_accessor(gltf, buf, idx):
     return out
 
 
-def load_gltf(path: str, weights_on_vertex: int = 2) -> GltfModel:
+def detect_weights_on_vertex(wts) -> int:
+    """Estimate the number of influence slots the source mesh actually uses.
+
+    dis3tool stores the last influence weight implicitly (``1 - sum(rest)``),
+    so a vertex whose influences occupy the first ``k`` slots needs at least
+    ``k`` slots to reconstruct them without loss.  We look at the highest
+    component index that carries a non-zero weight across all vertices and add
+    one, clamped to ``[2, 4]``.  This is what saves e.g. Wildboar (which the
+    source exporter wrote with 3 slots) from being silently truncated to 2.
+    """
+    if not wts:
+        return 2
+    max_slot = 1  # at least two slots (the first + the implied last)
+    for w in wts:
+        # find the last non-zero weight component
+        for k in range(len(w) - 1, -1, -1):
+            if abs(w[k]) > 1e-6:
+                max_slot = max(max_slot, k + 1)
+                break
+    return max(2, min(4, max_slot))
+
+
+def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
     """Parse a dis3tool glTF export into a neutral :class:`GltfModel`.
 
     ``weights_on_vertex`` is the number of influence slots the resulting model
-    should carry (2, 3 or 4); the dis3tool exporter writes 2 for most units.
+    should carry (2, 3 or 4).  The default (0) auto-detects it from the weight
+    accessor, so assets written with 3 or 4 slots keep all their influences.
     """
     with open(path, "r", encoding="utf-8") as fh:
         gltf = json.load(fh)
@@ -83,7 +106,12 @@ def load_gltf(path: str, weights_on_vertex: int = 2) -> GltfModel:
         bones.append(Bone(name, tuple(inverse_bind[i])))
 
     # ---- vertices ----
-    w_slots = weights_on_vertex
+    # 0 means "auto-detect": derive the slot count from the actual data so we
+    # never drop a real influence (this is what fixes Wildboar's 3-slot skin).
+    if weights_on_vertex:
+        w_slots = weights_on_vertex
+    else:
+        w_slots = detect_weights_on_vertex(wts)
     vertices: List[Vertex] = []
     for i, pos in enumerate(vtf):
         w = wts[i] if wts else (1.0, 0.0, 0.0, 0.0)
@@ -141,17 +169,19 @@ def load_gltf(path: str, weights_on_vertex: int = 2) -> GltfModel:
         frames=frames,
         animation=anim,
         anim_channels=channels,
+        weights_on_vertex=w_slots,
     )
     return model
 
 
-def mesh_to_skinned(m: GltfModel, weights_on_vertex: int = 2) -> SkinnedMesh:
+def mesh_to_skinned(m: GltfModel, weights_on_vertex: int = 0) -> SkinnedMesh:
     """Convert a :class:`GltfModel` into a :class:`SkinnedMesh` ready for `.g`.
 
     ``weights_on_vertex`` selects the number of influence slots written to the
-    GM vertex format (2, 3 or 4).
+    GM vertex format (2, 3 or 4).  0 (default) uses the slot count detected on
+    the :class:`GltfModel`, preserving every influence from the source.
     """
-    w = weights_on_vertex
+    w = weights_on_vertex or m.weights_on_vertex or 2
     vertices: List[Vertex] = []
     for v in m.vertices:
         # map back to the glTF 4-component influence order, then keep the
@@ -178,7 +208,7 @@ def mesh_to_skinned(m: GltfModel, weights_on_vertex: int = 2) -> SkinnedMesh:
         vertices=vertices,
         indices=m.indices,
         bones=m.bones,
-        weights_on_vertex=weights_on_vertex,
+        weights_on_vertex=w,
     )
 
 
@@ -203,27 +233,27 @@ def animation_from_gltf(m: GltfModel) -> "animmod.AnimFile":
         return animmod.AnimFile()
     parent = _node_parent_map(m.nodes)
 
-    # Name -> node index (targets the animated joint nodes)
-    name_to_idx = {}
-    for i, n in enumerate(m.nodes):
-        name_to_idx.setdefault(n.get("name", f"node{i}"), i)
+    # Some dis3tool exports reference animation nodes that are outside the
+    # node array (e.g. Wildboar targets node index 37 while nodes are 0..36).
+    # Drop those so the rebuild never indexes out of range.
+    n_nodes = len(m.nodes)
+    animated = {i for i in m.anim_channels.keys() if 0 <= i < n_nodes}
 
     # root of the skeleton: the most senior animated node (usually 'Root')
-    animated = set(m.anim_channels.keys())
     roots = [i for i in animated if parent.get(i) not in animated]
     roots.sort()
 
-    # depth-first walk over animated nodes
+    # depth-first walk over animated nodes, guarding against bad children refs
     order = []
     seen = set()
 
     def dfs(i):
-        if i in seen:
+        if i in seen or not (0 <= i < n_nodes):
             return
         seen.add(i)
         order.append(i)
         for c in m.nodes[i].get("children", []):
-            if c in animated:
+            if c in animated and 0 <= c < n_nodes:
                 dfs(c)
 
     for r in roots:

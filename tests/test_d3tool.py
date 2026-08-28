@@ -75,6 +75,29 @@ def test_gltf_to_g_matches_original():
         assert all(abs(u - v) < 1e-5 for u, v in zip(x.matrix, y.matrix)), x.name
 
 
+def test_gltf_detects_3_influence_wildboar():
+    """Wildboar is written by dis3tool with 3 influence slots.  Reverse export
+    must auto-detect that (rather than truncating to 2), otherwise the skin is
+    corrupted and the Khronos validator reports ACCESSOR_WEIGHTS_NON_NORMALIZED.
+    """
+    base = os.path.join(REPO, "Neutrals", "Wildboar",
+                        "character_neutrals_wildboar")
+    m = gltf.load_gltf(base + ".gltf")  # default auto-detect
+    assert m.weights_on_vertex == 3, m.weights_on_vertex
+    sm = gltf.mesh_to_skinned(m)
+    assert sm.weights_on_vertex == 3, sm.weights_on_vertex
+    # a known 3-influence vertex: weight split across slots 0 and 2 must be
+    # preserved, not collapsed onto a single (duplicate) joint.
+    v = sm.vertices[162]
+    assert abs(v.gltf_weights[0] - 0.7) < 1e-6
+    assert abs(v.gltf_weights[2] - 0.3) < 1e-6
+    # dedup-by-joint weight sum must still be 1.0 (no dropped influence)
+    sums = {}
+    for w, j in zip(v.gltf_weights, v.gltf_joints):
+        sums[j] = sums.get(j, 0.0) + w
+    assert abs(sum(sums.values()) - 1.0) < 1e-6
+
+
 def test_ac_roundtrip():
     cfg = acmod.default_ac("mesh.g", "unit")
     text = acmod.write_ac(cfg)
@@ -82,6 +105,39 @@ def test_ac_roundtrip():
     assert [s.name for s in cfg2.states] == ["Idle", "Attack", "Damage",
                                              "Death", "Run"]
     assert cfg2.states[0].frame1 == 150
+
+
+def test_version():
+    import d3tool
+    assert isinstance(d3tool.__version__, str) and d3tool.__version__
+
+
+def test_cli_export_and_roundtrip():
+    import subprocess
+    import tempfile
+    base = os.path.join(REPO, "Neutrals", "AirElemental",
+                        "character_neutrals_airelemental")
+    with tempfile.TemporaryDirectory() as d:
+        r = subprocess.run(
+            [sys.executable, "-m", "d3tool", "export", base + ".gltf",
+             "-o", os.path.join(d, "re")],
+            capture_output=True, text=True, cwd=REPO)
+        assert r.returncode == 0, r.stderr
+        re_dir = os.path.join(d, "re")
+        assert os.path.exists(os.path.join(re_dir, "character_neutrals_airelemental.g"))
+        assert os.path.exists(os.path.join(re_dir, "character_neutrals_airelemental.scene"))
+        assert os.path.exists(os.path.join(re_dir, "character_neutrals_airelemental.ac"))
+        assert os.path.exists(os.path.join(re_dir, "character_neutrals_airelemental_iadd.a"))
+        # forward round-trip must validate clean
+        fwd = os.path.join(d, "fwd", "u.gltf")
+        r2 = subprocess.run(
+            [sys.executable, "-m", "d3tool", "export-gl",
+             os.path.join(re_dir, "character_neutrals_airelemental.g"),
+             "-a", os.path.join(re_dir, "character_neutrals_airelemental_iadd.a"),
+             "-o", fwd], capture_output=True, text=True, cwd=REPO)
+        assert r2.returncode == 0, r2.stderr
+        errors, warnings, info = gltf_out.validate_gltf(fwd)
+        assert errors == 0, f"roundtrip glTF must be valid, got {errors}"
 
 
 def test_a_parse():
