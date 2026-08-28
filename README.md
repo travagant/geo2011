@@ -53,6 +53,35 @@ python3 -m d3tool import Neutrals/AirElemental/character_neutrals_airelemental.g
 python3 tests/test_d3tool.py
 ```
 
+### Portable release (no install needed)
+
+`release/build.sh` assembles a **self-contained zipapp** folder at
+`release/d3tool-dist/` — a single portable executable plus launchers for
+Windows, Linux and macOS.  It needs only Python 3.8+ on the `PATH` (no native
+binary; PyInstaller cannot build in this environment because the shared
+libpython is missing).  Rebuild it after editing `d3tool/`:
+
+```bash
+bash release/build.sh
+```
+
+Then run it with any Python 3.8+:
+
+```bash
+release/d3tool-dist/d3tool --help           # Linux/macOS, or ./run.sh
+release/d3tool-dist/d3tool.bat --help       # Windows
+```
+
+The folder is ignored by Git (`release/d3tool-dist/`); `release/build.sh` is
+tracked so the bundle can always be reproduced from source.
+
+## The CLI interface
+
+The friendly interface (`d3tool/ui.py`) draws a banner, section headers, a
+per-command result table, and status checkmarks (✔) / failures (✖), with ANSI
+colour when the terminal supports it.  It is colour-aware and degrades
+gracefully to plain text when piped.
+
 ## What the reverse-export produces
 
 For `character_neutrals_airelemental.gltf` the exporter writes:
@@ -79,6 +108,14 @@ for **all 11** bundled `.g` files and **all 7** bundled `.a` files.  The `.g`
 writer handles `w = 2/3/4` character meshes and also passes compound files
 (e.g. the Zombie LOD, which stacks a weapon mesh and a character LOD mesh)
 through verbatim so nothing is lost.
+
+**Validator status (Khronos glTF-Validator):** every forward-exported glTF from
+a bundled `.g`/`.a` now validates with **0 errors**, and every reverse-export
+round-trip (glTF → `.g`/`.a` → glTF) also validates with **0 errors** across all
+6 units.  Remaining messages are warnings only — `NODE_EMPTY` (empty skeleton
+leaf nodes, present in the reference too) and `ACCESSOR_JOINTS_USED_ZERO_WEIGHT`
+(a joint index sitting in a zero-weight slot, which dis3tool's own export
+leaves in place).  These are informational, not defects.
 
 ## Key format facts (summary)
 
