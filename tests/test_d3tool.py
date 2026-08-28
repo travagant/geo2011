@@ -107,6 +107,35 @@ def test_ac_roundtrip():
     assert cfg2.states[0].frame1 == 150
 
 
+def test_ac_bundled_roundtrip_semantic():
+    """Every bundled `.ac` must round-trip with identical state semantics.
+
+    `write_ac` emits the bodies without leading indentation, matching the
+    original files.  A single `.ac` (Wolfsnow) contains a blank line inside a
+    state body which the parser drops; that is purely cosmetic (all statements
+    are `;`-terminated), so we compare the parsed state structure rather than
+    bytes.
+    """
+    import glob
+    def sig(cfg):
+        return [(s.name, s.frame0, s.frame1, s.fps, s.priority, s.flags,
+                 s.meshfile, list(s.links), list(s.events))
+                for s in cfg.states]
+    for p in sorted(glob.glob(os.path.join(REPO, "Neutrals", "*", "*.ac"))):
+        data = open(p, "r", encoding="utf-8-sig", errors="replace").read()
+        cfg1 = acmod.parse_ac(data)
+        cfg2 = acmod.parse_ac(acmod.write_ac(cfg1))
+        assert sig(cfg2) == sig(cfg1), os.path.basename(p)
+    # byte-identity holds except for the lone blank-line case (Wolfsnow)
+    mismatch = [os.path.basename(p) for p in
+                sorted(glob.glob(os.path.join(REPO, "Neutrals", "*", "*.ac")))
+                if acmod.write_ac(acmod.parse_ac(
+                    open(p, "r", encoding="utf-8-sig", errors="replace").read()
+                )).rstrip() != open(p, "r", encoding="utf-8-sig",
+                                    errors="replace").read().rstrip()]
+    assert mismatch == ["character_neutrals_wolfsnow.ac"], mismatch
+
+
 def test_version():
     import d3tool
     assert isinstance(d3tool.__version__, str) and d3tool.__version__

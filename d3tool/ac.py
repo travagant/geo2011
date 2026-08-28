@@ -26,25 +26,24 @@ class State:
     gaestate: str = ""
 
     def to_lines(self) -> List[str]:
-        ind = "\t"
         lines = [f'state "{self.name}"', "{"]
-        lines.append(f'{ind}file "{self.file}";')
-        lines.append(f"{ind}frame0 {self.frame0};")
-        lines.append(f"{ind}frame1 {self.frame1};")
-        lines.append(f"{ind}fps {self.fps:.6f};")
-        lines.append(f"{ind}priority {self.priority};")
-        lines.append(f"{ind}flags {self.flags};")
+        lines.append(f'file "{self.file}";')
+        lines.append(f"frame0 {self.frame0};")
+        lines.append(f"frame1 {self.frame1};")
+        lines.append(f"fps {self.fps:.6f};")
+        lines.append(f"priority {self.priority};")
+        lines.append(f"flags {self.flags};")
         for ev in self.events:
             if len(ev) == 4:
                 lines.append(
-                    f'{ind}event2 "{ev[0]}" {ev[1]} "{ev[2]}" "{ev[3]}";'
+                    f'event2 "{ev[0]}" {ev[1]} "{ev[2]}" "{ev[3]}";'
                 )
         for link in self.links:
-            lines.append(f'{ind}link "{link[0]}" {link[1]}; blend {link[2]};')
+            lines.append(f'link "{link[0]}" {link[1]}; blend {link[2]};')
         if self.gaestate:
-            lines.append(f'{ind}gaestate "{self.gaestate}";')
+            lines.append(f'gaestate "{self.gaestate}";')
         if self.meshfile:
-            lines.append(f'{ind}meshfile "{self.meshfile}";')
+            lines.append(f'meshfile "{self.meshfile}";')
         lines.append("}")
         return lines
 
