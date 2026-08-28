@@ -242,3 +242,42 @@ the remainder in `SkinnedMesh.trailing`; `write_geometry_file` appends it, so th
 file round-trips byte-for-byte even though it is not a single character mesh.
 `SkinnedMesh.raw` is a fallback that stores the original bytes verbatim for any
 layout the parser does not fully understand.
+
+## `.t` texture container
+
+The GM engine stores textures in a native `.t` file: a **59-byte header**
+followed by the exact same compressed (DXT) pixel data that a standard `.dds`
+stores after its 128-byte header.  `d3tool/texture.py` parses both and converts
+between them losslessly.
+
+`.t` header (little-endian):
+
+| offset | type   | meaning |
+|--------|--------|---------|
+| 0x00   | u32    | container version / magic (1) |
+| 0x04   | u32    | pixel-format code: 6=DXT1, 7=DXT3, 8=DXT5, 3=A1R5G5B5 (16-bit) |
+| 0x0c   | u32    | mipmap level count |
+| 0x10   | u32    | width |
+| 0x14   | u32    | height |
+| 0x18   | u32    | opaque flag (varies; see below) |
+| 0x34   | u32    | marker (0x00417000) |
+
+The payload immediately follows at offset 59 (and is byte-identical to the
+`.dds` payload at offset 128).  The `@4` format code maps to the DDS fourCC
+`DXT1`/`DXT3`/`DXT5` or, for code 3, to a 16-bit A1R5G5B5 surface (used by UI
+icons, e.g. `icon_*_ring.t`).
+
+`d3tool texture convert a.t -o out.dds` and `d3tool texture convert a.dds -o
+out.t` perform the conversion based on the destination extension; `d3tool
+texture info a.t` prints the header fields.
+
+Forward-export (`export-gl`) auto-detects the material diffuse from the `.g`
+and emits a `.dds` (converting the `.t` if present) alongside the glTF,
+matching what dis3tool references.  Reverse-export (`export`) converts any
+referenced `.dds` image back to the native `.t`.
+
+Known caveat: the `.t` flag at offset 0x18 is not stored in a `.dds`.  It is 0
+for some DXT1 diffuse textures and 1 for others at identical size/format, so it
+cannot be recovered when converting a bare `.dds`.  The payload, dimensions and
+format are always correct; only this flag may differ from a specific source
+`.t` unless the original header is preserved.

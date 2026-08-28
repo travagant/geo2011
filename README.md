@@ -49,6 +49,11 @@ python3 -m d3tool validate out/unit.gltf
 # inspect a .g
 python3 -m d3tool import Neutrals/AirElemental/character_neutrals_airelemental.g
 
+# convert the native .t texture to a .dds (or back)
+python3 -m d3tool texture convert Neutrals/AirElemental/character_neutrals_airelemental.t \
+  -o out/character_neutrals_airelemental.dds
+python3 -m d3tool texture info Neutrals/AirElemental/character_neutrals_airelemental.t
+
 # run the tests
 python3 tests/test_d3tool.py
 ```
@@ -96,6 +101,13 @@ For `character_neutrals_airelemental.gltf` the exporter writes:
   ranges, links).
 * `character_neutrals_airelemental_iadd.a` — the animation binary rebuilt from
   the glTF animation channels; per-frame values match the original.
+* `character_neutrals_airelemental.t` — the native GM texture, converted from
+  the `.dds` the glTF references.  The `.g`'s `material0_diffuse` is pointed at
+  it.
+
+Forward-export is the mirror image: `export-gl` auto-detects the material
+diffuse from the `.g`, converts the native `.t` to a `.dds` (matching dis3tool)
+and references it in the glTF.
 
 For the AirElemental unit the generated `.g` matches the original in positions,
 normals, UVs, triangle indices, bone names/matrices and material.  The only
@@ -132,5 +144,8 @@ leaves in place).  These are informational, not defects.
   (quat + translation).  The `.a` record set equals the set of nodes animated
   in the glTF, so the animation can be rebuilt from the glTF; per-frame values
   round-trip exactly.
+* `.t` textures are a 59-byte GM header wrapping the same DXT payload a `.dds`
+  stores after its 128-byte header.  `d3tool/texture.py` converts `.t` ↔ `.dds`
+  losslessly (format codes 6/7/8 → DXT1/DXT3/DXT5; code 3 → 16-bit A1R5G5B5).
 
 See `docs/FORMATS.md` for details.

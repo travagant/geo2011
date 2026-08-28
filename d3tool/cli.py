@@ -27,6 +27,7 @@ from . import gfile
 from . import gltf as gltfmod
 from . import gltf_out as gltfout
 from . import scene as scenemod
+from . import texture as texmod
 from . import ui as ui
 
 
@@ -135,6 +136,47 @@ def _resource_root(gltf_path: str, base: str) -> str:
     return res.replace("\\\\", "\\")
 
 
+def _export_textures(gltf_path: str, out_dir: str, base: str,
+                     quiet: bool) -> Optional[str]:
+    """Emit the GM ``.t`` textures referenced by a glTF's images.
+
+    dis3tool's glTF references its diffuse texture as a ``.dds``.  The GM
+    engine instead wants the native ``.t`` container, so if the referenced
+    ``.dds`` exists on disk (next to the glTF) we convert it to a ``.t`` and
+    write it into the output directory.
+
+    Returns the basename of the first emitted texture (the diffuse), or
+    ``None`` if none was written, so the caller can point ``material0_diffuse``
+    at the actual file.
+    """
+    try:
+        with open(gltf_path, "r", encoding="utf-8") as fh:
+            doc = json.load(fh)
+    except (OSError, ValueError):
+        return None
+    gltf_dir = os.path.dirname(os.path.abspath(gltf_path))
+    images = doc.get("images") or []
+    first = None
+    for img in images:
+        uri = img.get("uri")
+        if not uri or uri.startswith("data:"):
+            continue
+        src = os.path.join(gltf_dir, os.path.basename(uri))
+        if not os.path.exists(src) or not src.lower().endswith(".dds"):
+            continue
+        stem = os.path.splitext(os.path.basename(src))[0]
+        out_t = os.path.join(out_dir, stem + ".t")
+        with open(src, "rb") as fh:
+            data = fh.read()
+        with open(out_t, "wb") as fh:
+            fh.write(texmod.dds_to_t(data, None, os.path.basename(src)))
+        if not quiet:
+            ui.wrote(out_t, "converted from .dds")
+        if first is None:
+            first = os.path.basename(out_t)
+    return first
+
+
 def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
             anim: bool = True, quiet: bool = False) -> None:
     """Reverse export: glTF -> GM geometry (.g), scene, animation config, .a."""
@@ -148,6 +190,18 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
     res = _resource_root(gltf_path, base)
     attrs = _default_attrs(sm, base, res)
     sm.geometry_file = base
+
+    # textures (glTF .dds -> native .t), and point the .g at the emitted file
+    emitted = _export_textures(gltf_path, out_dir, base, quiet)
+    if emitted:
+        attrs["material0_diffuse"] = emitted
+    else:
+        # No texture was emitted; fall back to the unit base if a .t/.dds
+        # happened to be written next to the output (or keep the .tga name).
+        for cand in (base + ".t", base + ".dds"):
+            if os.path.exists(os.path.join(out_dir, cand)):
+                attrs["material0_diffuse"] = cand
+                break
 
     # geometry
     g_bytes = gfile.write_geometry_file(sm, attrs)
@@ -205,6 +259,61 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
 # --------------------------------------------------------------------------- #
 #  forward export: original D3 -> glTF
 # --------------------------------------------------------------------------- #
+def _resolve_texture(g_path: str, attrs, texture: Optional[str],
+                     out_dir: str, quiet: bool) -> Optional[str]:
+    """Resolve a texture to hand to the forward-export glTF writer.
+
+    Returns the image *uri* (a bare filename) to reference in the glTF, or
+    ``None`` if no texture could be used.  If the source texture is a ``.t``
+    container it is converted to a ``.dds`` next to the glTF (matching what
+    dis3tool references); the URI is then the ``.dds`` basename so the file
+    resolves relative to the output glTF.
+    """
+    src = None
+    if texture:
+        # explicit -t may be a path, or just a bare name to copy alongside
+        cand = os.path.join(os.path.dirname(g_path), texture) \
+            if not os.path.isabs(texture) else texture
+        if os.path.exists(cand):
+            src = cand
+        elif os.path.exists(texture):
+            src = texture
+        else:
+            # treat as a filename to reference as-is (no file yet)
+            return texture
+    else:
+        src = texmod.find_diffuse_texture(g_path, attrs)
+
+    if not src:
+        return None
+
+    # Emit the texture as a .dds (converting a .t source) so it sits next to
+    # the glTF output and the URI resolves.
+    base_src = os.path.splitext(os.path.basename(src))[0]
+    out_dds = os.path.join(out_dir, base_src + ".dds")
+    if src.lower().endswith(".t"):
+        with open(src, "rb") as fh:
+            data = fh.read()
+        with open(out_dds, "wb") as fh:
+            fh.write(texmod.t_to_dds(data, os.path.basename(src)))
+        if not quiet:
+            ui.wrote(out_dds, "converted from .t")
+    elif src.lower().endswith(".dds"):
+        # copy the .dds so the glTF can be rooted in any output directory
+        import shutil
+        with open(src, "rb") as fh:
+            data = fh.read()
+        with open(out_dds, "wb") as fh:
+            fh.write(data)
+        if not quiet:
+            ui.wrote(out_dds, "texture")
+    else:
+        # .tga or other: reference the basename but do not mangle it
+        return os.path.basename(src)
+
+    return os.path.basename(out_dds)
+
+
 def _export_gl(g_path: str, anim_path: Optional[str], out: Optional[str],
                texture: Optional[str], quiet: bool = False) -> None:
     if not quiet:
@@ -216,7 +325,11 @@ def _export_gl(g_path: str, anim_path: Optional[str], out: Optional[str],
         anim = animmod.parse_anim(open(anim_path, "rb").read())
     if not out:
         out = (g_path[: -len(".g")] if g_path.endswith(".g") else g_path + ".gltf")
-    gt, bt = gltfout.write_gltf_to(out, mesh, anim, texture=texture)
+    attrs, _ = gfile.parse_attributes(data)
+    out_dir = os.path.dirname(os.path.abspath(out))
+    os.makedirs(out_dir, exist_ok=True)
+    uri = _resolve_texture(g_path, attrs, texture, out_dir, quiet)
+    gt, bt = gltfout.write_gltf_to(out, mesh, anim, texture=uri)
     if not quiet:
         ui.wrote(gt)
         ui.wrote(bt)
@@ -257,6 +370,39 @@ def _bundle(folder: str, out_dir: Optional[str], weights_on_vertex: int) -> None
 
     print("")
     ui.info(f"bundle written to {out_dir}")
+
+
+# --------------------------------------------------------------------------- #
+#  texture conversion
+# --------------------------------------------------------------------------- #
+def _texture_convert(src: str, dst: str, quiet: bool = False) -> None:
+    """``d3tool texture convert <in> -o <out>`` — .t <-> .dds."""
+    if not quiet:
+        ui.section("Texture convert")
+    info = texmod.convert_file(src, dst)
+    if not quiet:
+        ui.wrote(dst, f"{info.width}x{info.height} "
+                      f"{'16-bit A1R5G5B5' if info.r5g5b5 else info.fourcc.decode()}"
+                      f" mips={info.mip_count}")
+
+
+def _texture_info(path: str) -> None:
+    """``d3tool texture info <file>`` — describe a .t or .dds texture."""
+    ui.section(f"Texture  {path}")
+    with open(path, "rb") as fh:
+        data = fh.read()
+    if data[:4] == b"DDS ":
+        info = texmod.parse_dds(data, os.path.basename(path))
+    else:
+        info = texmod.parse_t(data, os.path.basename(path))
+    fmt = "16-bit A1R5G5B5" if info.r5g5b5 else info.fourcc.decode()
+    ui.table([
+        ("format", fmt),
+        ("width", str(info.width)),
+        ("height", str(info.height)),
+        ("mipmap levels", str(info.mip_count)),
+        ("payload", f"{len(info.payload)} bytes"),
+    ], headers=["field", "value"])
 
 
 # --------------------------------------------------------------------------- #
@@ -312,6 +458,17 @@ def _build_parser() -> argparse.ArgumentParser:
     p_import = sub.add_parser("import", help="dump a parsed .g as JSON")
     p_import.add_argument("gfile")
 
+    p_texture = sub.add_parser(
+        "texture", help="inspect / convert .t (GM) <-> .dds textures")
+    p_texture_sub = p_texture.add_subparsers(dest="tex_cmd", required=True)
+    p_tc = p_texture_sub.add_parser(
+        "convert", help="convert a .t to .dds (or .dds to .t)")
+    p_tc.add_argument("src")
+    p_tc.add_argument("-o", "--out", help="output path (decides direction)")
+    p_ti = p_texture_sub.add_parser(
+        "info", help="describe a .t / .dds texture")
+    p_ti.add_argument("file")
+
     return parser
 
 
@@ -344,6 +501,14 @@ def main(argv=None) -> int:
             "tri_count": mesh.tri_count,
             "bones": [b.name for b in mesh.bones],
         }, indent=2))
+    elif args.cmd == "texture":
+        if args.tex_cmd == "convert":
+            if not args.out:
+                ui.fail("texture convert requires -o/--out")
+                return 1
+            _texture_convert(args.src, args.out)
+        elif args.tex_cmd == "info":
+            _texture_info(args.file)
     return 0
 
 

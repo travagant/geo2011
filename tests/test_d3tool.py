@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import d3tool
 from d3tool import anim as animmod
 from d3tool import gfile, gltf, ac as acmod, gltf_out, scene as scenemod
+from d3tool import texture as texmod
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -308,6 +309,70 @@ def test_analyze_gltf():
     assert m.tri_count == 5056
     assert len(m.bones) == 38
     assert len(m.frames) > 0
+
+
+def _tex_pairs():
+    """Yield (t_path, expected_dds_path) for every bundled character texture."""
+    import glob
+    for t in sorted(glob.glob(os.path.join(REPO, "Neutrals", "*", "*character*.t"))):
+        dds = t[:-2] + ".dds"
+        if os.path.exists(dds):
+            yield t, dds
+
+
+def test_texture_t_to_dds_matches_bundled():
+    """`t_to_dds` must reproduce the bundled .dds byte-for-byte."""
+    found = False
+    for t, dds in _tex_pairs():
+        found = True
+        gen = texmod.t_to_dds(open(t, "rb").read())
+        assert gen == open(dds, "rb").read(), os.path.basename(t)
+    assert found, "no character .t/.dds pairs found"
+
+
+def test_texture_roundtrip_all():
+    """Every bundled .t -> .dds -> .t round-trips byte-identically."""
+    import glob
+    count = 0
+    for t in sorted(glob.glob(os.path.join(REPO, "Neutrals", "*", "*.t"))):
+        tb = open(t, "rb").read()
+        dds = texmod.t_to_dds(tb)
+        back = texmod.dds_to_t(dds, open(t, "rb").read(59))
+        assert back == tb, os.path.basename(t)
+        count += 1
+    assert count >= 6, f"too few .t files found: {count}"
+
+
+def test_texture_convert_file_both_directions():
+    """`convert_file` handles .t->.dds and .dds->.t (payload preserved)."""
+    import tempfile
+    with tempfile.TemporaryDirectory() as d:
+        t = os.path.join(REPO, "Neutrals", "AirElemental",
+                         "character_neutrals_airelemental.t")
+        # .t -> .dds must equal the bundled .dds
+        dds = os.path.join(d, "out.dds")
+        info = texmod.convert_file(t, dds)
+        assert info.fourcc == b"DXT1"
+        assert open(dds, "rb").read() == open(
+            os.path.join(REPO, "Neutrals", "AirElemental",
+                         "character_neutrals_airelemental.dds"), "rb").read()
+        # .dds -> .t (no matching .t next to it -> default header) keeps payload
+        back = os.path.join(d, "back.t")
+        texmod.convert_file(dds, back)
+        orig = open(t, "rb").read()
+        rtd = open(back, "rb").read()
+        assert orig[59:] == rtd[59:], "payload must be preserved"
+
+
+def test_texture_find_diffuse():
+    """`find_diffuse_texture` locates the .dds/.t next to a .g."""
+    g = os.path.join(REPO, "Neutrals", "AirElemental",
+                     "character_neutrals_airelemental.g")
+    data = open(g, "rb").read()
+    attrs, _ = gfile.parse_attributes(data)
+    p = texmod.find_diffuse_texture(g, attrs)
+    assert p and os.path.exists(p)
+    assert p.endswith((".dds", ".t"))
 
 
 def main():
