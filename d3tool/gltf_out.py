@@ -30,13 +30,22 @@ def _u32(idx: int) -> bytes:
 
 
 def node_hierarchy(bones: List[BoneAnim]) -> Tuple[Dict[str, int], Dict[str, str], List[str]]:
-    """Return ``(children_map, parent_map, roots)`` for the animated bones."""
+    """Return ``(children_map, parent_map, roots)`` for the animated bones.
+
+    dis3tool animation configs sometimes list the *same* tip bone under more
+    than one parent (e.g. ``null_Bone_Tip`` appears under both ``Bone01`` and
+    ``Bone11``).  The skeleton is a single tree, so each bone must have exactly
+    one parent: the first occurrence wins and later duplicate edges are dropped
+    (matching how dis3tool flattens the exported glTF node tree).
+    """
     children: Dict[str, List[str]] = {b.name: [] for b in bones}
     parent: Dict[str, str] = {b.name: b.parent for b in bones}
+    assigned: set = set()
     for b in bones:
         p = b.parent
-        if p in children and p != b.name:
+        if p in children and p != b.name and b.name not in assigned:
             children[p].append(b.name)
+            assigned.add(b.name)
     roots = [b.name for b in bones if b.parent not in children]
     if not roots:
         roots = [bones[0].name]
@@ -248,13 +257,16 @@ def write_gltf(
         scene_children_idx = [name_to_idx[root]] if root is not None else []
     else:
         # no animation: the `.g` does not store a hierarchy (that lives in the
-        # `.a`), so build a flat skeleton as a scene sibling of the mesh node.
+        # `.a`), so build a flat skeleton.  Every bone is a child of the mesh
+        # node so the whole skin shares a common root and every joint is
+        # reachable from the scene.
         name_to_idx = {b.name: i + 1 for i, b in enumerate(bones)}
         for b in bones:
             node = {"name": b.name, "rotation": [0.0, 0.0, 0.0, 1.0],
                     "translation": [0.0, 0.0, 0.0]}
             node_list.append(node)
-        scene_children_idx = [name_to_idx[bones[0].name]] if bones else []
+        node_list[0]["children"] = [name_to_idx[b.name] for b in bones] if bones else []
+        scene_children_idx = []
 
     # ---- skin ----
     skin_joints = [name_to_idx.get(b.name, 1 + i) for i, b in enumerate(bones)]
@@ -266,19 +278,24 @@ def write_gltf(
     samplers = []
     if anim_bones:
         frames_acc = 7
+        # Two animated bones that collapse onto the same node (e.g. the tip
+        # bone listed under two parents) must not emit duplicate channels for
+        # the same node/path — the Khronos validator flags those.
+        sent_targets: set = set()
         for i, b in enumerate(anim_bones):
             nidx = name_to_idx.get(b.name, 1)
             rot_acc = 8 + 2 * i
             tra_acc = 8 + 2 * i + 1
-            base = len(samplers)
-            samplers.append({"input": frames_acc, "output": rot_acc,
-                             "interpolation": "LINEAR"})
-            channels.append({"sampler": base,
-                             "target": {"node": nidx, "path": "rotation"}})
-            samplers.append({"input": frames_acc, "output": tra_acc,
-                             "interpolation": "LINEAR"})
-            channels.append({"sampler": base + 1,
-                             "target": {"node": nidx, "path": "translation"}})
+            for path, acc_idx in (("rotation", rot_acc), ("translation", tra_acc)):
+                key = (nidx, path)
+                if key in sent_targets:
+                    continue
+                sent_targets.add(key)
+                base = len(samplers)
+                samplers.append({"input": frames_acc, "output": acc_idx,
+                                 "interpolation": "LINEAR"})
+                channels.append({"sampler": base,
+                                 "target": {"node": nidx, "path": path}})
 
     prim = {
         "attributes": {"POSITION": 1, "NORMAL": 2, "TEXCOORD_0": 3,
