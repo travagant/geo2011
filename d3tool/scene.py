@@ -32,14 +32,6 @@ def _node_header(ind: str, name: str, kind: str = "bones") -> list:
     ]
 
 
-def _uid(ind: str, high: int, low: int) -> str:
-    return f"{ind}uid {high} {low}"
-
-
-def _coords(ind: str, v: str) -> str:
-    return f"{ind}coords {v}"
-
-
 def write_scene(
     mesh_name: str,
     base: str,
@@ -142,17 +134,3 @@ def write_scene(
         "",
     ]
     return "\n".join(lines)
-
-
-def reuse_scene(template: Optional[str], base: str, res_root: str) -> Optional[str]:
-    """Rewrite an existing `.scene` to point at ``res_root``/``base``.
-
-    Used to preserve the particle emitters and GUI camera from the original
-    asset when present.  Returns the updated text, or ``None`` if no template.
-    """
-    if not template:
-        return None
-    # Replace the .ac and .g paths inside the scene so they reference the
-    # reverse-exported files in the new location.
-    text = template
-    return text

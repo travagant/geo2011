@@ -138,15 +138,52 @@ def _default_attrs(mesh, geometry_base: str, res: str) -> dict:
 
 
 def _resource_root(gltf_path: str, base: str) -> str:
-    """Derive the game resource directory (backslash path) for a glTF."""
+    """Derive the game resource directory (backslash path) for a glTF.
+
+    The engine resolves character assets via a lowercase resource directory
+    (e.g. ``resources\\characters\\neutrals\\airelemental``).  That name does
+    *not* always match the on-disk unit folder (``Wildboar`` -> ``werewolf``),
+    so we prefer the directory referenced by the sibling ``.scene`` across the
+    actual geometry files (``<base>.g`` / ``<base>.ac``); only then fall back
+    to a lowercase guess.
+    """
+    import re
+    gltf_dir = os.path.dirname(os.path.abspath(gltf_path))
+    for ext in (".scene", ".ac"):
+        p = os.path.join(gltf_dir, base + ext)
+        if not os.path.exists(p):
+            continue
+        try:
+            text = open(p, "r", encoding="utf-8", errors="replace").read()
+        except OSError:
+            continue
+        # Prefer the resource path that references the actual geometry, not
+        # e.g. an Alias/particle resource living elsewhere.
+        best = None
+        for m in re.finditer(r'resources[^"]*', text, re.IGNORECASE):
+            cand = m.group(0).strip()
+            if not cand.lower().endswith(('.g', '.ac', '.a')):
+                continue
+            if base.lower() in cand.lower():
+                best = cand
+                break
+        if best is None:
+            for m in re.finditer(r'resources[^"]*', text, re.IGNORECASE):
+                cand = m.group(0).strip()
+                if cand.lower().endswith(('.g', '.ac', '.a')):
+                    best = cand
+                    break
+        if best:
+            d = best.rsplit('\\', 1)[0].replace('/', '\\')
+            if 'characters' in d.lower():
+                return d
     rel = gltf_path.replace("\\", "/")
     parts = rel.split("/")
     if "Neutrals" in parts and len(parts) >= 2:
-        res = "\\".join(["resources", "characters", "neutrals", parts[-2]])
+        res = "\\".join(["resources", "characters", "neutrals", parts[-2].lower()])
     else:
-        res = f"resources\\characters\\{base}"
-    return res.replace("\\\\", "\\")
-
+        res = f"resources\\characters\\{base.lower()}"
+    return res.replace("/", "\\")
 
 def _export_textures(gltf_path: str, out_dir: str, base: str,
                      quiet: bool) -> Optional[str]:
@@ -263,7 +300,12 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
             animfile = gltfmod.animation_from_gltf(m)
             if animfile.bones:
                 a_bytes = animmod.write_anim(animfile)
-                out_a = os.path.join(out_dir, base + "_iadd.a")
+                # Name the rebuilt .a exactly as the .ac references it (the
+                # Idle/combined file from detect_anim_files), so the engine can
+                # resolve the path.  Typically <base>_iadd.a but some assets
+                # use <base>.a or <base>_baseanims.a.
+                idle_name = anim_files.get("Idle") or (base + "_iadd.a")
+                out_a = os.path.join(out_dir, os.path.basename(idle_name))
                 with open(out_a, "wb") as fh:
                     fh.write(a_bytes)
                 if not quiet:
@@ -271,7 +313,7 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
                                     f"{len(animfile.bones)} bones")
         except Exception as exc:  # noqa: BLE001
             if not quiet:
-                ui.skipped(base + "_iadd.a", str(exc))
+                ui.skipped(base + " <anim>", str(exc))
     if not quiet:
         print("")
 
