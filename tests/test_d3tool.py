@@ -146,6 +146,19 @@ def test_forward_export_matches_gltf():
                         for x, y in zip(r, m)), label
 
 
+def test_exported_gltf_is_structurally_valid():
+    import tempfile
+    base = os.path.join(REPO, "Neutrals", "AirElemental",
+                        "character_neutrals_airelemental")
+    mesh = gfile.parse_geometry_file(open(base + ".g", "rb").read())
+    an = animmod.parse_anim(open(base + "_iadd.a", "rb").read())
+    with tempfile.TemporaryDirectory() as d:
+        gp = os.path.join(d, "u.gltf")
+        gltf_out.write_gltf_to(gp, mesh, an)
+        errors, warnings, info = gltf_out.validate_gltf(gp)
+        assert errors == 0, f"exported glTF must be structurally clean, got {errors}"
+
+
 def test_analyze_gltf():
     base = os.path.join(REPO, "Neutrals", "AirElemental",
                         "character_neutrals_airelemental")

@@ -148,6 +148,9 @@ def main(argv=None) -> int:
                         help="output glTF path (default <base>.gltf)")
     p_g2gl.add_argument("-t", "--texture", default=None)
 
+    p_validate = sub.add_parser("validate", help="structural glTF self-check")
+    p_validate.add_argument("gltf")
+
     p_import = sub.add_parser("import", help="GM .g -> glTF (debug)")
     p_import.add_argument("gfile")
     p_import.add_argument("-o", "--out", default=None)
@@ -169,6 +172,12 @@ def main(argv=None) -> int:
         gt, bt = gltfout.write_gltf_to(out, mesh, anim, texture=args.texture)
         print(f"wrote {gt}")
         print(f"wrote {bt}")
+    elif args.cmd == "validate":
+        errors, warnings, infos = gltfout.validate_gltf(args.gltf)
+        print(json.dumps({
+            "errors": errors, "warnings": warnings, "info": infos,
+        }, indent=2))
+        return 1 if errors else 0
     elif args.cmd == "import":
         data = open(args.gfile, "rb").read()
         mesh = gfile.parse_geometry_file(data)

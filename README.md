@@ -26,9 +26,11 @@ The point is to support a future program that, like dis3tool, exports glTF but
 
 ## Install / run
 
-Pure Python 3 (no third-party dependencies).
+Pure Python 3 (no third-party dependencies).  Install as a package to get the
+`d3tool` console script, or run it as a module.
 
 ```bash
+pip install -e .          # provides the `d3tool` console script (or just `python3 -m d3tool`)
 # analyze a unit folder
 python3 -m d3tool analyze Neutrals/AirElemental
 
@@ -40,6 +42,9 @@ python3 -m d3tool export-gl \
   Neutrals/AirElemental/character_neutrals_airelemental.g \
   -a Neutrals/AirElemental/character_neutrals_airelemental_iadd.a \
   -o out/unit.gltf
+
+# structural self-check of a glTF
+python3 -m d3tool validate out/unit.gltf
 
 # inspect a .g
 python3 -m d3tool import Neutrals/AirElemental/character_neutrals_airelemental.g

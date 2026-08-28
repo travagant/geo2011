@@ -98,9 +98,11 @@ def write_gltf(
     tra: List[float] = []
     if anim_bones:
         n_frames = anim.frame_count or max(len(b.frames) for b in anim_bones) or 1
-        # times: 0 .. (n_frames-1) / (n_frames-1) unless a single frame
-        frames = [k / (n_frames - 1) for k in range(n_frames)] if n_frames > 1 \
-            else [0.0]
+        if n_frames > 1:
+            step = 1.0 / (n_frames - 1)
+            frames = [k * step for k in range(n_frames)]
+        else:
+            frames = [0.0]
         for b in anim_bones:
             for k in range(n_frames):
                 fr = b.frames[k] if k < len(b.frames) else b.rest[:7]
@@ -148,11 +150,18 @@ def write_gltf(
          "byteLength": tra_len},
     ]
 
+    # min/max for the POSITION accessor (required by glTF)
+    xs = [v.position[0] for v in mesh.vertices]
+    ys = [v.position[1] for v in mesh.vertices]
+    zs = [v.position[2] for v in mesh.vertices]
+    pos_min = [min(xs), min(ys), min(zs)]
+    pos_max = [max(xs), max(ys), max(zs)]
+
     accessors = [
         {"bufferView": 0, "componentType": 5125, "count": len(mesh.indices),
          "type": "SCALAR"},
         {"bufferView": 1, "componentType": 5126, "count": n_verts,
-         "type": "VEC3", "byteOffset": 0},
+         "type": "VEC3", "byteOffset": 0, "min": pos_min, "max": pos_max},
         {"bufferView": 1, "componentType": 5126, "count": n_verts,
          "type": "VEC3", "byteOffset": 12},
         {"bufferView": 1, "componentType": 5126, "count": n_verts,
@@ -165,14 +174,23 @@ def write_gltf(
          "type": "MAT4"},
     ]
     if anim_bones:
+        fmin = [min(frames)] if frames else [0.0]
+        fmax = [max(frames)] if frames else [0.0]
         accessors += [
             {"bufferView": 3, "componentType": 5126, "count": n_frames,
-             "type": "SCALAR"},
-            {"bufferView": 4, "componentType": 5126,
-             "count": len(anim_bones) * n_frames, "type": "VEC4"},
-            {"bufferView": 5, "componentType": 5126,
-             "count": len(anim_bones) * n_frames, "type": "VEC3"},
+             "type": "SCALAR", "min": fmin, "max": fmax},
         ]
+        # one rotation (VEC4) + one translation (VEC3) accessor per bone, each
+        # count=n_frames, sampled at distinct offsets into shared bufferViews.
+        for i in range(len(anim_bones)):
+            accessors.append({
+                "bufferView": 4, "componentType": 5126, "count": n_frames,
+                "type": "VEC4", "byteOffset": i * n_frames * 16,
+            })
+            accessors.append({
+                "bufferView": 5, "componentType": 5126, "count": n_frames,
+                "type": "VEC3", "byteOffset": i * n_frames * 12,
+            })
 
     # ---- nodes ----
     node_list: List[dict] = [{"name": mesh.name}]
@@ -222,6 +240,7 @@ def write_gltf(
 
     # ---- skin ----
     skin_joints = [name_to_idx.get(b.name, 1 + i) for i, b in enumerate(bones)]
+    node_list[0]["mesh"] = 0
     node_list[0]["skin"] = 0
     skin = {"joints": skin_joints, "inverseBindMatrices": 6}
 
@@ -230,10 +249,10 @@ def write_gltf(
     samplers = []
     if anim_bones:
         frames_acc = 7
-        rot_acc = 8
-        tra_acc = 9
-        for b in anim_bones:
+        for i, b in enumerate(anim_bones):
             nidx = name_to_idx.get(b.name, 1)
+            rot_acc = 8 + 2 * i
+            tra_acc = 8 + 2 * i + 1
             base = len(samplers)
             samplers.append({"input": frames_acc, "output": rot_acc,
                              "interpolation": "LINEAR"})
@@ -244,21 +263,21 @@ def write_gltf(
             channels.append({"sampler": base + 1,
                              "target": {"node": nidx, "path": "translation"}})
 
+    prim = {
+        "attributes": {"POSITION": 1, "NORMAL": 2, "TEXCOORD_0": 3,
+                       "WEIGHTS_0": 4, "JOINTS_0": 5},
+        "indices": 0,
+    }
+    if texture:
+        prim["material"] = 0
+
     doc = {
         "asset": {"version": "2.0", "generator": "d3tool (geo2011 reverse)"},
         "scene": 0,
         "scenes": [{"nodes": [0]}],
         "nodes": node_list,
         "skins": [skin],
-        "meshes": [{
-            "name": mesh.name,
-            "primitives": [{
-                "attributes": {"POSITION": 1, "NORMAL": 2, "TEXCOORD_0": 3,
-                               "WEIGHTS_0": 4, "JOINTS_0": 5},
-                "indices": 0,
-                "material": 0,
-            }],
-        }],
+        "meshes": [{"name": mesh.name, "primitives": [prim]}],
         "accessors": accessors,
         "bufferViews": bufferViews,
         "buffers": [{"uri": output_name + ".bin", "byteLength": total}],
@@ -281,6 +300,7 @@ def write_gltf_to(path: str, mesh: SkinnedMesh, anim: Optional[AnimFile] = None,
     """Write ``<base>.gltf`` and ``<base>.bin``; returns (gltf_path, bin_path)."""
     import os
     base = os.path.splitext(path)[0]
+    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
     bin_bytes, doc = write_gltf(mesh, anim, os.path.basename(base), texture)
     bin_path = base + ".bin"
     with open(bin_path, "wb") as fh:
@@ -288,3 +308,71 @@ def write_gltf_to(path: str, mesh: SkinnedMesh, anim: Optional[AnimFile] = None,
     with open(path, "w", encoding="utf-8") as fh:
         json.dump(doc, fh)
     return path, bin_path
+
+
+def validate_gltf(path: str, base_dir: Optional[str] = None) -> Tuple[int, int, int]:
+    """Lightweight, pure-Python structural self-check of a glTF 2.0 document.
+
+    Reports ``(errors, warnings, info)`` counts for the invariants my own
+    exporter guarantees (buffer/accessor count matches, skin joints in range,
+    animation sampler counts, node/mesh references).  It is *not* a full
+    Khronos validator but catches the structural mistakes a round-trip tool can
+    make.
+    """
+    import json
+    import os
+    base_dir = base_dir or os.path.dirname(os.path.abspath(path))
+    with open(path, "r", encoding="utf-8") as fh:
+        doc = json.load(fh)
+    errors = warnings = info = 0
+    buf_uri = doc.get("buffers", [{}])[0].get("uri", "")
+    bin_data = b""
+    if buf_uri:
+        bp = os.path.join(base_dir, buf_uri)
+        if os.path.exists(bp):
+            bin_data = open(bp, "rb").read()
+        else:
+            errors += 1
+
+    nacc = len(doc.get("accessors", []))
+    # every accessor must reference a valid bufferView and its data must fit
+    # within that bufferView.  accessor.byteOffset is relative to the view;
+    # the view's own byteOffset is relative to the buffer.
+    for i, a in enumerate(doc.get("accessors", [])):
+        bv = doc.get("bufferViews", [])[a["bufferView"]] if "bufferView" in a else None
+        if bv is None:
+            errors += 1
+            continue
+        ncomp = {"SCALAR": 1, "VEC2": 2, "VEC3": 3, "VEC4": 4, "MAT4": 16}[a["type"]]
+        size = {5120: 1, 5121: 1, 5122: 2, 5123: 2, 5125: 4, 5126: 4}[a["componentType"]]
+        need = a["count"] * ncomp * size
+        off = a.get("byteOffset", 0)
+        if off + need > bv["byteLength"]:
+            errors += 1
+    # skin joints must be valid node indices
+    for s in doc.get("skins", []):
+        for j in s["joints"]:
+            if j >= len(doc.get("nodes", [])):
+                errors += 1
+    # animation sampler inputs/outputs must have matching counts, and channel
+    # output types must match the path (rotation=VEC4, translation=VEC3).
+    for anim in doc.get("animations", []):
+        path_of = {c["sampler"]: c["target"]["path"] for c in anim["channels"]}
+        for idx, smp in enumerate(anim["samplers"]):
+            i_acc = doc["accessors"][smp["input"]]
+            o_acc = doc["accessors"][smp["output"]]
+            if i_acc["count"] != o_acc["count"]:
+                errors += 1
+            want = path_of.get(idx)
+            if want == "rotation" and o_acc["type"] != "VEC4":
+                errors += 1
+            elif want == "translation" and o_acc["type"] != "VEC3":
+                errors += 1
+    # mesh node must reference an existing mesh
+    for n in doc.get("nodes", []):
+        if "mesh" in n and n["mesh"] >= len(doc.get("meshes", [])):
+            errors += 1
+        if "skin" in n and n["skin"] >= len(doc.get("skins", [])):
+            errors += 1
+    info = max(0, nacc)
+    return errors, warnings, info

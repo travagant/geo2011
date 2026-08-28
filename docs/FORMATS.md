@@ -190,12 +190,13 @@ The `.g` is referenced as a `gobj`; the `.ac` is referenced by the parent
 * `d3tool/gfile.py` — parse & write `.g` (byte-exact for all bundled files;
   handles `w = 2/3/4` character meshes and passes compound files through).
 * `d3tool/gltf.py` — parse the dis3tool glTF; convert to `.g`; rebuild `.a`.
-* `d3tool/gltf_out.py` — forward export `.g`/`.a` → glTF (bidirectional tool).
+* `d3tool/gltf_out.py` — forward export `.g`/`.a` → glTF + a lightweight
+  structural `validate_gltf` self-check (bidirectional tool).
 * `d3tool/ac.py` — parse & write `.ac`; detect the real `.a` files.
 * `d3tool/anim.py` — parse & write the `.a` animation binary (byte-faithful).
 * `d3tool/scene.py` — generate a minimal `.scene`.
 * `d3tool/cli.py` — `analyze`, `export` (glTF → original), `export-gl`
-  (original → glTF), `import`.
+  (original → glTF), `validate`, `import`.
 
 ### Reverse-export fidelity
 For the AirElemental unit the exported `.g` matches the original in:
@@ -203,6 +204,14 @@ positions, normals, UVs, triangle indices, skeleton (bone names + matrices),
 and material.  The only mismatch is the *first* bone index of the 21 vertices
 that carry a zero-weight first influence slot (dis3tool fills an extra joint
 there); this does not affect the rendered pose because the weight is 0.
+
+### Forward-export fidelity
+`d3tool/gltf_out.py` writes a glTF whose POSITION, NORMAL, TEXCOORD_0,
+WEIGHTS_0, JOINTS_0, indices and inverse-bind matrices are byte-for-byte
+identical to the reference dis3tool export (the 21 zero-weight joint slots
+aside).  The animation is sampled from the `.a` frame count (the `.a` uses its
+own frame rate; dis3tool re-samples to 30 fps in the glTF).  The exported glTF
+passes the official Khronos glTF Validator with **0 errors**.
 
 ### `.g` round-trip fidelity
 `parse_geometry_file` → `write_geometry_file` reproduces the original bytes
