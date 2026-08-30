@@ -7,6 +7,7 @@ writers:
 * ``export <gltf>``     — reverse-export a dis3tool glTF back to the original
   Disciples 3 files (.g / .scene / .ac / .a).
 * ``export-gl <g>``     — forward-export `.g`/(`.a`) into a viewable glTF.
+* ``export-all <folder>`` — recursively export every `.g` into glTF.
 * ``bundle <folder>``   — run the full pipeline over a unit folder (both ways).
 * ``validate <gltf>``   — structural self-check of a glTF.
 * ``import <g>``        — dump the parsed `.g` as JSON.
@@ -399,6 +400,92 @@ def _export_gl(g_path: str, anim_path: Optional[str], out: Optional[str],
 
 
 # --------------------------------------------------------------------------- #
+#  recursive forward export
+# --------------------------------------------------------------------------- #
+def _find_animation_for_geometry(g_path: str) -> Optional[str]:
+    """Find the most likely animation for a geometry file.
+
+    Prefer the animation referenced by the sibling animation config.  This is
+    important for names such as ``*_iadd.a`` and ``*_baseanims.a``.  LOD files
+    normally share the main model's config.  If no config gives an answer, use
+    conventional names, then a sole animation in the directory.
+    """
+    folder = os.path.dirname(os.path.abspath(g_path))
+    stem = os.path.splitext(os.path.basename(g_path))[0]
+    main_stem = stem[:-4] if stem.lower().endswith("_lod") else stem
+
+    for ac_stem in dict.fromkeys((stem, main_stem)):
+        ac_path = os.path.join(folder, ac_stem + ".ac")
+        if not os.path.isfile(ac_path):
+            continue
+        try:
+            cfg = acmod.parse_ac(open(ac_path, "r", encoding="utf-8-sig",
+                                      errors="replace").read())
+            for state in cfg.states:
+                if state.file:
+                    candidate = os.path.join(
+                        folder, state.file.replace("\\", "/").rsplit("/", 1)[-1])
+                    if os.path.isfile(candidate):
+                        return candidate
+        except OSError:
+            pass
+
+    for base in dict.fromkeys((stem, main_stem)):
+        for suffix in (".a", "_iadd.a", "_baseanims.a"):
+            candidate = os.path.join(folder, base + suffix)
+            if os.path.isfile(candidate):
+                return candidate
+
+    animations = sorted(glob.glob(os.path.join(folder, "*.a")))
+    return animations[0] if len(animations) == 1 else None
+
+
+def _export_all(folder: str, out_dir: str, use_anim: bool = True) -> int:
+    """Recursively convert every `.g` below *folder* to glTF."""
+    root = os.path.abspath(folder)
+    if not os.path.isdir(root):
+        ui.section("Recursive export  Disciples 3 → glTF")
+        ui.fail(f"no such folder: {folder}")
+        return 1
+
+    g_files = []
+    for current, dirs, files in os.walk(root):
+        # Do not accidentally consume a previous export when output is inside
+        # the source tree.
+        dirs[:] = [d for d in dirs
+                   if os.path.abspath(os.path.join(current, d)) !=
+                   os.path.abspath(out_dir)]
+        g_files.extend(os.path.join(current, f) for f in files
+                       if f.lower().endswith(".g"))
+    g_files.sort()
+
+    ui.section("Recursive export  Disciples 3 → glTF")
+    if not g_files:
+        ui.fail(f"no .g files found in {folder}")
+        return 1
+
+    succeeded = failed = 0
+    for g_path in g_files:
+        relative = os.path.relpath(g_path, root)
+        target = os.path.join(out_dir, os.path.splitext(relative)[0] + ".gltf")
+        animation = _find_animation_for_geometry(g_path) if use_anim else None
+        try:
+            _export_gl(g_path, animation, target, texture=None, quiet=True)
+            detail = os.path.relpath(target, os.getcwd())
+            if animation:
+                detail += f"  + {os.path.basename(animation)}"
+            ui.ok(detail)
+            succeeded += 1
+        except Exception as exc:  # noqa: BLE001
+            ui.fail(f"{relative}: {exc}")
+            failed += 1
+
+    print("")
+    ui.info(f"exported {succeeded}/{len(g_files)} models to {out_dir}")
+    return 1 if failed else 0
+
+
+# --------------------------------------------------------------------------- #
 #  bundle: full pipeline over a unit folder
 # --------------------------------------------------------------------------- #
 def _bundle(folder: str, out_dir: Optional[str], weights_on_vertex: int) -> None:
@@ -481,6 +568,7 @@ def _build_parser() -> argparse.ArgumentParser:
               d3tool analyze Neutrals/AirElemental
               d3tool export Neutrals/AirElemental/character_neutrals_airelemental.gltf -o out
               d3tool export-gl Neutrals/AirElemental/character_neutrals_airelemental.g -a .../iadd.a -o out/unit.gltf
+              d3tool export-all Neutrals -o gltf
               d3tool bundle Neutrals/AirElemental -o bundle
               d3tool validate out/unit.gltf
         """),
@@ -507,6 +595,14 @@ def _build_parser() -> argparse.ArgumentParser:
     p_g2gl.add_argument("-o", "--out", default=None,
                         help="output glTF path (default <base>.gltf)")
     p_g2gl.add_argument("-t", "--texture", default=None)
+
+    p_all = sub.add_parser(
+        "export-all", help="recursively convert every .g file to glTF")
+    p_all.add_argument("folder", help="folder to scan recursively")
+    p_all.add_argument("-o", "--out", default="gltf",
+                       help="output folder (default: gltf)")
+    p_all.add_argument("--no-anim", action="store_true",
+                       help="export models without auto-detected .a animations")
 
     p_bundle = sub.add_parser(
         "bundle", help="run the full glTF↔GM pipeline over a unit folder")
@@ -545,6 +641,8 @@ def main(argv=None) -> int:
                 anim=not args.no_anim)
     elif args.cmd == "export-gl":
         _export_gl(args.g, args.anim, args.out, args.texture)
+    elif args.cmd == "export-all":
+        return _export_all(args.folder, args.out, use_anim=not args.no_anim)
     elif args.cmd == "bundle":
         _bundle(args.folder, args.out, args.weights_on_vertex)
     elif args.cmd == "validate":

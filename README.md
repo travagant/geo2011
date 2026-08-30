@@ -43,6 +43,9 @@ python3 -m d3tool export-gl \
   -a Neutrals/AirElemental/character_neutrals_airelemental_iadd.a \
   -o out/unit.gltf
 
+# one command: recursively convert every .g, with animations and textures
+python3 -m d3tool export-all Neutrals -o gltf
+
 # structural self-check of a glTF
 python3 -m d3tool validate out/unit.gltf
 
@@ -124,6 +127,11 @@ For `character_neutrals_airelemental.gltf` the exporter writes:
 Forward-export is the mirror image: `export-gl` auto-detects the material
 diffuse from the `.g`, converts the native `.t` to a `.dds` (matching dis3tool)
 and references it in the glTF.
+
+For a whole asset tree, `export-all <folder> -o <output>` recursively finds all
+`.g` files and preserves their relative folder layout in the output. It also
+selects each model's `.a` animation from its `.ac` file or conventional filename
+and exports textures automatically. Pass `--no-anim` for geometry-only output.
 
 For the AirElemental unit the generated `.g` matches the original in positions,
 normals, UVs, triangle indices, bone names/matrices and material.  The only
