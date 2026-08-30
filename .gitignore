@@ -6,3 +6,6 @@ build/
 dist/
 *.spec
 release/d3tool-dist/
+build_stage/
+build_stage_exe/
+release/d3tool-dist-exe/

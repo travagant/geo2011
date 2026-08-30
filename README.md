@@ -80,6 +80,22 @@ release/d3tool-dist/d3tool.bat --help       # Windows
 The folder is ignored by Git (`release/d3tool-dist/`); `release/build.sh` is
 tracked so the bundle can always be reproduced from source.
 
+### Standalone executable (a real `.exe`)
+
+If the target machine has no Python at all, build a single self-contained
+binary with PyInstaller — PyInstaller is installed automatically if missing:
+
+```bash
+python3 release/build_exe.py        # Linux / macOS
+release\build_exe.bat               # Windows: double-click or terminal
+```
+
+This produces `release/d3tool-dist-exe/d3tool.exe` (no `.exe` suffix on
+Linux/macOS), smoke-tests it with `--version` and prints usage.  The output
+folder is ignored by Git.  Note: PyInstaller needs the shared libpython —
+the python.org Windows installer ships it, while this repo's CI sandbox does
+not, so the binary is built on demand, not committed.
+
 ## The CLI interface
 
 The friendly interface (`d3tool/ui.py`) draws a banner, section headers, a
