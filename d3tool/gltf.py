@@ -67,9 +67,10 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
     """
     with open(path, "r", encoding="utf-8") as fh:
         gltf = json.load(fh)
-    base_dir = path.rsplit("/", 1)[0]
+    import os
+    base_dir = os.path.dirname(os.path.abspath(path)) or "."
     uri = gltf["buffers"][0]["uri"]
-    buf = open(f"{base_dir}/{uri}", "rb").read()
+    buf = open(os.path.join(base_dir, uri), "rb").read()
 
     # ---- mesh / skin ----
     mesh = gltf["meshes"][0]
@@ -136,7 +137,8 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
         )
 
     mesh_name = nodes[0].get("name", "") if nodes else ""
-    geometry_file = path.rsplit("/", 1)[-1]
+    import os
+    geometry_file = os.path.basename(path)
     if geometry_file.endswith(".gltf"):
         geometry_file = geometry_file[: -len(".gltf")]
     anim = None
