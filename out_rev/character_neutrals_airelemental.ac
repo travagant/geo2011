@@ -1,0 +1,62 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\neutrals\airelemental\character_neutrals_airelemental_iadd.a";
+frame0 1;
+frame1 150;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 3;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 3;
+meshfile "resources\characters\neutrals\airelemental\character_neutrals_airelemental.g";
+}
+state "Attack"
+{
+file "resources\characters\neutrals\airelemental\character_neutrals_airelemental_iadd.a";
+frame0 150;
+frame1 210;
+fps 15.000000;
+priority 256;
+flags 0;
+link "Idle" 1; blend 0;
+meshfile "resources\characters\neutrals\airelemental\character_neutrals_airelemental.g";
+}
+state "Damage"
+{
+file "resources\characters\neutrals\airelemental\character_neutrals_airelemental_iadd.a";
+frame0 210;
+frame1 270;
+fps 15.000000;
+priority 256;
+flags 0;
+link "Idle" 1; blend 0;
+link "Run" 0; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\airelemental\character_neutrals_airelemental.g";
+}
+state "Death"
+{
+file "resources\characters\neutrals\airelemental\character_neutrals_airelemental_iadd.a";
+frame0 270;
+frame1 345;
+fps 15.000000;
+priority 256;
+flags 0;
+meshfile "resources\characters\neutrals\airelemental\character_neutrals_airelemental.g";
+}
+state "Run"
+{
+file "resources\characters\neutrals\airelemental\character_neutrals_airelemental_run.a";
+frame0 1;
+frame1 16;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Idle" 0; blend 3;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\airelemental\character_neutrals_airelemental.g";
+}
