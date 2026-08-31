@@ -539,6 +539,11 @@ def _part_block(part: MeshPart) -> bytes:
         struct.pack_into("<I", patched, 12, vc)
         struct.pack_into("<I", patched, 16, tc)
         prefix = bytes(patched)
+    elif not prefix:
+        # a part rebuilt without a donor: synthesize the standard container
+        # block — the 28-byte header [tag 2, id, 0, vc, tc, 0, 6] plus the
+        # 56-byte scene-node block — so the parser can recover the part
+        prefix = struct.pack("<7I", 2, 0, 0, vc, tc, 0, 6) + _scene_matrix()
 
     attrs = dict(part.attrs)
 

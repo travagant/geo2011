@@ -197,6 +197,48 @@ def _default_attrs(mesh, geometry_base: str, res: str) -> dict:
     }
 
 
+def _main_image_uri(gltf_path: str) -> str:
+    """Basename of the image URI of the *main mesh's* material.
+
+    The first image of the file is not necessarily the main mesh's texture
+    (compound units list one image per sub-mesh), so resolve the material
+    chain of ``meshes[0].primitives[0]``: material -> baseColorTexture ->
+    texture -> image.  Falls back to the first real image URI.
+    """
+    try:
+        with open(gltf_path, "r", encoding="utf-8") as fh:
+            doc = json.load(fh)
+    except (OSError, ValueError):
+        return ""
+    images = doc.get("images") or []
+
+    def _clean(img_index):
+        if 0 <= img_index < len(images):
+            uri = images[img_index].get("uri") or ""
+            if uri and not uri.startswith("data:"):
+                return os.path.basename(uri)
+        return ""
+
+    mesh0 = (doc.get("meshes") or [{}])[0]
+    prim0 = (mesh0.get("primitives") or [{}])[0]
+    mi = prim0.get("material")
+    if mi is not None:
+        try:
+            mat = doc["materials"][mi]
+            ti = mat["pbrMetallicRoughness"]["baseColorTexture"]["index"]
+            si = doc["textures"][ti].get("source")
+            uri = _clean(si)
+            if uri:
+                return uri
+        except (KeyError, IndexError, TypeError):
+            pass
+    for img_index in range(len(images)):
+        uri = _clean(img_index)
+        if uri:
+            return uri
+    return ""
+
+
 def _resource_root(gltf_path: str, base: str) -> str:
     """Derive the game resource directory (backslash path) for a glTF.
 
@@ -352,6 +394,15 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
         attrs = dict(donor.attrs)
     else:
         attrs = _default_attrs(sm, base, res)
+        # without a donor the texture name is unknowable from the GM side;
+        # the glTF image URI is the only source of truth (it may differ
+        # from the file base: Wolfsnow ships `character_neutral_*.dds`
+        # for `character_neutrals_*`), and the engine convention is the
+        # `.tga` spelling the forward export renames back to `.dds`
+        uri0 = _main_image_uri(gltf_path)
+        if uri0:
+            attrs["material0_diffuse"] = \
+                os.path.splitext(uri0)[0] + ".tga"
     # textures (glTF .dds -> native .t), and point the .g at the emitted file
     emitted = _export_textures(gltf_path, out_dir, base, quiet)
     if emitted and "material0_diffuse" not in attrs:

@@ -491,7 +491,8 @@ def mesh_to_skinned(m: GltfModel, weights_on_vertex: int = 0,
                       else sub.lightmap),
             vertex_magic=(dpart.vertex_magic if dpart is not None
                           else b""),
-            attrs=(dict(dpart.attrs) if dpart is not None else {}),
+            attrs=(dict(dpart.attrs) if dpart is not None else
+                   _synth_part_attrs(sub, sbones)),
             attr_items=(list(dpart.attr_items) if dpart is not None else []),
             part_prefix=(dpart.part_prefix if dpart is not None else b""),
             part_tail=(dpart.part_tail if dpart is not None else b""),
@@ -562,6 +563,38 @@ def _morph_record(tag: int, name: str, frames: int, vc: int,
     total = 24 + len(nb) + len(positions)
     return (struct.pack("<6I", 14, total - 8, tag, frames, vc, len(nb))
             + nb + positions)
+
+
+def _synth_part_attrs(sub: GltfModel, sbones: List[Bone]) -> Dict[str, str]:
+    """Attribute block for a sub-mesh rebuilt without a donor part.
+
+    The writer only patches counts into an *existing* attribute dict and
+    adds nothing else, so a donorless part needs the counts seeded here —
+    plus the `material0_diffuse` the glTF primitive already carries (the
+    per-part texture name is otherwise lost, e.g. the Leader variant
+    sets reference 8 body parts each with its own texture).
+    """
+    if not sub.material_diffuse:
+        return {}
+    attrs = {
+        "dwNode": "375048704",
+        "dwParent": "55867360",
+        "name": sub.mesh_name,
+        "groupname": "Scene Root",
+        "materials_num": "1",
+        "material0_diffuse": sub.material_diffuse,
+        "material0_triangles_num": str(len(sub.indices) // 3),
+    }
+    if sub.morph:
+        # a morph-deformer part keeps 40-byte records and no weight keys
+        attrs["morph"] = "1"
+        attrs["morph_track"] = "1"
+    else:
+        # declare the record layout the writer emits for this part
+        attrs["vertexs_weights_num"] = str(sub.vertex_count)
+        attrs["weights_on_vertex"] = str(sub.weights_on_vertex)
+        attrs["bones_num"] = str(len(sbones))
+    return attrs
 
 
 def _split_concat_anim(anim: "animmod.AnimFile", m: GltfModel,

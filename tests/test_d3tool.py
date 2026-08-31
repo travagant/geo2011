@@ -1682,3 +1682,61 @@ def test_reverse_export_splits_concatenated_angel_streams():
         got = open(os.path.join(d, stem + "_idle.a"), "rb").read()
     want = open(os.path.join(folder, stem + "_idle.a"), "rb").read()
     assert got == want, f"angel idle: {len(got)}B != {len(want)}B"
+
+
+def test_donorless_reverse_rebuilds_valid_compound_g():
+    """The Leader variant sets ship a reference glTF but no original `.g`.
+    The donorless reverse must still produce a *structurally valid*
+    compound `.g` (all parts recoverable, per-part materials carried) and
+    the full glTF -> GM -> glTF cycle must close EXACTLY for a unit whose
+    authoring data is fully expressible (Wolfsnow)."""
+    folder = os.path.join(REPO, "Empire", "Leader-Archmage")
+    stem = "character_empire_leader-archmage_set1"
+    with tempfile.TemporaryDirectory() as d:
+        climod._export(os.path.join(folder, stem + ".gltf"), d, 0,
+                       anim=True, quiet=True)
+        mesh = gfile.parse_geometry_file(
+            open(os.path.join(d, stem + ".g"), "rb").read())
+        assert not mesh.parse_error
+        assert len(mesh.parts) == 8, f"expected 8 parts, got {len(mesh.parts)}"
+        assert not mesh.trailing, "parts must consume the trailing block"
+        for p in mesh.parts:
+            assert p.attrs.get("material0_diffuse"), \
+                f"{p.name}: donorless part must carry material0_diffuse"
+        anim = climod._find_animation_for_geometry(
+            os.path.join(d, stem + ".g"))
+        gt, _bt = climod._export_gl(
+            os.path.join(d, stem + ".g"), anim,
+            os.path.join(d, "cycle.gltf"), texture=None, quiet=True)
+        mine = json.load(open(gt))
+    ref = json.load(open(os.path.join(folder, stem + ".gltf")))
+    assert len(mine.get("materials", [])) == len(ref.get("materials", []))
+    assert [i.get("uri") for i in mine.get("images", [])] == \
+        [i.get("uri") for i in ref.get("images", [])]
+
+
+def test_donorless_reverse_adopts_main_material_from_glTF():
+    """Wolfsnow's texture name differs from the file base and no `.g`
+    donor exists; the reverse must take `material0_diffuse` from the main
+    primitive's glTF material so the cycle closes byte-for-byte."""
+    folder = os.path.join(REPO, "Neutrals", "Wolfsnow")
+    stem = "character_neutrals_wolfsnow"
+    with tempfile.TemporaryDirectory() as d:
+        climod._export(os.path.join(folder, stem + ".gltf"), d, 0,
+                       anim=True, quiet=True)
+        attrs, _ = gfile.parse_attributes(
+            open(os.path.join(d, stem + ".g"), "rb").read())
+        assert attrs["material0_diffuse"] == "character_neutral_wolfsnow.tga"
+        gt, bt = climod._export_gl(
+            os.path.join(d, stem + ".g"),
+            climod._find_animation_for_geometry(
+                os.path.join(d, stem + ".g")),
+            os.path.join(d, "cycle", stem + ".gltf"),
+            texture=None, quiet=True)
+        bin_mine = open(bt, "rb").read()
+        mine = json.load(open(gt))
+    assert bin_mine == \
+        open(os.path.join(folder, stem + ".bin"), "rb").read()
+    ref = json.load(open(os.path.join(folder, stem + ".gltf")))
+    assert mine["images"] == ref["images"]
+    assert mine["materials"] == ref["materials"]

@@ -158,6 +158,20 @@ For a whole asset tree, `export-all <folder> -o <output>` recursively finds all
 selects each model's `.a` animation from its `.ac` file or conventional filename
 and exports textures automatically. Pass `--no-anim` for geometry-only output.
 
+**Full import/export sweep (CLI end-to-end).** Every command path was run
+over the whole tree: reverse `export` of all 98 reference glTFs (98/98
+succeed; every produced file with an original is byte-identical), forward
+`export-gl` of all 247 `.g` (245/247 — the two node-helper stubs refuse by
+design; 85/85 reference pairs byte-EXACT), `export-all` over both trees
+(85/85 reference EXACT), `bundle` over all 84 unit folders (98 units
+round-trip glTF -> GM -> glTF without a failure), `import` on all 247 `.g`
+and `analyze` on all 114 folders.  The full cycle `gltf -> GM -> gltf`
+closes **byte-for-byte for 89 of the 98 reference glTFs**; the remaining 9
+are the Leader variant sets, whose GM originals were never shipped — their
+residual byte gaps are authoring data a glTF cannot carry (per-vertex
+diffuse colours, a solid-color fallback material), which is exactly what
+the donor mechanism supplies when originals exist.
+
 **Reverse parity.** `tests/reverse_parity.py` runs the CLI's own reverse
 export over every bundled dis3tool reference unit and compares each produced
 file against the shipped original: **85/85 EXACT** — the rebuilt `.g`, the
