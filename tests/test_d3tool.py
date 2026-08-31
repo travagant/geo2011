@@ -127,14 +127,19 @@ def test_ac_bundled_roundtrip_semantic():
         cfg1 = acmod.parse_ac(data)
         cfg2 = acmod.parse_ac(acmod.write_ac(cfg1))
         assert sig(cfg2) == sig(cfg1), os.path.basename(p)
-    # byte-identity holds except for the lone blank-line case (Wolfsnow)
+    # byte-identity holds except for three purely-cosmetic originals: a blank
+    # line inside a state body (Wolfsnow / Watersnake cast) and a stray
+    # trailing space after a frame1 value (large orc ship).  Statements parse
+    # identically (asserted semantically above).
     mismatch = [os.path.basename(p) for p in
                 sorted(glob.glob(os.path.join(REPO, "Neutrals", "*", "*.ac")))
                 if acmod.write_ac(acmod.parse_ac(
                     open(p, "r", encoding="utf-8-sig", errors="replace").read()
                 )).rstrip() != open(p, "r", encoding="utf-8-sig",
                                     errors="replace").read().rstrip()]
-    assert mismatch == ["character_neutrals_wolfsnow.ac"], mismatch
+    assert mismatch == ["character_large_orc_ship.ac",
+                        "character_neutrals_watersnake_cast.ac",
+                        "character_neutrals_wolfsnow.ac"], mismatch
 
 
 def test_version():
@@ -436,6 +441,116 @@ def test_texture_find_diffuse():
     p = texmod.find_diffuse_texture(g, attrs)
     assert p and os.path.exists(p)
     assert p.endswith((".dds", ".t"))
+
+
+def test_w1_multi_bone_main_mesh_layout():
+    """`weights_on_vertex == 1` with `bones_num > 1` actually stores the full
+    w=2 record (1.0 weight + two joint bytes); the parser must read the main
+    mesh with the w=2 stride, like dis3tool's lod_empire_golem export, and
+    the file must rebuild byte-for-byte."""
+    p = os.path.join(REPO, "Empire", "Golem",
+                     "character_empire_golem_lod.g")
+    data = open(p, "rb").read()
+    mesh = gfile.parse_geometry_file(data)
+    assert not mesh.raw, "golem_lod must parse structurally (no raw fallback)"
+    assert mesh.weights_on_vertex == 2
+    xs = [v.position[0] for v in mesh.vertices]
+    assert -100.0 < min(xs) < max(xs) < 100.0, "positions must be sane floats"
+    attrs, _ = gfile.parse_attributes(data)
+    assert gfile.write_geometry_file(mesh, attrs) == data
+
+
+def test_zombie_compound_weights_normalized():
+    """Zombie is a compound container (body + weapon); the compound export
+    must keep the implied-weight lane (2.65e-05) so that WEIGHTS_0 sums to
+    exactly 1.0 per vertex — mirroring the reference dis3tool export."""
+    import tempfile
+    base = os.path.join(REPO, "Neutrals", "Zombie",
+                        "character_neutrals_zombie")
+    mesh = gfile.parse_geometry_file(open(base + ".g", "rb").read())
+    an = animmod.parse_anim(open(base + "_baseanims.a", "rb").read())
+    assert mesh.parts, "zombie must parse as a compound container"
+    with tempfile.TemporaryDirectory() as d:
+        gp = os.path.join(d, "u.gltf")
+        gltf_out.write_gltf_to(gp, mesh, an)
+        doc = json.load(open(gp, "r", encoding="utf-8"))
+        binb = open(os.path.join(d, "u.bin"), "rb").read()
+        pr = doc["meshes"][0]["primitives"][0]
+
+        def acc(index, ncomp, fmt):
+            a = doc["accessors"][index]
+            bv = doc["bufferViews"][a["bufferView"]]
+            off = bv.get("byteOffset", 0) + a.get("byteOffset", 0)
+            stride = bv.get("byteStride", ncomp * struct.calcsize(fmt))
+            return [struct.unpack_from("<" + fmt * ncomp, binb,
+                                       off + i * stride)
+                    for i in range(a["count"])]
+
+        w = acc(pr["attributes"]["WEIGHTS_0"], 4, "f")
+        j = acc(pr["attributes"]["JOINTS_0"], 4, "B")
+        for wi, ji in zip(w, j):
+            sums = {}
+            for ww, jj in zip(wi, ji):
+                sums[jj] = sums.get(jj, 0.0) + ww
+            assert abs(sum(sums.values()) - 1.0) < 1e-5, (wi, ji)
+
+
+def test_morph_only_animation_has_frames_input():
+    """A morph-stream-only .a (no bone tracks, e.g. fatimp_lod.a) must still
+    produce a valid `frames` sampler input — never a null-reference sampler."""
+    import tempfile
+    base = os.path.join(REPO, "Neutrals", "FatImp",
+                        "character_neutrals_fatimp")
+    mesh = gfile.parse_geometry_file(open(base + ".g", "rb").read())
+    an = animmod.parse_anim(open(base + "_lod.a", "rb").read())
+    with tempfile.TemporaryDirectory() as d:
+        gp = os.path.join(d, "u.gltf")
+        gltf_out.write_gltf_to(gp, mesh, an)
+        doc = json.load(open(gp, "r", encoding="utf-8"))
+        for anim in doc.get("animations", []):
+            for smp in anim["samplers"]:
+                assert smp["input"] is not None
+                assert smp["output"] is not None
+        errors, warnings, infos = gltf_out.validate_gltf(
+            gp)
+        assert errors == 0
+
+
+def test_stub_g_gives_raw_passthrough_and_clean_export_error():
+    """The two bundled loader stubs (602-byte placeholder .g files) fall back
+    to raw passthrough: .g serialization stays lossless, and glTF export
+    must refuse with a readable error, not crash inside `min()`."""
+    import tempfile
+    p = os.path.join(REPO, "Empire", "Leader-Ranger",
+                     "character_empire_leader-ranger.g")
+    data = open(p, "rb").read()
+    mesh = gfile.parse_geometry_file(data)
+    assert mesh.raw, "leader stub must fall back to raw passthrough"
+    # .g serialization stays lossless for the stub
+    assert gfile.write_geometry_file(mesh, {}) == data
+    # glTF export refuses with a readable error
+    with tempfile.TemporaryDirectory() as d:
+        out = os.path.join(d, "u.gltf")
+        try:
+            gltf_out.write_gltf_to(out, mesh, None)
+        except ValueError as exc:
+            assert "empty mesh" in str(exc)
+        else:
+            raise AssertionError("expected ValueError for a stub mesh")
+
+
+def test_parse_attributes_corrupt_bytes_raise_valueerror():
+    """`parse_attributes` on garbage must raise a readable ValueError, not a
+    struct.error with nonsense offsets."""
+    data = open(os.path.join(REPO, "Empire", "Leader-Ranger",
+                             "character_empire_leader-ranger.g"),
+                "rb").read()
+    try:
+        gfile.parse_attributes(data)
+    except ValueError as exc:
+        assert "attribute block" in str(exc)
+    else:
+        raise AssertionError("expected ValueError for a corrupt .g stub")
 
 
 def main():

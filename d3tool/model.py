@@ -92,6 +92,53 @@ class Bone:
 
 
 @dataclass
+class MorphTrack:
+    """Vertex-morph stream stored in an `.a` file's trailing block.
+
+    Layout (little-endian): ``[u32 14][u32 len-8][u32 15][frame_count]
+    [vertex_count][name_len][name + NUL]`` then ``frame_count * vertex_count
+    * 3`` float32 positions.  dis3tool lifts every frame into a glTF morph
+    target and synthesises the identity ``morph_weights`` matrix.
+    """
+
+    name: str = ""
+    frame_count: int = 0
+    vertex_count: int = 0
+    # raw position bytes: frame-major, vertex_count * vec3 float32 per frame
+    positions: bytes = b""
+
+
+@dataclass
+class MeshPart:
+    """One sub-mesh of a compound `.g` container (after the first mesh).
+
+    Empire characters stack several mesh nodes in a single `.g` — weapon
+    (``w = 1``), body, hair and a morph cloak — each introduced by a
+    ``[7 x u32]`` header (tag 2, id, 0, vertex_count, tri_count, ?, 6), a
+    56-byte scene block and its own attribute block.  ``raw`` keeps the exact
+    original sub-block bytes so the compound round-trips byte-for-byte.
+    """
+
+    name: str = ""
+    vertex_count: int = 0
+    tri_count: int = 0
+    vertices: List[Vertex] = field(default_factory=list)
+    indices: List[int] = field(default_factory=list)
+    bones: List[Bone] = field(default_factory=list)
+    weights_on_vertex: int = 0
+    morph: bool = False
+    material_diffuse: str = ""
+    vertex_magic: bytes = b""
+    # lightmap UV block (vc * vec2 float32), exported as TEXCOORD_1
+    lm_uv: bytes = b""
+    # material0_lightmap value (dis3tool puts it into glTF normalTexture)
+    lightmap: str = ""
+    attrs: Dict[str, str] = field(default_factory=dict)
+    # verbatim sub-block bytes (header + scene + attrs + arrays + bones)
+    raw: bytes = b""
+
+
+@dataclass
 class SkinnedMesh:
     name: str = ""
     geometry_file: str = ""
@@ -118,6 +165,22 @@ class SkinnedMesh:
     # verbatim instead of re-serialising (used for compound / non-character
     # .g files whose layout is not a single character mesh)
     raw: bytes = b""
+    # (header-less node stub: prelude first, no names, e.g. Leader-Ranger's
+    # BaseMesh helper).  Only affects write_geometry_file.
+    form: str = "classic"
+    # a boneless vertex-morph mesh (attr `morph`/`morph_track`): positions
+    # live in 40-byte records and the actual shape comes from the `.a` morph
+    # stream (compounds can also have a *base* morph mesh, e.g. the
+    # Kingsguard raincoat).
+    morph: bool = False
+    # lightmap UV block (vc * vec2 float32) sitting between the index block
+    # and the bone descriptors; exported as TEXCOORD_1.
+    lm_uv: bytes = b""
+    # material0_lightmap value (dis3tool puts it into glTF normalTexture)
+    lightmap: str = ""
+    # additional sub-meshes of a compound container (mesh 2..N); the first
+    # mesh is described by this SkinnedMesh's own fields.
+    parts: List[MeshPart] = field(default_factory=list)
 
 
 @dataclass
