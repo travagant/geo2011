@@ -22,6 +22,7 @@ import struct
 import sys
 import textwrap
 import traceback
+from typing import List, Optional, Tuple
 
 from . import __version__
 from . import ac as acmod
@@ -61,7 +62,18 @@ def _analyze_unit(path: str) -> int:
         try:
             data = open(g, "rb").read()
             mesh = gfile.parse_geometry_file(data)
-            flag = " (compound)" if mesh.raw else ""
+            if mesh.parse_error:
+                # A file we could not structure at all is an error, not a
+                # compound container: `analyze`'s exit code is documented as
+                # script-usable, so it must not pass corrupt input silently.
+                ui.fail(f"{os.path.basename(g)}: unparsed ({mesh.parse_error})")
+                had_error = 1
+                continue
+            # `raw` is set by compound containers too, so it is not on its
+            # own evidence of a compound mesh — only `parts` is.
+            flag = " (compound)" if mesh.parts else ""
+            if mesh.form == "stub":
+                flag = " (node helper)"
             g_rows.append((os.path.basename(g),
                            str(mesh.vertex_count),
                            str(mesh.tri_count),
@@ -226,8 +238,25 @@ def _export_textures(gltf_path: str, out_dir: str, base: str,
         if os.path.exists(src_t):
             with open(src_t, "rb") as fh:
                 orig_header = fh.read()[:59]
+        try:
+            payload = texmod.dds_to_t(data, orig_header, os.path.basename(src))
+        except ValueError as exc:
+            # An unreadable source texture must not sink the whole unit export
+            # (e.g. OrcKing's sword ships a .dds whose header declares 24-bit
+            # RGB while the payload is 32-bit — dis3tool wrote it that way).
+            # The native `.t` next to it is authoritative, so pass it through.
+            if orig_header is not None and os.path.exists(src_t):
+                with open(src_t, "rb") as fh:
+                    payload = fh.read()
+                if not quiet:
+                    ui.warn(f"{os.path.basename(src)}: {exc} — reusing the "
+                            f"shipped {stem}.t verbatim")
+            else:
+                if not quiet:
+                    ui.warn(f"{os.path.basename(src)}: not converted — {exc}")
+                continue
         with open(out_t, "wb") as fh:
-            fh.write(texmod.dds_to_t(data, orig_header, os.path.basename(src)))
+            fh.write(payload)
         if not quiet:
             ui.wrote(out_t, "converted from .dds")
         if first is None:
@@ -243,7 +272,11 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
 
     m = gltfmod.load_gltf(gltf_path, weights_on_vertex=weights_on_vertex)
     sm = gltfmod.mesh_to_skinned(m, weights_on_vertex=weights_on_vertex)
-    base = os.path.basename(gltf_path)[: -len(".gltf")]
+    # Derive the unit base with splitext, not by chopping a fixed 5 chars:
+    # `d3tool export unit.glb` used to produce "unit.g" AND fail to locate the
+    # sibling unit.scene/unit.ac (the lookups key off this base), silently
+    # dropping every particle emitter and every event2 entry.
+    base = os.path.splitext(os.path.basename(gltf_path))[0]
     os.makedirs(out_dir, exist_ok=True)
     res = _resource_root(gltf_path, base)
     attrs = _default_attrs(sm, base, res)
@@ -273,10 +306,12 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
     out_scene = os.path.join(out_dir, base + ".scene")
     src_scene = os.path.join(os.path.dirname(gltf_path), base + ".scene")
     if os.path.exists(src_scene):
-        with open(src_scene, "r", encoding="utf-8") as fh:
-            scene_text = fh.read()
-        with open(out_scene, "w", encoding="utf-8") as fh:
-            fh.write(scene_text)
+        # Some shipped `.scene` files are Latin-1, not UTF-8 (the two large
+        # Neutrals/Ship scenes), and `_export` must copy them verbatim.
+        with open(src_scene, "rb") as fh:
+            scene_bytes = fh.read()
+        with open(out_scene, "wb") as fh:
+            fh.write(scene_bytes)
         if not quiet:
             ui.wrote(out_scene, "reused (particle emitters preserved)")
     else:
@@ -287,13 +322,49 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
         if not quiet:
             ui.wrote(out_scene, "generated (no particles)")
 
-    # animation config
+    # animation config — reuse the original when it ships next to the glTF,
+    # exactly like the `.scene`.  Regenerating it from the template would drop
+    # every `event2` entry (the attack/damage/death sound aliases and the
+    # FxStrike/fxcast cues): the AirElemental alone carries seven of them.
     anim_files = acmod.detect_anim_files(os.path.dirname(gltf_path), base)
-    cfg = acmod.default_ac(f'{res}\\{base}.g', f'{res}\\{base}', anim_files)
-    with open(os.path.join(out_dir, base + ".ac"), "w", encoding="utf-8") as fh:
-        fh.write(acmod.write_ac(cfg))
-    if not quiet:
-        ui.wrote(os.path.join(out_dir, base + ".ac"))
+    out_ac = os.path.join(out_dir, base + ".ac")
+    src_ac = os.path.join(os.path.dirname(gltf_path), base + ".ac")
+    if os.path.exists(src_ac):
+        with open(src_ac, "rb") as fh:
+            ac_bytes = fh.read()
+        with open(out_ac, "wb") as fh:
+            fh.write(ac_bytes)
+        if not quiet:
+            ui.wrote(out_ac, "reused (event2 sound/FX entries preserved)")
+    else:
+        cfg = acmod.default_ac(f'{res}\\{base}.g', f'{res}\\{base}', anim_files)
+        with open(out_ac, "w", encoding="utf-8") as fh:
+            fh.write(acmod.write_ac(cfg))
+        if not quiet:
+            ui.wrote(out_ac, "generated (no source .ac to preserve)")
+
+    # Sound/FX aliases.  The reused `.ac` above references them by resource
+    # path (``...\\Aliases\\Attack00.alias``) but nothing copies that folder,
+    # so the exported unit would ship with dangling event2 references — 2065
+    # of them across the 80 bundled `.ac` files that carry any.
+    src_alias_dir = os.path.join(os.path.dirname(gltf_path), "Aliases")
+    if os.path.isdir(src_alias_dir):
+        n_alias = 0
+        for cur, _dirs, files in os.walk(src_alias_dir):
+            rel = os.path.relpath(cur, src_alias_dir)
+            dst_dir = os.path.join(out_dir, "Aliases")
+            if rel != ".":
+                dst_dir = os.path.join(dst_dir, rel)
+            os.makedirs(dst_dir, exist_ok=True)
+            for fn in files:
+                with open(os.path.join(cur, fn), "rb") as fh:
+                    payload = fh.read()
+                with open(os.path.join(dst_dir, fn), "wb") as fh:
+                    fh.write(payload)
+                n_alias += 1
+        if not quiet:
+            ui.wrote(os.path.join(out_dir, "Aliases"),
+                     f"{n_alias} sound/FX alias files (referenced by the .ac)")
 
     # animation binary
     if anim:
@@ -363,7 +434,6 @@ def _resolve_texture(g_path: str, attrs, texture: Optional[str],
             ui.wrote(out_dds, "converted from .t")
     elif src.lower().endswith(".dds"):
         # copy the .dds so the glTF can be rooted in any output directory
-        import shutil
         with open(src, "rb") as fh:
             data = fh.read()
         with open(out_dds, "wb") as fh:
@@ -421,15 +491,81 @@ def _emit_compound_textures(g_path: str, mesh, out_dir: str,
                 ui.fail(f"{dds}: texture conversion failed — {exc}")
 
 
+def _load_anim_stream(g_path: str, anim_path: str, quiet: bool):
+    """Load the animation for a forward export, concatenating if needed.
+
+    When the unit's `.ac` names several `.a` files dis3tool exports them as one
+    animation spanning every stream, so a single file would come out short
+    (Angel: 64 of 263 frames).  Concatenate them in `.ac` order instead;
+    :func:`d3tool.anim.concat_anims` passes a lone stream through untouched.
+    """
+    folder = os.path.dirname(os.path.abspath(g_path))
+    stem = os.path.splitext(os.path.basename(g_path))[0]
+    main_stem = stem[:-4] if stem.lower().endswith("_lod") else stem
+    streams: List[str] = []
+    try:
+        for name in acmod.detect_anim_files(folder, main_stem).values():
+            if name and name not in streams \
+                    and os.path.isfile(os.path.join(folder, name)):
+                streams.append(name)
+    except Exception:  # noqa: BLE001 - never let this break an export
+        streams = []
+    chosen = os.path.basename(anim_path)
+    if len(streams) < 2 or chosen not in streams:
+        return animmod.parse_anim(open(anim_path, "rb").read())
+    # `.ac` order, starting from the requested stream, then the rest
+    ordered = [chosen] + [n for n in streams if n != chosen]
+    parsed = [animmod.parse_anim(open(os.path.join(folder, n), "rb").read())
+              for n in ordered]
+    anim = animmod.concat_anims(parsed)
+    if not quiet:
+        ui.info(f"{chosen}: concatenated {len(ordered)} animation streams "
+                f"({', '.join(ordered)}) into {anim.frame_count} frames")
+    return anim
+
+
+def _warn_if_animation_truncated(g_path: str, anim, anim_path: str) -> None:
+    """Warn when the chosen `.a` covers only part of the unit's animation.
+
+    dis3tool concatenates *every* distinct `.a` that the unit's `.ac`
+    references (verified on all 24 bundled units that reference more than one:
+    the reference glTF frame count equals the sum, e.g. Angel 64+84+28+32+55 =
+    263).  d3tool currently exports a single stream, so those units come out
+    short — say so instead of writing a silently truncated animation.
+    """
+    folder = os.path.dirname(os.path.abspath(g_path))
+    stem = os.path.splitext(os.path.basename(g_path))[0]
+    main_stem = stem[:-4] if stem.lower().endswith("_lod") else stem
+    try:
+        states = acmod.detect_anim_files(folder, main_stem)
+    except Exception:  # noqa: BLE001 - a warning must never break the export
+        return
+    seen: List[str] = []
+    for name in states.values():
+        if name and name not in seen:
+            seen.append(name)
+    if len(seen) < 2:
+        return
+    total = 0
+    for name in seen:
+        p = os.path.join(folder, name)
+        if os.path.isfile(p):
+            total += animmod.parse_anim(open(p, "rb").read()).frame_count
+    if total > anim.frame_count:
+        ui.warn(f"{os.path.basename(anim_path)} covers {anim.frame_count} of "
+                f"{total} frames: the .ac references {len(seen)} animation "
+                f"files ({', '.join(seen)}) and dis3tool concatenates them")
+
+
 def _export_gl(g_path: str, anim_path: Optional[str], out: Optional[str],
-               texture: Optional[str], quiet: bool = False) -> None:
+               texture: Optional[str], quiet: bool = False) -> Tuple[str, str]:
     if not quiet:
         ui.section("Forward export  Disciples 3 → glTF")
     data = open(g_path, "rb").read()
     mesh = gfile.parse_geometry_file(data)
     anim = None
     if anim_path:
-        anim = animmod.parse_anim(open(anim_path, "rb").read())
+        anim = _load_anim_stream(g_path, anim_path, quiet)
     if not out:
         out = (g_path[: -len(".g")] if g_path.endswith(".g") else g_path + ".gltf")
     attrs, _ = gfile.parse_attributes(data)
@@ -499,7 +635,7 @@ def _export_all(folder: str, out_dir: str, use_anim: bool = True) -> int:
         ui.fail(f"no such folder: {folder}")
         return 1
 
-    g_files = []
+    g_files: list = []
     for current, dirs, files in os.walk(root):
         # Do not accidentally consume a previous export when output is inside
         # the source tree.
@@ -539,50 +675,87 @@ def _export_all(folder: str, out_dir: str, use_anim: bool = True) -> int:
 # --------------------------------------------------------------------------- #
 #  bundle: full pipeline over a unit folder
 # --------------------------------------------------------------------------- #
-def _bundle(folder: str, out_dir: Optional[str], weights_on_vertex: int) -> None:
+def _bundle(folder: str, out_dir: str, weights_on_vertex: int) -> int:
+    """Run the full glTF↔GM pipeline over every `.gltf` in *folder*.
+
+    Returns 0 when every unit round-tripped, 1 otherwise (so scripts can tell).
+    """
     gltf_files = sorted(glob.glob(os.path.join(folder, "*.gltf")))
     if not gltf_files:
         ui.fail(f"no .gltf found in {folder}")
-        return
+        return 1
 
     ui.section(f"Bundle {folder}")
+    failed = 0
     for gltf in gltf_files:
         ui.info(f"processing {os.path.basename(gltf)}")
-        d = os.path.join(out_dir, os.path.splitext(os.path.basename(gltf))[0])
-        os.makedirs(d, exist_ok=True)
-        _export(gltf, d, weights_on_vertex, quiet=True)
-        # forward round-trip back
         base = os.path.splitext(os.path.basename(gltf))[0]
+        d = os.path.join(out_dir, base)
+        try:
+            os.makedirs(d, exist_ok=True)
+            _export(gltf, d, weights_on_vertex, quiet=True)
+        except Exception as exc:  # noqa: BLE001 - one bad unit must not abort
+            # the batch: report it against its own name and carry on, the way
+            # _export_all does for forward exports.
+            ui.fail(f"{base}: reverse export failed — {exc}")
+            failed += 1
+            continue
+        # forward round-trip back
         g_path = os.path.join(d, base + ".g")
-        a_path = os.path.join(d, base + "_iadd.a")
+        # the reverse export names the rebuilt `.a` after the unit's own
+        # `.ac` entry, which is not always `<base>_iadd.a`
+        rebuilt = sorted(glob.glob(os.path.join(d, "*.a")))
+        a_path = rebuilt[0] if rebuilt else None
         fwd_dir = os.path.join(d, "gltf")
-        if os.path.exists(g_path):
-            try:
-                _export_gl(g_path,
-                           a_path if os.path.exists(a_path) else None,
-                           os.path.join(fwd_dir, "roundtrip.gltf"),
-                           texture=None, quiet=True)
-                ui.ok(f"{base} → glTF round-trip wrote gltf/roundtrip.gltf")
-            except Exception as exc:  # noqa: BLE001
-                ui.fail(f"{base}: forward export failed — {exc}")
-        else:
+        if not os.path.exists(g_path):
             ui.fail(f"{base}: .g was not produced")
+            failed += 1
+            continue
+        try:
+            _export_gl(g_path, a_path,
+                       os.path.join(fwd_dir, "roundtrip.gltf"),
+                       texture=None, quiet=True)
+            ui.ok(f"{base} → glTF round-trip wrote gltf/roundtrip.gltf")
+        except Exception as exc:  # noqa: BLE001
+            ui.fail(f"{base}: forward export failed — {exc}")
+            failed += 1
 
     print("")
-    ui.info(f"bundle written to {out_dir}")
+    ui.info(f"bundle written to {out_dir}"
+            + (f"  ({failed} failed)" if failed else ""))
+    return 1 if failed else 0
 
 
 # --------------------------------------------------------------------------- #
 #  texture conversion
 # --------------------------------------------------------------------------- #
+def _format_label(info) -> str:
+    """Human-readable pixel-format name for a ``.t`` / ``.dds`` container.
+
+    Only the block-compressed forms carry a DDS fourCC; the uncompressed GM
+    codes (1/2 = 16-bit, 3 = A1R5G5B5, 4/5 = 32-bit) have none, so the label
+    is derived from the GM code instead of dereferencing a ``None`` fourCC.
+    """
+    # `fourcc` is `data[84:88]`, which is four NUL bytes (truthy!) for the
+    # uncompressed RGB forms, so test for printable ASCII, not truthiness.
+    if info.fourcc and all(32 <= c < 127 for c in info.fourcc):
+        return info.fourcc.decode("latin1")
+    if info.r5g5b5 or info.gm_format == 3:
+        return "16-bit A1R5G5B5"
+    if info.gm_format in (1, 2):
+        return "16-bit uncompressed"
+    if info.gm_format in (4, 5):
+        return "32-bit A8R8G8B8"
+    return f"GM code {info.gm_format}"
+
+
 def _texture_convert(src: str, dst: str, quiet: bool = False) -> None:
     """``d3tool texture convert <in> -o <out>`` — .t <-> .dds."""
     if not quiet:
         ui.section("Texture convert")
     info = texmod.convert_file(src, dst)
     if not quiet:
-        ui.wrote(dst, f"{info.width}x{info.height} "
-                      f"{'16-bit A1R5G5B5' if info.r5g5b5 else info.fourcc.decode()}"
+        ui.wrote(dst, f"{info.width}x{info.height} {_format_label(info)}"
                       f" mips={info.mip_count}")
 
 
@@ -595,12 +768,13 @@ def _texture_info(path: str) -> None:
         info = texmod.parse_dds(data, os.path.basename(path))
     else:
         info = texmod.parse_t(data, os.path.basename(path))
-    fmt = "16-bit A1R5G5B5" if info.r5g5b5 else info.fourcc.decode()
     ui.table([
-        ("format", fmt),
+        ("format", _format_label(info)),
+        ("GM code", str(info.gm_format)),
         ("width", str(info.width)),
         ("height", str(info.height)),
         ("mipmap levels", str(info.mip_count)),
+        ("cubemap faces", str(info.faces)),
         ("payload", f"{len(info.payload)} bytes"),
     ], headers=["field", "value"])
 
@@ -608,6 +782,29 @@ def _texture_info(path: str) -> None:
 # --------------------------------------------------------------------------- #
 #  argparse
 # --------------------------------------------------------------------------- #
+# The GM vertex record only exists for 2/3/4 influence slots (46/51/56 bytes).
+# 0 means auto-detect.  1 is deliberately *not* offered: the writer would use
+# the 40-byte rigid stride while the reader's "w=1 bound to several bones"
+# rule re-reads the same bytes as the 46-byte w=2 stride, so the file could
+# not be parsed back (verified on Wildboar: 2350 vertices -> 0).
+_WOV_CHOICES = (0, 2, 3, 4)
+
+
+def _weights_on_vertex(value: str) -> int:
+    """argparse type for ``--weights-on-vertex``."""
+    try:
+        n = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"expected an integer, got {value!r}") from None
+    if n not in _WOV_CHOICES:
+        raise argparse.ArgumentTypeError(
+            f"{n} is not a valid influence-slot count; use one of "
+            f"{', '.join(str(c) for c in _WOV_CHOICES)} "
+            "(0 = auto-detect from the source glTF)")
+    return n
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="d3tool",
@@ -634,7 +831,8 @@ def _build_parser() -> argparse.ArgumentParser:
     p_export = sub.add_parser("export", help="glTF → GM (.g/.scene/.ac/.a)")
     p_export.add_argument("gltf")
     p_export.add_argument("-o", "--out", default=".")
-    p_export.add_argument("--weights-on-vertex", type=int, default=0,
+    p_export.add_argument("--weights-on-vertex", type=_weights_on_vertex,
+                          default=0, metavar="N",
                           help="influence slots to write (2/3/4; 0=auto-detect)")
     p_export.add_argument("--no-anim", action="store_true",
                           help="do not rebuild the .a animation file")
@@ -659,7 +857,9 @@ def _build_parser() -> argparse.ArgumentParser:
         "bundle", help="run the full glTF↔GM pipeline over a unit folder")
     p_bundle.add_argument("folder")
     p_bundle.add_argument("-o", "--out", default="bundle")
-    p_bundle.add_argument("--weights-on-vertex", type=int, default=0)
+    p_bundle.add_argument("--weights-on-vertex", type=_weights_on_vertex,
+                          default=0, metavar="N",
+                          help="influence slots to write (2/3/4; 0=auto-detect)")
 
     p_validate = sub.add_parser("validate", help="structural glTF self-check")
     p_validate.add_argument("gltf")
@@ -695,7 +895,7 @@ def main(argv=None) -> int:
     elif args.cmd == "export-all":
         return _export_all(args.folder, args.out, use_anim=not args.no_anim)
     elif args.cmd == "bundle":
-        _bundle(args.folder, args.out, args.weights_on_vertex)
+        return _bundle(args.folder, args.out, args.weights_on_vertex)
     elif args.cmd == "validate":
         if not os.path.exists(args.gltf):
             ui.section("glTF structure check")
@@ -714,6 +914,13 @@ def main(argv=None) -> int:
     elif args.cmd == "import":
         data = open(args.gfile, "rb").read()
         mesh = gfile.parse_geometry_file(data)
+        if mesh.parse_error:
+            # Same rule as `analyze`: an unparseable `.g` is an error, not an
+            # empty mesh.  Printing a zeroed document with exit 0 hands a
+            # script a result it cannot distinguish from a real empty file.
+            ui.fail(f"{os.path.basename(args.gfile)}: unparsed "
+                    f"({mesh.parse_error})")
+            return 1
         print(json.dumps({
             "name": mesh.name,
             "geometry_file": mesh.geometry_file,

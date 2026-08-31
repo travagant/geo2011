@@ -165,8 +165,10 @@ class SkinnedMesh:
     # verbatim instead of re-serialising (used for compound / non-character
     # .g files whose layout is not a single character mesh)
     raw: bytes = b""
-    # (header-less node stub: prelude first, no names, e.g. Leader-Ranger's
-    # BaseMesh helper).  Only affects write_geometry_file.
+    # Container form: ``"classic"`` (120-byte header + two name strings before
+    # the prelude) or ``"stub"`` (a header-less node helper — prelude first, no
+    # name strings, e.g. the Leader-Ranger/Leader-Thief ``BaseMesh`` files).
+    # Set by the reader; write_geometry_file emits the matching layout.
     form: str = "classic"
     # a boneless vertex-morph mesh (attr `morph`/`morph_track`): positions
     # live in 40-byte records and the actual shape comes from the `.a` morph
@@ -176,6 +178,11 @@ class SkinnedMesh:
     # lightmap UV block (vc * vec2 float32) sitting between the index block
     # and the bone descriptors; exported as TEXCOORD_1.
     lm_uv: bytes = b""
+    # set only when the binary could not be parsed at all, in which case
+    # `raw` holds the whole file verbatim.  Distinct from `raw` itself,
+    # which compound containers also use; callers must not read a truthy
+    # `raw` as "compound".
+    parse_error: Optional[str] = None
     # material0_lightmap value (dis3tool puts it into glTF normalTexture)
     lightmap: str = ""
     # additional sub-meshes of a compound container (mesh 2..N); the first

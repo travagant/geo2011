@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 
 @dataclass
@@ -61,8 +61,8 @@ def parse_ac(text: str) -> AnimConfig:
     block_re = re.compile(r'state\s+"([^"]+)"\s*\{(.*?)\}', re.S)
     for name, body in block_re.findall(text):
         st = State(name=name)
-        for line in body.splitlines():
-            line = line.strip().rstrip(";")
+        for raw_line in body.splitlines():
+            line = raw_line.strip().rstrip(";")
             m = re.match(r'file\s+"([^"]+)"', line)
             if m:
                 st.file = m.group(1)
@@ -144,23 +144,60 @@ def default_ac(meshfile: str, anim_base: str,
 
 
 def detect_anim_files(src_dir: str, base: str) -> Dict[str, str]:
-    """Scan ``src_dir`` for `.a` animation files and map them to states.
+    """Resolve the ``.a`` files belonging to geometry ``base`` in ``src_dir``.
 
     Returns a mapping like ``{"Idle": "<basename>", "Run": "<basename>"}``.
-    The most common pattern is one combined animation file (``*_iadd.a`` or
-    ``*_baseanims.a``) plus an optional run-only file (``*_run.a``).
+
+    Resolution order (the folder usually holds *several* units, so the
+    ``base`` argument has to drive the choice — taking "the last ``.a`` in
+    the folder" hands one unit another unit's animation):
+
+    1. the unit's own ``.ac`` (``<base>.ac``, or the main model's config for a
+       ``*_lod`` mesh) — the authoritative source, exactly what the engine
+       loads;
+    2. ``.a`` files whose stem starts with ``base``;
+    3. the conventional ``<base>_iadd.a`` / ``<base>_run.a`` names.
     """
     import glob
     import os
-    candidates = sorted(glob.glob(os.path.join(src_dir, "*.a")))
-    combined = None
-    run = None
-    for c in candidates:
-        n = os.path.basename(c)
-        if "_run." in n:
-            run = n
-        else:
-            combined = n  # last non-run file wins
-    idle_f = combined or f"{base}_iadd.a"
-    run_f = run or f"{base}_run.a"
-    return {"Idle": idle_f, "Run": run_f}
+
+    def _ac_states(stem: str) -> List[Tuple[str, str]]:
+        p = os.path.join(src_dir, stem + ".ac")
+        if not os.path.isfile(p):
+            return []
+        try:
+            with open(p, "r", encoding="utf-8-sig", errors="replace") as fh:
+                cfg = parse_ac(fh.read())
+        except OSError:
+            return []
+        return [(s.name,
+                 os.path.basename(s.file.replace("\\", "/").rsplit("/", 1)[-1]))
+                for s in cfg.states if s.file]
+
+    main_stem = base[:-4] if base.lower().endswith("_lod") else base
+    for stem in dict.fromkeys((base, main_stem)):
+        named = [(nm, n) for nm, n in _ac_states(stem)
+                 if os.path.isfile(os.path.join(src_dir, n))]
+        if named:
+            # Keep *every* state, in `.ac` order.  Collapsing this to just
+            # Idle/Run dropped the Attack/Damage/Death streams: Angel's `.ac`
+            # names five `.a` files totalling 263 frames, and dis3tool
+            # concatenates them into the exported animation.
+            out: Dict[str, str] = {}
+            for nm, n in named:
+                out.setdefault(nm or "Idle", n)
+            out.setdefault("Idle", named[0][1])
+            out.setdefault("Run",
+                           next((n for _nm, n in named if "_run." in n),
+                                named[0][1]))
+            return out
+
+    candidates = sorted(
+        n for n in (os.path.basename(c)
+                    for c in glob.glob(os.path.join(src_dir, "*.a")))
+        if n.startswith(base) or n.startswith(main_stem)
+    )
+    run = next((n for n in candidates if "_run." in n), None)
+    combined = next((n for n in candidates if n is not run), None)
+    return {"Idle": combined or f"{base}_iadd.a",
+            "Run": run or f"{base}_run.a"}

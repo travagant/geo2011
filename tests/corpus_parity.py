@@ -28,7 +28,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from d3tool import ac as acmod            # noqa: E402
-from d3tool import anim as animmod        # noqa: E402
+from d3tool import cli as climod
 from d3tool import gfile                  # noqa: E402
 from d3tool import gltf_out as gltfout    # noqa: E402
 
@@ -99,7 +99,10 @@ def run(root: str, tmp_root: str):
             try:
                 mesh = gfile.parse_geometry_file(open(g_path, "rb").read())
                 a_path = _anim_for(g_path)
-                anim = (animmod.parse_anim(open(a_path, "rb").read())
+                # Use the CLI's own loader rather than re-implementing it: the
+                # exporter concatenates every `.a` the `.ac` references, and a
+                # harness that parses one file would measure a stand-in.
+                anim = (climod._load_anim_stream(g_path, a_path, True)
                         if a_path else None)
                 out_dir = os.path.join(tmp_root, group, os.path.basename(folder))
                 os.makedirs(out_dir, exist_ok=True)
@@ -139,7 +142,15 @@ def run(root: str, tmp_root: str):
 def main():
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     tmp_root = "/tmp/d3bench"
-    results = run(root, tmp_root)
+    # Each run writes ~640 MB of .gltf/.bin output; without this the scratch
+    # tree accumulates across runs and eventually fills the disk (ENOSPC then
+    # surfaces as bogus failures in other tests).
+    import shutil
+    shutil.rmtree(tmp_root, ignore_errors=True)
+    try:
+        results = run(root, tmp_root)
+    finally:
+        shutil.rmtree(tmp_root, ignore_errors=True)
     from collections import Counter
     tally = Counter(st for _, st, _ in results)
     for unit, st, detail in results:

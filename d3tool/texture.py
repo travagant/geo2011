@@ -40,7 +40,7 @@ from __future__ import annotations
 
 import struct
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Dict, Optional
 
 # GM `.t` pixel-format code -> DDS fourCC / block size for compressed codes.
@@ -68,7 +68,7 @@ _T_FMT_16BBP = 3
 # GM format codes for the uncompressed 32-bit A8R8G8B8 form.
 _T_FMT_32BBP = {4, 5}
 # All 16-bit uncompressed GM codes (payload is w*h*2 per mip).
-_T_FMT_16BBP_ALL = {1, 2, 3, 5 - 2}  # {1, 2, 3}
+_T_FMT_16BBP_ALL = {1, 2, 3}
 
 T_HEADER_SIZE = 59
 DDS_HEADER_SIZE = 128
@@ -102,7 +102,14 @@ class TextureInfo:
             return 2  # 16-bit form: 2 bytes per pixel
         if self.gm_format in _T_FMT_32BBP:
             return 4
-        return _T_FMT_TO_DDS[self.gm_format][1]
+        entry = _T_FMT_TO_DDS.get(self.gm_format)
+        if entry is None:
+            raise ValueError(
+                f"unknown GM pixel-format code {self.gm_format!r}; expected "
+                f"one of {sorted(_T_FMT_TO_DDS)} (DXT), "
+                f"{sorted(_T_FMT_16BBP_ALL)} (16-bit) or "
+                f"{sorted(_T_FMT_32BBP)} (32-bit)")
+        return entry[1]
 
     @property
     def uncompressed_bpp(self) -> int:
@@ -193,7 +200,8 @@ def _build_t_header(
         struct.pack_into("<I", hdr, 0, 1)          # container version/magic
         struct.pack_into("<I", hdr, 4, info.gm_format)
         struct.pack_into("<I", hdr, 8, 0)
-        struct.pack_into("<I", hdr, 24, 1 if not info.r5g5b5 else 1)
+        # opaque flag: 1 for every bundled texture that has no source header
+        struct.pack_into("<I", hdr, 24, 1)
         struct.pack_into("<I", hdr, 28, 0)
         for off in (32, 36, 40):
             struct.pack_into("<I", hdr, off, 0x01000000)
@@ -201,8 +209,6 @@ def _build_t_header(
     # Always refresh the fields that describe the pixel data.  The GM format
     # byte is kept when an original header is available: codes 2/3 share the
     # same 16-bit encoding on the DDS side, so only the source `.t` knows it.
-    if orig_header is None:
-        struct.pack_into("<I", hdr, 4, info.gm_format)
     struct.pack_into(
         "<I", hdr, 12, mip_count if mip_count is not None else info.mip_count
     )
@@ -259,6 +265,7 @@ def parse_dds(data: bytes, source: str = "") -> TextureInfo:
         gm_format=gm_format,
         fourcc=fourcc,
         r5g5b5=r5g5b5,
+        faces=6 if _u32(data, 112) & 0x200 else 1,
         payload=data[DDS_HEADER_SIZE:],
         source=source,
     )
@@ -302,6 +309,12 @@ def build_dds_header(info: TextureInfo) -> bytes:
         hdr[84:88] = info.fourcc
     # dwCaps (offset 108): texture | complex | mipmap
     struct.pack_into("<I", hdr, 108, 0x401008)
+    if info.faces > 1:
+        # dwCaps2 (offset 112): DDSCAPS2_CUBEMAP + all six face flags.  Without
+        # this the header describes a 2D texture while the payload carries six
+        # faces, which no DDS loader can reconcile.
+        struct.pack_into("<I", hdr, 112, 0x200 | 0x400 | 0x800 | 0x1000
+                         | 0x2000 | 0x4000 | 0x8000)
     return bytes(hdr)
 
 
@@ -355,7 +368,8 @@ def convert_file(src_path: str, dst_path: str) -> TextureInfo:
         orig = None
         cand = src_path[:-4] + ".t"
         if os.path.exists(cand):
-            orig = open(cand, "rb").read(59)
+            with open(cand, "rb") as fh:
+                orig = fh.read(59)
         out = dds_to_t(data, orig, os.path.basename(src_path))
     else:
         raise ValueError(

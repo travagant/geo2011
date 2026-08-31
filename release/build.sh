@@ -17,7 +17,24 @@ python3 -m zipapp build_stage -p "/usr/bin/env python3" -o release/d3tool-dist/d
 chmod +x release/d3tool-dist/d3tool
 cat > release/d3tool-dist/d3tool.bat <<'BATEOF'
 @echo off
-where py >nul 2>nul && (py -3 "%~dp0d3tool" %*) || (python "%~dp0d3tool" %*)
+rem Launch the d3tool zipapp with whichever Python 3 is available.
+rem
+rem Deliberately NOT `where py && (py ...) || (python ...)`: in cmd that chain
+rem re-runs the program whenever it exits non-zero, so every error path
+rem (d3tool exits 1 for a corrupt asset, a missing file, a failed validate)
+rem would execute twice and the caller would see the second run's code.
+setlocal
+set "D3PY="
+where py >nul 2>nul && set "D3PY=py -3"
+if not defined D3PY (
+    where python >nul 2>nul && set "D3PY=python"
+)
+if not defined D3PY (
+    echo d3tool: no Python 3 found on PATH 1>&2
+    exit /b 9009
+)
+%D3PY% "%~dp0d3tool" %*
+exit /b %ERRORLEVEL%
 BATEOF
 cat > release/d3tool-dist/run.sh <<'SHEOF'
 #!/usr/bin/env bash

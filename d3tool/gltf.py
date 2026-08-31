@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import json
 import struct
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 from . import anim as animmod
 from .model import Bone, GltfModel, SkinnedMesh, Vertex
@@ -90,6 +90,10 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
 
     # ---- nodes / skeleton ----
     nodes = gltf.get("nodes", [])
+    # dis3tool emits *no* `skins` (and no WEIGHTS_0/JOINTS_0) for a rigid,
+    # animation-less export — three bundled references do this (Blacknaga,
+    # CityGuard, WaterSnake_sea) and so does our own compound writer.  Such a
+    # glTF is a plain static mesh: no bone descriptors to read back.
     skin = gltf.get("skins", [None])[0] if gltf.get("skins") else None
     bone_indices: Dict[str, int] = {}
     joints = skin["joints"] if skin else []
@@ -97,20 +101,27 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
     for i, name in enumerate(joint_names):
         bone_indices[name] = i
 
-    # The GM bone descriptor array is *exactly* the glTF inverseBindMatrices
-    # (accessor 6), in the same order as the skin joints.
-    inverse_bind = _read_accessor(gltf, buf, skin["inverseBindMatrices"])
-
     bones: List[Bone] = []
-    for i, j in enumerate(joints):
-        name = nodes[j].get("name", f"bone{i}")
-        bones.append(Bone(name, tuple(inverse_bind[i])))
+    if skin is not None:
+        # The GM bone descriptor array is *exactly* the glTF
+        # inverseBindMatrices, in the same order as the skin joints.
+        inverse_bind = _read_accessor(gltf, buf, skin["inverseBindMatrices"])
+        for i, j in enumerate(joints):
+            name = nodes[j].get("name", f"bone{i}")
+            bones.append(Bone(name, tuple(inverse_bind[i])))
 
     # ---- vertices ----
+    # A rigid export (no skin, no WEIGHTS_0/JOINTS_0) is a plain static mesh:
+    # the GM record carries no influence slots at all (``weights_on_vertex``
+    # 1, the 40-byte record).  Writing it as a 2-slot skin bound to a
+    # non-existent joint 0 would leave dangling indices behind.
+    rigid = skin is None and wts is None and jts is None
     # 0 means "auto-detect": derive the slot count from the actual data so we
     # never drop a real influence (this is what fixes Wildboar's 3-slot skin).
     if weights_on_vertex:
         w_slots = weights_on_vertex
+    elif rigid:
+        w_slots = 1
     else:
         w_slots = detect_weights_on_vertex(wts)
     vertices: List[Vertex] = []
@@ -120,7 +131,8 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
         # dis3tool preserves the glTF influence order (no re-sorting): the
         # GM vertex holds the first `w` slots exactly as they appear.
         weights = list(w[: w_slots])
-        bones_idx = list(jn[: w_slots])
+        # a rigid mesh has no joints at all, so keep the slot list empty
+        bones_idx = [] if rigid else list(jn[: w_slots])
         # GM stores the first w-1 weights; the last is implied.
         stored = list(weights[:-1])
         if not stored:
@@ -258,18 +270,22 @@ def animation_from_gltf(m: GltfModel) -> "animmod.AnimFile":
             if c in animated and 0 <= c < n_nodes:
                 dfs(c)
 
-    for r in roots:
-        dfs(r)
+    for root in roots:
+        dfs(root)
 
     frames = []
+    # `GltfModel` keeps the sampled times in `frames`; a node animated on one
+    # path only (e.g. translation without rotation) needs the *global* frame
+    # count to pad the missing channel.
+    n_global = len(m.frames)
     for i in order:
         name = m.nodes[i].get("name", f"bone{i}")
         # parent name within the animated set, or 'Scene Root'
         p = parent.get(i)
         pname = m.nodes[p].get("name", "Scene Root") if p in animated else "Scene Root"
         ch = m.anim_channels.get(i, {})
-        rotations = ch.get("rotation") or [(0.0, 0.0, 0.0, 1.0)] * m.frame_count
-        translations = ch.get("translation") or [(0.0, 0.0, 0.0)] * m.frame_count
+        rotations = ch.get("rotation") or [(0.0, 0.0, 0.0, 1.0)] * n_global
+        translations = ch.get("translation") or [(0.0, 0.0, 0.0)] * n_global
         samples = []
         nf = max(len(rotations), len(translations))
         for k in range(nf):

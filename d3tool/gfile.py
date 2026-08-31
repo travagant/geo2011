@@ -167,17 +167,45 @@ def parse_geometry_file(data: bytes) -> SkinnedMesh:
     """
     try:
         return _parse_geometry_file(data)
-    except Exception:  # noqa: BLE001 - unknown layout: pass through verbatim
-        return SkinnedMesh(raw=data)
+    except Exception as exc:  # noqa: BLE001 - unknown layout: pass through
+        # Keep the bytes so the file still round-trips, but record *why* the
+        # structured parse gave up.  `raw` alone cannot say this: compound
+        # containers use it too.
+        return SkinnedMesh(raw=data, parse_error=f"{type(exc).__name__}: {exc}")
+
+
+def _locate_attr_block(data: bytes):
+    """Locate the attribute block, returning the container ``form``.
+
+    Two layouts occur in the corpus:
+
+    ``classic``
+        120-byte header, then the two length-prefixed name strings, then the
+        prelude + scene-node block, then the attribute block.
+    ``stub``
+        a header-less node helper (``Empire/Leader-Ranger`` and
+        ``Empire/Leader-Thief`` ship 602-byte ones): the 10-u32 prelude and
+        the 14-float scene block come *first* and there are no name strings,
+        so the attribute block sits at a fixed offset 96.
+
+    Returns ``(form, header, name1, name2, names_end, attr_start)``.
+    """
+    if len(data) >= 120 and _u32(data, 0) == 3:
+        try:
+            o = 120
+            name1, o = _cstr(data, o)
+            name2, o = _cstr(data, o)
+            if 0 <= o <= len(data):
+                return ("classic", data[:120], name1, name2, o,
+                        _find_attr_block(data, o + 4))
+        except (struct.error, ValueError):
+            pass
+    # header-less node stub: no 120-byte header, no name strings
+    return ("stub", b"", b"", b"", 0, _find_attr_block(data, 0))
 
 
 def _parse_geometry_file(data: bytes) -> SkinnedMesh:
-    o = 120
-    name1, o = _cstr(data, o)
-    name2, o = _cstr(data, o)
-    names_end = o
-
-    attr_start = _find_attr_block(data, o + 4)
+    form, header, name1, name2, names_end, attr_start = _locate_attr_block(data)
     attrs, o = _read_attrs(data, attr_start)
 
     w = int(attrs.get("weights_on_vertex", "0" if "morph" in attrs else "2"))
@@ -227,11 +255,16 @@ def _parse_geometry_file(data: bytes) -> SkinnedMesh:
     if not is_morph:
         bones, o = _parse_bone_descriptors(data, o, bones_num)
 
+    # a header-less stub carries no name strings; the `name` attribute
+    # ("BaseMesh" on the Leader stubs) is the only label it has.
+    default_name = (name1.rstrip(b"\x00").decode("latin1")
+                    or attrs.get("name", ""))
     mesh = SkinnedMesh(
-        name=name1.rstrip(b"\x00").decode("latin1"),
-        unit_name=attrs.get("name", name1.rstrip(b"\x00").decode("latin1")),
+        name=default_name,
+        unit_name=attrs.get("name", default_name),
         geometry_file=name2.rstrip(b"\x00").decode("latin1"),
-        vertex_count=vertex_count ,
+        form=form,
+        vertex_count=vertex_count,
         tri_count=tri_count,
         vertices=vertices,
         indices=indices,
@@ -243,7 +276,7 @@ def _parse_geometry_file(data: bytes) -> SkinnedMesh:
         vertex_magic=magic,
         weights_on_vertex=w_eff,
         preamble=data[names_end:attr_start],
-        header=data[:120],
+        header=header,
         trailing=data[o:],
     )
 
@@ -465,10 +498,14 @@ def write_geometry_file(mesh: SkinnedMesh, attrs: Dict[str, str]) -> bytes:
         b = s.encode("latin1") + b"\x00"
         return struct.pack("<I", len(b)) + b
 
-    if len(mesh.header) == 120:
+    if mesh.form == "stub":
+        # Header-less node helper: the prelude + scene-node block come first
+        # and there are no name strings at all.
         header = mesh.header
+        names = b""
     else:
-        header = _header_block()
+        header = mesh.header if len(mesh.header) == 120 else _header_block()
+        names = cstr(mesh.name) + cstr(mesh.geometry_file or mesh.name)
 
     if mesh.preamble:
         # Reuse the asset-specific prelude + scene-node block verbatim so a
@@ -477,7 +514,7 @@ def write_geometry_file(mesh: SkinnedMesh, attrs: Dict[str, str]) -> bytes:
     else:
         preamble = _prelude_block(vc, tc) + _scene_matrix()
 
-    chunks = [header, cstr(mesh.name), cstr(mesh.geometry_file or mesh.name)]
+    chunks = [header, names]
     chunks.append(preamble)
     chunks.append(_attr_block(attrs))
 
@@ -524,21 +561,14 @@ def write_geometry_file(mesh: SkinnedMesh, attrs: Dict[str, str]) -> bytes:
 
 
 def parse_attributes(data: bytes) -> Tuple[Dict[str, str], int]:
-    """Parse only the attribute block; returns (attrs, offset after block)."""
+    """Parse only the attribute block; returns (attrs, offset after block).
+
+    Handles both container forms (see :func:`_locate_attr_block`), so the
+    header-less node stubs parse here too.
+    """
     try:
-        o = 120
-        _, o = _cstr(data, o)
-        _, o = _cstr(data, o)
-        o = _find_attr_block(data, o + 4)
-        num = _u32(data, o)
-        o += 4
-        attrs: Dict[str, str] = {}
-        for _ in range(num):
-            key, o = _cstr(data, o)
-            val, o = _cstr(data, o)
-            attrs[key.rstrip(b"\x00").decode("latin1")] = \
-                val.rstrip(b"\x00").decode("latin1")
-        return attrs, o
-    except (IndexError, struct.error) as exc:
+        _form, _hdr, _n1, _n2, _ne, o = _locate_attr_block(data)
+        return _read_attrs(data, o)
+    except (IndexError, struct.error, ValueError) as exc:
         raise ValueError(f"corrupt or truncated .g attribute block: {exc}") \
             from exc

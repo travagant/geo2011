@@ -83,6 +83,19 @@ other units shift only because the two leading strings have different lengths):
           bone descriptor array
 ```
 
+### Two container forms
+
+`classic` (the overwhelming majority) starts with the 120-byte header above.
+`stub` is a header-less *node helper*: the 10-u32 prelude and the 14-float
+scene-node block come **first**, at offset 0, and there are no name strings,
+so the attribute block sits at a fixed offset 96.  `Empire/Leader-Ranger` and
+`Empire/Leader-Thief` each ship one 602-byte file of this form
+(`name = "BaseMesh"`, `materials_num 0`, four vertices, no index block).
+`gfile._locate_attr_block` detects the form and stores it in
+`SkinnedMesh.form`, which `write_geometry_file` mirrors on output.  Because
+such a file has no triangles, the glTF exporter refuses it with an explicit
+message instead of emitting a skin with zero joints.
+
 ### Counts
 The prelude holds the counts, but the authoritative source is the attribute
 block: `vertexs_weights_num` (vertex count), `material0_triangles_num`
@@ -259,7 +272,7 @@ between them losslessly.
 | offset | type   | meaning |
 |--------|--------|---------|
 | 0x00   | u32    | container version / magic (1) |
-| 0x04   | u32    | pixel-format code: 6=DXT1, 7=DXT3, 8=DXT5, 3=A1R5G5B5 (16-bit) |
+| 0x04   | u32    | pixel-format code (see the table below) |
 | 0x0c   | u32    | mipmap level count |
 | 0x10   | u32    | width |
 | 0x14   | u32    | height |
@@ -267,9 +280,27 @@ between them losslessly.
 | 0x34   | u32    | marker (0x00417000) |
 
 The payload immediately follows at offset 59 (and is byte-identical to the
-`.dds` payload at offset 128).  The `@4` format code maps to the DDS fourCC
-`DXT1`/`DXT3`/`DXT5` or, for code 3, to a 16-bit A1R5G5B5 surface (used by UI
-icons, e.g. `icon_*_ring.t`).
+`.dds` payload at offset 128).  Format codes seen across the 752 bundled `.t`
+files:
+
+| `@4` code | encoding | bytes/px | count | DDS side |
+|---|---|---|---|---|
+| 6 | DXT1 | 0.5 | 258 | fourCC `DXT1` |
+| 7 | DXT3 | 1.0 | 384 | fourCC `DXT3` |
+| 8 | DXT5 | 1.0 | 10  | fourCC `DXT5` |
+| 3 | 16-bit A1R5G5B5 | 2 | 80 | DDPF_RGB, 16 bpp, masks 0x7C00/0x03E0/0x001F/0x8000 |
+| 1, 2 | 16-bit uncompressed | 2 | 15 | same DDPF_RGB 16-bit form |
+| 4, 5 | 32-bit A8R8G8B8 | 4 | 5 | DDPF_RGB, 32 bpp, masks 0xFF0000/0xFF00/0xFF/0xFF000000 |
+
+Every mip is stored as `width>>i * height>>i * bytes_per_pixel` with **no 4x4
+block alignment** on the sub-mips, and the chain stops once a side underflows
+(no clamping to one pixel).
+
+**Cubemaps.** A `.t` whose payload is exactly six faces of the base level is a
+cubemap (`Empire/Apprentice/cubemap_default.t`, code 4).  `build_dds_header`
+sets `dwCaps2` (offset 112) to `DDSCAPS2_CUBEMAP` plus all six face flags
+(`0xFE00`) for those, and `parse_dds` reads the flag back, so the converted
+`.dds` stays a valid cubemap rather than a 2D header over six faces of data.
 
 `d3tool texture convert a.t -o out.dds` and `d3tool texture convert a.dds -o
 out.t` perform the conversion based on the destination extension; `d3tool
