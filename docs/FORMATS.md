@@ -60,6 +60,67 @@ dis3tool **preserves the glTF influence order** — it does **not** re-sort by
 weight.  So to convert back you take the first `w` of the 4 component
 `(weight, joint)` pairs verbatim.
 
+On export dis3tool repacks those numbers with an exact rule — implemented in
+`d3tool.model.pack_weights_joints`, byte-verified against all 292 569 skinned
+vertices of the 85-unit reference corpus (0 mismatches):
+
+* stored lanes are copied **verbatim** (no renormalisation, no trimming);
+* the complement `c = float32(1.0 - sum(stored))` is computed from the
+  **double-precision** sum, then rounded once to float32;
+* `c > 0` is merged into the first already-listed lane whose bone equals the
+  implied bone `bones[w-1]` (a single-precision add), or appended as an extra
+  lane when that bone is not listed;
+* `c <= 0` changes nothing (the stored lanes already reach 1.0f or overshoot
+  it by rounding — both stay verbatim, even mid-ulp ties);
+* `JOINTS_0` is the bone array padded to 4 lanes where any lane whose weight
+  is **exactly 0.0** is reported as joint 0; a tiny residue lane (2.98e-08)
+  keeps its joint.
+
+### Export conventions (what `d3tool export-gl` reproduces byte-for-byte)
+
+These behaviours were established by diffing all 85 bundled dis3tool
+reference exports; the writer reproduces them — quirks included — and the
+export is **byte-identical** to the reference (`tests/corpus_parity.py`:
+85/85 EXACT — both the glTF JSON, float32-bitwise, and the `.bin`):
+
+* **Animation resolution / rigid exports.**  dis3tool loads only the `.a`
+  stream(s) the unit's own `.ac` names, resolved inside the unit folder.
+  When the named stream is not there the unit ships **rigid**: one mesh
+  node, no bone nodes, no `skins` key, primitives without
+  `WEIGHTS_0/JOINTS_0`, accessors stopping after `TEXCOORD_0` — while the
+  buffer keeps the skinned stride-52 vertex block and the `mesh_bones` IBM
+  block, unreferenced (Blacknaga's config points at mermaid's `.a`,
+  watersnake_sea at a `.a` bundled with neither).
+* **Channel targets are counted, not resolved.**  Every bone of the primary
+  stream(s) gets a rotation + translation channel aimed at
+  `node_slot + list position`.  A duplicate-name bone (`null` five times in
+  WaterSnake, `null_Bone_Tip` twice in Wildboar) has no node of its own, so
+  its channels dangle past the node list (Wildboar 37 of 37 nodes,
+  WaterSnake 47..50 of 47) and every *unique* bone after a duplicate aims
+  one slot high.
+* **Only the first stream's bones are animated.**  Bones that
+  `concat_anims` appended from a later `.a` (AirElemental's
+  LeftLeftHand/Tail02, DarkServant's Bone02) get a trailing node but no
+  channel and no rot/tra storage; `skin.joints` stays on the full list.
+  Frame filling across streams is **positional**: each stream's record at
+  index *i* lands on the output slot *i* even when the name drifted
+  (AirElemental's `run.a` names record 6 `LeftLeftHand` while the slot is
+  `LeftHand` — the reference's LeftHand frames 346..362 are exactly
+  `run.a` record 6's 17 samples; same for `Tail02` → `RightTail02` and
+  DarkServant's `Bone02` → `ROOT_demons_thief_lod`).
+* **Scene roots** are the sub-meshes plus every skeleton node whose parent
+  is not a bone, in node order (DarkServant's `ROOT_demons_thief_lod` /
+  `Bone02`, parent `Scene Root`, trail the skeleton root).
+* **Compound static parts.**  A part with `morph: 1` in its attribute block
+  is a morph-deformer: stride-32 vertexes with the base positions zeroed
+  and zeroed POSITION min/max.  A part with **no attributes at all**
+  (rod-1's sword) keeps the same stride but *real* positions, still with
+  zeroed POSITION min/max — and its presence makes dis3tool append one
+  stray animation sampler aimed at the accessor index just past the end
+  (output 33 of 33 in Rod-1), referenced by no channel.
+* `validate_gltf` reports the two reference quirk classes above as
+  warnings, not errors, so a faithful export still validates with 0 errors.
+
 ---
 
 ## 2. The GM `.g` geometry file
@@ -162,13 +223,31 @@ re-creating them.
 The `.a` holds, for each bone, a descriptor plus a per-frame stream:
 
 ```
-global header (16 bytes, e.g. 9 / 408508 / 42 / 346 ...)
+global header (20 bytes)
+  [u32] magic 9
+  [u32] body length  (everything the writer emits except the trailing
+                      block, minus these 8 bytes — verified on all 152
+                      corpus files)
+  [u32] bone count
+  [u32] frame count
+  [u32] record-type word (15; also 16 / 30 observed — same values as the
+                      trailing morph-stream tags; donated on rebuild)
 repeat per bone:
   [1 byte marker '<']
+  [16-byte preamble: u32 len(name)+1, u32 len(parent)+1,
+                     u32 nframes, float32 time step]
+      -- the pair counts the NUL-terminated strings (verified on all
+      6764 corpus records); the time step varies per stream (0.01 is the
+      corpus mode, dis3tool reference exports use 0.02)
   [cstr] bone name
   [cstr] parent name
-  [7 float32] bind/rest TRS   (translation 3 + quaternion 4)
-  [7 float32] * frame_count   (per-frame TRS, 28 bytes each)
+  [7 float32] * nframes  (per-frame TRS: quat xyzw + translation xyz)
+optional trailing block:
+  vertex-morph streams [u32 14][u32 len-8][u32 tag][u32 frames]
+  [u32 vertex_count][u32 name_len][name + NUL] then frames *
+  vertex_count * float32 absolute positions (frame-major).  The tag
+  follows the header record-type word; some files carry foreign units'
+  streams (DarkServant: 7 tracks of other units).
 ```
 
 The per-frame TRS is exactly what dis3tool exports into the glTF animation
@@ -178,6 +257,27 @@ records (names, parents, per-frame TRS) and `write_anim` re-emits them
 byte-for-byte.  The `.a` record set is exactly the set of nodes animated by the
 glTF (Root + every bone), in hierarchy order, so `d3tool/gltf.py::animation_from_gltf`
 rebuilds a `.a` from the glTF animation channels with matching per-frame values.
+
+Reverse rebuild details (byte-parity with the originals, see
+`tests/reverse_parity.py`):
+
+* a node animated through a morph-target `weights` channel only (a
+  morph-deformer mesh) is **not** a bone: its animation lands in the
+  trailing block as vertex-morph streams; dis3tool stores each baked
+  frame verbatim as a glTF morph-target POSITION accessor, with the
+  stream name in the `morph_<stream>_<k>` bufferView names;
+* a unit whose `.ac` names several `.a` files is exported as ONE
+  concatenated glTF animation (`concat_anims`); the reverse rebuild
+  slices the named stream back out at the donor frame-count boundaries
+  (primary slots read the same record index per stream, appended bones
+  keep the donor records);
+* records the reference animates through nodes outside the node array
+  (Wildboar targets node 37 of 0..36) are recovered positionally from
+  the channel order, verified against the donor `.a`;
+* the original `.a` next to the source glTF donates the record-type
+  word and magic, the record order/parents/preambles and the trailing
+  block (tags + foreign streams), adopted when the rebuilt data
+  verifies against it.
 
 ---
 
@@ -208,6 +308,44 @@ them.  `d3tool/scene.py` therefore does two things:
 * otherwise it generates a faithful, particle-free scene (correct
   `bones`/`gobj` node names, full `globalsettings`, attribute block).
 
+### Parsing `.scene`
+
+`parse_scene` / `render_scene` round-trip every shipped `.scene` byte-for-byte
+(244 under Empire//Neutrals plus the `out_rev` sample)
+byte-for-byte (Latin-1 bytes; five files mix LF and CRLF per line, so brace
+lines are stored verbatim).  The grammar, quirks included:
+
+* `globalsettings`, `group "<name>"` and `child <kind> "<name>"` open blocks;
+  braces sit alone on their line, at column 0 (dis3tool exports) or
+  tab-indented (d3tool's own generated scenes);
+* kinds seen across the corpus: `gobj` (618), `group` (271 incl. nested),
+  `bones` (160), `goclass` (74 - the only header with a second quoted
+  argument), `particles` (52);
+* props are `key value[;]` - the semicolon is optional (`uid 181 40875272`),
+  and quoted values may contain commas and semicolons, so a prop never spans
+  lines; a few props are keyless (the gobj mesh line `"<path>.g" 0 0.000000`);
+* indentation does not encode depth - dis3tool puts `child particles` at
+  column 0 inside a `bones` block.
+
+## 4b. The `.alias` sound-alias file
+
+Text, one block per file (1294 across the corpus):
+
+    // alias configuration file
+    //  ...
+
+    alias "Attack00" {
+    	sound 100, "$(Sounds)\clothes\cloth\cloth_02_03.wav", 100, 3;
+    }
+
+* `sound <use chance>, "<file>", <play chance>, <flags>;` - `flags` bit 0 =
+  enabled, bit 1 = play with accelerated animation; 236 files ship without
+  the comment header, 87 have an **empty** block (a muted event);
+* 1293 files are ASCII/UTF-8; Craken's Cyrillic-named file is CP1251 -
+  `parse_alias_bytes` decodes UTF-8 -> CP1251 -> Latin-1 and records the
+  codec so `write_alias_bytes` re-encodes losslessly;
+* `parse_alias` / `write_alias` round-trip all 1294 files byte-for-byte.
+
 ---
 
 ## 5. Implemented in `d3tool/`
@@ -219,7 +357,13 @@ them.  `d3tool/scene.py` therefore does two things:
   structural `validate_gltf` self-check (bidirectional tool).
 * `d3tool/ac.py` — parse & write `.ac`; detect the real `.a` files.
 * `d3tool/anim.py` — parse & write the `.a` animation binary (byte-faithful).
-* `d3tool/scene.py` — generate a minimal `.scene`.
+* `d3tool/scene.py` — parse & write `.scene`: any shipped scene parses into a
+  node tree (`group` / `bones` / `gobj` / `goclass` / `particles`, props with
+  optional semicolons, keyless mesh lines, mixed LF/CRLF endings) and
+  re-renders byte-for-byte; generate a minimal `.scene` for units that ship
+  none.
+* `d3tool/alias.py` — parse & write `.alias` (byte-exact for all 1294 bundled
+  files, including the CP1251 one; empty "muted" blocks preserved).
 * `d3tool/cli.py` — `analyze`, `export` (glTF → original), `export-gl`
   (original → glTF), `validate`, `import`.
 

@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import d3tool
 from d3tool import anim as animmod
+from d3tool import cli as climod
 from d3tool import gfile, gltf, ac as acmod, gltf_out, scene as scenemod
 from d3tool import texture as texmod
 
@@ -699,9 +700,13 @@ def test_public_api_is_re_exported():
                  "load_gltf", "mesh_to_skinned", "animation_from_gltf",
                  "parse_anim", "write_anim", "build_anim",
                  "parse_ac", "write_ac", "default_ac", "detect_anim_files",
-                 "write_scene", "write_gltf", "write_gltf_to", "validate_gltf",
+                 "write_scene", "parse_scene", "render_scene",
+                 "count_particles", "parse_alias", "parse_alias_bytes",
+                 "write_alias", "write_alias_bytes",
+                 "write_gltf", "write_gltf_to", "validate_gltf",
                  "parse_t", "parse_dds", "t_to_dds", "dds_to_t", "convert_file",
                  "Bone", "Vertex", "SkinnedMesh", "MeshPart", "MorphTrack",
+                 "pack_weights_joints",
                  "AnimFile", "BoneAnim", "AnimConfig", "State", "TextureInfo"):
         assert hasattr(d3tool, name), f"d3tool.{name} is not re-exported"
         assert name in d3tool.__all__, f"{name} missing from __all__"
@@ -883,22 +888,32 @@ def test_validate_gltf_accepts_the_bundled_reference_files():
     """`validate_gltf` required morph-weight `output.count ==
     input.count * len(targets)`, but dis3tool writes `input.count ** 2` — and
     `_write_compound_gltf` replicates that for byte parity.  The validator
-    therefore rejected 8 of the 98 bundled reference glTFs, i.e. ground truth."""
+    therefore rejected 8 of the 98 bundled reference glTFs, i.e. ground truth.
+
+    Since then two further reference quirks were identified as deliberate
+    dis3tool output that the writers reproduce for parity, reported as
+    warnings, not errors:
+
+    * Rod-1      sampler 14 declares output=33 with 33 accessors (0..32)
+    * WaterSnake 4 animation channels target nodes 47-50 with 47 nodes (x2
+                 paths = 8 warnings)
+    * Wildboar   1 animation channel targets node 37 with 37 nodes (x2 = 2)
+    """
     from d3tool import gltf_out
     bad = []
+    warned = {}
     for p in sorted(glob.glob(os.path.join(REPO, "*", "*", "*.gltf"))):
-        errs, _w, _i = gltf_out.validate_gltf(p)
+        errs, warns, _i = gltf_out.validate_gltf(p)
         if errs:
             bad.append((os.path.relpath(p, REPO), errs))
-    # The three genuine defects in shipped references, all of them
-    # out-of-range indices that d3tool must not reproduce:
-    #   Rod-1      sampler 14 declares output=33 with 33 accessors (0..32)
-    #   WaterSnake 4 animation channels target nodes 47-50 with 47 nodes (x2
-    #              paths = 8 errors)
-    #   Wildboar   1 animation channel targets node 37 with 37 nodes (x2 = 2)
-    assert bad == [("Empire/Rod-1/character_empire_rod-1.gltf", 1),
-                   ("Neutrals/WaterSnake/character_neutrals_watersnake.gltf", 8),
-                   ("Neutrals/Wildboar/character_neutrals_wildboar.gltf", 2)], bad
+        if warns:
+            warned[os.path.relpath(p, REPO)] = warns
+    assert not bad, bad
+    assert warned == {
+        "Empire/Rod-1/character_empire_rod-1.gltf": 1,
+        "Neutrals/WaterSnake/character_neutrals_watersnake.gltf": 8,
+        "Neutrals/Wildboar/character_neutrals_wildboar.gltf": 2,
+    }, warned
 
 
 def test_validate_gltf_rejects_channels_targeting_missing_nodes():
@@ -977,14 +992,14 @@ def test_import_refuses_an_unparsable_g():
     with tempfile.TemporaryDirectory() as td:
         p = os.path.join(td, "garbage.g")
         open(p, "wb").write(junk)
-        r = subprocess.run([sys.executable, "-m", "d3tool", "import", p],
+        r = subprocess.run([sys.executable, "-m", "d3tool", "dump", p],
                            capture_output=True, text=True, cwd=REPO,
                            check=False)
         assert r.returncode == 1, r.stdout
         assert "unparsed" in r.stdout + r.stderr
         good = os.path.join(REPO, "Neutrals", "Wildboar",
                             "character_neutrals_wildboar.g")
-        r2 = subprocess.run([sys.executable, "-m", "d3tool", "import", good],
+        r2 = subprocess.run([sys.executable, "-m", "d3tool", "dump", good],
                             capture_output=True, text=True, cwd=REPO,
                             check=False)
         assert r2.returncode == 0, r2.stderr
@@ -1134,6 +1149,437 @@ def test_node_hierarchy_trails_bones_only_a_later_stream_carries():
     assert children["Fore"] == ["Hand", "LateHand"], children["Fore"]
 
 
+def _export_like_the_harness(rel_g):
+    """Forward-export a corpus unit the way tests/corpus_parity.run does."""
+    g_path = os.path.join(REPO, rel_g)
+    folder = os.path.dirname(g_path)
+    stem = os.path.splitext(os.path.basename(g_path))[0]
+    mesh = gfile.parse_geometry_file(open(g_path, "rb").read())
+    a_path = climod._find_animation_for_geometry(g_path)
+    an = (climod._load_anim_stream(g_path, a_path, True)
+          if a_path else None)
+    texture = None
+    if not mesh.parts and mesh.material_diffuse:
+        texture = os.path.splitext(mesh.material_diffuse)[0] + ".dds"
+    binb, doc = gltf_out.write_gltf(mesh, an, stem, texture=texture)
+    ref = json.load(open(os.path.join(folder, stem + ".gltf")))
+    refbin = open(os.path.join(folder, stem + ".bin"), "rb").read()
+    return binb, doc, ref, refbin
+
+
+def test_rigid_export_when_the_animation_is_unresolvable():
+    """Blacknaga's .ac points at mermaid's .a, which is not in its folder.
+
+    The dis3tool reference ships the unit rigid: one mesh node, no skin, a
+    primitive without WEIGHTS_0/JOINTS_0 and accessors stopping after
+    TEXCOORD_0 — while the buffer keeps the skinned stride-52 vertex block
+    and the mesh_bones IBM block, unreferenced but present.
+    """
+    binb, doc, ref, refbin = _export_like_the_harness(
+        os.path.join("Neutrals", "Blacknaga",
+                     "character_neutrals_blacknaga.g"))
+    assert [n.get("name") for n in doc["nodes"]] == ref["nodes"][0].get(
+        "name") or doc["nodes"] == ref["nodes"]
+    assert len(doc["nodes"]) == 1 and "skin" not in doc["nodes"][0]
+    assert "skins" not in doc and "animations" not in doc
+    prim = doc["meshes"][0]["primitives"][0]
+    assert set(prim["attributes"]) == {"POSITION", "NORMAL", "TEXCOORD_0"}
+    assert len(doc["accessors"]) == 4 and len(ref["accessors"]) == 4
+    bv_names = [bv["name"] for bv in doc["bufferViews"]]
+    assert bv_names == [bv["name"] for bv in ref["bufferViews"]]
+    # the bin keeps the full skinned layout — byte length parity included
+    assert len(binb) == len(refbin)
+    assert doc["bufferViews"][2]["byteLength"] == \
+        ref["bufferViews"][2]["byteLength"] > 0
+
+
+def test_find_animation_returns_none_when_the_ac_points_outside_the_folder():
+    """dis3tool loads only what the unit's own .ac names; a stream missing
+    from the unit folder means a rigid export, not a conventional-name
+    guess (Blacknaga points at mermaid, watersnake_sea at a .a bundled
+    with neither)."""
+    def find(rel):
+        return climod._find_animation_for_geometry(
+            os.path.join(REPO, rel))
+    assert find(os.path.join("Neutrals", "Blacknaga",
+                             "character_neutrals_blacknaga.g")) is None
+    assert find(os.path.join("Neutrals", "WaterSnake",
+                             "character_neutrals_watersnake_sea.g")) is None
+    assert find(os.path.join("Neutrals", "WaterSnake",
+                             "character_neutrals_watersnake.g")) is not None
+    assert find(os.path.join("Neutrals", "Wolf",
+                             "character_neutrals_wolf.g")) is not None
+
+
+def test_compound_writer_animates_only_the_primary_skeleton():
+    """DarkServant's .ac concatenates `_iadd.a` and `_run.a`; Bone02 exists
+    only in the latter.  The reference gives it a trailing node but no
+    channel and no rot/tra storage: 69 of 70 bones are animated, and the
+    morph_weights matrix stays sized by the *total* frame count."""
+    binb, doc, ref, refbin = _export_like_the_harness(
+        os.path.join("Neutrals", "DarkServant",
+                     "character_neutrals_darkservant.g"))
+    assert len(doc["accessors"]) == len(ref["accessors"]) == 204
+    ra, ga = ref["animations"][0], doc["animations"][0]
+    assert len(ga["channels"]) == len(ra["channels"]) == 140
+    assert len(ga["samplers"]) == len(ra["samplers"]) == 140
+    # bones_rotate / bones_translate cover 69 bones x 152 frames
+    bv_rot = [bv for bv in doc["bufferViews"]
+              if bv["name"] == "bones_rotate"][0]
+    ref_rot = [bv for bv in ref["bufferViews"]
+               if bv["name"] == "bones_rotate"][0]
+    assert bv_rot["byteLength"] == ref_rot["byteLength"] == 69 * 152 * 16
+    assert len(binb) == len(refbin)
+    # and the weights channels close the animation, as in the reference
+    assert [c["target"]["path"] for c in ga["channels"][-2:]] == \
+        ["weights", "weights"]
+    assert [c["target"]["path"] for c in ra["channels"][-2:]] == \
+        ["weights", "weights"]
+
+
+def test_duplicate_bone_channels_are_counted_positionally():
+    """WaterSnake lists `null` five times: nodes exist for the first only,
+    yet all 50 bones get channels, targets counted as node-slot + position —
+    so the last four pairs dangle past the 47-node list and every unique
+    bone after a duplicate aims one slot high.  The same rule puts
+    Wildboar's last pair on node 37 of 37."""
+    for rel in (os.path.join("Neutrals", "WaterSnake",
+                             "character_neutrals_watersnake.g"),
+                os.path.join("Neutrals", "Wildboar",
+                             "character_neutrals_wildboar.g")):
+        _binb, doc, ref, _refbin = _export_like_the_harness(rel)
+        got = [c["target"]["node"]
+               for c in doc["animations"][0]["channels"]]
+        want = [c["target"]["node"]
+                for c in ref["animations"][0]["channels"]]
+        assert got == want, rel
+        assert len(got) == len(want)
+
+
+def test_attrless_part_keeps_real_positions_and_a_stray_sampler():
+    """Rod-1's sword part carries no .g attributes at all.  The reference
+    exports it at the morph-static stride but with real positions, reports
+    zeroed POSITION min/max, and appends one stray sampler aimed at the
+    accessor index just past the end that no channel references."""
+    binb, doc, ref, refbin = _export_like_the_harness(
+        os.path.join("Empire", "Rod-1", "character_empire_rod-1.g"))
+    # ...the stray sampler: 15 samplers, 14 channels, output dangling
+    ga = doc["animations"][0]
+    assert len(ga["samplers"]) == 15 and len(ga["channels"]) == 14
+    stray = ga["samplers"][-1]
+    assert stray["output"] == len(doc["accessors"]) == 33
+    assert stray["output"] not in [c["sampler"] for c in ga["channels"]]
+    assert ref["animations"][0]["samplers"][-1] == stray
+    # ...the sword vertex block carries the reference's real positions
+    bv = [b for b in doc["bufferViews"]
+          if b["name"] == "mesh_vertexes_empire_rod-1_sword"][0]
+    off = bv["byteOffset"]
+    assert binb[off:off + bv["byteLength"]] == \
+        refbin[off:off + bv["byteLength"]]
+    # ...yet the POSITION accessor keeps the zeroed min/max quirk
+    sword_mesh = doc["meshes"][[m["name"] for m in doc["meshes"]]
+                               .index("empire_rod-1_sword")]
+    pos = doc["accessors"][sword_mesh["primitives"][0]["attributes"]
+                           ["POSITION"]]
+    assert pos["min"] == [0.0, 0.0, 0.0] and pos["max"] == [0.0, 0.0, 0.0]
+
+
+def test_scene_lists_every_parentless_skeleton_node():
+    """Scene nodes = sub-meshes + every node whose parent is not a bone, in
+    node order.  DarkServant's ROOT_demons_thief_lod and Bone02 (parent
+    `Scene Root`) therefore trail the skeleton root in its reference."""
+    _binb, doc, ref, _refbin = _export_like_the_harness(
+        os.path.join("Neutrals", "DarkServant",
+                     "character_neutrals_darkservant.g"))
+    assert doc["scenes"] == ref["scenes"]
+    assert doc["scenes"][0]["nodes"] == [0, 1, 2, 3, 4, 72, 73]
+    # the trailing nodes are exactly those two bones
+    names = [doc["nodes"][i]["name"] for i in (72, 73)]
+    assert names == ["ROOT_demons_thief_lod", "Bone02"]
+
+
+def _corpus_files(ext):
+    """Every Empire//Neutrals file with ``ext``, sorted (recursive)."""
+    return (sorted(glob.glob(os.path.join(REPO, "Empire", "**", "*" + ext),
+                              recursive=True))
+            + sorted(glob.glob(os.path.join(REPO, "Neutrals", "**", "*" + ext),
+                               recursive=True)))
+
+
+def test_scene_parser_roundtrips_every_shipped_scene():
+    """parse_scene / render_scene must be lossless on all 245 shipped
+    `.scene` files -- Latin-1 bytes, mixed LF/CRLF line endings, keyless
+    mesh lines and column-0 child headers included."""
+    from d3tool import scene as scenemod
+    files = _corpus_files(".scene")
+    assert len(files) >= 244, len(files)
+    kinds = {}
+    for p in files:
+        raw = open(p, "rb").read()
+        doc = scenemod.parse_scene(raw.decode("latin-1"))
+        assert scenemod.render_scene(doc).encode("latin-1") == raw, p
+        for node in doc.root.walk():
+            kinds[node.kind] = kinds.get(node.kind, 0) + 1
+    # the shapes that actually occur in the corpus
+    for kind in ("group", "bones", "gobj", "goclass", "particles"):
+        assert kinds.get(kind), f"no {kind} nodes found in corpus scenes"
+
+
+def test_scene_parser_extracts_air_elemental_structure():
+    """The AirElemental scene: one bones child under Scene Root, nine
+    particle emitters, the .ac referenced by the bones node."""
+    from d3tool import scene as scenemod
+    p = os.path.join(REPO, "Neutrals", "AirElemental",
+                     "character_neutrals_airelemental.scene")
+    doc = scenemod.parse_scene(open(p, encoding="latin-1").read())
+    assert doc.settings.props["fov"] == "1.100000"
+    assert doc.root.name == "Scene Root"
+    bones = doc.find_all("bones")
+    assert len(bones) == 1
+    assert [f for f in bones[0].files()
+            if f.endswith(".ac")] == [
+        "resources\\characters\\neutrals\\airelemental\\"
+        "character_neutrals_airelemental.ac"]
+    assert len(doc.find_all("particles")) == 9
+    assert scenemod.count_particles(doc) == 9
+
+
+def test_scene_parser_rejects_broken_structure():
+    from d3tool import scene as scenemod
+    for text in ('group "A" \n\tfov 1;\n',          # no opening brace
+                 'group "A" \n{\n\tfov 1;\n',        # never closed
+                 'group "A" \n}\n',                    # close without open
+                 'group "A" \n{\n}\n}\n'):           # extra close
+        try:
+            scenemod.parse_scene(text)
+        except ValueError:
+            continue
+        raise AssertionError(f"parser accepted broken scene {text!r}")
+
+
+def test_alias_parser_roundtrips_every_shipped_alias():
+    """All 1300 `.alias` files re-emit byte-for-byte -- including the
+    CP1251-encoded Craken file and the 87 empty (muted) blocks."""
+    from d3tool import alias as aliasmod
+    files = _corpus_files(".alias")
+    assert len(files) == 1294, len(files)
+    n_empty = 0
+    encs = {}
+    for p in files:
+        raw = open(p, "rb").read()
+        doc = aliasmod.parse_alias_bytes(raw)
+        assert aliasmod.write_alias_bytes(doc) == raw, p
+        encs[doc.encoding] = encs.get(doc.encoding, 0) + 1
+        if not doc.sounds:
+            n_empty += 1
+    assert encs == {"utf-8": 1293, "cp1251": 1}, encs
+    assert n_empty == 87, n_empty
+
+
+def test_alias_parser_reads_entries_macros_and_cp1251():
+    from d3tool import alias as aliasmod
+    p = os.path.join(REPO, "Empire", "Acolyte", "Aliases", "attack00.alias")
+    doc = aliasmod.parse_alias_bytes(open(p, "rb").read())
+    assert doc.name == "Attack00"
+    assert doc.sounds[0].use == 100 and doc.sounds[0].play == 100
+    assert doc.sounds[0].flags == 3
+    assert doc.sounds[0].path.startswith("$(Sounds)\\")
+    # attack00.alias is one of the 236 files shipped without the comment
+    # header; a headered sibling documents the format
+    assert doc.preamble == ""
+    doc2 = aliasmod.parse_alias_bytes(
+        open(os.path.join(REPO, "Empire", "Acolyte", "Aliases",
+                          "cloth.alias"), "rb").read())
+    assert doc2.preamble.startswith("// alias configuration file")
+    # Craken's Cyrillic-named CP1251 file round-trips through the same API
+    import glob as _glob
+    cyr = [q for q in _glob.glob(os.path.join(REPO, "Neutrals", "Craken",
+                                              "Aliases", "*.alias"))
+           if "ттт" in q]
+    assert cyr
+    raw = open(cyr[0], "rb").read()
+    doc = aliasmod.parse_alias_bytes(raw)
+    assert doc.encoding == "cp1251"
+    assert aliasmod.write_alias_bytes(doc) == raw
+
+
+def test_alias_parser_rejects_garbage():
+    from d3tool import alias as aliasmod
+    for text in ("", "sound 100, \"x.wav\", 1, 1;\n",
+                 'alias "A" {\n\tsound 100, "x";\n}\n',
+                 'alias "A" {\n'):
+        try:
+            aliasmod.parse_alias(text)
+        except ValueError:
+            continue
+        raise AssertionError(f"parser accepted broken alias {text!r}")
+
+
+def test_confirm_prompts_on_a_tty_even_without_colour():
+    """`confirm` used to treat colour support as interactivity: under
+    NO_COLOR it silently took the destructive default.  The prompt must
+    appear whenever stdin is a TTY, coloured or not."""
+    import io as _io
+    from d3tool import ui
+
+    class _FakeTTY:
+        def __init__(self, data):
+            self.buffer = _io.StringIO(data)
+
+        def isatty(self):
+            return True
+
+        def readline(self):
+            return self.buffer.readline()
+
+    answers = {"y\n": True, "n\n": False, "\n": True}
+    old_stdin = sys.stdin
+    old_nocolor = os.environ.get("NO_COLOR")
+    os.environ["NO_COLOR"] = "1"   # colour must not gate the prompt
+    try:
+        for data, expected in answers.items():
+            sys.stdin = _FakeTTY(data)
+            assert ui.confirm("ok?", default=True) is expected, data
+            sys.stdin = _FakeTTY(data)
+            assert ui.confirm("ok?", default=False) is (
+                expected if data != "\n" else False), data
+    finally:
+        sys.stdin = old_stdin
+        if old_nocolor is None:
+            os.environ.pop("NO_COLOR", None)
+        else:
+            os.environ["NO_COLOR"] = old_nocolor
+
+
+def test_confirm_defaults_without_reading_on_piped_stdin():
+    import io as _io
+    from d3tool import ui
+    # a non-TTY stdin (like StringIO with no isatty override) must return
+    # the default WITHOUT consuming input -- batch scripts never hang
+    sentinel = _io.StringIO("n\n")
+    assert ui.confirm("ok?", default=True) is True
+    assert sentinel.getvalue() == "n\n"  # untouched
+
+
+def test_pack_weights_joints_matches_reference_counterexamples():
+    """The exact dis3tool WEIGHTS_0/JOINTS_0 packing, pinned on the vertices
+    that drove the derivation (byte-verified on all 292 569 skinned corpus
+    vertices, 0 mismatches):
+
+    * stored lanes stay **verbatim** — the complement of a float32-sum that
+      already reaches 1.0 is noise and must not be re-rounded (Acolyte
+      v35: 1-w0 rounds to a tie whose float32-nearest differs from the
+      stored lane the reference keeps);
+    * a positive complement merges **into the duplicate-bone lane** when
+      the implied bone repeats (ImperialKnight cloak v85: bones (4,5,4),
+      0.125+0.125 = 0.25 in lane 0), else it is appended (v18-class);
+    * the complement is computed from the **double-precision** sum, not a
+      float32 running sum (0.903+0.097 classes);
+    * JOINTS_0 masks a lane only when its weight is **exactly** 0.0 — a
+      2.98e-08 residue keeps its joint (the old 1e-4 threshold broke it).
+    """
+    from d3tool import model
+    f32 = lambda x: struct.unpack("<f", struct.pack("<f", x))[0]  # noqa: E731
+
+    # verbatim: total misses 1.0 by 2e-10, ref keeps both stored lanes
+    w, j = model.pack_weights_joints(
+        (0.2318541705608368, 0.7681458592414856), (7, 0, 0))
+    assert w == (0.2318541705608368, 0.7681458592414856, 0.0, 0.0)
+    assert j == (7, 0, 0, 0)
+
+    # duplicate implied bone: complement merges into lane 0, joint stays 4
+    w, j = model.pack_weights_joints((0.125, 0.75), (4, 5, 4))
+    assert w == (0.25, 0.75, 0.0, 0.0)
+    assert j == (4, 5, 0, 0)
+
+    # joint-0 merge: the complement nudges lane 0 up one float32 step
+    w, j = model.pack_weights_joints(
+        (0.42888399958610535, 0.5711159706115723), (0, 1, 0))
+    assert w == (0.42888402938842773, 0.5711159706115723, 0.0, 0.0)
+    assert j == (0, 1, 0, 0)
+
+    # appended complement: a 2.98e-08 residue keeps its (non-zero) joint
+    w, j = model.pack_weights_joints(
+        (0.7205365896224976, 0.27946338057518005), (1, 2, 3))
+    assert w[2] == f32(1.0 - (0.7205365896224976 + 0.27946338057518005))
+    assert 0.0 < w[2] < 1e-7
+    assert j == (1, 2, 3, 0), "the residue lane must keep joint 3"
+
+    # exact-zero stored lane: the joint is masked, the weight stays 0.0
+    w, j = model.pack_weights_joints((0.0, 0.5, 0.5), (3, 8, 1, 0))
+    assert w == (0.0, 0.5, 0.5, 0.0)
+    assert j == (0, 8, 1, 0)
+
+    # negative complement (stored lanes overshoot 1.0 by rounding): verbatim
+    # f32(0.2)+f32(0.8) = 1.0000000149 -> c < 0 changes nothing
+    w, j = model.pack_weights_joints((0.2, 0.8), (2, 5))
+    assert w == (f32(0.2), f32(0.8), 0.0, 0.0)
+    assert j == (2, 5, 0, 0)
+
+    # no stored lanes: rigid vertex, full weight on its bone (or joint 0)
+    assert model.pack_weights_joints((), ()) == \
+        ((1.0, 0.0, 0.0, 0.0), (0, 0, 0, 0))
+    assert model.pack_weights_joints((), (6,)) == \
+        ((1.0, 0.0, 0.0, 0.0), (6, 0, 0, 0))
+
+
+def test_concat_anims_fills_primary_slots_by_record_index():
+    """Frame filling across concatenated streams is **positional**: the C++
+    exporter walks the per-stream record arrays in parallel, so a stream
+    record lands on the slot of the same index even when its name drifted
+    (AirElemental `run.a` record 6 `LeftLeftHand` -> the `LeftHand` slot;
+    DarkServant `run.a` record 68 `Bone02` -> `ROOT_demons_thief_lod`).
+    Bones with brand-new names are appended after the primary skeleton."""
+    from d3tool import anim
+
+    def stream(bones, frame_count):
+        a = anim.AnimFile()
+        a.frame_count = frame_count
+        a.bones = []
+        for name, frames in bones:
+            b = anim.BoneAnim(name, "", frame_count)
+            b.frames = list(frames)
+            a.bones.append(b)
+        return a
+
+    s1 = stream([("LeftHand", [(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0)] * 2),
+                 ("RightTail02", [(0.1,) * 7] * 2)], 2)
+    s2 = stream([("LeftLeftHand", [(9.0,) * 7] * 3),
+                 ("RightTail02", [(0.5,) * 7] * 3)], 3)
+    cat = animmod.concat_anims([s1, s2])
+    assert cat.frame_count == 5
+    assert cat.n_primary == 2
+    assert [b.name for b in cat.bones] == ["LeftHand", "RightTail02",
+                                           "LeftLeftHand"]
+    # slot 0 takes stream2's *record 0* frames for the second stretch,
+    # despite the name drift
+    assert cat.bones[0].frames[:2] == s1.bones[0].frames
+    assert cat.bones[0].frames[2:] == s2.bones[0].frames
+    # matching name and index agree
+    assert cat.bones[1].frames[2:] == s2.bones[1].frames
+    # the appended new-name bone keeps its own samples
+    assert cat.bones[2].frames[2:] == s2.bones[0].frames
+
+
+def test_forward_export_bytes_match_references_on_red_zone_units():
+    """Byte parity against the bundled dis3tool references for the units that
+    drove the last two rules: Werewolf (float32 weight packing),
+    AirElemental and DarkServant (cross-stream record-index concat).
+    tests/corpus_parity.py extends this to all 85 reference units."""
+    import corpus_parity  # tests/ is on sys.path under pytest
+    for rel in (os.path.join("Neutrals", "Werewolf",
+                             "character_neutrals_werewolf.g"),
+                os.path.join("Neutrals", "AirElemental",
+                             "character_neutrals_airelemental.g"),
+                os.path.join("Neutrals", "DarkServant",
+                             "character_neutrals_darkservant.g")):
+        binb, doc, ref, refbin = _export_like_the_harness(rel)
+        unit = os.path.basename(rel)
+        assert binb == refbin, f"{unit}: .bin must be byte-identical"
+        diffs = corpus_parity._json_diffs(ref, doc)
+        assert not diffs, f"{unit}: {diffs[:3]}"
+
+
 def anim_bone_stub(name, parent=""):
     class _B:
         pass
@@ -1160,3 +1606,194 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+
+
+# --------------------------------------------------------------------------- #
+#  reverse .a parity (donor-assisted rebuild)
+# --------------------------------------------------------------------------- #
+def _original_a_streams(folder: str):
+    """Parse every structurally-valid `.a` of a unit folder."""
+    out = {}
+    for p in sorted(glob.glob(os.path.join(folder, "*.a"))):
+        a = animmod.parse_anim(open(p, "rb").read())
+        if not a.raw:
+            out[os.path.basename(p)] = a
+    return out
+
+
+def test_anim_record_preamble_is_name_length_pair():
+    """Every original `.a` record preamble starts with the NUL-terminated
+    string lengths [len(name)+1][len(parent)+1] and the per-record frame
+    count; the header length field covers everything except the trailing
+    block.  (The trailing time-step float varies per stream — 0.01 is the
+    corpus mode, 0.02 matches the dis3tool reference exports a rebuild
+    writes; adopted donor records keep their own value either way.)"""
+    checked = 0
+    for p in sorted(glob.glob(os.path.join(REPO, "*", "*", "*.a"))):
+        a = animmod.parse_anim(open(p, "rb").read())
+        if a.raw or not a.bones:
+            continue
+        for b in a.bones:
+            a_len, p_len, nf = struct.unpack_from("<III", b.preamble)
+            assert (a_len, p_len) == (len(b.name) + 1, len(b.parent) + 1), \
+                f"{os.path.basename(p)}:{b.name} preamble {b.preamble!r}"
+            assert nf == len(b.frames), \
+                f"{os.path.basename(p)}:{b.name} preamble nf {nf}"
+        header_len = struct.unpack_from("<I", a.header, 4)[0]
+        body = len(animmod.write_anim(a)) - 8 - len(a.trailing)
+        assert header_len == body, \
+            f"{os.path.basename(p)} header len {header_len} != {body}"
+        checked += len(a.bones)
+    assert checked > 6000, f"corpus shrank: {checked} records"
+
+
+def test_animation_from_gltf_matches_original_a():
+    """The donor-assisted rebuild reproduces several original `.a` files
+    byte-for-byte: a single-stream skeleton (rod-1), a morph-trailing
+    reconstruction (orc) and a positional out-of-array recovery
+    (wildboar)."""
+    cases = (
+        ("Empire", "Rod-1", "character_empire_rod-1_baseanims.a"),
+        ("Neutrals", "Orc", "character_neutrals_orc_baseanims.a"),
+        ("Neutrals", "Wildboar", "character_neutrals_wildboar.a"),
+    )
+    for group, unit, a_name in cases:
+        folder = os.path.join(REPO, group, unit)
+        stem = a_name[:-2].replace("_baseanims", "")
+        m = gltf.load_gltf(os.path.join(folder, stem + ".gltf"))
+        donor = animmod.parse_anim(open(os.path.join(folder, a_name),
+                                        "rb").read())
+        assert not donor.raw, f"{a_name} must parse structurally"
+        rebuilt = gltf.animation_from_gltf(m, donor=donor)
+        got = animmod.write_anim(rebuilt)
+        want = open(os.path.join(folder, a_name), "rb").read()
+        assert got == want, f"{a_name}: rebuilt {len(got)}B != {len(want)}B"
+
+
+def test_reverse_export_splits_concatenated_angel_streams():
+    """Angel's `.ac` names five `.a` files; dis3tool exported them as ONE
+    concatenated glTF animation.  The reverse export must slice the
+    Idle stream back out of it — byte-for-byte the original `_idle.a`."""
+    folder = os.path.join(REPO, "Empire", "Angel")
+    stem = "character_empire_angel"
+    with tempfile.TemporaryDirectory() as d:
+        climod._export(os.path.join(folder, stem + ".gltf"), d, 0,
+                       anim=True, quiet=True)
+        got = open(os.path.join(d, stem + "_idle.a"), "rb").read()
+    want = open(os.path.join(folder, stem + "_idle.a"), "rb").read()
+    assert got == want, f"angel idle: {len(got)}B != {len(want)}B"
+
+
+def test_donorless_reverse_rebuilds_valid_compound_g():
+    """The Leader variant sets ship a reference glTF but no original `.g`.
+    The donorless reverse must still produce a *structurally valid*
+    compound `.g` (all parts recoverable, per-part materials carried) and
+    the full glTF -> GM -> glTF cycle must close EXACTLY for a unit whose
+    authoring data is fully expressible (Wolfsnow)."""
+    folder = os.path.join(REPO, "Empire", "Leader-Archmage")
+    stem = "character_empire_leader-archmage_set1"
+    with tempfile.TemporaryDirectory() as d:
+        climod._export(os.path.join(folder, stem + ".gltf"), d, 0,
+                       anim=True, quiet=True)
+        mesh = gfile.parse_geometry_file(
+            open(os.path.join(d, stem + ".g"), "rb").read())
+        assert not mesh.parse_error
+        assert len(mesh.parts) == 8, f"expected 8 parts, got {len(mesh.parts)}"
+        assert not mesh.trailing, "parts must consume the trailing block"
+        for p in mesh.parts:
+            assert p.attrs.get("material0_diffuse"), \
+                f"{p.name}: donorless part must carry material0_diffuse"
+        anim = climod._find_animation_for_geometry(
+            os.path.join(d, stem + ".g"))
+        gt, _bt = climod._export_gl(
+            os.path.join(d, stem + ".g"), anim,
+            os.path.join(d, "cycle.gltf"), texture=None, quiet=True)
+        mine = json.load(open(gt))
+    ref = json.load(open(os.path.join(folder, stem + ".gltf")))
+    assert len(mine.get("materials", [])) == len(ref.get("materials", []))
+    assert [i.get("uri") for i in mine.get("images", [])] == \
+        [i.get("uri") for i in ref.get("images", [])]
+
+
+def test_donorless_reverse_adopts_main_material_from_glTF():
+    """Wolfsnow's texture name differs from the file base and no `.g`
+    donor exists; the reverse must take `material0_diffuse` from the main
+    primitive's glTF material so the cycle closes byte-for-byte."""
+    folder = os.path.join(REPO, "Neutrals", "Wolfsnow")
+    stem = "character_neutrals_wolfsnow"
+    with tempfile.TemporaryDirectory() as d:
+        climod._export(os.path.join(folder, stem + ".gltf"), d, 0,
+                       anim=True, quiet=True)
+        attrs, _ = gfile.parse_attributes(
+            open(os.path.join(d, stem + ".g"), "rb").read())
+        assert attrs["material0_diffuse"] == "character_neutral_wolfsnow.tga"
+        gt, bt = climod._export_gl(
+            os.path.join(d, stem + ".g"),
+            climod._find_animation_for_geometry(
+                os.path.join(d, stem + ".g")),
+            os.path.join(d, "cycle", stem + ".gltf"),
+            texture=None, quiet=True)
+        bin_mine = open(bt, "rb").read()
+        mine = json.load(open(gt))
+    assert bin_mine == \
+        open(os.path.join(folder, stem + ".bin"), "rb").read()
+    ref = json.load(open(os.path.join(folder, stem + ".gltf")))
+    assert mine["images"] == ref["images"]
+    assert mine["materials"] == ref["materials"]
+
+
+def test_import_auto_detects_animation_without_minus_a():
+    """`d3tool import <g>` with no `-a` resolves the animation itself via
+    the unit's `.ac` (concatenating every stream it names) and the output
+    matches the dis3tool reference byte-for-byte (bin identical, JSON
+    equal modulo the generator signature)."""
+    import struct as _struct
+    unit = os.path.join(REPO, "Empire", "Angel")
+    stem = "character_empire_angel"
+    with tempfile.TemporaryDirectory() as d:
+        out = os.path.join(d, stem + ".gltf")
+        r = climod._run(["import", os.path.join(unit, stem + ".g"),
+                         "-o", out])
+        assert r == 0, "import must succeed without -a"
+        bin_ok = open(os.path.join(d, stem + ".bin"), "rb").read() == \
+            open(os.path.join(unit, stem + ".bin"), "rb").read()
+        assert bin_ok, "auto-animation export .bin must match the reference"
+
+        def f32walk(r_, g_, path=""):
+            bad = []
+            if isinstance(r_, dict) and isinstance(g_, dict):
+                for k in r_.keys() & g_.keys():
+                    bad += f32walk(r_[k], g_[k], path + "/" + str(k))
+            elif isinstance(r_, list) and isinstance(g_, list):
+                for i, (x, y) in enumerate(zip(r_, g_)):
+                    bad += f32walk(x, y, f"{path}/{i}")
+            elif path == "/asset/generator":
+                return bad
+            elif isinstance(r_, (int, float)) and not isinstance(r_, bool):
+                if _struct.pack("<f", r_) != _struct.pack("<f", g_):
+                    bad.append(path)
+            elif r_ != g_:
+                bad.append(path)
+            return bad
+
+        ref = json.load(open(os.path.join(unit, stem + ".gltf")))
+        mine = json.load(open(out))
+        assert not f32walk(ref, mine), "JSON must be f32-equal to the reference"
+
+
+def test_import_export_route_legacy_calls_by_extension():
+    """`import` = GM → glTF, `export` = glTF → GM; a mismatched extension
+    routes to the right command with a notice instead of failing."""
+    unit = os.path.join(REPO, "Neutrals", "AirElemental")
+    stem = "character_neutrals_airelemental"
+    with tempfile.TemporaryDirectory() as d:
+        # legacy/confused `import <file.gltf>` -> routes to export (GM out)
+        out = os.path.join(d, "rev")
+        assert climod._run(["import", os.path.join(unit, stem + ".gltf"),
+                            "-o", out]) == 0
+        assert os.path.isfile(os.path.join(out, stem + ".g"))
+        # legacy/confused `export <file.g>` -> routes to import (glTF out)
+        out2 = os.path.join(d, "fwd.gltf")
+        assert climod._run(["export", os.path.join(unit, stem + ".g"),
+                            "-o", out2]) == 0
+        assert os.path.isfile(os.path.join(d, "fwd.bin"))

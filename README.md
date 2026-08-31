@@ -34,26 +34,42 @@ Pure Python 3 (no third-party dependencies).  Install as a package to get the
 
 ```bash
 pip install -e .          # provides the `d3tool` console script (or just `python3 -m d3tool`)
+```
+
+### The two everyday commands
+
+```bash
+# IMPORT a model FROM the game FOR editing: GM (.g/.a) -> glTF
+#   the animation is auto-detected via the unit's .ac (use --no-anim for rigid)
+d3tool import unit.g -o unit.gltf
+
+# EXPORT an edited model BACK INTO the game: glTF -> GM
+#   (.g/.scene/.ac/.a/.t + Aliases)
+d3tool export unit.gltf -o unit
+```
+
+Both directions are byte-exact against the bundled dis3tool reference corpus
+(85/85 each way).  `d3tool import` also accepts an explicit `-a anim.a`;
+`export-gl` remains as an alias of `import`.  Mismatched extensions route to
+the right command with a notice, so old scripts keep working.
+
+### More commands
+
+```bash
 # analyze a unit folder
 python3 -m d3tool analyze Neutrals/AirElemental
-
-# reverse export: glTF -> original .g / .scene / .ac / .a
-python3 -m d3tool export Neutrals/AirElemental/character_neutrals_airelemental.gltf -o out
-
-# forward export: original .g/.a -> glTF (viewer-ready)
-python3 -m d3tool export-gl \
-  Neutrals/AirElemental/character_neutrals_airelemental.g \
-  -a Neutrals/AirElemental/character_neutrals_airelemental_iadd.a \
-  -o out/unit.gltf
 
 # one command: recursively convert every .g, with animations and textures
 python3 -m d3tool export-all Neutrals -o gltf
 
+# full cycle over a unit folder (reverse + forward round-trip)
+python3 -m d3tool bundle Neutrals/AirElemental -o bundle
+
 # structural self-check of a glTF
 python3 -m d3tool validate out/unit.gltf
 
-# inspect a .g
-python3 -m d3tool import Neutrals/AirElemental/character_neutrals_airelemental.g
+# dump a parsed .g as JSON
+python3 -m d3tool dump Neutrals/AirElemental/character_neutrals_airelemental.g
 
 # convert the native .t texture to a .dds (or back)
 python3 -m d3tool texture convert Neutrals/AirElemental/character_neutrals_airelemental.t \
@@ -72,7 +88,8 @@ python3 tests/test_corpus.py
 python3 -m pytest tests/ -q
 
 # parity benchmark against the bundled dis3tool reference exports
-python3 tests/corpus_parity.py
+python3 tests/corpus_parity.py         # forward: 85/85 EXACT
+python3 tests/reverse_parity.py        # reverse: 85/85 EXACT
 ```
 
 ### Portable release (no install needed)
@@ -143,7 +160,8 @@ For `character_neutrals_airelemental.gltf` the exporter writes:
   `FxStrike`/`fxcast` cues — the AirElemental carries seven of them);
   otherwise a faithful five-state config is generated.
 * `character_neutrals_airelemental_iadd.a` — the animation binary rebuilt from
-  the glTF animation channels; per-frame values match the original.
+  the glTF animation channels; byte-identical to the original (bone order,
+  record preambles, header and trailing morph streams included).
 * `character_neutrals_airelemental.t` — the native GM texture, converted from
   the `.dds` the glTF references.  The `.g`'s `material0_diffuse` is pointed at
   it.
@@ -157,11 +175,30 @@ For a whole asset tree, `export-all <folder> -o <output>` recursively finds all
 selects each model's `.a` animation from its `.ac` file or conventional filename
 and exports textures automatically. Pass `--no-anim` for geometry-only output.
 
-For the AirElemental unit the generated `.g` matches the original in positions,
-normals, UVs, triangle indices, bone names/matrices and material.  The only
-known divergence is the first bone index of 21 vertices that have a zero-weight
-first influence slot (dis3tool fills an extra joint there; irrelevant to the
-pose because the weight is 0).
+**Full import/export sweep (CLI end-to-end).** Every command path was run
+over the whole tree: reverse `export` of all 98 reference glTFs (98/98
+succeed; every produced file with an original is byte-identical), forward
+`export-gl` of all 247 `.g` (245/247 — the two node-helper stubs refuse by
+design; 85/85 reference pairs byte-EXACT), `export-all` over both trees
+(85/85 reference EXACT), `bundle` over all 84 unit folders (98 units
+round-trip glTF -> GM -> glTF without a failure), `import` on all 247 `.g`
+and `analyze` on all 114 folders.  The full cycle `gltf -> GM -> gltf`
+closes **byte-for-byte for 89 of the 98 reference glTFs**; the remaining 9
+are the Leader variant sets, whose GM originals were never shipped — their
+residual byte gaps are authoring data a glTF cannot carry (per-vertex
+diffuse colours, a solid-color fallback material), which is exactly what
+the donor mechanism supplies when originals exist.
+
+**Reverse parity.** `tests/reverse_parity.py` runs the CLI's own reverse
+export over every bundled dis3tool reference unit and compares each produced
+file against the shipped original: **85/85 EXACT** — the rebuilt `.g`, the
+rebuilt `.a` (bone order, record preambles, header, trailing morph streams,
+concat-slice and out-of-array channel recovery), the reused `.scene`/`.ac`,
+the converted `.t` textures and the copied `Aliases/` are all byte-identical
+to the originals.  The original files next to the source glTF act as donors
+for the authoring data a glTF cannot carry (diffuse colours, container
+scaffolding, attribute blocks, weight splits, record preambles, morph-stream
+tags), always gated on the rebuilt data verifying against them.
 
 **Round-trip coverage** (measured by `tests/test_corpus.py` over the whole
 `Empire/` + `Neutrals/` tree):
@@ -204,9 +241,38 @@ one of the 247 `.g` files forward-exports and every one of the 98 bundled
   their reverse export correctly writes no `.a`.
 
 **Parity benchmark.** `tests/corpus_parity.py` compares a forward export
-against the bundled dis3tool reference, byte for byte: **10 EXACT, 69
-BIN-NEAR** (differing only in a handful of ±1ulp float32 lanes) and **6
-FAIL** out of 85, down from 9/46/30 at the start of this work.
+against the bundled dis3tool reference, byte for byte: **85 EXACT, 0
+BIN-NEAR, 0 FAIL** out of 85 — the glTF JSON is float32-bitwise equal *and*
+every `.bin` byte matches.  (Trajectory: 9/46/30 at the start of this work,
+10/69/6 after the animation-concatenation round, 10/75/0 after the
+channel-target/rigid/compound fixes.)  The last red zone fell to two
+findings, each pinned by an exhaustive per-vertex/per-frame diff:
+
+* **Weight packing** (`d3tool.model.pack_weights_joints`): dis3tool keeps
+  the stored lanes verbatim, computes the complement
+  `c = float32(1 - sum(stored))` from the *double-precision* sum, merges a
+  positive `c` into the first lane whose bone repeats in the implied bone
+  slot (else appends it), never touches a non-positive `c`, and masks a
+  joint only when its weight is *exactly* 0.0 — a 2.98e-08 residue keeps
+  its joint.  Byte-verified on all 292 569 skinned vertices of the corpus
+  (0 mismatches); the earlier ±1ulp red zone was the renormalising
+  approximation this replaced.
+* **Cross-stream frame filling** (`anim.concat_anims`): the bone *list* is
+  the first-seen-name union, but each stream's *frames* land on the output
+  slot of the same **record index**, name notwithstanding — AirElemental's
+  `run.a` names record 6 `LeftLeftHand` while the slot is `LeftHand`, and
+  the reference's LeftHand frames 346..362 are exactly that record's 17
+  samples (DarkServant's `Bone02` → the `ROOT_demons_thief_lod` slot the
+  same way).
+
+Earlier rounds (10/75/0 state) closed the last six FAILs with: the compound
+writer animating only the first stream's bones (DarkServant's `Bone02`),
+duplicate-name bones getting one channel pair each with targets *counted
+positionally* (WaterSnake's four extra `null` bones dangle past the node
+list exactly like the reference, Wildboar 37 of 37), units whose `.ac`
+names a stream outside their folder shipping rigid (Blacknaga,
+watersnake_sea), and Rod-1's attrless sword part keeping real positions at
+the morph-static stride with the stray 15th sampler aimed at accessor 33.
 
 **Root cause of the morph failures (measured).** 24 bundled units have an
 `.ac` that references *more than one* `.a` (Angel names five: idle/attack/run/
@@ -217,12 +283,14 @@ damage/death).  dis3tool **concatenates every one of them** — verified on all
 (`_run.a`, 25 frames), while `_iadd.a` carries 356.  Target #0 matches
 `character_empire_cleric_run.a` frame 0 bit-for-bit (max diff 0.0000).
 
-**Implemented.** `anim.concat_anims` joins the streams in `.ac` order (a bone
-absent from one stream holds its rest pose for that stretch) and takes the
-morph tracks from the **last** one; `_export_gl` calls it through
-`cli._load_anim_stream`, and a lone stream passes through untouched so the 97
-single-`.a` units are unaffected.  All 16 multi-`.a` units that have a
-reference now match it on both frame count *and* morph-target count.
+**Implemented.** `anim.concat_anims` joins the streams in `.ac` order —
+primary slots read each stream's record at the same index (name drift
+included; a slot with no record at all holds its rest pose for that
+stretch) — and takes the morph tracks from the **last** one;
+`_export_gl` calls it through `cli._load_anim_stream`, and a lone stream
+passes through untouched so the 97 single-`.a` units are unaffected.  All
+16 multi-`.a` units that have a reference now match it on frame count,
+morph-target count *and* bytes.
 
 Two further details the reference pinned down:
 
@@ -280,44 +348,50 @@ skinned unit (Wolf: 33 / 1126).  Rigidness was an operator's choice at
 dis3tool export time; nothing in the `.g`, the `.ac` or the file names signals
 it.  d3tool therefore skins and animates them, which is the faithful reading.
 
-*`AirElemental`* — structural parity reached; only ±1 ulp float lanes differ.
-Its two extra bones (`LeftLeftHand`, `Tail02`) exist only in the *second*
-animation stream (`_run.a`), which `concat_anims` appends.  The reference
-emits them as the last two nodes, still lists `LeftLeftHand` under
-`LeftForeArm` (`children [7, 43]`), and gives them **no channel**: its 84
-channels target exactly the 42 primary bones and its buffer is
-`2 * 363 * (16 + 12) = 20328` bytes smaller than one that animated them.
-`node_hierarchy` now walks only the primary skeleton and trails the rest, and
-the single-mesh writer allocates accessors and channels for the primary bones
-alone.
+*`AirElemental`* — byte-exact now.  Its two extra bones (`LeftLeftHand`,
+`Tail02`) exist only in the *second* animation stream (`_run.a`), which
+`concat_anims` appends; the same stream's records 6/41 also *fill* the
+`LeftHand`/`RightTail02` slots' second stretch (the name-drifted record
+above).  The reference emits the extras as the last two nodes, still lists
+`LeftLeftHand` under `LeftForeArm` (`children [7, 43]`), and gives them
+**no channel**: its 84 channels target exactly the 42 primary bones and its
+buffer is `2 * 363 * (16 + 12) = 20328` bytes smaller than one that
+animated them.  `node_hierarchy` walks only the primary skeleton and trails
+the rest, and the single-mesh writer allocates accessors and channels for
+the primary bones alone.
 
 **Node order (measured).**  The reference order is a depth-first walk of the
 skeleton with children in `.a` record order; it matches 79 of the 83 bundled
 references.  The four misses are `Blacknaga` (rigid, no bone nodes),
 `WaterSnake` and `Wildboar` (duplicate bone names) and `AirElemental` (above).
 
-*`DarkServant`* still differs — 394 JSON diffs, first at
-`/meshes/1/primitives/0/targets/0/POSITION` (161 vs 163) — and the compound
-writer has not yet had the same primary-bone treatment applied.  Open.
+*`DarkServant`* was the last compound holdout — the compound writer now has
+the same primary-bone treatment (its `Bone02`, carried only by `_run.a`,
+keeps the trailing node but gets no channel), so it matches the reference
+structurally like every other unit.
 
 **Validator note.** `validate_gltf` accepts *both* morph-weight output shapes:
 the spec's `input.count * len(targets)` and dis3tool's `input.count ** 2`
 (which `_write_compound_gltf` replicates for byte parity).  Requiring only the
 former made the validator reject 8 of the 98 bundled reference glTFs — i.e.
-ground truth.  One reference still fails, correctly: `Empire/Rod-1` declares
-animation sampler 14 `output=33` while its document has 33 accessors, so the
-index is out of range in dis3tool's own file.
+ground truth.  Two further dis3tool quirks are now *reproduced for parity*
+and reported as warnings, not errors: Rod-1's stray sampler 14 (`output=33`
+with 33 accessors, referenced by no channel) and the dangling duplicate-bone
+channel targets of WaterSnake (nodes 47–50 of 47) / Wildboar (node 37 of 37).
 
 **Sound aliases.** The corpus holds 1294 `.alias` files, referenced from the
-`.ac` `event2` entries.  Two things worth knowing: the files on disk are
+`.ac` `event2` entries.  Three things worth knowing: the files on disk are
 lowercase (`attack00.alias`) while the references are CamelCase
-(`Attack00.alias`), so any resolver must be case-insensitive; and 261 of the
-2065 references point at resources outside this repository (shared
-`resources/sounds/alias/*` and cross-unit folders such as
-`Characters/elves/scout/`).  d3tool does not *resolve* alias paths, but a
-reverse export now copies the unit's own `Aliases/` folder alongside the `.ac`
-that references it, so the exported unit is self-contained instead of shipping
-with 2065 dangling `event2` references.
+(`Attack00.alias`), so any resolver must be case-insensitive; 87 of them have
+an empty block (a muted event — they must round-trip as empty, not be
+dropped); and 261 of the 2065 references point at resources outside this
+repository (shared `resources/sounds/alias/*` and cross-unit folders such as
+`Characters/elves/scout/`).  `d3tool/alias.py` now parses and re-emits all
+1294 byte-for-byte — including Craken's CP1251-encoded `ттт.alias` — the
+reverse export copy validates each file, and `analyze` reports per-folder
+alias health instead of copying blind.  1293 files are ASCII/UTF-8 and one is
+CP1251, so the byte-level readers decode UTF-8 → CP1251 → Latin-1 and
+remember which codec to re-encode with.
 
 **Known limitation.** `Neutrals/OrcKing/weapon_neutrals_orcking_sword.dds` is
 written by dis3tool with a 24-bit RGB header over a 32-bit payload, so its own

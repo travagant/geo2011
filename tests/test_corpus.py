@@ -164,12 +164,13 @@ def test_g_roundtrip_is_bytewise_lossless():
         if gfile.write_geometry_file(mesh, attrs) != data:
             bad.append(_rel(p))
     assert not bad, f"{len(bad)} .g files do not round-trip: {bad[:5]}"
-    # The structured (non-passthrough) share must not silently regress: of the
-    # 247 bundled .g files, 30 are compound containers the writer only
-    # reproduces verbatim, so 217 must parse fully.
+    # The structured (non-passthrough) share must not silently regress: the
+    # compound containers used to need the raw passthrough; since the writer
+    # reproduces their parts (donated prefix/attrs/tail) the whole corpus
+    # parses structurally.
     total = len(_assets(".g"))
-    assert structured == total - 30, \
-        f"{structured} of {total} .g parse structurally, expected {total - 30}"
+    assert structured == total, \
+        f"{structured} of {total} .g parse structurally, expected {total}"
 
 
 def test_a_roundtrip_is_bytewise_lossless():
@@ -325,11 +326,13 @@ def test_cli_commands_exit_cleanly():
     with tempfile.TemporaryDirectory() as tmp, _quiet():
         for argv, want in (
             (["analyze", unit], 0),
-            (["export", stem + ".gltf", "-o", os.path.join(tmp, "rev")], 0),
-            (["export-gl", stem + ".g", "-a", stem + "_iadd.a",
+            (["import", stem + ".g",
               "-o", os.path.join(tmp, "fwd", "u.gltf")], 0),
+            (["import", stem + ".g", "-a", stem + "_iadd.a",
+              "-o", os.path.join(tmp, "fwd2", "u.gltf")], 0),
+            (["export", stem + ".gltf", "-o", os.path.join(tmp, "rev")], 0),
             (["validate", os.path.join(tmp, "fwd", "u.gltf")], 0),
-            (["import", stem + ".g"], 0),
+            (["dump", stem + ".g"], 0),
             (["bundle", unit, "-o", os.path.join(tmp, "b")], 0),
             (["texture", "info", stem + ".t"], 0),
             (["texture", "convert", stem + ".t",

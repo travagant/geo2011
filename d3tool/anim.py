@@ -119,8 +119,11 @@ def _scan_morph_tracks(trailing: bytes) -> List[MorphTrack]:
                 data_len != want_len - 24 - nlen:
             o += 4
             continue
-        out.append(MorphTrack(name=name, frame_count=frames, vertex_count=vc,
-                              positions=trailing[pos_o:pos_o + data_len]))
+        out.append(MorphTrack(
+            name=name, frame_count=frames, vertex_count=vc,
+            positions=trailing[pos_o:pos_o + data_len],
+            tag=struct.unpack_from("<I", trailing, o + 8)[0],
+            raw_record=trailing[o:pos_o + data_len]))
         o = pos_o + data_len
     return out
 
@@ -205,11 +208,22 @@ def concat_anims(anims: List[AnimFile]) -> AnimFile:
     A unit whose `.ac` names more than one `.a` (Angel names five:
     idle/attack/run/damage/death) is exported by dis3tool as **one** animation
     spanning every stream — verified on all 24 such bundled units, where the
-    reference glTF frame count equals the sum exactly.  Bone frames are
-    appended in `.ac` order; a bone absent from one stream holds its rest pose
-    for that stretch.  Morph tracks are taken from the **last** stream
-    (verified on all 8 morph-bearing units: Cleric's 25 targets come from
-    `_run.a`, not the 356 in `_iadd.a`).
+    reference glTF frame count equals the sum exactly.  Morph tracks are taken
+    from the **last** stream (verified on all 8 morph-bearing units: Cleric's
+    25 targets come from `_run.a`, not the 356 in `_iadd.a`).
+
+    Frame filling: the output bone list is the first-seen-name union (the
+    first stream's bones, then any later-stream bones with new names), but
+    the *frames* of a primary slot (index < first-stream bone count) come
+    from each stream's **record at the same index**, name notwithstanding —
+    the C++ exporter walks the per-stream record arrays in parallel.  Byte
+    evidence: AirElemental's `run.a` names its record 6 `LeftLeftHand` while
+    the `iadd.a` slot 6 is `LeftHand`, and the reference export's LeftHand
+    frames 346..362 are exactly `run.a` record 6's 17 samples (same for
+    `Tail02` → `RightTail02`); DarkServant's `run.a` record 68 `Bone02`
+    lands on the `ROOT_demons_thief_lod` slot the same way.  Bones appended
+    beyond the primary range keep their own samples (they get no channels,
+    matching the reference node list).
 
     A single stream is returned unchanged, so units with one `.a` are untouched.
     """
@@ -221,6 +235,7 @@ def concat_anims(anims: List[AnimFile]) -> AnimFile:
 
     total = sum(a.frame_count for a in anims)
     by_name = [{b.name: b for b in stream.bones} for stream in anims]
+    n_primary = len(anims[0].bones)
     order: List[str] = []
     seen: set = set()
     for stream in anims:
@@ -230,13 +245,15 @@ def concat_anims(anims: List[AnimFile]) -> AnimFile:
                 order.append(b.name)
 
     out_bones: List[BoneAnim] = []
-    for name in order:
+    for pos, name in enumerate(order):
         # rest pose = first sample of the first stream that carries this bone
         rest = None
         parent = ""
         pream = b""
         for i, _stream in enumerate(anims):
-            src: Optional[BoneAnim] = by_name[i].get(name)
+            src: Optional[BoneAnim] = (
+                _stream.bones[pos] if pos < len(_stream.bones)
+                else by_name[i].get(name))
             if src is not None and src.frames:
                 rest = src.frames[0]
                 parent = parent or src.parent
@@ -246,7 +263,14 @@ def concat_anims(anims: List[AnimFile]) -> AnimFile:
             rest = (0.0,) * _SAMPLE
         frames: List[Tuple[float, ...]] = []
         for i, stream in enumerate(anims):
-            src = by_name[i].get(name)
+            # primary slots read the stream's record at the same index
+            # (names may drift between streams); appended names fall back
+            # to a name lookup
+            if pos < n_primary:
+                src = (stream.bones[pos]
+                       if pos < len(stream.bones) else None)
+            else:
+                src = by_name[i].get(name)
             if src is not None and src.frames:
                 frames.extend(src.frames)
                 if len(src.frames) < stream.frame_count:
@@ -279,7 +303,7 @@ def write_anim(anim: AnimFile) -> bytes:
 
 
 def _preamble_for(nframes: int, a: int = 5, b: int = 5) -> bytes:
-    """Build a canonical record preamble (``[a][b][frame_count][0.02]``)."""
+    """Build a record preamble (``[a][b][frame_count][0.02]``)."""
     return struct.pack("<IIIf", a, b, nframes, 0.02)
 
 
@@ -289,9 +313,10 @@ def build_anim(
 ) -> AnimFile:
     """Build an :class:`AnimFile` from ``(name, parent, frames)`` tuples.
 
-    The global header mirrors the dis3tool layout; each record uses the
-    canonical preamble with ``a = b = 5`` (engine accepts any small value;
-    the exporter writes varying values that are not required for playback).
+    The global header mirrors the dis3tool layout; each record preamble is
+    ``[len(name) + 1][len(parent) + 1][frame_count][0.02]`` — verified
+    against all 6764 bone records of the shipped corpus (the pair counts
+    the NUL-terminated strings, matching the C-struct writing code).
     """
     # 20-byte header: [magic][len-8 (padded later)][bones][frames][unk=15]
     hdr = bytearray(struct.pack("<5I", 9, 0, len(bones), frame_count, 15))
@@ -299,9 +324,14 @@ def build_anim(
     anim = AnimFile(bone_count=len(bones), frame_count=frame_count)
     for name, parent, frames in bones:
         nf = len(frames) or frame_count
-        anim.bones.append(BoneAnim(name, parent, nf, frames, _preamble_for(nf)))
+        anim.bones.append(BoneAnim(
+            name, parent, nf, frames,
+            _preamble_for(nf, len(name) + 1, len(parent) + 1)))
     anim.header = bytes(hdr)
-    # recompute header length field (offset 4 = total_len - 8)
+    # recompute the header length field (offset 4): it covers everything the
+    # writer emits except the trailing block, minus the 8-byte magic/len pair
+    # itself (verified against all 152 corpus `.a` files)
     total = len(write_anim(anim))
-    anim.header = struct.pack("<5I", 9, total - 8, len(bones), frame_count, 15)
+    anim.header = struct.pack("<5I", 9, total - 8 - len(anim.trailing),
+                              len(bones), frame_count, 15)
     return anim

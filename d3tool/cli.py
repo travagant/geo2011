@@ -26,6 +26,7 @@ from typing import List, Optional, Tuple
 
 from . import __version__
 from . import ac as acmod
+from . import alias as aliasmod
 from . import anim as animmod
 from . import gfile
 from . import gltf as gltfmod
@@ -118,6 +119,52 @@ def _analyze_unit(path: str) -> int:
             ui.fail(f"{os.path.basename(gltf)}: parse error {exc}")
             had_error = 1
 
+    scene_files = sorted(glob.glob(os.path.join(path, "*.scene")))
+    scene_rows = []
+    for sc in scene_files:
+        try:
+            doc = scenemod.parse_scene(
+                open(sc, "rb").read().decode("latin-1"))
+            kinds = {k: len(doc.find_all(k))
+                     for k in ("gobj", "bones", "goclass", "particles")
+                     if doc.find_all(k)}
+            desc = " ".join(f"{k}:{v}" for k, v in kinds.items()) or "empty"
+            scene_rows.append((os.path.basename(sc), desc,
+                               str(len(doc.find_all("bones")[0].files()))
+                               if doc.find_all("bones") else "0"))
+        except Exception as exc:  # noqa: BLE001
+            ui.fail(f"{os.path.basename(sc)}: parse error {exc}")
+            had_error = 1
+    if scene_rows:
+        ui.table(scene_rows,
+                 headers=[".scene scene", "nodes", "file refs"])
+
+    alias_dir = os.path.join(path, "Aliases")
+    if os.path.isdir(alias_dir):
+        n_alias = n_entries = n_bad = 0
+        empty = 0
+        for cur, _dirs, files in os.walk(alias_dir):
+            for fn in sorted(files):
+                if not fn.lower().endswith(".alias"):
+                    continue
+                ap = os.path.join(cur, fn)
+                try:
+                    adoc = aliasmod.parse_alias_bytes(open(ap, "rb").read())
+                    n_alias += 1
+                    n_entries += len(adoc.sounds)
+                    if not adoc.sounds:
+                        empty += 1
+                except Exception as exc:  # noqa: BLE001
+                    n_bad += 1
+                    ui.fail(f"{os.path.relpath(ap, path)}: "
+                            f"parse error {exc}")
+                    had_error = 1
+        if n_alias or n_bad:
+            summary = (f"Aliases: {n_alias} files, {n_entries} sound "
+                       f"entries ({empty} muted)")
+            if n_bad:
+                summary += f", {n_bad} unparsable"
+            ui.info(summary)
     if g_rows:
         ui.table(g_rows, headers=[".g geometry", "verts", "tris", "bones",
                                   "slots", "diffuse"])
@@ -148,6 +195,48 @@ def _default_attrs(mesh, geometry_base: str, res: str) -> dict:
         "weights_on_vertex": str(mesh.weights_on_vertex),
         "bones_num": str(len(mesh.bones)),
     }
+
+
+def _main_image_uri(gltf_path: str) -> str:
+    """Basename of the image URI of the *main mesh's* material.
+
+    The first image of the file is not necessarily the main mesh's texture
+    (compound units list one image per sub-mesh), so resolve the material
+    chain of ``meshes[0].primitives[0]``: material -> baseColorTexture ->
+    texture -> image.  Falls back to the first real image URI.
+    """
+    try:
+        with open(gltf_path, "r", encoding="utf-8") as fh:
+            doc = json.load(fh)
+    except (OSError, ValueError):
+        return ""
+    images = doc.get("images") or []
+
+    def _clean(img_index):
+        if 0 <= img_index < len(images):
+            uri = images[img_index].get("uri") or ""
+            if uri and not uri.startswith("data:"):
+                return os.path.basename(uri)
+        return ""
+
+    mesh0 = (doc.get("meshes") or [{}])[0]
+    prim0 = (mesh0.get("primitives") or [{}])[0]
+    mi = prim0.get("material")
+    if mi is not None:
+        try:
+            mat = doc["materials"][mi]
+            ti = mat["pbrMetallicRoughness"]["baseColorTexture"]["index"]
+            si = doc["textures"][ti].get("source")
+            uri = _clean(si)
+            if uri:
+                return uri
+        except (KeyError, IndexError, TypeError):
+            pass
+    for img_index in range(len(images)):
+        uri = _clean(img_index)
+        if uri:
+            return uri
+    return ""
 
 
 def _resource_root(gltf_path: str, base: str) -> str:
@@ -271,21 +360,55 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
         ui.section("Reverse export  glTF → Disciples 3")
 
     m = gltfmod.load_gltf(gltf_path, weights_on_vertex=weights_on_vertex)
-    sm = gltfmod.mesh_to_skinned(m, weights_on_vertex=weights_on_vertex)
     # Derive the unit base with splitext, not by chopping a fixed 5 chars:
     # `d3tool export unit.glb` used to produce "unit.g" AND fail to locate the
     # sibling unit.scene/unit.ac (the lookups key off this base), silently
     # dropping every particle emitter and every event2 entry.
     base = os.path.splitext(os.path.basename(gltf_path))[0]
+    # Donate the original `.g` sitting next to the source glTF (same reuse
+    # rule as the `.scene`/`.ac`): it carries the authoring data a glTF
+    # cannot express -- per-vertex diffuse, container header/prelude/vertex
+    # magic, light-map UVs, the per-part attribute blocks and scaffolding,
+    # and the original weight/bone split (adopted only when it re-packs
+    # bit-exactly to the glTF lanes, so user edits always win).
+    donor = None
+    donor_path = os.path.join(os.path.dirname(gltf_path), base + ".g")
+    if os.path.isfile(donor_path):
+        try:
+            candidate = gfile.parse_geometry_file(
+                open(donor_path, "rb").read())
+            donor = None if candidate.parse_error else candidate
+        except Exception:  # noqa: BLE001 - a broken donor must not stop us
+            donor = None
+    sm = gltfmod.mesh_to_skinned(m, weights_on_vertex=weights_on_vertex,
+                                 donor=donor)
+    if not (donor is not None and donor.geometry_file):
+        # the donated name2 (the `.g` header's geometry-file string) is the
+        # original asset's own label and may differ from the file base
+        sm.geometry_file = base
     os.makedirs(out_dir, exist_ok=True)
     res = _resource_root(gltf_path, base)
-    attrs = _default_attrs(sm, base, res)
-    sm.geometry_file = base
-
+    if donor is not None and donor.attrs:
+        # donated attribute block: keeps the historical `.tga` material
+        # name, dwNode/dwParent, tech/vdshader and any extra keys
+        attrs = dict(donor.attrs)
+    else:
+        attrs = _default_attrs(sm, base, res)
+        # without a donor the texture name is unknowable from the GM side;
+        # the glTF image URI is the only source of truth (it may differ
+        # from the file base: Wolfsnow ships `character_neutral_*.dds`
+        # for `character_neutrals_*`), and the engine convention is the
+        # `.tga` spelling the forward export renames back to `.dds`
+        uri0 = _main_image_uri(gltf_path)
+        if uri0:
+            attrs["material0_diffuse"] = \
+                os.path.splitext(uri0)[0] + ".tga"
     # textures (glTF .dds -> native .t), and point the .g at the emitted file
     emitted = _export_textures(gltf_path, out_dir, base, quiet)
-    if emitted:
+    if emitted and "material0_diffuse" not in attrs:
         attrs["material0_diffuse"] = emitted
+    elif emitted and attrs.get("material0_diffuse", "").endswith(".tga"):
+        pass  # the donated `.tga` name is the convention the engine expects
     else:
         # No texture was emitted; fall back to the unit base if a .t/.dds
         # happened to be written next to the output (or keep the .tga name).
@@ -314,6 +437,10 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
             fh.write(scene_bytes)
         if not quiet:
             ui.wrote(out_scene, "reused (particle emitters preserved)")
+        try:
+            scenemod.parse_scene(scene_bytes.decode("latin-1"))
+        except Exception as exc:  # noqa: BLE001
+            ui.warn(f"{base}.scene copied but does not parse: {exc}")
     else:
         scene_text = scenemod.write_scene(sm.name, base, res, attrs,
                                           gobj_name=sm.name)
@@ -362,6 +489,11 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
                 with open(os.path.join(dst_dir, fn), "wb") as fh:
                     fh.write(payload)
                 n_alias += 1
+                try:
+                    aliasmod.parse_alias_bytes(payload)
+                except Exception as exc:  # noqa: BLE001
+                    ui.warn(f"Aliases/{fn}: copied but does not parse "
+                            f"({exc})")
         if not quiet:
             ui.wrote(os.path.join(out_dir, "Aliases"),
                      f"{n_alias} sound/FX alias files (referenced by the .ac)")
@@ -369,14 +501,48 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
     # animation binary
     if anim:
         try:
-            animfile = gltfmod.animation_from_gltf(m)
-            if animfile.bones:
+            # Name the rebuilt .a exactly as the .ac references it (the
+            # Idle/combined file from detect_anim_files), so the engine can
+            # resolve the path.  Typically <base>_iadd.a but some assets
+            # use <base>.a or <base>_baseanims.a.
+            idle_name = anim_files.get("Idle") or (base + "_iadd.a")
+            # Donate the original `.a` files (same reuse rule as the `.g`
+            # donor): they supply the bone order/parents/record preambles
+            # and the trailing morph-stream scaffolding a glTF animation
+            # cannot carry (record tag, foreign units' streams), adopted
+            # only when the rebuilt data verifies against them.  A unit
+            # whose `.ac` names several `.a` files was exported as ONE
+            # concatenated glTF animation — the named stream is sliced
+            # back out of it at the donor frame-count boundaries.
+            folder_a = os.path.dirname(gltf_path)
+            stream_names: List[str] = []
+            try:
+                for nm in acmod.detect_anim_files(folder_a, base).values():
+                    if nm and nm not in stream_names \
+                            and os.path.isfile(os.path.join(folder_a, nm)):
+                        stream_names.append(nm)
+            except Exception:  # noqa: BLE001 - never break an export
+                stream_names = []
+            idle_base = os.path.basename(idle_name)
+            if idle_base not in stream_names:
+                stream_names = ([idle_base] + [n for n in stream_names
+                                               if n != idle_base]
+                                if stream_names else [])
+            streams = []
+            for nm in stream_names:
+                try:
+                    acand = animmod.parse_anim(
+                        open(os.path.join(folder_a, nm), "rb").read())
+                    if not acand.raw:
+                        streams.append((nm, acand))
+                except Exception:  # noqa: BLE001
+                    pass
+            donor_a = next((a for n, a in streams if n == idle_base), None)
+            animfile = gltfmod.animation_from_gltf(m, donor=donor_a,
+                                                   streams=streams,
+                                                   out_name=idle_base)
+            if animfile.bones or animfile.morphs:
                 a_bytes = animmod.write_anim(animfile)
-                # Name the rebuilt .a exactly as the .ac references it (the
-                # Idle/combined file from detect_anim_files), so the engine can
-                # resolve the path.  Typically <base>_iadd.a but some assets
-                # use <base>.a or <base>_baseanims.a.
-                idle_name = anim_files.get("Idle") or (base + "_iadd.a")
                 out_a = os.path.join(out_dir, os.path.basename(idle_name))
                 with open(out_a, "wb") as fh:
                     fh.write(a_bytes)
@@ -596,6 +762,12 @@ def _find_animation_for_geometry(g_path: str) -> Optional[str]:
     important for names such as ``*_iadd.a`` and ``*_baseanims.a``.  LOD files
     normally share the main model's config.  If no config gives an answer, use
     conventional names, then a sole animation in the directory.
+
+    When the config *names* streams but none of them exists in the unit
+    folder, there is no fallback: dis3tool exports such a unit rigid
+    (Blacknaga's config points at mermaid's `.a`, which is not in its
+    folder), and guessing a conventional `.a` here would animate a mesh the
+    reference leaves rigid.
     """
     folder = os.path.dirname(os.path.abspath(g_path))
     stem = os.path.splitext(os.path.basename(g_path))[0]
@@ -608,14 +780,20 @@ def _find_animation_for_geometry(g_path: str) -> Optional[str]:
         try:
             cfg = acmod.parse_ac(open(ac_path, "r", encoding="utf-8-sig",
                                       errors="replace").read())
-            for state in cfg.states:
-                if state.file:
-                    candidate = os.path.join(
-                        folder, state.file.replace("\\", "/").rsplit("/", 1)[-1])
-                    if os.path.isfile(candidate):
-                        return candidate
         except OSError:
-            pass
+            continue
+        named = False
+        for state in cfg.states:
+            if state.file:
+                named = True
+                candidate = os.path.join(
+                    folder, state.file.replace("\\", "/").rsplit("/", 1)[-1])
+                if os.path.isfile(candidate):
+                    return candidate
+        if named:
+            # The unit's own config names streams that are not in its
+            # folder — ship it rigid, like the dis3tool reference does.
+            return None
 
     for base in dict.fromkeys((stem, main_stem)):
         for suffix in (".a", "_iadd.a", "_baseanims.a"):
@@ -661,6 +839,9 @@ def _export_all(folder: str, out_dir: str, use_anim: bool = True) -> int:
             detail = os.path.relpath(target, os.getcwd())
             if animation:
                 detail += f"  + {os.path.basename(animation)}"
+            elif use_anim:
+                # the unit's .ac names a stream its folder does not have
+                detail += "  + no animation (rigid, like the dis3tool export)"
             ui.ok(detail)
             succeeded += 1
         except Exception as exc:  # noqa: BLE001
@@ -812,10 +993,12 @@ def _build_parser() -> argparse.ArgumentParser:
                     "glTF & the original GM (.g/.a/.scene/.ac) formats.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=textwrap.dedent("""\
-            examples:
+            the two everyday commands:
+              d3tool import  unit.g    -o unit.gltf   # game → glTF (edit it anywhere)
+              d3tool export  unit.gltf -o unit        # glTF → game (.g/.scene/.ac/.a/.t)
+
+            more:
               d3tool analyze Neutrals/AirElemental
-              d3tool export Neutrals/AirElemental/character_neutrals_airelemental.gltf -o out
-              d3tool export-gl Neutrals/AirElemental/character_neutrals_airelemental.g -a .../iadd.a -o out/unit.gltf
               d3tool export-all Neutrals -o gltf
               d3tool bundle Neutrals/AirElemental -o bundle
               d3tool validate out/unit.gltf
@@ -828,22 +1011,40 @@ def _build_parser() -> argparse.ArgumentParser:
     p_analyze = sub.add_parser("analyze", help="inspect a unit folder")
     p_analyze.add_argument("path")
 
-    p_export = sub.add_parser("export", help="glTF → GM (.g/.scene/.ac/.a)")
+    # `import` brings a game model INTO the editing pipeline (glTF); the
+    # old `export-gl` is kept as an alias of it
+    def _add_gm_source_args(p):
+        p.add_argument("g")
+        p.add_argument("-a", "--anim", default=None,
+                       help=".a animation file (default: auto-detect next "
+                            "to the .g via the unit's .ac)")
+        p.add_argument("-o", "--out", default=None,
+                       help="output glTF path (default: <base>.gltf)")
+        p.add_argument("-t", "--texture", default=None)
+        p.add_argument("--no-anim", action="store_true",
+                       help="do not attach an animation (rigid model)")
+
+    p_import = sub.add_parser(
+        "import",
+        help="IMPORT a game model for editing: GM (.g/.a) → glTF "
+             "(.gltf/.bin); animation auto-detected via the .ac")
+    _add_gm_source_args(p_import)
+    p_g2gl = sub.add_parser("export-gl",
+                            help="alias of `import` (GM → glTF)")
+    _add_gm_source_args(p_g2gl)
+
+    p_export = sub.add_parser(
+        "export",
+        help="EXPORT an edited model back INTO the game: glTF → GM "
+             "(.g/.scene/.ac/.a/.t + Aliases)")
     p_export.add_argument("gltf")
-    p_export.add_argument("-o", "--out", default=".")
+    p_export.add_argument("-o", "--out", default=".",
+                          help="output folder (default: current)")
     p_export.add_argument("--weights-on-vertex", type=_weights_on_vertex,
                           default=0, metavar="N",
                           help="influence slots to write (2/3/4; 0=auto-detect)")
     p_export.add_argument("--no-anim", action="store_true",
                           help="do not rebuild the .a animation file")
-
-    p_g2gl = sub.add_parser("export-gl", help="GM .g/.a → glTF (.gltf/.bin)")
-    p_g2gl.add_argument("g")
-    p_g2gl.add_argument("-a", "--anim", default=None,
-                        help="optional .a animation file")
-    p_g2gl.add_argument("-o", "--out", default=None,
-                        help="output glTF path (default <base>.gltf)")
-    p_g2gl.add_argument("-t", "--texture", default=None)
 
     p_all = sub.add_parser(
         "export-all", help="recursively convert every .g file to glTF")
@@ -864,8 +1065,8 @@ def _build_parser() -> argparse.ArgumentParser:
     p_validate = sub.add_parser("validate", help="structural glTF self-check")
     p_validate.add_argument("gltf")
 
-    p_import = sub.add_parser("import", help="dump a parsed .g as JSON")
-    p_import.add_argument("gfile")
+    p_dump = sub.add_parser("dump", help="dump a parsed .g as JSON")
+    p_dump.add_argument("gfile")
 
     p_texture = sub.add_parser(
         "texture", help="inspect / convert .t (GM) <-> .dds textures")
@@ -887,11 +1088,36 @@ def main(argv=None) -> int:
 
     if args.cmd == "analyze":
         return _analyze_unit(args.path)
-    elif args.cmd == "export":
-        _export(args.gltf, args.out, args.weights_on_vertex,
-                anim=not args.no_anim)
-    elif args.cmd == "export-gl":
-        _export_gl(args.g, args.anim, args.out, args.texture)
+    elif args.cmd in ("import", "export", "export-gl"):
+        # pipeline semantics: import = game → glTF (edit), export =
+        # glTF → game (ship back).  Legacy calls route by extension so
+        # old scripts keep working either way.
+        source = str(getattr(args, "g", None)
+                     or getattr(args, "gltf") or "")
+        cmd = "import" if args.cmd in ("import", "export-gl") else "export"
+        if cmd == "export" and source.lower().endswith(".g"):
+            ui.section("note")
+            ui.info("`export` is glTF → GM; routing the .g input to "
+                    "`import` (GM → glTF)")
+            cmd = "import"
+        elif cmd == "import" and source.lower().endswith((".gltf", ".glb")):
+            ui.section("note")
+            ui.info("`import` is GM → glTF; routing the .gltf input to "
+                    "`export` (glTF → GM)")
+            cmd = "export"
+        if cmd == "import":
+            # a routed call may come from the other parser: probe the attrs
+            anim = getattr(args, "anim", None)
+            if anim is None and not getattr(args, "no_anim", False):
+                anim = _find_animation_for_geometry(source)
+                if anim:
+                    ui.info(f"animation: {os.path.basename(anim)}")
+            _export_gl(source, anim, args.out,
+                       getattr(args, "texture", None))
+        else:
+            _export(source, args.out,
+                    getattr(args, "weights_on_vertex", 0),
+                    anim=not getattr(args, "no_anim", False))
     elif args.cmd == "export-all":
         return _export_all(args.folder, args.out, use_anim=not args.no_anim)
     elif args.cmd == "bundle":
@@ -911,7 +1137,7 @@ def main(argv=None) -> int:
         ui.table([("errors", str(errors)), ("warnings", str(warnings)),
                   ("accessors", str(infos))])
         return 1 if errors else 0
-    elif args.cmd == "import":
+    elif args.cmd == "dump":
         data = open(args.gfile, "rb").read()
         mesh = gfile.parse_geometry_file(data)
         if mesh.parse_error:

@@ -9,7 +9,8 @@ work.
 """
 
 from .model import (
-    DEFAULT_DIFFUSE, Bone, GltfModel, MeshPart, MorphTrack, SkinnedMesh, Vertex,
+    DEFAULT_DIFFUSE, Bone, GltfModel, MeshPart, MorphTrack, SkinnedMesh,
+    Vertex, pack_weights_joints,
 )
 from .gfile import (
     parse_attributes, parse_geometry_file, vertex_stride, write_geometry_file,
@@ -23,7 +24,14 @@ from .ac import (
 from .anim import (
     AnimFile, BoneAnim, build_anim, parse_anim, write_anim,
 )
-from .scene import write_scene
+from .scene import (
+    SceneDoc, SceneNode, count_particles, parse_scene, render_scene,
+    write_scene,
+)
+from .alias import (
+    AliasDoc, SoundRef, parse_alias, parse_alias_bytes, write_alias,
+    write_alias_bytes,
+)
 from .gltf_out import node_hierarchy, validate_gltf, write_gltf, write_gltf_to
 from .texture import (
     TextureInfo, build_dds_header, convert_file, dds_to_t, find_diffuse_texture,
@@ -36,7 +44,7 @@ __all__ = [
     "__version__",
     # model
     "DEFAULT_DIFFUSE", "Bone", "GltfModel", "MeshPart", "MorphTrack",
-    "SkinnedMesh", "Vertex",
+    "SkinnedMesh", "Vertex", "pack_weights_joints",
     # .g geometry
     "parse_attributes", "parse_geometry_file", "vertex_stride",
     "write_geometry_file",
@@ -49,7 +57,11 @@ __all__ = [
     # .a animation
     "AnimFile", "BoneAnim", "build_anim", "parse_anim", "write_anim",
     # .scene
-    "write_scene",
+    "SceneDoc", "SceneNode", "count_particles", "parse_scene",
+    "render_scene", "write_scene",
+    # .alias
+    "AliasDoc", "SoundRef", "parse_alias", "parse_alias_bytes",
+    "write_alias", "write_alias_bytes",
     # GM -> glTF
     "node_hierarchy", "validate_gltf", "write_gltf", "write_gltf_to",
     # .t / .dds textures

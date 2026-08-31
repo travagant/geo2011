@@ -14,12 +14,69 @@ same skinned mesh.  The geometry is a flat list of vertices with:
 The game engine only stores the first ``w-1`` weights; the final weight is
 implicitly ``1 - sum(stored)`` so the four influence weights always sum to one.
 ``weights_on_vertex`` (``w``) is therefore the number of *influence slots*.
+:func:`pack_weights_joints` implements the exact float32 packing dis3tool
+applies to these numbers on glTF export.
 """
 
 from __future__ import annotations
 
+import struct
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
+
+
+def _f32(x: float) -> float:
+    """Round to the nearest float32 (ties-to-even), like the C++ exporter."""
+    return struct.unpack("<f", struct.pack("<f", x))[0]
+
+
+def pack_weights_joints(
+    stored_weights: Tuple[float, ...], bones: Tuple[int, ...]
+) -> Tuple[Tuple[float, float, float, float], Tuple[int, int, int, int]]:
+    """Exact dis3tool ``WEIGHTS_0``/``JOINTS_0`` packing for one vertex.
+
+    Byte-verified against every skinned vertex of the 85-unit reference
+    corpus (292 569 vertices, 0 mismatches).  The rule, mirroring the C++
+    exporter:
+
+    * the stored lanes are copied verbatim (float32, no renormalisation,
+      no trailing-zero trimming);
+    * the complement ``c = float32(1.0 - sum(stored))`` is computed from
+      the **double-precision** sum (not a float32 running sum);
+    * ``c > 0`` is merged into the first already-listed lane whose bone
+      equals the implied bone ``bones[len(stored)]`` (single-precision
+      add), or appended as an extra lane when no such lane exists;
+    * ``c <= 0`` changes nothing (the stored lanes already reach 1.0f or
+      overshoot it by rounding -- both stay verbatim);
+    * ``JOINTS_0`` is the bone array zero-padded to 4 lanes with every
+      lane whose **exact** weight is ``0.0`` masked to joint 0 (tiny
+      residues like ``2.98e-08`` keep their joint, matching the
+      reference bytes).
+
+    A vertex with no stored lanes at all reads as rigid: full weight on
+    its single bone (or on joint 0 when it has no bones).
+    """
+    s = [_f32(x) for x in stored_weights]
+    b = [int(x) & 0xFF for x in bones]
+    if not s:
+        j0 = b[0] if b else 0
+        return (1.0, 0.0, 0.0, 0.0), (j0, 0, 0, 0)
+    n = len(s)
+    while len(b) <= n:
+        b.append(0)
+    implied = b[n]
+    c = _f32(1.0 - sum(s))  # double-precision sum, then one f32 rounding
+    out = list(s)
+    dup = next((i for i in range(n) if b[i] == implied), None)
+    if c > 0.0:
+        if dup is not None:
+            out[dup] = _f32(out[dup] + c)
+        else:
+            out.append(c)
+    w = (out + [0.0, 0.0, 0.0, 0.0])[:4]
+    j = [bb if wt != 0.0 else 0
+         for bb, wt in zip((b + [0, 0, 0, 0])[:4], w)]
+    return (w[0], w[1], w[2], w[3]), (j[0], j[1], j[2], j[3])
 
 
 # default per-vertex "diffuse" GP colour written by dis3tool (opaque white)
@@ -39,44 +96,23 @@ class Vertex:
 
     def influence_weights(self) -> Tuple[float, ...]:
         """Weights for the ``len(bones)`` influence slots (last implied)."""
-        n = len(self.bones)
-        # A vertex with no stored influence slots is bound rigidly to the
-        # single bone (``weights_on_vertex == 1``): it must read as weight 1.0.
-        if n == 0:
-            return (1.0,)
-        w = list(self.stored_weights[: n - 1])
-        while len(w) < n - 1:
-            w.append(0.0)
-        w.append(max(0.0, 1.0 - sum(w)))
-        return tuple(w[:n])
+        w, _ = pack_weights_joints(self.stored_weights, self.bones)
+        n = max(len(self.bones), 1)
+        return w[:n]
 
     @property
     def gltf_weights(self) -> Tuple[float, float, float, float]:
-        w = list(self.influence_weights())
-        while len(w) < 4:
-            w.append(0.0)
-        return (w[0], w[1], w[2], w[3])
+        return pack_weights_joints(self.stored_weights, self.bones)[0]
 
     @property
     def gltf_joints(self) -> Tuple[int, int, int, int]:
-        # A vertex with no influence slots is rigid → joint 0 in the first slot.
-        if not self.bones:
-            return (0, 0, 0, 0)
-        # dis3tool resets a joint index to 0 in any influence slot whose weight
-        # is effectively zero (padding).  Keeping the raw `.g` bone index there
-        # makes the Khronos validator flag the vertex as having a joint index
-        # used with zero weight (and report duplicate joints).  The threshold
-        # must match the weight-packing threshold in gltf_out.py (1e-4), so a
-        # weight that is dropped there also has its joint zeroed here.
-        w = self.influence_weights()
-        b = list(self.bones)
-        while len(b) < 4:
-            b.append(0)
-        out = []
-        for k in range(4):
-            ww = w[k] if k < len(w) else 0.0
-            out.append(b[k] if ww > 1e-4 else 0)
-        return (out[0], out[1], out[2], out[3])
+        # dis3tool resets a joint index to 0 in any influence slot whose
+        # exact weight is 0.0 (padding).  Keeping the raw `.g` bone index
+        # there would make the Khronos validator flag the vertex as having
+        # a joint index used with zero weight (and report duplicate
+        # joints).  Tiny non-zero residues (e.g. 2.98e-08) keep their
+        # joint -- byte parity with the reference export wins.
+        return pack_weights_joints(self.stored_weights, self.bones)[1]
 
 
 @dataclass
@@ -106,6 +142,10 @@ class MorphTrack:
     vertex_count: int = 0
     # raw position bytes: frame-major, vertex_count * vec3 float32 per frame
     positions: bytes = b""
+    # record-type tag (third u32; observed 15 / 16 / 30) and the verbatim
+    # full record bytes (header + name + positions) when parsed from a file
+    tag: int = 15
+    raw_record: bytes = b""
 
 
 @dataclass
@@ -127,6 +167,8 @@ class MeshPart:
     bones: List[Bone] = field(default_factory=list)
     weights_on_vertex: int = 0
     morph: bool = False
+    # the donated attribute block verbatim (ordered pairs, duplicates kept)
+    attr_items: List[Tuple[str, str]] = field(default_factory=list)
     material_diffuse: str = ""
     vertex_magic: bytes = b""
     # lightmap UV block (vc * vec2 float32), exported as TEXCOORD_1
@@ -136,6 +178,13 @@ class MeshPart:
     attrs: Dict[str, str] = field(default_factory=dict)
     # verbatim sub-block bytes (header + scene + attrs + arrays + bones)
     raw: bytes = b""
+    # sub-block scaffolding kept so a *rebuilt* part (reverse export) can
+    # reproduce the container layout: the bytes between the block start and
+    # the attribute block (28-byte header + 56-byte scene block, or the rare
+    # attribute-first prefix), and the bytes that follow the geometry arrays
+    # (baked morph-frame positions).  Both empty for a synthesized part.
+    part_prefix: bytes = b""
+    part_tail: bytes = b""
 
 
 @dataclass
@@ -188,6 +237,10 @@ class SkinnedMesh:
     # additional sub-meshes of a compound container (mesh 2..N); the first
     # mesh is described by this SkinnedMesh's own fields.
     parts: List[MeshPart] = field(default_factory=list)
+    # the main mesh's attribute block, as parsed (donated on reverse export)
+    attrs: Dict[str, str] = field(default_factory=dict)
+    # the donated main attribute block verbatim (ordered pairs, dupes kept)
+    attr_items: List[Tuple[str, str]] = field(default_factory=list)
 
 
 @dataclass
@@ -210,3 +263,26 @@ class GltfModel:
     # number of influence slots carried by the source glTF (2/3/4); used for
     # fidelity when reverse-exporting (0 == auto-detect).
     weights_on_vertex: int = 0
+    # True when the glTF carries no skin and no WEIGHTS_0/JOINTS_0 at all
+    # (a rigid dis3tool export): the GM influence data simply is not in the
+    # document, only in the (donated) original `.g`.
+    rigid: bool = False
+    # sub-mesh material names (the historical `.tga` spelling) and light-map
+    # payload, restored on reverse export
+    material_diffuse: str = ""
+    lightmap: str = ""
+    lm_uv: bytes = b""
+    # the mesh carries morph targets (a morph-deformer sub-mesh)
+    morph: bool = False
+    # per-vertex raw WEIGHTS_0/JOINTS_0 accessor lanes of the source glTF
+    # (empty for a rigid export) -- the ground truth a donated original is
+    # verified against on reverse export
+    accessor_wj: List[tuple] = field(default_factory=list)
+    # morph-target animation on this sub-mesh: the `.a` stream name (from the
+    # ``morph_<name>_<k>`` bufferView names) and the verbatim per-frame
+    # POSITION accessor bytes (one entry per baked frame)
+    morph_name: str = ""
+    target_positions: List[bytes] = field(default_factory=list)
+    # sub-meshes 2..N of a compound export (meshes[1:]); the first mesh is
+    # described by this model's own fields.
+    submodels: List["GltfModel"] = field(default_factory=list)

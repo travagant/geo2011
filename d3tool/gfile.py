@@ -66,15 +66,25 @@ def _find_attr_block(data: bytes, start: int) -> int:
     return i
 
 
-def _read_attrs(data: bytes, o: int) -> Tuple[Dict[str, str], int]:
+def _read_attrs(data: bytes, o: int) -> Tuple[Dict[str, str], int, List[Tuple[str, str]]]:
+    """Parse an attribute block into a dict and the raw ordered pairs.
+
+    The corpus contains blocks with duplicated keys (HolyAvenger hair has
+    ``fps`` twice); the dict keeps the last value, the pair list keeps
+    everything in the original order for a byte-exact rewrite.
+    """
     num_attrs = _u32(data, o)
     o += 4
     attrs: Dict[str, str] = {}
+    items: List[Tuple[str, str]] = []
     for _ in range(num_attrs):
         key, o = _cstr(data, o)
         val, o = _cstr(data, o)
-        attrs[key.rstrip(b"\x00").decode("latin1")] = val.rstrip(b"\x00").decode("latin1")
-    return attrs, o
+        k = key.rstrip(b"\x00").decode("latin1")
+        v = val.rstrip(b"\x00").decode("latin1")
+        attrs[k] = v
+        items.append((k, v))
+    return attrs, o, items
 
 
 def _material_tri_total(attrs: Dict[str, str]) -> int:
@@ -206,7 +216,7 @@ def _locate_attr_block(data: bytes):
 
 def _parse_geometry_file(data: bytes) -> SkinnedMesh:
     form, header, name1, name2, names_end, attr_start = _locate_attr_block(data)
-    attrs, o = _read_attrs(data, attr_start)
+    attrs, o, attr_items = _read_attrs(data, attr_start)
 
     w = int(attrs.get("weights_on_vertex", "0" if "morph" in attrs else "2"))
     is_morph = w == 0
@@ -278,6 +288,8 @@ def _parse_geometry_file(data: bytes) -> SkinnedMesh:
         preamble=data[names_end:attr_start],
         header=header,
         trailing=data[o:],
+        attrs=attrs,
+        attr_items=attr_items,
     )
 
     # compound containers (Empire characters etc.) stack further sub-meshes in
@@ -328,7 +340,7 @@ def _parse_compound_parts(buf: bytes) -> Tuple[List[MeshPart], int]:
         if attr_o < 0:
             break
         try:
-            attrs, vo = _read_attrs(buf, attr_o)
+            attrs, vo, pitems = _read_attrs(buf, attr_o)
         except Exception:
             break
 
@@ -398,6 +410,7 @@ def _parse_compound_parts(buf: bytes) -> Tuple[List[MeshPart], int]:
         # `morph_frames` attribute): frames * vc * 12 raw float positions
         # following the (empty) bone list — hair in the HolyAvenger .g.
         baked = int(attrs.get("morph_frames") or 0)
+        baked_off = o
         if baked and morph:
             o += baked * vc * 12
         if o > n or o < block_start:
@@ -417,7 +430,10 @@ def _parse_compound_parts(buf: bytes) -> Tuple[List[MeshPart], int]:
             lightmap=attrs.get("material0_lightmap", ""),
             vertex_magic=magic,
             attrs=attrs,
+            attr_items=pitems,
             raw=buf[block_start:o],
+            part_prefix=buf[block_start:attr_o],
+            part_tail=buf[baked_off:o] if baked else b"",
         ))
     return parts, o
 
@@ -459,8 +475,16 @@ def _scene_matrix() -> bytes:
     return struct.pack("<14f", *_SCENE_MATRIX_FLOATS)
 
 
-def _attr_block(attrs: Dict[str, str]) -> bytes:
+def _attr_block(attrs: Dict[str, str], items=None) -> bytes:
     out = bytearray()
+    if items is not None:
+        out += struct.pack("<I", len(items))
+        for k, v in items:
+            kb = k.encode("latin1") + b"\x00"
+            vb = v.encode("latin1") + b"\x00"
+            out += struct.pack("<I", len(kb)) + kb
+            out += struct.pack("<I", len(vb)) + vb
+        return bytes(out)
     out += struct.pack("<I", len(attrs))
     for k, v in attrs.items():
         kb = k.encode("latin1") + b"\x00"
@@ -477,6 +501,85 @@ def vertex_stride(w: int) -> Tuple[int, int, int]:
     return n_stored, n_bones, 40 + 4 * n_stored + n_bones
 
 
+def _vertex_record(magic: bytes, v: Vertex, w: int, morph: bool) -> bytes:
+    """One `.g` vertex record: magic + pos + normal + diffuse + uv, then the
+    influence slots (skinned).  Morph and w=1 records carry no slots."""
+    rec = bytearray(magic)
+    rec += struct.pack("<3f", *v.position)
+    rec += struct.pack("<3f", *v.normal)
+    rec += struct.pack("<I", v.diffuse)
+    rec += struct.pack("<2f", *v.uv)
+    if not morph:
+        n_stored, n_bones, _ = vertex_stride(w)
+        stored = list(v.stored_weights[:n_stored])
+        stored += [0.0] * (n_stored - len(stored))
+        bones = [int(x) & 0xFF for x in v.bones[:n_bones]]
+        bones += [0] * (n_bones - len(bones))
+        rec += struct.pack(f"<{n_stored}f", *stored)
+        rec += struct.pack(f"<{n_bones}B", *bones)
+    return bytes(rec)
+
+
+def _part_block(part: MeshPart) -> bytes:
+    """Serialize one compound sub-mesh whose ``raw`` bytes are unknown.
+
+    Mirrors :func:`_parse_compound_parts`: the prefix (28-byte header +
+    56-byte scene block, verbatim when donated by the original `.g`, with a
+    standard header's vertex/tri counts patched), the attribute block, the
+    vertex records, the index block, the optional light-map UVs, the bone
+    descriptors and any tail bytes (baked morph-frame positions).
+    """
+    vc, tc = len(part.vertices), len(part.indices) // 3
+    magic = part.vertex_magic or VERTEX_MAGIC
+
+    prefix = part.part_prefix
+    if len(prefix) == 28 and struct.unpack_from("<I", prefix, 0)[0] == 2:
+        # a standard header carries the counts at u32 slots 12/16
+        patched = bytearray(prefix)
+        struct.pack_into("<I", patched, 12, vc)
+        struct.pack_into("<I", patched, 16, tc)
+        prefix = bytes(patched)
+    elif not prefix:
+        # a part rebuilt without a donor: synthesize the standard container
+        # block — the 28-byte header [tag 2, id, 0, vc, tc, 0, 6] plus the
+        # 56-byte scene-node block — so the parser can recover the part
+        prefix = struct.pack("<7I", 2, 0, 0, vc, tc, 0, 6) + _scene_matrix()
+
+    attrs = dict(part.attrs)
+
+    def set_count(key: str, value: str) -> None:
+        # patch counts in donated attributes without introducing keys the
+        # original block did not carry (a morph part has neither
+        # vertexs_weights_num nor bones_num); a synthesized part (no
+        # donated attrs) gets the defaults
+        if not attrs or key in attrs:
+            attrs[key] = value
+
+    set_count("vertexs_weights_num", str(vc))
+    set_count("material0_triangles_num", str(tc))
+    set_count("bones_num", str(len(part.bones)))
+
+    out = bytearray(prefix)
+    if part.attr_items:
+        # the donated block verbatim (order and duplicate keys preserved);
+        # the counts it carries are the original's and match the rebuilt
+        # geometry whenever the donor could be adopted
+        out += _attr_block(attrs, items=part.attr_items)
+    else:
+        out += _attr_block(attrs)
+    for v in part.vertices:
+        out += _vertex_record(magic, v, part.weights_on_vertex, part.morph)
+    out += struct.pack(f"<{len(part.indices)}I", *part.indices)
+    if "lmuvdata" in attrs and part.lm_uv:
+        out += part.lm_uv
+    for b in part.bones:
+        nb = b.name.encode("latin1") + b"\x00"
+        out += struct.pack("<I", len(nb)) + nb
+        out += struct.pack("<16f", *b.matrix)
+    out += part.part_tail
+    return bytes(out)
+
+
 def write_geometry_file(mesh: SkinnedMesh, attrs: Dict[str, str]) -> bytes:
     """Serialize a :class:`SkinnedMesh` back into the `.g` binary format."""
     if mesh.raw:
@@ -485,14 +588,31 @@ def write_geometry_file(mesh: SkinnedMesh, attrs: Dict[str, str]) -> bytes:
     w = mesh.weights_on_vertex
 
     attrs = dict(attrs)
-    attrs["vertexs_weights_num"] = str(vc)
-    attrs["material0_triangles_num"] = str(tc)
-    attrs["bones_num"] = str(len(mesh.bones))
-    attrs.setdefault("new_vertex_weights_format", "1")
-    attrs.setdefault("weights_on_vertex", str(w))
+    # A donated morph-base block carries no count/weights keys at all; a
+    # donated skinned block and any fresh export do.  Patch counts in
+    # place, add them only for the layouts that actually carry them.
+    morph_block = "morph" in attrs
+
+    def set_attr(key: str, value: str) -> None:
+        if not attrs or key in attrs:
+            attrs[key] = value
+
+    if morph_block:
+        set_attr("vertexs_weights_num", str(vc))
+        set_attr("bones_num", str(len(mesh.bones)))
+    else:
+        attrs["vertexs_weights_num"] = str(vc)
+        attrs["material0_triangles_num"] = str(tc)
+        attrs["bones_num"] = str(len(mesh.bones))
+        attrs.setdefault("new_vertex_weights_format", "1")
+        attrs.setdefault("weights_on_vertex", str(w))
+    set_attr("material0_triangles_num", str(tc))
     attrs.setdefault("name", mesh.name)
     attrs.setdefault("groupname", "Scene Root")
     attrs.setdefault("materials_num", "1")
+    if mesh.morph:
+        set_attr("morph", "1")
+        set_attr("morph_track", "1")
 
     def cstr(s: str) -> bytes:
         b = s.encode("latin1") + b"\x00"
@@ -516,28 +636,23 @@ def write_geometry_file(mesh: SkinnedMesh, attrs: Dict[str, str]) -> bytes:
 
     chunks = [header, names]
     chunks.append(preamble)
-    chunks.append(_attr_block(attrs))
+    if mesh.attr_items:
+        # the donated block verbatim (order and duplicate keys preserved)
+        chunks.append(_attr_block(attrs, items=mesh.attr_items))
+    else:
+        chunks.append(_attr_block(attrs))
 
     magic = mesh.vertex_magic or VERTEX_MAGIC
-    n_stored, n_bones, _ = vertex_stride(w)
-    for v in mesh.vertices:
-        stored = list(v.stored_weights[:n_stored])
-        while len(stored) < n_stored:
-            stored.append(0.0)
-        stored = stored[:n_stored]
-        bones = list(v.bones[:n_bones])
-        while len(bones) < n_bones:
-            bones.append(0)
-        bones = bones[:n_bones]
-        chunks.append(
-            magic
-            + struct.pack("<3f", *v.position)
-            + struct.pack("<3f", *v.normal)
-            + struct.pack("<I", v.diffuse)
-            + struct.pack("<2f", *v.uv)
-            + struct.pack(f"<{len(stored)}f", *stored)
-            + struct.pack(f"<{len(bones)}B", *bones)
-        )
+    if mesh.morph:
+        # a morph base mesh carries no influence slots: 40-byte records of
+        # magic + pos + normal + diffuse + uv (the shapes live in the
+        # morph streams)
+        for v in mesh.vertices:
+            chunks.append(_vertex_record(magic, v, w, True))
+    else:
+        n_stored, n_bones, _ = vertex_stride(w)
+        for v in mesh.vertices:
+            chunks.append(_vertex_record(magic, v, w, False))
 
     chunks.append(struct.pack(f"<{len(mesh.indices)}I", *mesh.indices))
 
@@ -550,9 +665,10 @@ def write_geometry_file(mesh: SkinnedMesh, attrs: Dict[str, str]) -> bytes:
         chunks.append(struct.pack("<I", len(nb)) + nb)
         chunks.append(struct.pack("<16f", *b.matrix))
 
-    # compound sub-meshes keep their original bytes verbatim
+    # compound sub-meshes keep their original bytes verbatim; a part
+    # rebuilt by the reverse export (empty `raw`) is serialised from data
     for part in mesh.parts:
-        chunks.append(part.raw)
+        chunks.append(part.raw if part.raw else _part_block(part))
 
     # any trailing payload (morph frames, shadow volumes, ...)
     chunks.append(mesh.trailing)
@@ -568,7 +684,8 @@ def parse_attributes(data: bytes) -> Tuple[Dict[str, str], int]:
     """
     try:
         _form, _hdr, _n1, _n2, _ne, o = _locate_attr_block(data)
-        return _read_attrs(data, o)
+        attrs, o, _items = _read_attrs(data, o)
+        return attrs, o
     except (IndexError, struct.error, ValueError) as exc:
         raise ValueError(f"corrupt or truncated .g attribute block: {exc}") \
             from exc
