@@ -1,0 +1,98 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\neutrals\masterthug\character_neutrals_masterthug_baseanims.a";
+frame0 1;
+frame1 100;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 3;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 3;
+meshfile "resources\characters\neutrals\masterthug\character_neutrals_masterthug.g";
+}
+state "Attack"
+{
+file "resources\characters\neutrals\masterthug\character_neutrals_masterthug_baseanims.a";
+frame0 100;
+frame1 150;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 113 "resources\characters\neutrals\masterthug\Aliases\human.alias" " 80";
+event2 "snd_Attack" 115 "resources\characters\neutrals\masterthug\Aliases\human_2.alias" " 70";
+event2 "snd_Attack" 135 "resources\characters\neutrals\masterthug\Aliases\human_2.alias" " 70";
+event2 "snd_Attack" 143 "resources\characters\neutrals\masterthug\Aliases\human.alias" " 70";
+event2 "snd_Attack" 113 "resources\characters\neutrals\masterthug\Aliases\gravel.alias" " 80";
+event2 "snd_Attack" 115 "resources\characters\neutrals\masterthug\Aliases\gravel_2.alias" " 70";
+event2 "snd_Attack" 143 "resources\characters\neutrals\masterthug\Aliases\gravel.alias" " 60";
+event2 "snd_Attack" 135 "resources\characters\neutrals\masterthug\Aliases\gravel_2.alias" " 70";
+event2 "snd_Attack" 104 "Resources/Characters/neutrals/masterthug/Aliases\Attack00.alias" " 100";
+event2 "snd_Attack" 112 "Resources/Characters/neutrals/masterthug/Aliases\Attack01.alias" " 100";
+event2 "snd_Attack" 105 "Resources/Characters/neutrals/masterthug/Aliases\Attack02.alias" " 100";
+event2 "snd_Attack" 112 "Resources/Characters/neutrals/masterthug/Aliases\Attack03.alias" " 100";
+event2 "snd_Attack" 132 "Resources/Characters/neutrals/masterthug/Aliases\Attack04.alias" " 100";
+event2 "snd_Attack" 104 "Resources/Characters/neutrals/masterthug/Aliases\Attack05.alias" " 100";
+event2 "snd_Attack" 104 "Resources/Characters/neutrals/masterthug/Aliases\Attack06.alias" " 100";
+event2 "Strike" 107 "" "";
+event2 "trail_start" 104 "" "";
+event2 "trail_end" 112 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\neutrals\masterthug\character_neutrals_masterthug.g";
+}
+state "Damage"
+{
+file "resources\characters\neutrals\masterthug\character_neutrals_masterthug_baseanims.a";
+frame0 150;
+frame1 194;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 182 "Resources/Characters/neutrals/masterthug/Aliases\Damage00.alias" " 70";
+event2 "snd_Damage" 150 "Resources/Characters/neutrals/masterthug/Aliases\Damage01.alias" " 100";
+event2 "snd_Damage" 150 "Resources/Characters/neutrals/masterthug/Aliases\Damage02.alias" " 100";
+event2 "snd_Damage" 181 "Resources/Characters/neutrals/masterthug/Aliases\Damage03.alias" " 100";
+link "Idle" 1; blend 0;
+link "Run" 0; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\masterthug\character_neutrals_masterthug.g";
+}
+state "Death"
+{
+file "resources\characters\neutrals\masterthug\character_neutrals_masterthug_baseanims.a";
+frame0 194;
+frame1 262;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 209 "resources\characters\neutrals\masterthug\Aliases\human.alias" " 70";
+event2 "snd_Die" 216 "resources\characters\neutrals\masterthug\Aliases\human_2.alias" " 70";
+event2 "snd_Die" 236 "resources\characters\neutrals\masterthug\Aliases\gravel_2.alias" " 100";
+event2 "snd_Die" 247 "resources\characters\neutrals\masterthug\Aliases\gravel.alias" " 100";
+event2 "snd_Die" 244 "resources\characters\neutrals\masterthug\Aliases\human_2.alias" " 100";
+event2 "snd_Die" 247 "Resources/Characters/neutrals/masterthug/Aliases\Death00.alias" " 50";
+event2 "snd_Die" 194 "Resources/Characters/neutrals/masterthug/Aliases\Death01.alias" " 100";
+event2 "snd_Die" 194 "Resources/Characters/neutrals/masterthug/Aliases\Death02.alias" " 100";
+event2 "snd_Die" 202 "Resources/Characters/neutrals/masterthug/Aliases\Death03.alias" " 100";
+meshfile "resources\characters\neutrals\masterthug\character_neutrals_masterthug.g";
+}
+state "Run"
+{
+file "resources\characters\neutrals\masterthug\character_neutrals_masterthug_baseanims.a";
+frame0 273;
+frame1 284;
+fps 15.000000;
+priority 256;
+flags 1;
+event2 "snd_Step" 273 "resources\characters\neutrals\masterthug\Aliases\human_2.alias" " 65";
+event2 "snd_Step" 279 "resources\characters\neutrals\masterthug\Aliases\human.alias" " 80";
+event2 "snd_Step" 273 "resources\characters\neutrals\masterthug\Aliases\gravel.alias" " 60";
+event2 "snd_Step" 279 "resources\characters\neutrals\masterthug\Aliases\gravel_2.alias" " 60";
+event2 "snd_Step" 282 "resources\characters\neutrals\masterthug\Aliases\plate.alias" " 30";
+link "Idle" 0; blend 3;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\masterthug\character_neutrals_masterthug.g";
+}

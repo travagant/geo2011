@@ -1,0 +1,83 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "Resources\Characters\Empire\Angel\character_empire_angel_idle.a";
+frame0 1;
+frame1 63;
+fps 30.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 0;
+link "Run" 0; blend 0;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+meshfile "resources\characters\empire\angel\character_empire_angel.g";
+}
+state "Attack"
+{
+file "resources\characters\empire\angel\character_empire_angel_attack.a";
+frame0 0;
+frame1 83;
+fps 30.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 8 "Resources/Characters/empire/angel/Aliases\Attack00.alias" " 80";
+event2 "snd_Attack" 17 "resources\characters\empire\angel\Aliases\moving_1.alias" " 100";
+event2 "snd_Attack" 49 "resources\characters\empire\angel\Aliases\moving_3.alias" " 100";
+event2 "snd_Attack" 13 "resources\characters\empire\angel\Aliases\wings_flesh.alias" " 100";
+event2 "snd_Attack" 59 "resources\characters\empire\angel\Aliases\wings_flesh.alias" " 80";
+event2 "fxcast" 0 "" "";
+event2 "FxStrike" 28 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\empire\angel\character_empire_angel.g";
+}
+state "Run"
+{
+file "Resources\Characters\Empire\Angel\character_empire_angel_run.a";
+frame0 1;
+frame1 27;
+fps 30.000000;
+priority 256;
+flags 1;
+event2 "snd_Step" 1 "resources\characters\empire\angel\Aliases\moving_1.alias" " 50";
+event2 "snd_Step" 15 "resources\characters\empire\angel\Aliases\moving_3.alias" " 50";
+event2 "snd_Step" 8 "resources\characters\empire\angel\Aliases\wings_1.alias" " 70";
+event2 "snd_Step" 8 "resources\characters\empire\angel\Aliases\wings_flesh.alias" " 80";
+link "Idle" 0; blend 0;
+link "Attack" 0; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\empire\angel\character_empire_angel.g";
+}
+state "Damage"
+{
+file "resources\characters\empire\angel\character_empire_angel_damage.a";
+frame0 0;
+frame1 31;
+fps 30.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 0 "Resources/Characters/empire/angel/Aliases\Damage00.alias" " 70";
+event2 "snd_Damage" 0 "resources\characters\empire\angel\Aliases\moving_3.alias" " 100";
+event2 "snd_Damage" 6 "resources\characters\empire\angel\Aliases\moving_1.alias" " 60";
+event2 "snd_Damage" 0 "resources\characters\empire\angel\Aliases\wings_flesh.alias" " 100";
+link "Idle" 1; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\empire\angel\character_empire_angel.g";
+}
+state "Death"
+{
+file "Resources\Characters\Empire\Angel\character_empire_angel_death.a";
+frame0 0;
+frame1 54;
+fps 30.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 0 "Resources/Characters/empire/angel/Aliases\Death00.alias" " 70";
+event2 "snd_Die" 0 "resources\characters\empire\angel\Aliases\moving_3.alias" " 100";
+event2 "snd_Die" 25 "resources\characters\empire\angel\Aliases\moving_1.alias" " 70";
+event2 "snd_Die" 25 "Resources/Characters/empire/angel/Aliases\Death01.alias" " 100";
+event2 "snd_Die" 9 "resources\characters\empire\angel\Aliases\wings_flesh.alias" " 100";
+event2 "snd_Die" 27 "resources\characters\empire\angel\Aliases\wings_flesh.alias" " 100";
+meshfile "resources\characters\empire\angel\character_empire_angel.g";
+}

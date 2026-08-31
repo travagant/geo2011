@@ -1,0 +1,3 @@
+alias "Damage02" {
+	sound 100, "$(Sounds)\voices\empire\prophetess\prophetess_damage.wav", 100, 3;
+}

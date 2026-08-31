@@ -1,0 +1,83 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "Resources\Characters\Neutrals\Hydra_Female\character_neutrals_hydra_female_baseanims.a";
+frame0 1;
+frame1 60;
+fps 20.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 0;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 0;
+}
+state "Attack"
+{
+file "Resources\Characters\Neutrals\Hydra_Female\character_neutrals_hydra_female_baseanims.a";
+frame0 60;
+frame1 112;
+fps 17.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 60 "Resources/Characters/neutrals/mermaid/Aliases\Attack00.alias" " 30";
+event2 "snd_Attack" 85 "Resources/Characters/neutrals/mermaid/Aliases\Attack01.alias" " 100";
+event2 "Fxstrike" 90 "" " ";
+event2 "fxcast" 83 "" " ";
+event2 "snd_Attack" 83 "Resources/Characters/neutrals/hydra_female/Aliases/Attack02.alias" "-30";
+event2 "snd_Attack" 61 "resources/sounds/alias/run4.alias" " 20";
+event2 "snd_Attack" 82 "resources/sounds/alias/run4.alias" "-10";
+event2 "snd_Attack" 94 "resources/sounds/alias/run4.alias" "-5";
+event2 "snd_Attack" 82 "Resources/Characters/neutrals/hydra_female/Aliases/Attack03.alias" " 10";
+event2 "snd_Attack" 76 "resources/sounds/alias/cloth2.alias" " 30";
+event2 "snd_Attack" 92 "resources/sounds/alias/cloth2.alias" " 30";
+link "Idle" 1; blend 0;
+}
+state "Damage"
+{
+file "Resources\Characters\Neutrals\Hydra_Female\character_neutrals_hydra_female_baseanims.a";
+frame0 112;
+frame1 152;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 127 "Resources/Characters/neutrals/mermaid/Aliases\Damage00.alias" " 60";
+event2 "snd_Damage" 112 "Resources/Characters/neutrals/hydra_female/Aliases/face.alias" " 50";
+event2 "snd_Damage" 115 "resources/sounds/alias/run4.alias" " 10";
+event2 "snd_Damage" 132 "resources/sounds/alias/cloth2.alias" " 20";
+event2 "snd_Damage" 114 "resources/sounds/alias/cloth2.alias" " 30";
+link "Idle" 1; blend 0;
+gaestate "Idle";
+}
+state "Death"
+{
+file "Resources\Characters\Neutrals\Hydra_Female\character_neutrals_hydra_female_baseanims.a";
+frame0 152;
+frame1 188;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 156 "Resources/Characters/neutrals/hydra_female/Aliases/breath.alias" " 90";
+event2 "snd_Die" 153 "Resources/Characters/neutrals/hydra_female/Aliases/face.alias" " 60";
+event2 "snd_Die" 154 "Resources/Characters/neutrals/hydra_female/Aliases/run.alias" " 30";
+event2 "snd_Die" 170 "Resources/Characters/neutrals/hydra_female/Aliases/run2.alias" " 30";
+event2 "snd_Die" 176 "resources/sounds/alias/cloth2.alias" " 20";
+}
+state "Run"
+{
+file "Resources\Characters\Neutrals\Hydra_Female\character_neutrals_hydra_female_baseanims.a";
+frame0 188;
+frame1 215;
+fps 15.000000;
+priority 256;
+flags 1;
+event2 "snd_Step" 188 "Resources/Characters/neutrals/mermaid/Aliases/run1.alias" " 30";
+event2 "snd_Step" 203 "Resources/Characters/neutrals/hydra_female/Aliases/run2.alias" " 30";
+event2 "snd_Step" 188 "Resources/Characters/neutrals/hydra_female/Aliases/run3.alias" " 15";
+event2 "snd_Step" 204 "Resources/Characters/neutrals/hydra_female/Aliases/run4.alias" " 15";
+event2 "snd_Step" 188 "Resources/Characters/neutrals/hydra_female/Aliases/cloth1.alias" " 50";
+event2 "snd_Step" 203 "Resources/Characters/neutrals/hydra_female/Aliases/cloth2.alias" " 50";
+link "Idle" 0; blend 0;
+gaestate "Idle";
+}

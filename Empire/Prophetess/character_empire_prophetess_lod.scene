@@ -1,0 +1,163 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 90000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera -0.662477,1.935184,-2.299215,0.146521,0.966259,-0.012208,0.146521,0.966259,-0.012208,-0.662477,1.935184,-2.299215,0.380000,0.340000,0.000000,2.612220;
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 115 29847560
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.010000,-0.010000,-0.010000,0.010000,0.010000,0.010000
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_empire_prophetess" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 116 30304624
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 1048576
+	file "resources\characters\empire\prophetess\character_empire_prophetess_lod.ac"
+	plvl 512
+	looktocamera 0;
+	child gobj "lod_empire_prophetess" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 124 38575136
+	dwflags 1053761
+	tech "model"
+	bonesuid 116 30304624
+	mesh_lods 1
+	"resources\characters\empire\prophetess\character_empire_prophetess_lod.g" 0 0.000000
+	coords 0.000000,0.924065,-0.001518,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "269850592"
+	attr "dwParent" "53639504"
+	attr "tech" "model2x"
+	attr "name" "empire_prophetess"
+	attr "groupname" "Scene Root"
+	attr "techname" "model2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_prophetess.jpg"
+	attr "material0_triangles_num" "4376"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "2894"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "39"
+}
+
+	child gobj "lod_empire_prophetess_skirt" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 140 30397032
+	dwflags 1055809
+	tech "model"
+	bonesuid 116 30304624
+	mesh_lods 1
+	"resources\characters\empire\prophetess\character_empire_prophetess_lod.g" 2 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "270116560"
+	attr "dwParent" "53639504"
+	attr "morph" "1"
+	attr "twosided" "1"
+	attr "tech" "model2x"
+	attr "name" "empire_prophetess_skirt"
+	attr "groupname" "Scene Root"
+	attr "techname" "model2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_prophetess.jpg"
+	attr "material0_triangles_num" "405"
+	attr "morph_track" "1"
+}
+
+	child gobj "lod_empire_prophetess_mante" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 149 30462608
+	dwflags 1055809
+	tech "model2x"
+	bonesuid 116 30304624
+	mesh_lods 1
+	"resources\characters\empire\prophetess\character_empire_prophetess_lod.g" 1 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "345457024"
+	attr "dwParent" "54032992"
+	attr "morph" "1"
+	attr "twosided" "1"
+	attr "tech" "model2x"
+	attr "name" "lod_empire_prophetess_mante"
+	attr "groupname" "Scene Root"
+	attr "techname" "model2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_prophetess.tga"
+	attr "material0_triangles_num" "64"
+	attr "morph_track" "1"
+}
+
+}
+
+}
+

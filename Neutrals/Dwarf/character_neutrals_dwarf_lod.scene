@@ -1,0 +1,219 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 90000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera -1.858842,2.345356,-1.269524,-1.137284,1.835515,-0.801105,-0.223816,1.190073,-0.208102,-1.858842,2.345356,-1.269524,0.535000,0.995000,0.000000,3.510568;
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+	load_counter 4844209;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 4151 28770608
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.010000,-0.010000,-0.010000,0.010000,0.010000,0.010000
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_neutrals_dwarf" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 4152 42198104
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 1048640
+	file "resources\characters\neutrals\dwarf\character_neutrals_dwarf.ac"
+	plvl 512
+	looktocamera 0;
+	child gobj "lod_neutrals_dwarf_shield" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 4161 102043232
+	dwflags 1055809
+	tech "model"
+	bonesuid 4152 42198104
+	mesh_lods 1
+	"resources\characters\neutrals\dwarf\character_neutrals_dwarf_lod.g" 1 0.000000
+	coords 0.834502,0.008926,0.006137,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 1;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "436324256"
+	attr "dwParent" "53639264"
+	attr "twosided" "1"
+	attr "tech" "modelalphatest"
+	attr "vdshader" "dif_at_light2x"
+	attr "name" "neutrals_dwarf_shield"
+	attr "groupname" "Scene Root"
+	attr "techname" "modelalphatest"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "weapon_neutral_dwarf_shield.tga"
+	attr "material0_triangles_num" "200"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "180"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+}
+
+	child gobj "lod_neutrals_dwarf_hair" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 4179 102025768
+	dwflags 7233
+	tech "modelalpha2x"
+	bonesuid 4152 42198104
+	mesh_lods 1
+	"resources\characters\neutrals\dwarf\character_neutrals_dwarf_lod.g" 2 0.000000
+	coords 0.000000,1.053424,-0.024334,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 1;
+	blockshader "system\xshader\dif_at_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "335665968"
+	attr "dwParent" "53639264"
+	attr "name" "neutrals_dwarf_hair"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutral_dwarf_alpha.tga"
+	attr "material0_triangles_num" "40"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "36"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+	attr "twosided" "1"
+	attr "tech" "modelalphatest"
+	attr "vdshader" "dif_at_light2x"
+	attr "techname" "modelalphatest"
+}
+
+	child gobj "lod_neutrals_dwarf" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 4192 41360496
+	dwflags 1053761
+	tech "model"
+	bonesuid 4152 42198104
+	mesh_lods 1
+	"resources\characters\neutrals\dwarf\character_neutrals_dwarf_lod.g" 3 0.000000
+	coords 0.000000,0.608921,-0.070640,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "436251824"
+	attr "dwParent" "53639264"
+	attr "name" "neutrals_dwarf"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutral_dwarf.TGA"
+	attr "material0_triangles_num" "4646"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "3352"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "41"
+}
+
+	child 	goclass "VDGoWeaponTrace" "VDGoWeaponTrace" 
+{
+	uid 4201 28648616
+	dwflags 1048577
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	texture "resources\fx\fx_resouces\textures\weapontrace\weapontrace_light_yellow_lo.t"
+	tech "weapontrace"
+	lifetime 0.300000
+	maxdist 0.200000
+	bonetraceuid 4152 42198104
+	fadeonevent 0
+	fadetime 1.000000
+	boneid 44
+	boneid 45
+}
+
+	child gobj "lod_weapon_neutrals_dwarf" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 4218 41320104
+	dwflags 1053761
+	tech "model"
+	bonesuid 4152 42198104
+	mesh_lods 1
+	"resources\characters\neutrals\dwarf\character_neutrals_dwarf_lod.g" 0 0.000000
+	coords 0.181263,-0.001471,0.550270,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\default.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "469643856"
+	attr "dwParent" "54032992"
+	attr "name" "lod_weapon_neutrals_dwarf"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "weapon_neutrals_dwarf_axe.tga"
+	attr "material0_triangles_num" "50"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "66"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+}
+
+}
+
+}
+

@@ -1,0 +1,134 @@
+{
+  "asset": {
+    "version": "2.0",
+    "generator": "generated with dis3tool v1.1 by root.ext@gmail.com"
+  },
+  "scenes": [
+    {
+      "nodes": [
+        0
+      ]
+    }
+  ],
+  "scene": 0,
+  "nodes": [
+    {
+      "name": "water_snake",
+      "mesh": 0
+    }
+  ],
+  "accessors": [
+    {
+      "bufferView": 0,
+      "byteOffset": 0,
+      "componentType": 5125,
+      "count": 19686,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 0,
+      "componentType": 5126,
+      "count": 4970,
+      "type": "VEC3",
+      "min": [
+        -7.90180349,
+        -0.0351731852,
+        -1.42926586
+      ],
+      "max": [
+        4.943798,
+        3.572666,
+        1.45374262
+      ]
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 12,
+      "componentType": 5126,
+      "count": 4970,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 24,
+      "componentType": 5126,
+      "count": 4970,
+      "type": "VEC2"
+    }
+  ],
+  "meshes": [
+    {
+      "name": "water_snake",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 1,
+            "NORMAL": 2,
+            "TEXCOORD_0": 3
+          },
+          "indices": 0,
+          "mode": 4,
+          "material": 0
+        }
+      ]
+    }
+  ],
+  "bufferViews": [
+    {
+      "name": "mesh_indexes_water_snake",
+      "buffer": 0,
+      "byteOffset": 0,
+      "byteLength": 78744,
+      "target": 34963
+    },
+    {
+      "name": "mesh_vertexes_water_snake",
+      "buffer": 0,
+      "byteOffset": 78744,
+      "byteLength": 258440,
+      "byteStride": 52,
+      "target": 34962
+    },
+    {
+      "name": "mesh_bones_water_snake",
+      "buffer": 0,
+      "byteOffset": 337184,
+      "byteLength": 2688
+    }
+  ],
+  "buffers": [
+    {
+      "uri": "character_neutrals_watersnake_sea.bin",
+      "byteLength": 339872
+    }
+  ],
+  "images": [
+    {
+      "uri": "character_neutrals_watersnake.dds"
+    }
+  ],
+  "textures": [
+    {
+      "source": 0
+    }
+  ],
+  "materials": [
+    {
+      "name": "material0",
+      "alphaMode": "MASK",
+      "pbrMetallicRoughness": {
+        "baseColorTexture": {
+          "index": 0,
+          "texCoord": 0
+        },
+        "metallicFactor": 0.0
+      },
+      "emissiveFactor": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ]
+}

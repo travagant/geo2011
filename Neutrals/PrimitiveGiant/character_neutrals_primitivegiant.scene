@@ -1,0 +1,182 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 90000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera -8.940082,7.364548,-5.073378,1.178488,-0.198808,1.495363,1.178488,-0.198808,1.495363,-8.940082,7.364548,-5.073378,0.560000,0.995000,0.000000,14.238615;
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 781 31119976
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.010000,-0.010000,-0.010000,0.010000,0.010000,0.010000
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_neutrals_primitivegiant" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 782 102707192
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 1048640
+	file "resources\characters\neutrals\primitivegiant\character_neutrals_primitivegiant.ac"
+	plvl 512
+	looktocamera 0;
+	child gobj "weapon_neutrals_primitivegiant" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 785 124073240
+	dwflags 1053761
+	tech "model"
+	bonesuid 782 102707192
+	mesh_lods 1
+	"resources\characters\neutrals\primitivegiant\character_neutrals_primitivegiant.g" 2 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "452767920"
+	attr "dwParent" "53639152"
+	attr "name" "weapon_neutrals_primitivegiant"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "weapon_neutrals_primrtivegiant_diffuse.tga"
+	attr "material0_triangles_num" "190"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "209"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+}
+
+	child gobj "neutrals_primitivegiant" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 790 100461632
+	dwflags 1053761
+	tech "model"
+	bonesuid 782 102707192
+	mesh_lods 1
+	"resources\characters\neutrals\primitivegiant\character_neutrals_primitivegiant.g" 1 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "452668592"
+	attr "dwParent" "53639152"
+	attr "name" "neutrals_primitivegiant"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutrals_primitivegiant_diffuse.tga"
+	attr "material0_triangles_num" "3528"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "4896"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "47"
+}
+
+	child gobj "neutrals_primitivegiant_legs" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 791 133611928
+	dwflags 1056321
+	tech "modelalphatest"
+	bonesuid 782 102707192
+	mesh_lods 1
+	"resources\characters\neutrals\primitivegiant\character_neutrals_primitivegiant.g" 0 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 1;
+	blockshader "system\xshader\dif_at_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "334766976"
+	attr "dwParent" "53639152"
+	attr "twosided" "1"
+	attr "tech" "modelalphatest"
+	attr "name" "neutrals_primitivegiant_legs"
+	attr "groupname" "Scene Root"
+	attr "techname" "modelalphatest"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutrals_primitivegiant_alpha.tga"
+	attr "material0_triangles_num" "752"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "540"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "12"
+}
+
+	child 	goclass "VDGoWeaponTrace" "VDGoWeaponTrace" 
+{
+	uid 793 30994440
+	dwflags 1048577
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	texture "resources\fx\fx_resouces\textures\weapontrace\weapontrace_light_yellow_hi.t"
+	tech "weapontrace"
+	lifetime 0.500000
+	maxdist 0.500000
+	bonetraceuid 782 102707192
+	fadeonevent 0
+	fadetime 1.000000
+	boneid 21
+	boneid 22
+	boneid 23
+	boneid 24
+	boneid 25
+	boneid 26
+}
+
+}
+
+}
+

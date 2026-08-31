@@ -1,0 +1,248 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 30000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera 5.315900,6.752950,-1.083259,0.285939,1.092141,0.142235,0.285939,1.092141,0.142235,5.315900,6.752950,-1.083259,0.830000,-7.614999,0.000000,7.671186;
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 65468 31073064
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.010000,-0.010000,-0.010000,0.010000,0.010000,0.010000
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_empire_knight" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 65469 255854464
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 1048576
+	file "resources\characters\empire\knight\character_empire_knight.ac"
+	plvl 512
+	looktocamera 0;
+	child gobj "empire_knight_sword" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 65471 248083512
+	dwflags 1053761
+	tech "model"
+	bonesuid 65469 255854464
+	mesh_lods 1
+	"resources\characters\empire\knight\character_empire_knight.g" 0 0.000000
+	coords 0.500203,0.000001,-0.424204,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "367426240"
+	attr "dwParent" "53967008"
+	attr "vdshader" "dif_light2x"
+	attr "name" "empire_knight_sword"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "weapon_empire_knight_sword_diffuse.tga"
+	attr "material0_triangles_num" "124"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "136"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+}
+
+	child gobj "empire_knight_shield" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 65473 249303776
+	dwflags 1053761
+	tech "model"
+	bonesuid 65469 255854464
+	mesh_lods 1
+	"resources\characters\empire\knight\character_empire_knight.g" 1 0.000000
+	coords -0.500000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "367461632"
+	attr "dwParent" "53967008"
+	attr "vdshader" "dif_light2x"
+	attr "name" "empire_knight_shield"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "weapon_empire_knight_shield_diffuse.tga"
+	attr "material0_triangles_num" "286"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "196"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+}
+
+	child gobj "empire_knight" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 65474 246698208
+	dwflags 1053761
+	tech "model"
+	bonesuid 65469 255854464
+	mesh_lods 1
+	"resources\characters\empire\knight\character_empire_knight.g" 2 0.000000
+	coords -0.007531,0.808358,-0.014199,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "265226720"
+	attr "dwParent" "53967008"
+	attr "vdshader" "dif_light2x"
+	attr "name" "empire_knight"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_knight.tga"
+	attr "material0_triangles_num" "4355"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "3606"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "35"
+}
+
+	child gobj "empire_knight_cloth" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 65475 251057072
+	dwflags 1053761
+	tech "model"
+	bonesuid 65469 255854464
+	mesh_lods 1
+	"resources\characters\empire\knight\character_empire_knight.g" 3 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "284923200"
+	attr "dwParent" "53967008"
+	attr "morph" "1"
+	attr "vdshader" "dif_light2x"
+	attr "name" "empire_knight_cloth"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_knight.tga"
+	attr "material0_triangles_num" "672"
+	attr "morph_track" "1"
+}
+
+	child gobj "empire_knight_head" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 65476 234780272
+	dwflags 1053761
+	tech "model"
+	bonesuid 65469 255854464
+	mesh_lods 1
+	"resources\characters\empire\knight\character_empire_knight.g" 4 0.000000
+	coords 0.000236,1.665573,0.004320,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_at_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "752028560"
+	attr "dwParent" "53967008"
+	attr "vdshader" "dif_at_light2x"
+	attr "name" "empire_knight_head"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_knight.tga"
+	attr "material0_triangles_num" "1458"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "939"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "3"
+}
+
+	child 	goclass "VDGoWeaponTrace" "VDGoWeaponTrace" 
+{
+	uid 65478 114694088
+	dwflags 1
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	texture "resources\fx\fx_resouces\textures\weapontrace\weapontrace_narrow_blue2.t"
+	tech "weapontrace"
+	lifetime 0.300000
+	maxdist 0.100000
+	bonetraceuid 65469 255854464
+	fadeonevent 0
+	fadetime 1.000000
+	boneid 22
+	boneid 21
+}
+
+}
+
+}
+

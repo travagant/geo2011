@@ -1,0 +1,106 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 30000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera 1.466955,0.767267,-1.741630,0.000000,0.000000,0.000000,0.000000,0.000000,0.000000,1.466955,0.767267,-1.741630,0.325000,-0.700000,0.000000,2.402901;
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 433 31119976
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.100000,-0.100000,-0.100000,0.100000,0.100000,0.100000
+	dwflags 1
+	plvl 512
+	child gobj "weapon_arrow_empire_leader-ranger_set3" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 440 130601560
+	dwflags 1053761
+	tech "model"
+	mesh_lods 1
+	"resources\characters\empire\leader-ranger\body\empire_leader-ranger_set3_weapon.g" 0 0.000000
+	coords 0.375493,-0.001736,0.003572,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 1;
+	blockshader "system\xshader\dif_at_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "308656816"
+	attr "dwParent" "53704736"
+	attr "name" "weapon_arrow_empire_leader-ranger_set3"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_leader-ranger_set3_body_diffuse.tga"
+	attr "material0_triangles_num" "24"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "54"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+	attr "vdshader" "dif_light2x"
+}
+
+	child gobj "weapon_empire_leader-ranger_set3" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 450 41530640
+	dwflags 1054273
+	tech "model"
+	mesh_lods 1
+	"resources\characters\empire\leader-ranger\body\empire_leader-ranger_set3_weapon.g" 1 0.000000
+	coords 0.096898,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "308725168"
+	attr "dwParent" "53704736"
+	attr "name" "weapon_empire_leader-ranger_set3"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "weapon_empire_leader-ranger_set3_diffuse.tga"
+	attr "material0_triangles_num" "216"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "150"
+	attr "weights_on_vertex" "2"
+	attr "bones_num" "4"
+	attr "vdshader" "dif_light2x"
+}
+
+}
+

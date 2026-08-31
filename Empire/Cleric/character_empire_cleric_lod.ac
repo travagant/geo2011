@@ -1,0 +1,64 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\empire\cleric\character_empire_cleric_iadd_lod.a";
+frame0 1;
+frame1 173;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 0;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 3;
+meshfile "resources\characters\empire\cleric\character_empire_cleric.g";
+}
+state "Attack"
+{
+file "resources\characters\empire\cleric\character_empire_cleric_iadd_lod.a";
+frame0 173;
+frame1 257;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "FxStrike" 198 "" "";
+event2 "fxcast" 173 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\empire\cleric\character_empire_cleric.g";
+}
+state "Damage"
+{
+file "resources\characters\empire\cleric\character_empire_cleric_iadd_lod.a";
+frame0 257;
+frame1 297;
+fps 15.000000;
+priority 256;
+flags 0;
+link "Idle" 1; blend 0;
+link "Run" 0; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\empire\cleric\character_empire_cleric.g";
+}
+state "Death"
+{
+file "resources\characters\empire\cleric\character_empire_cleric_iadd_lod.a";
+frame0 297;
+frame1 355;
+fps 15.000000;
+priority 256;
+flags 0;
+meshfile "resources\characters\empire\cleric\character_empire_cleric.g";
+}
+state "Run"
+{
+file "resources\characters\empire\cleric\character_empire_cleric_run_lod.a";
+frame0 1;
+frame1 24;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Idle" 0; blend 4;
+gaestate "Idle";
+meshfile "resources\characters\empire\cleric\character_empire_cleric.g";
+}

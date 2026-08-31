@@ -1,0 +1,77 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "Resources\Characters\Neutrals\Craken\character_neutrals_craken.a";
+frame0 1;
+frame1 100;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 4;
+link "Damage" 0; blend 2;
+link "Death" 0; blend 2;
+link "Run" 0; blend 4;
+meshfile "Resources\Characters\Neutrals\Craken\character_neutrals_craken.g";
+}
+state "Attack"
+{
+file "Resources\Characters\Neutrals\Craken\character_neutrals_craken.a";
+frame0 100;
+frame1 198;
+fps 18.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 120 "Resources/Characters/neutrals/craken/Aliases/Attack-Krik.alias" "-100";
+event2 "snd_Attack" 110 "Resources/Characters/neutrals/craken/Aliases/Attack-Krik2.alias" " 60";
+event2 "snd_Attack" 116 "Resources/Characters/neutrals/craken/Aliases/Attack-Krik3.alias" " 100";
+event2 "snd_Attack" 140 "Resources/Characters/neutrals/craken/Aliases/Birds-background2.alias" "-100";
+event2 "snd_Attack" 125 "Resources/Characters/neutrals/craken/Aliases/Birds-background3.alias" "-100";
+event2 "snd_Attack" 150 "Resources/Characters/neutrals/craken/Aliases/Attack.alias" " 70";
+event2 "snd_Attack" 151 "Resources/Characters/neutrals/craken/Aliases/Attack-dubl.alias" " 100";
+event2 "Strike" 152 "" "";
+event2 "snd_Attack" 100 "Resources/Characters/neutrals/craken/Aliases/Skin1.alias" " 30";
+event2 "snd_Attack" 160 "Resources/Characters/neutrals/craken/Aliases/Skin2.alias" " 25";
+event2 "snd_Attack" 100 "Resources/Characters/neutrals/craken/Aliases/Attack-background.alias" " 60";
+link "Idle" 1; blend 0;
+meshfile "Resources\Characters\Neutrals\Craken\character_neutrals_craken.g";
+}
+state "Damage"
+{
+file "Resources\Characters\Neutrals\Craken\character_neutrals_craken.a";
+frame0 198;
+frame1 212;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 199 "Resources/Characters/neutrals/craken/Aliases/voice.alias" "-60";
+event2 "snd_Damage" 198 "Resources/Characters/neutrals/craken/Aliases/bird-DAMAGE.alias" "-100";
+event2 "snd_Damage" 198 "Resources/Characters/neutrals/craken/Aliases/Damage00.alias" "-100";
+event2 "snd_Damage" 198 "Resources/Characters/neutrals/craken/Aliases/Damage02.alias" "-60";
+event2 "snd_Damage" 198 "Resources/Characters/neutrals/craken/Aliases/krik.alias" " 150";
+event2 "snd_Damage" 198 "Resources/Characters/neutrals/craken/Aliases/Damage03.alias" " 40";
+link "Idle" 1; blend 0;
+link "Run" 0; blend 0;
+link "Damage" 0; blend 0;
+gaestate "Idle";
+meshfile "Resources\Characters\Neutrals\Craken\character_neutrals_craken.g";
+}
+state "Death"
+{
+file "Resources\Characters\Neutrals\Craken\character_neutrals_craken.a";
+frame0 212;
+frame1 242;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 216 "Resources/Characters/neutrals/craken/Aliases/Death00.alias" " 60";
+event2 "snd_Die" 218 "Resources/Characters/neutrals/craken/Aliases/Death01.alias" "-100";
+event2 "snd_Die" 212 "Resources/Characters/neutrals/craken/Aliases/Death02.alias" " 212";
+event2 "snd_Die" 213 "Resources/Characters/neutrals/craken/Aliases/Death03.alias" " 100";
+event2 "snd_Die" 212 "Resources/Characters/neutrals/craken/Aliases/Death04.alias" " 100";
+event2 "snd_Die" 212 "Resources/Characters/neutrals/craken/Aliases/Death05.alias" "-100";
+event2 "snd_Die" 212 "Resources/Characters/neutrals/craken/Aliases/Death06.alias" "-50";
+event2 "snd_Die" 223 "Resources/Characters/neutrals/craken/Aliases/Death07.alias" "-40";
+event2 "snd_Die" 212 "Resources/Characters/neutrals/craken/Aliases/Death08.alias" "-40";
+meshfile "Resources\Characters\Neutrals\Craken\character_neutrals_craken.g";
+}

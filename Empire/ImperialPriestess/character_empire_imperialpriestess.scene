@@ -1,0 +1,245 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 30000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera -0.908354,1.773615,-1.522102,0.747021,0.516786,0.897554,0.747021,0.516786,0.897554,-0.908354,1.773615,-1.522102,0.405000,0.600000,0.000000,3.189768;
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 7188 31114888
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.010000,-0.010000,-0.010000,0.010000,0.010000,0.010000
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_empire_imperialpriestess" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 7189 98817512
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 1048576
+	file "resources\characters\empire\imperialpriestess\character_empire_imperialpriestess.ac"
+	plvl 512
+	looktocamera 0;
+	child gobj "empire_imperialpriestess_earring" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 7192 125834608
+	dwflags 1056321
+	tech "modelalphatest2x"
+	bonesuid 7189 98817512
+	mesh_lods 1
+	"resources\characters\empire\imperialpriestess\character_empire_imperialpriestess.g" 4 0.000000
+	coords 0.000000,-9.854463,-63.031967,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 1;
+	blockshader "system\xshader\dif_at_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "336185600"
+	attr "dwParent" "53966864"
+	attr "morph" "1"
+	attr "twosided" "1"
+	attr "vdshader" "dif_at_light2x"
+	attr "name" "empire_imperialpriestess_earring"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_imperialpriestess_clips.tga"
+	attr "material0_triangles_num" "16"
+	attr "morph_track" "1"
+	attr "tech" "modelalphatest"
+	attr "techname" "modelalphatest"
+}
+
+	child gobj "empire_imperialpriestess_head" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 7198 126370120
+	dwflags 1053761
+	tech "model2x"
+	bonesuid 7189 98817512
+	mesh_lods 1
+	"resources\characters\empire\imperialpriestess\character_empire_imperialpriestess.g" 2 0.000000
+	coords 0.000004,1.585547,-0.047076,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "512445616"
+	attr "dwParent" "53966864"
+	attr "vdshader" "dif_light2x"
+	attr "name" "empire_imperialpriestess_head"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_imperialpriestess_head.tga"
+	attr "material0_triangles_num" "1117"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "713"
+	attr "weights_on_vertex" "2"
+	attr "bones_num" "3"
+	attr "tech" "model"
+	attr "techname" "model"
+}
+
+	child gobj "weapon_empire_imperialpreastess" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 7199 127661288
+	dwflags 1053761
+	tech "model2x"
+	bonesuid 7189 98817512
+	mesh_lods 1
+	"resources\characters\empire\imperialpriestess\character_empire_imperialpriestess.g" 3 0.000000
+	coords 0.418563,-5.037738,-24.017067,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "343116976"
+	attr "dwParent" "53966864"
+	attr "vdshader" "dif_light2x"
+	attr "name" "weapon_empire_imperialpreastess"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "weapon_empire_imperialpriestess.tga"
+	attr "material0_triangles_num" "461"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "441"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+	attr "tech" "model"
+	attr "techname" "model"
+}
+
+	child gobj "empire_imperialpriestess_cloth" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 7200 126825096
+	dwflags 1053761
+	tech "modelalphatest2x"
+	bonesuid 7189 98817512
+	mesh_lods 1
+	"resources\characters\empire\imperialpriestess\character_empire_imperialpriestess.g" 0 0.000000
+	coords 0.000000,-2.745501,-17.870899,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "325870240"
+	attr "dwParent" "53966864"
+	attr "vdshader" "dif_light2x"
+	attr "morph" "1"
+	attr "name" "empire_imperialpriestess_cloth"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_imperialpriestess.tga"
+	attr "material0_triangles_num" "724"
+	attr "morph_track" "1"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "450"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+	attr "tech" "model"
+	attr "techname" "model"
+}
+
+	child gobj "empire_imperialpriestess" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 7201 202645232
+	dwflags 1053761
+	tech "model2x"
+	bonesuid 7189 98817512
+	mesh_lods 1
+	"resources\characters\empire\imperialpriestess\character_empire_imperialpriestess.g" 1 0.000000
+	coords 0.000000,1.381625,-1.074056,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "514317488"
+	attr "dwParent" "53966864"
+	attr "vdshader" "dif_light2x"
+	attr "name" "empire_imperialpriestess"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_imperialpriestess.tga"
+	attr "material0_triangles_num" "3912"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "2790"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "39"
+	attr "tech" "model"
+	attr "techname" "model"
+}
+
+}
+
+}
+

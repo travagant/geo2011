@@ -1,0 +1,93 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\empire\mage\character_empire_mage_baseanims.a";
+frame0 1;
+frame1 112;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 0;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 4;
+meshfile "resources\characters\empire\mage\character_empire_mage.g";
+}
+state "Attack"
+{
+file "resources\characters\empire\mage\character_empire_mage_baseanims.a";
+frame0 112;
+frame1 182;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 118 "Resources/Characters/empire/mage/Aliases\Attack00.alias" " 90";
+event2 "snd_Attack" 127 "resources\characters\empire\mage\Aliases\gravel.alias" " 100";
+event2 "snd_Attack" 127 "resources\characters\empire\mage\Aliases\human.alias" " 70";
+event2 "snd_Attack" 145 "resources\characters\empire\mage\Aliases\human_2.alias" " 70";
+event2 "snd_Attack" 145 "resources\characters\empire\mage\Aliases\gravel_2.alias" " 70";
+event2 "snd_Attack" 139 "resources\characters\empire\mage\Aliases\gravel.alias" " 70";
+event2 "snd_Attack" 157 "resources\characters\empire\mage\Aliases\gravel_2.alias" " 70";
+event2 "snd_Attack" 157 "Resources/Characters/empire/mage/Aliases\Attack01.alias" " 70";
+event2 "snd_Attack" 122 "Resources/Characters/empire/mage/Aliases\Attack02.alias" " 100";
+event2 "snd_Attack" 132 "Resources/Characters/empire/mage/Aliases\Attack03.alias" " 100";
+event2 "snd_Attack" 138 "Resources/Characters/empire/mage/Aliases\Attack04.alias" " 100";
+event2 "FxStrike" 146 "" "";
+event2 "fxcast" 112 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\empire\mage\character_empire_mage.g";
+}
+state "Damage"
+{
+file "resources\characters\empire\mage\character_empire_mage_baseanims.a";
+frame0 182;
+frame1 226;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 186 "Resources/Characters/empire/mage/Aliases\Damage00.alias" " 90";
+event2 "snd_Damage" 195 "resources\characters\empire\mage\Aliases\human.alias" " 100";
+event2 "snd_Damage" 195 "resources\characters\empire\mage\Aliases\gravel.alias" " 100";
+event2 "snd_Damage" 199 "resources\characters\empire\mage\Aliases\gravel_2.alias" " 100";
+event2 "snd_Damage" 218 "resources\characters\empire\mage\Aliases\gravel.alias" " 70";
+event2 "snd_Damage" 218 "resources\characters\empire\mage\Aliases\human.alias" " 70";
+event2 "snd_Damage" 195 "Resources/Characters/empire/mage/Aliases\Damage01.alias" " 100";
+event2 "snd_Damage" 185 "Resources/Characters/empire/mage/Aliases\Damage02.alias" " 100";
+event2 "snd_Damage" 206 "Resources/Characters/empire/mage/Aliases\Damage03.alias" " 70";
+link "Idle" 1; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\empire\mage\character_empire_mage.g";
+}
+state "Death"
+{
+file "resources\characters\empire\mage\character_empire_mage_baseanims.a";
+frame0 226;
+frame1 260;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 226 "Resources/Characters/empire/mage/Aliases\Death00.alias" " 100";
+event2 "snd_Die" 237 "resources\characters\empire\mage\Aliases\gravel.alias" " 80";
+event2 "snd_Die" 237 "resources\characters\empire\mage\Aliases\human.alias" " 70";
+event2 "snd_Die" 232 "Resources/Characters/empire/mage/Aliases\Death01.alias" " 100";
+meshfile "resources\characters\empire\mage\character_empire_mage.g";
+}
+state "Run"
+{
+file "resources\characters\empire\mage\character_empire_mage_baseanims.a";
+frame0 282;
+frame1 293;
+fps 15.000000;
+priority 256;
+flags 1;
+event2 "snd_Step" 287 "resources\characters\empire\mage\Aliases\gravel.alias" " 70";
+event2 "snd_Step" 287 "resources\characters\empire\mage\Aliases\gravel_2.alias" " 70";
+event2 "snd_Step" 293 "resources\characters\empire\mage\Aliases\human.alias" " 70";
+event2 "snd_Step" 293 "resources\characters\empire\mage\Aliases\human_2.alias" " 70";
+event2 "snd_Step" 282 "resources\characters\empire\mage\Aliases\cloth.alias" " 70";
+event2 "snd_Step" 288 "resources\characters\empire\mage\Aliases\cloth.alias" " 60";
+link "Idle" 0; blend 4;
+gaestate "Idle";
+meshfile "resources\characters\empire\mage\character_empire_mage.g";
+}

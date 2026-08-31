@@ -1,0 +1,64 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\empire\defenderoffaith\character_empire_defenderoffaith_baseanims_lod.a";
+frame0 1;
+frame1 95;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 0;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 3;
+meshfile "resources\characters\empire\defenderoffaith\character_empire_defenderoffaith.g";
+}
+state "Attack"
+{
+file "resources\characters\empire\defenderoffaith\character_empire_defenderoffaith_baseanims_lod.a";
+frame0 95;
+frame1 145;
+fps 18.000000;
+priority 256;
+flags 0;
+event2 "Strike" 120 "" "";
+event2 "trail_start" 116 "" "";
+event2 "trail_end" 122 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\empire\defenderoffaith\character_empire_defenderoffaith.g";
+}
+state "Damage"
+{
+file "resources\characters\empire\defenderoffaith\character_empire_defenderoffaith_baseanims_lod.a";
+frame0 145;
+frame1 181;
+fps 15.000000;
+priority 256;
+flags 0;
+link "Idle" 1; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\empire\defenderoffaith\character_empire_defenderoffaith.g";
+}
+state "Death"
+{
+file "resources\characters\empire\defenderoffaith\character_empire_defenderoffaith_baseanims_lod.a";
+frame0 181;
+frame1 217;
+fps 15.000000;
+priority 256;
+flags 0;
+meshfile "resources\characters\empire\defenderoffaith\character_empire_defenderoffaith.g";
+}
+state "Run"
+{
+file "resources\characters\empire\defenderoffaith\character_empire_defenderoffaith_baseanims_lod.a";
+frame0 221;
+frame1 230;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Idle" 0; blend 3;
+gaestate "Idle";
+meshfile "resources\characters\empire\defenderoffaith\character_empire_defenderoffaith.g";
+}

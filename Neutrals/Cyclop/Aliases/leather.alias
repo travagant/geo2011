@@ -1,0 +1,7 @@
+alias "leather" {
+	sound 100, "$(Sounds)/neutrals_cyclop/leather_005.wav", 100, 3;
+	sound 100, "$(Sounds)/neutrals_cyclop/leather_000.wav", 100, 3;
+	sound 100, "$(Sounds)/neutrals_cyclop/leather_001.wav", 100, 3;
+	sound 100, "$(Sounds)/neutrals_cyclop/leather_002.wav", 100, 3;
+	sound 100, "$(Sounds)/neutrals_cyclop/leather_003.wav", 100, 3;
+}

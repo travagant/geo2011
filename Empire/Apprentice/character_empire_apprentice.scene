@@ -1,0 +1,204 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 90000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera -2.059783,1.967647,-1.030765,0.188241,1.084522,-0.038173,0.188241,1.084522,-0.038173,-2.059783,1.967647,-1.030765,0.345000,1.155000,0.000000,2.611275;
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+	load_counter 8895927;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 69 30642168
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.010000,-0.010000,-0.010000,0.010000,0.010000,0.010000
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_empire_apprentice" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 70 31100216
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 1048576
+	file "resources\characters\empire\apprentice\character_empire_apprentice.ac"
+	plvl 512
+	looktocamera 0;
+	child gobj "empire_apprentice" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 85 39093536
+	dwflags 1053761
+	tech "model"
+	bonesuid 70 31100216
+	mesh_lods 1
+	"resources\characters\empire\apprentice\character_empire_apprentice.g" 0 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 1;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "265057344"
+	attr "dwParent" "53704928"
+	attr "vdshader" "dif_light2x"
+	attr "name" "Apprentice"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_apprentice_diffuse.tga"
+	attr "material0_triangles_num" "2706"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "2174"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "41"
+	attr "shadowmap_cast" "1"
+}
+
+	child gobj "empire_apprentice_skirt" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 113 40532464
+	dwflags 1053761
+	tech "model"
+	bonesuid 70 31100216
+	mesh_lods 1
+	"resources\characters\empire\apprentice\character_empire_apprentice.g" 1 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 1;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "266691104"
+	attr "dwParent" "53704928"
+	attr "vdshader" "dif_light2x"
+	attr "morph" "1"
+	attr "name" "Apprentice_Skirt"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_apprentice_diffuse.tga"
+	attr "material0_triangles_num" "756"
+	attr "morph_track" "1"
+	attr "shadowmap_cast" "1"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "516"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+}
+
+	child gobj "empire_apprentice_sleeve" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 120 40576568
+	dwflags 1053761
+	tech "model"
+	bonesuid 70 31100216
+	mesh_lods 1
+	"resources\characters\empire\apprentice\character_empire_apprentice.g" 2 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 1;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "266907712"
+	attr "dwParent" "53704928"
+	attr "morph" "1"
+	attr "vdshader" "dif_light2x"
+	attr "name" "Apprentice_Sleeve"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_apprentice_diffuse.tga"
+	attr "material0_triangles_num" "792"
+	attr "morph_track" "1"
+	attr "shadowmap_cast" "1"
+}
+
+	child gobj "empire_apprentice_head" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 127 40656904
+	dwflags 1053761
+	tech "model2x"
+	bonesuid 70 31100216
+	mesh_lods 1
+	"resources\characters\empire\apprentice\character_empire_apprentice.g" 3 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 1;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "268000032"
+	attr "dwParent" "53704928"
+	attr "tech" "model2x"
+	attr "vdshader" "dif_light2x"
+	attr "name" "Apprentice_Head"
+	attr "groupname" "Scene Root"
+	attr "techname" "model2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_apprentice_head_diffuse.tga"
+	attr "material0_triangles_num" "1506"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "976"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "4"
+}
+
+}
+
+}
+

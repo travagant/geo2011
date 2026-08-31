@@ -1,0 +1,14 @@
+// alias configuration file
+//
+// alias "<name>" { ... };
+// sound <use chance>, "<file>", <play chance>, <flags>
+//
+// <flags> is a bit field in decimal/hexadecimal (0xNNNN) format:
+//	bit 0: 1=enabled, 0=disabled
+//	bit 1: 1=play with accelerated animation, 0=play only with normal speed animation
+// All undefined bits are ignored and are not stored.
+//
+
+alias "Attack00" {
+	sound 100, "$(Sounds)\voices\empire\elementalist\elementalist_attack.wav", 100, 3;
+}

@@ -1,0 +1,184 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 90000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera -2.009468,6.310171,-4.680858,-0.352466,0.991570,0.266459,-0.352466,0.991570,0.266459,-2.009468,6.310171,-4.680858,0.795000,-5.959999,0.000000,7.450444;
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 71 32239904
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.100000,-0.100000,-0.100000,0.100000,0.100000,0.100000
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_empire_grandinquisitor" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 72 41070600
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 1048576
+	file "resources\characters\empire\grandinquisitor\character_empire_grandinquisitor_lod.ac"
+	plvl 512
+	looktocamera 0;
+	child gobj "lod_empire_grandinquisitor" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 87 32621016
+	dwflags 1055809
+	tech "model"
+	bonesuid 72 41070600
+	mesh_lods 1
+	"resources\characters\empire\grandinquisitor\character_empire_grandinquisitor_lod.g" 1 0.000000
+	coords 0.000000,0.998298,-0.001582,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "468417264"
+	attr "dwParent" "53770176"
+	attr "morph" "1"
+	attr "twosided" "1"
+	attr "vdshader" "dif_light2x"
+	attr "name" "empire_grandinquisitor"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_grinquisitor_diffuse.tga"
+	attr "material0_triangles_num" "5302"
+	attr "morph_track" "1"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "4037"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "42"
+}
+
+	child gobj "lod_weapon_empire_grandinquisitor" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 115 41944400
+	dwflags 1053761
+	tech "model"
+	bonesuid 72 41070600
+	mesh_lods 1
+	"resources\characters\empire\grandinquisitor\character_empire_grandinquisitor_lod.g" 2 0.000000
+	coords 0.250846,0.002838,-0.001675,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "475090096"
+	attr "dwParent" "53770176"
+	attr "vdshader" "dif_light2x"
+	attr "name" "weapon_empire_grandinquisitor"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "weapon_grinquisitor_mace_diffuse.tga"
+	attr "material0_triangles_num" "236"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "530"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+}
+
+	child gobj "lod_empire_grandinquisitor_clothes" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 122 41019200
+	dwflags 1055809
+	tech "model"
+	bonesuid 72 41070600
+	mesh_lods 1
+	"resources\characters\empire\grandinquisitor\character_empire_grandinquisitor_lod.g" 0 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "475265504"
+	attr "dwParent" "53770176"
+	attr "vdshader" "dif_light2x"
+	attr "name" "empire_grandinquisitor_clothes"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_grinquisitor_diffuse.tga"
+	attr "material0_triangles_num" "314"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "1715"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "29"
+	attr "morph" "1"
+	attr "twosided" "1"
+	attr "morph_track" "1"
+}
+
+	child 	goclass "VDGoWeaponTrace" "VDGoWeaponTrace" 
+{
+	uid 124 32142552
+	dwflags 1
+	coords -0.742338,0.000000,0.000000,0.000000,0.000000,0.000000
+	texture "resources\fx\fx_resouces\textures\weapontrace\weapontrace_narrow_long_blue2.t"
+	tech "weapontrace"
+	lifetime 0.500000
+	maxdist 0.150000
+	bonetraceuid 72 41070600
+	fadeonevent 0
+	fadetime 1.000000
+	boneid 41
+	boneid 42
+}
+
+}
+
+}
+

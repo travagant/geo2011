@@ -1,0 +1,249 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 30000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera -1.914186,2.627879,-1.066936,0.593562,0.757897,0.162423,0.593562,0.757897,0.162423,-1.914186,2.627879,-1.066936,0.590000,1.115000,0.000000,3.361094;
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 70 29913208
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.010000,-0.010000,-0.010000,0.010000,0.010000,0.010000
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_empire_mage" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 71 30332936
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 1048576
+	file "resources\characters\empire\mage\character_empire_mage_lod.ac"
+	plvl 512
+	looktocamera 0;
+	child gobj "lod_empire_mage" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 86 38506824
+	dwflags 1055809
+	tech "model2x"
+	bonesuid 71 30332936
+	mesh_lods 1
+	"resources\characters\empire\mage\character_empire_mage_lod.g" 3 0.000000
+	coords -0.000042,0.892570,-0.043047,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "341935184"
+	attr "dwParent" "53966752"
+	attr "vdshader" "dif_light2x"
+	attr "morph" "1"
+	attr "twosided" "1"
+	attr "name" "empire_mage"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_mage.tga"
+	attr "material0_triangles_num" "3015"
+	attr "morph_track" "1"
+	attr "tech" "model2x"
+	attr "techname" "model2x"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "2269"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "24"
+}
+
+	child gobj "lod_empire_mage_skirt" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 107 39715464
+	dwflags 1055809
+	tech "model2x"
+	bonesuid 71 30332936
+	mesh_lods 1
+	"resources\characters\empire\mage\character_empire_mage_lod.g" 0 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "342015152"
+	attr "dwParent" "53966752"
+	attr "vdshader" "dif_light2x"
+	attr "name" "empire_mage_skirt"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_mage.tga"
+	attr "material0_triangles_num" "280"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "144"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "12"
+	attr "tech" "model2x"
+	attr "morph" "1"
+	attr "twosided" "1"
+	attr "techname" "model2x"
+	attr "morph_track" "1"
+}
+
+	child gobj "lod_empire_mage_cloack" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 114 39828784
+	dwflags 1055809
+	tech "model2x"
+	bonesuid 71 30332936
+	mesh_lods 1
+	"resources\characters\empire\mage\character_empire_mage_lod.g" 1 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "342074320"
+	attr "dwParent" "53966752"
+	attr "vdshader" "dif_light2x"
+	attr "twosided" "1"
+	attr "morph" "1"
+	attr "name" "empire_mage_cloack"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_mage.tga"
+	attr "material0_triangles_num" "208"
+	attr "morph_track" "1"
+	attr "tech" "model2x"
+	attr "techname" "model2x"
+}
+
+	child gobj "lod_empire_mage_L_glove" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 121 39849704
+	dwflags 1053761
+	tech "model2x"
+	bonesuid 71 30332936
+	mesh_lods 1
+	"resources\characters\empire\mage\character_empire_mage_lod.g" 2 0.000000
+	coords 0.507111,1.161946,0.007650,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "314468768"
+	attr "dwParent" "53966752"
+	attr "vdshader" "dif_light2x"
+	attr "name" "empire_mage_L_glove"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_mage.tga"
+	attr "material0_triangles_num" "562"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "374"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "12"
+	attr "tech" "model2x"
+	attr "techname" "model2x"
+}
+
+	child gobj "lod_empire_mage_R_glove" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 128 39857888
+	dwflags 1053761
+	tech "model2x"
+	bonesuid 71 30332936
+	mesh_lods 1
+	"resources\characters\empire\mage\character_empire_mage_lod.g" 4 0.000000
+	coords -0.507111,1.161946,0.007650,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "314330288"
+	attr "dwParent" "53966752"
+	attr "vdshader" "dif_light2x"
+	attr "name" "empire_mage_R_glove"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_mage.tga"
+	attr "material0_triangles_num" "554"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "372"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "12"
+	attr "tech" "model2x"
+	attr "techname" "model2x"
+}
+
+}
+
+}
+

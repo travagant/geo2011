@@ -1,0 +1,201 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 90000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera -1.040486,1.717974,-0.967509,-0.308114,1.460893,-0.337000,0.609213,1.138888,0.452740,-1.040486,1.717974,-0.967509,0.260000,0.860000,0.000000,2.252544;
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 7005 31114888
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.010000,-0.010000,-0.010000,0.010000,0.010000,0.010000
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_empire_cleric" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 7006 98817512
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 1048576
+	file "resources\characters\empire\cleric\character_empire_cleric.ac"
+	plvl 512
+	looktocamera 0;
+	child gobj "empire_cleric_cloth" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 7009 201744096
+	dwflags 1053761
+	tech "model"
+	bonesuid 7006 98817512
+	mesh_lods 1
+	"resources\characters\empire\cleric\character_empire_cleric.g" 1 0.000000
+	coords 0.000000,-0.920360,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "273006784"
+	attr "dwParent" "53966800"
+	attr "morph" "1"
+	attr "tech" "model2x"
+	attr "name" "empire_cleric_cloth"
+	attr "groupname" "Scene Root"
+	attr "techname" "model2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_cleric_complete.tga"
+	attr "material0_triangles_num" "376"
+	attr "morph_track" "1"
+}
+
+	child gobj "empire_cleric" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 7014 203097392
+	dwflags 1053761
+	tech "model"
+	bonesuid 7006 98817512
+	mesh_lods 1
+	"resources\characters\empire\cleric\character_empire_cleric.g" 2 0.000000
+	coords 0.000000,0.341570,0.001704,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "265297072"
+	attr "dwParent" "53966800"
+	attr "tech" "model2x"
+	attr "name" "empire_cleric"
+	attr "groupname" "Scene Root"
+	attr "techname" "model2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_cleric_complete.tga"
+	attr "material0_triangles_num" "4002"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "3412"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "44"
+}
+
+	child gobj "empire_cleric_head" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 7015 202607384
+	dwflags 1053761
+	tech "model"
+	bonesuid 7006 98817512
+	mesh_lods 1
+	"resources\characters\empire\cleric\character_empire_cleric.g" 3 0.000000
+	coords 0.000080,1.661936,0.033386,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "265313456"
+	attr "dwParent" "53966800"
+	attr "tech" "model2x"
+	attr "name" "empire_cleric_head"
+	attr "groupname" "Scene Root"
+	attr "techname" "model2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_cleric_head_complete.tga"
+	attr "material0_triangles_num" "1388"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "884"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "4"
+}
+
+	child gobj "empire_cleric_hair" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 7016 203264888
+	dwflags 1056321
+	tech "modelalphatest"
+	bonesuid 7006 98817512
+	mesh_lods 1
+	"resources\characters\empire\cleric\character_empire_cleric.g" 0 0.000000
+	coords 0.000000,1.679296,-0.037962,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_at_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "272679680"
+	attr "dwParent" "53966800"
+	attr "twosided" "1"
+	attr "tech" "modelalphatest"
+	attr "name" "empire_cleric_hair"
+	attr "groupname" "Scene Root"
+	attr "techname" "modelalphatest"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_cleric_lashsimple_diffuse.tga"
+	attr "material0_triangles_num" "80"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "72"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "3"
+}
+
+}
+
+}
+

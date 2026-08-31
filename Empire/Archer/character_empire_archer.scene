@@ -1,0 +1,204 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 90000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera -4.279749,3.062952,-2.384620,6.818128,-1.601757,4.965923,6.818128,-1.601757,4.965923,-4.279749,3.062952,-2.384620,0.355000,0.975000,0.000000,10.127894;
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 6992 31114888
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.010000,-0.010000,-0.010000,0.010000,0.010000,0.010000
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_empire_archer" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 6993 98817512
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 1048576
+	file "resources\characters\empire\archer\character_empire_archer.ac"
+	plvl 512
+	looktocamera 0;
+	child gobj "empire_archer" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 6996 203285816
+	dwflags 1055809
+	tech "model2x"
+	bonesuid 6993 98817512
+	mesh_lods 1
+	"resources\characters\empire\archer\character_empire_archer.g" 0 0.000000
+	coords -0.018299,0.890490,0.109703,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 1;
+	blockshader "system\xshader\dif_at_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "450258032"
+	attr "dwParent" "53639184"
+	attr "twosided" "1"
+	attr "tech" "modelalphatest"
+	attr "name" "empire_archer"
+	attr "groupname" "Scene Root"
+	attr "techname" "modelalphatest"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_archer_diffuse.tga"
+	attr "material0_triangles_num" "3631"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "2559"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "35"
+}
+
+	child gobj "archer_hair" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 7002 98103952
+	dwflags 1053761
+	tech "modelalphatest2x"
+	bonesuid 6993 98817512
+	mesh_lods 1
+	"resources\characters\empire\archer\character_empire_archer.g" 1 0.000000
+	coords -0.154865,1.420434,-0.027493,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 1;
+	blockshader "system\xshader\dif_at_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "450337520"
+	attr "dwParent" "53639184"
+	attr "name" "archer_hair"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_archer_hair_diffuse.tga"
+	attr "material0_triangles_num" "222"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "180"
+	attr "weights_on_vertex" "2"
+	attr "bones_num" "3"
+	attr "twosided" "1"
+	attr "tech" "modelalphatest"
+	attr "techname" "modelalphatest"
+}
+
+	child gobj "weapon_empire_ranger_diffuse" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 7003 201365752
+	dwflags 1053761
+	tech "model2x"
+	bonesuid 6993 98817512
+	mesh_lods 1
+	"resources\characters\empire\archer\character_empire_archer.g" 2 0.000000
+	coords 0.000000,0.000000,-0.094697,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 1;
+	blockshader "system\xshader\dif_at_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "476236656"
+	attr "dwParent" "53639184"
+	attr "tech" "modelalpha"
+	attr "name" "weapon_empire_ranger_diffuse"
+	attr "groupname" "Scene Root"
+	attr "techname" "modelalpha"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "weapon_empire_archer_bow_complete.tga"
+	attr "material0_triangles_num" "188"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "130"
+	attr "weights_on_vertex" "2"
+	attr "bones_num" "4"
+}
+
+	child gobj "empire_archer_arrow" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 7004 127519784
+	dwflags 1054273
+	tech "modelalphatest2x"
+	bonesuid 6993 98817512
+	mesh_lods 1
+	"resources\characters\empire\archer\character_empire_archer.g" 3 0.000000
+	coords 0.357878,-0.001013,0.002928,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "476263936"
+	attr "dwParent" "53639184"
+	attr "name" "empire_archer_arrow"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "weapon_empire_archer_arrow_diffuse.tga"
+	attr "material0_triangles_num" "30"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "68"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+	attr "tech" "modelalpha"
+	attr "techname" "modelalpha"
+}
+
+}
+
+}
+

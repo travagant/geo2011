@@ -1,0 +1,66 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\empire\rod-1\character_empire_rod-1_baseanims.a";
+frame0 1;
+frame1 66;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 3;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+gaestate "Attack";
+meshfile "resources\characters\empire\rod-1\character_empire_rod-1.g";
+}
+state "Attack"
+{
+file "resources\characters\empire\rod-1\character_empire_rod-1_baseanims.a";
+frame0 66;
+frame1 124;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 66 "Resources/Characters/empire/rod-1/Aliases\Attack00.alias" " 100";
+event2 "snd_Attack" 90 "Resources/Characters/empire/rod-1/Aliases\Attack01.alias" " 100";
+event2 "FxStrike" 92 "" "";
+event2 "fxcast" 66 "" "";
+link "Idle" 1; blend 4;
+gaestate "Idle";
+meshfile "resources\characters\empire\rod-1\character_empire_rod-1.g";
+}
+state "Damage"
+{
+file "resources\characters\empire\rod-1\character_empire_rod-1_baseanims.a";
+frame0 124;
+frame1 160;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 124 "Resources/Characters/empire/rod-1/Aliases\Damage00.alias" " 100";
+link "Idle" 1; blend 4;
+gaestate "Idle";
+meshfile "resources\characters\empire\rod-1\character_empire_rod-1.g";
+}
+state "Death"
+{
+file "resources\characters\empire\rod-1\character_empire_rod-1_baseanims.a";
+frame0 160;
+frame1 200;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 160 "Resources/Characters/empire/rod-1/Aliases\Death00.alias" " 100";
+meshfile "resources\characters\empire\rod-1\character_empire_rod-1.g";
+}
+state "Run"
+{
+file "resources\characters\empire\rod-1\character_empire_rod-1_baseanims.a";
+frame0 0;
+frame1 0;
+fps 15.000000;
+priority 256;
+flags 0;
+meshfile "resources\characters\empire\rod-1\character_empire_rod-1.g";
+}

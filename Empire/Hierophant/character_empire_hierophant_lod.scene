@@ -1,0 +1,274 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 90000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera -0.699788,1.228825,-1.738598,-0.527264,1.094235,-0.762831,1.464835,-0.459852,10.504148,-0.699788,1.228825,-1.738598,0.135000,0.175000,0.000000,12.546794;
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 2768 32251912
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.010000,-0.010000,-0.010000,0.010000,0.010000,0.010000
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_empire_hierophant" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 2769 104971944
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 1048576
+	file "resources\characters\empire\hierophant\character_empire_hierophant_lod.ac"
+	plvl 512
+	looktocamera 0;
+	child gobj "lod_empire_hierophant_cloak" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 2777 123899912
+	dwflags 1053761
+	tech "model"
+	bonesuid 2769 104971944
+	mesh_lods 1
+	"resources\characters\empire\hierophant\character_empire_hierophant_lod.g" 0 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "476119184"
+	attr "dwParent" "53770176"
+	attr "vdshader" "dif_light2x"
+	attr "morph" "1"
+	attr "name" "empire_hierophant_cloak"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_hierophant_cloak.tga"
+	attr "material0_triangles_num" "440"
+	attr "morph_track" "1"
+}
+
+	child gobj "lod_empire_hierophant_skirt" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 2790 106295920
+	dwflags 1053761
+	tech "model"
+	bonesuid 2769 104971944
+	mesh_lods 1
+	"resources\characters\empire\hierophant\character_empire_hierophant_lod.g" 1 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "345705648"
+	attr "dwParent" "53770176"
+	attr "vdshader" "dif_light2x"
+	attr "morph" "1"
+	attr "name" "empire_hierophant_skirt"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_hierophant_cloak.tga"
+	attr "material0_triangles_num" "468"
+	attr "morph_track" "1"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "378"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+}
+
+	child gobj "lod_weapon_empire_hierophant" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 2797 106158400
+	dwflags 1053761
+	tech "model"
+	bonesuid 2769 104971944
+	mesh_lods 1
+	"resources\characters\empire\hierophant\character_empire_hierophant_lod.g" 2 0.000000
+	coords 0.505735,0.000475,-0.000475,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "460323056"
+	attr "dwParent" "53770176"
+	attr "vdshader" "dif_light2x"
+	attr "name" "weapon_empire_hierophant"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "weapon_empire_hierophant.tga"
+	attr "material0_triangles_num" "76"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "76"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+}
+
+	child gobj "lod_weapon_empire_hierophant_alpha" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 2804 106164264
+	dwflags 1053761
+	tech "model"
+	bonesuid 2769 104971944
+	mesh_lods 1
+	"resources\characters\empire\hierophant\character_empire_hierophant_lod.g" 3 0.000000
+	coords -0.456837,-0.000258,-0.000258,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 1;
+	blockshader "system\xshader\dif_at_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "460367232"
+	attr "dwParent" "53770176"
+	attr "vdshader" "dif_at_light2x"
+	attr "name" "weapon_empire_hierophant_alpha"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "weapon_empire_hierophant_alpha.tga"
+	attr "material0_triangles_num" "332"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "644"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+}
+
+	child gobj "lod_empire_hierophant" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 2811 104992296
+	dwflags 1053761
+	tech "model"
+	bonesuid 2769 104971944
+	mesh_lods 1
+	"resources\characters\empire\hierophant\character_empire_hierophant_lod.g" 4 0.000000
+	coords 0.009737,0.942255,0.019484,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "474388256"
+	attr "dwParent" "53770176"
+	attr "vdshader" "dif_cube_light2x"
+	attr "name" "empire_hierophant"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_hierophant.tga"
+	attr "material0_triangles_num" "4416"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "3397"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "30"
+	attr "morph" "1"
+	attr "morph_track" "1"
+	attr "lmuvdata" "3397"
+	attr "material0_lightmap" "cubemap_default.tga"
+}
+
+	child gobj "lod_empire_hierophant_head" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 2818 124088328
+	dwflags 1053761
+	tech "model"
+	bonesuid 2769 104971944
+	mesh_lods 1
+	"resources\characters\empire\hierophant\character_empire_hierophant_lod.g" 5 0.000000
+	coords 0.000004,1.560127,-0.019620,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "474696880"
+	attr "dwParent" "53770176"
+	attr "vdshader" "dif_light2x"
+	attr "name" "empire_hierophant_head"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_hierophant_face.tga"
+	attr "material0_triangles_num" "1101"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "703"
+	attr "weights_on_vertex" "2"
+	attr "bones_num" "3"
+}
+
+}
+
+}
+

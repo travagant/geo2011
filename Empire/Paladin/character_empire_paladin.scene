@@ -1,0 +1,326 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 90000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	shadowint 0.750000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	shadowcolor -16777216;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera 4.714598,3.501293,-1.883175,0.133742,1.455545,-0.546163,0.133742,1.455545,-0.546163,4.714598,3.501293,-1.883175,0.405000,-7.570001,0.000000,5.192006;
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+	load_counter 1026;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 106 38856040
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.034158,-0.010000,-0.346132,-0.014158,0.010000,-0.326132
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_empire_paladin" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 113 39484488
+	coords -0.024158,0.000000,-0.336132,0.000000,0.000000,0.000000
+	dwflags 1048576
+	file "resources\characters\empire\paladin\character_empire_paladin.ac"
+	plvl 512
+	looktocamera 0;
+	child gobj "paladin_sword" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 138 40445528
+	dwflags 1053697
+	tech "model"
+	bonesuid 113 39484488
+	mesh_lods 1
+	"resources\characters\empire\paladin\character_empire_paladin.g" 6 0.000000
+	coords 1.267965,0.000000,-7.543800,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "472801344"
+	attr "dwParent" "53639104"
+	attr "name" "paladin_sword"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "weapon_empire_paladin_diffuse.tga"
+	attr "material0_triangles_num" "232"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "151"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+}
+
+	child gobj "empire_paladin" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 184 94280936
+	dwflags 1053697
+	tech "model"
+	bonesuid 113 39484488
+	mesh_lods 1
+	"resources\characters\empire\paladin\character_empire_paladin.g" 3 0.000000
+	coords -0.012242,1.597892,-0.032205,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "471958032"
+	attr "dwParent" "53639104"
+	attr "name" "empire_paladin"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_paladin.tga"
+	attr "material0_triangles_num" "3194"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "2996"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "28"
+	attr "tech" "dif_cube"
+	attr "techname" "dif_cube"
+	attr "lmuvdata" "2996"
+	attr "material0_lightmap" "cubemap_default.tga"
+}
+
+	child gobj "weapon_empire_paladin" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 207 94488768
+	dwflags 1053697
+	tech "model"
+	bonesuid 113 39484488
+	mesh_lods 1
+	"resources\characters\empire\paladin\character_empire_paladin.g" 4 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "472017696"
+	attr "dwParent" "53639104"
+	attr "morph" "1"
+	attr "name" "weapon_empire_paladin"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "weapon_empire_paladin_diffuse.tga"
+	attr "material0_triangles_num" "52"
+	attr "morph_track" "1"
+}
+
+	child gobj "empire_paladin_head" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 219 94555776
+	dwflags 1053697
+	tech "model"
+	bonesuid 113 39484488
+	mesh_lods 1
+	"resources\characters\empire\paladin\character_empire_paladin.g" 5 0.000000
+	coords 0.000000,2.364631,0.022905,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "472322512"
+	attr "dwParent" "53639104"
+	attr "name" "empire_paladin_head"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_paladin_head.tga"
+	attr "material0_triangles_num" "1272"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "804"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "3"
+}
+
+	child gobj "empire_paladin_clothes" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 231 94602536
+	dwflags 1053697
+	tech "model"
+	bonesuid 113 39484488
+	mesh_lods 1
+	"resources\characters\empire\paladin\character_empire_paladin.g" 2 0.000000
+	coords -0.053536,1.415370,0.257985,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "431818704"
+	attr "dwParent" "53639104"
+	attr "name" "empire_paladin_clothes"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_paladin.tga"
+	attr "material0_triangles_num" "260"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "198"
+	attr "weights_on_vertex" "4"
+	attr "bones_num" "12"
+	attr "lmuvdata" "198"
+	attr "material0_lightmap" "cubemap_default.tga"
+}
+
+	child gobj "empire_paladin_cloak" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 243 94571008
+	dwflags 1053697
+	tech "model"
+	bonesuid 113 39484488
+	mesh_lods 1
+	"resources\characters\empire\paladin\character_empire_paladin.g" 1 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "431544064"
+	attr "dwParent" "53639104"
+	attr "morph" "1"
+	attr "name" "empire_paladin_cloak"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_paladin.tga"
+	attr "material0_triangles_num" "436"
+	attr "morph_track" "1"
+	attr "lmuvdata" "262"
+	attr "material0_lightmap" "cubemap_default.tga"
+}
+
+	child gobj "empire_paladin_horse" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 255 94616176
+	dwflags 1054209
+	tech "model"
+	bonesuid 113 39484488
+	mesh_lods 1
+	"resources\characters\empire\paladin\character_empire_paladin.g" 0 0.000000
+	coords 0.000000,1.044920,0.240962,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "431479984"
+	attr "dwParent" "53639104"
+	attr "name" "empire_paladin_horse"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_paladin_horse.tga"
+	attr "material0_triangles_num" "2890"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "2862"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "30"
+	attr "tech" "dif_cube"
+	attr "techname" "dif_cube"
+	attr "lmuvdata" "2862"
+	attr "material0_lightmap" "cubemap_default.tga"
+}
+
+	child 	goclass "VDGoWeaponTrace" "VDGoWeaponTrace" 
+{
+	uid 256 94523248
+	dwflags 1048577
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	texture "resources\fx\fx_resouces\textures\weapontrace\weapontrace_narrow_blue.t"
+	tech "weapontrace"
+	lifetime 0.250000
+	maxdist 0.100000
+	bonetraceuid 113 39484488
+	fadeonevent 0
+	fadetime 1.000000
+	boneid 65
+	boneid 64
+}
+
+}
+
+}
+

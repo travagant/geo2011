@@ -1,0 +1,3 @@
+alias "Death02" {
+	sound 100, "$(Sounds)\voices\empire\cleric\cleric_death_1.wav", 100, 3;
+}

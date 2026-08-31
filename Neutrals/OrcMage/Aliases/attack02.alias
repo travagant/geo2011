@@ -1,0 +1,4 @@
+alias "Attack02" {
+	sound 100, "$(Sounds)/special/elves/wood/rod_wood_1.wav", 100, 3;
+	sound 100, "$(Sounds)/special/elves/wood/rod_wood_2.wav", 100, 3;
+}

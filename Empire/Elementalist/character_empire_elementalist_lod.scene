@@ -1,0 +1,136 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 90000.000000;
+	nearplane 0.100000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera -1.151991,1.703021,-1.770144,0.760193,0.824855,1.456336,0.760193,0.824855,1.456336,-1.151991,1.703021,-1.770144,0.230000,0.535000,0.000000,3.851986;
+}
+
+group "Scene Root" 
+{
+	uid 96 27003444
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.010000,-0.010000,-0.010000,0.010000,0.010000,0.010000
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_empire_elementalist" 
+{
+	uid 97 171864412
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 1048576
+	file "resources\characters\empire\elementalist\character_empire_elementalist_lod.ac"
+	plvl 512
+	child gobj "lod_empire_elementalist_cloth" 
+{
+	uid 113 232802716
+	dwflags 1053761
+	tech "model"
+	bonesuid 97 171864412
+	mesh_lods 1
+	"resources\characters\empire\elementalist\character_empire_elementalist_lod.g" 2 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "429056896"
+	attr "dwParent" "53639184"
+	attr "morph" "1"
+	attr "name" "empire_elementalist_cloth"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_elementalist_diffuse.tga"
+	attr "material0_triangles_num" "366"
+	attr "morph_track" "1"
+}
+
+	child gobj "lod_empire_elementalist_cape" 
+{
+	uid 112 232820708
+	dwflags 1053761
+	tech "model"
+	bonesuid 97 171864412
+	mesh_lods 1
+	"resources\characters\empire\elementalist\character_empire_elementalist_lod.g" 1 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "428955328"
+	attr "dwParent" "53639184"
+	attr "morph" "1"
+	attr "name" "empire_elementalist_cape"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_elementalist_cape_diffuse.tga"
+	attr "material0_triangles_num" "368"
+	attr "morph_track" "1"
+}
+
+	child gobj "lod_weapon_empire_elementalist" 
+{
+	uid 114 232807236
+	dwflags 1053761
+	tech "model"
+	bonesuid 97 171864412
+	mesh_lods 1
+	"resources\characters\empire\elementalist\character_empire_elementalist_lod.g" 3 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "429116592"
+	attr "dwParent" "53639184"
+	attr "name" "weapon_empire_elementalist"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "weapon_empire_elementalist_diffuse.tga"
+	attr "material0_triangles_num" "198"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "176"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+}
+
+	child gobj "elementalist" 
+{
+	uid 106 172340588
+	dwflags 1054273
+	tech "model"
+	bonesuid 97 171864412
+	mesh_lods 1
+	"resources\characters\empire\elementalist\character_empire_elementalist_lod.g" 0 0.000000
+	coords -3.412650,-0.100099,-1.781101,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	blockshader "system\xshader\dif_at_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "428857232"
+	attr "dwParent" "53639184"
+	attr "name" "empire_elementalist"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "2"
+	attr "material0_diffuse" "character_empire_elementalist_diffuse.tga"
+	attr "material0_triangles_num" "3566"
+	attr "material1_diffuse" "character_empire_elementalist_head_diffuse.tga"
+	attr "material1_triangles_num" "896"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "3462"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "34"
+}
+
+}
+
+}
+

@@ -1,0 +1,201 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 90000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera 0.476273,4.948241,-3.207047,0.375980,4.281372,-2.468653,-0.094376,1.153882,0.994274,0.476273,4.948241,-3.207047,0.730000,-0.135000,0.000000,3.123184;
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 70 29913208
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.010000,-0.010000,-0.010000,0.010000,0.010000,0.010000
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_neutrals_necromancer" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 71 30253032
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 1048640
+	file "resources\characters\neutrals\necromancer\character_neutrals_necromancer_lod.ac"
+	plvl 512
+	looktocamera 0;
+	child gobj "neutrals_necromancer" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 86 38300696
+	dwflags 1053761
+	tech "model"
+	bonesuid 71 30253032
+	mesh_lods 1
+	"resources\characters\neutrals\necromancer\character_neutrals_necromancer_lod.g" 0 0.000000
+	coords -0.029079,0.944331,-0.072827,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "465875680"
+	attr "dwParent" "53770304"
+	attr "name" "neutrals_necromancer"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutrals_necromancer.tga"
+	attr "material0_triangles_num" "2716"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "1954"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "33"
+}
+
+	child gobj "neutrals_necromancer_hair" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 116 106447000
+	dwflags 1055809
+	tech "modelalphatest2x"
+	bonesuid 71 30253032
+	mesh_lods 1
+	"resources\characters\neutrals\necromancer\character_neutrals_necromancer_lod.g" 2 0.000000
+	coords 0.000002,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 1;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "480103264"
+	attr "dwParent" "53770304"
+	attr "name" "neutrals_necromancer_hair"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutrals_necromancer_alpha.tga"
+	attr "material0_triangles_num" "166"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "172"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+	attr "twosided" "1"
+	attr "morph" "1"
+	attr "tech" "modelalphatest2x"
+	attr "techname" "modelalphatest2x"
+	attr "morph_track" "1"
+}
+
+	child gobj "lod_character_neutrals_necromancer_hair" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 140 30374808
+	dwflags 1055809
+	tech "modelalphatest2x"
+	bonesuid 71 30253032
+	mesh_lods 1
+	"resources\characters\neutrals\necromancer\character_neutrals_necromancer_lod.g" 3 0.000000
+	coords 0.000002,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_at_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "295040480"
+	attr "dwParent" "54032992"
+	attr "twosided" "1"
+	attr "morph" "1"
+	attr "tech" "modelalphatest2x"
+	attr "name" "lod_character_neutrals_necromancer_hair"
+	attr "groupname" "Scene Root"
+	attr "techname" "modelalphatest2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutrals_necromancer_alpha.tga"
+	attr "material0_triangles_num" "95"
+	attr "morph_track" "1"
+}
+
+	child gobj "lod_character_neutrals_necromancer_cloth" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 138 106556920
+	dwflags 1055809
+	tech "modelalphatest2x"
+	bonesuid 71 30253032
+	mesh_lods 1
+	"resources\characters\neutrals\necromancer\character_neutrals_necromancer_lod.g" 1 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_at_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "294957120"
+	attr "dwParent" "54032992"
+	attr "twosided" "1"
+	attr "morph" "1"
+	attr "tech" "modelalphatest2x"
+	attr "name" "lod_character_neutrals_necromancer_cloth"
+	attr "groupname" "Scene Root"
+	attr "techname" "modelalphatest2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutrals_necromancer_alpha.tga"
+	attr "material0_triangles_num" "201"
+	attr "morph_track" "1"
+}
+
+}
+
+}
+

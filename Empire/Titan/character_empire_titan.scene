@@ -1,0 +1,190 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 30000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera 0.095768,4.445079,-1.286241,0.407118,3.286139,1.155734,0.407118,3.286139,1.155734,0.095768,4.445079,-1.286241,0.440000,6.410000,0.000000,2.720905;
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 236 32432952
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.100000,-0.100000,-0.100000,0.100000,0.100000,0.100000
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_empire_titan" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 237 41345344
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 0
+	file "resources\characters\empire\titan\character_empire_titan.ac"
+	plvl 512
+	child gobj "character_empire_titan_body" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 239 96909136
+	dwflags 1053761
+	tech "model"
+	bonesuid 237 41345344
+	mesh_lods 1
+	"resources\characters\empire\titan\character_empire_titan.g" 0 0.000000
+	coords 0.000209,2.305410,-0.225934,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "207146160"
+	attr "dwParent" "53704704"
+	attr "tech" "model2x"
+	attr "name" "character_empire_titan_body"
+	attr "groupname" "Scene Root"
+	attr "techname" "model2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_titan.tga"
+	attr "material0_triangles_num" "5308"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "3777"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "36"
+	attr "vdshader" "dif_light2x"
+}
+
+	child gobj "character_empire_titan_cloth" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 241 42853128
+	dwflags 1055809
+	tech "model"
+	bonesuid 237 41345344
+	mesh_lods 1
+	"resources\characters\empire\titan\character_empire_titan.g" 1 0.000000
+	coords 0.000209,3.033727,-0.041148,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 1;
+	blockshader "system\xshader\dif_at_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "236268720"
+	attr "dwParent" "53704704"
+	attr "tech" "modelalphatest2x"
+	attr "twosided" "1"
+	attr "name" "character_empire_titan_cloth"
+	attr "groupname" "Scene Root"
+	attr "techname" "modelalphatest2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_titan_alpha.tga"
+	attr "material0_triangles_num" "358"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "253"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "16"
+	attr "vdshader" "dif_at_light2x"
+}
+
+	child gobj "weapon_empire_titan" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 242 42399040
+	dwflags 1054273
+	tech "model"
+	bonesuid 237 41345344
+	mesh_lods 1
+	"resources\characters\empire\titan\character_empire_titan.g" 2 0.000000
+	coords 0.438427,-0.161152,-0.056759,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "302799984"
+	attr "dwParent" "53704704"
+	attr "tech" "model2x"
+	attr "name" "weapon_empire_titan"
+	attr "groupname" "Scene Root"
+	attr "techname" "model2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "weapon_empire_titan.tga"
+	attr "material0_triangles_num" "646"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "529"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+	attr "vdshader" "dif_light2x"
+}
+
+	child 	goclass "VDGoWeaponTrace" "VDGoWeaponTrace" 
+{
+	uid 244 32305936
+	dwflags 1
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	texture "resources\fx\fx_resouces\textures\weapontrace\weapontrace_light_yellow_hi.t"
+	tech "weapontrace"
+	lifetime 0.450000
+	maxdist 2.200000
+	bonetraceuid 237 41345344
+	fadeonevent 0
+	fadetime 1.000000
+	boneid 22
+	boneid 23
+	boneid 24
+	boneid 25
+	boneid 26
+	boneid 27
+	boneid 28
+	boneid 29
+}
+
+}
+
+}
+

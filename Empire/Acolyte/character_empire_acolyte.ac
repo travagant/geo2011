@@ -1,0 +1,95 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "Resources\Characters\Empire\Acolyte\character_empire_acolyte_baseanims.a";
+frame0 1;
+frame1 174;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 0;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 0;
+}
+state "Attack"
+{
+file "Resources\Characters\Empire\Acolyte\character_empire_acolyte_baseanims.a";
+frame0 174;
+frame1 252;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 181 "resources\characters\empire\acolyte\Aliases\swoosh_01.alias" " 50";
+event2 "snd_Attack" 186 "resources\characters\empire\acolyte\Aliases\swoosh_01.alias" " 40";
+event2 "snd_Attack" 224 "resources\characters\empire\acolyte\Aliases\human.alias" " 60";
+event2 "snd_Attack" 197 "resources\characters\empire\acolyte\Aliases\human_2.alias" " 60";
+event2 "snd_Attack" 224 "resources\characters\empire\acolyte\Aliases\gravel.alias" " 60";
+event2 "snd_Attack" 197 "resources\characters\empire\acolyte\Aliases\gravel_2.alias" " 60";
+event2 "snd_Attack" 181 "Resources/Characters/empire/acolyte/Aliases\Attack00.alias" " 100";
+event2 "snd_Attack" 208 "Resources/Characters/empire/acolyte/Aliases\Attack01.alias" " 70";
+event2 "snd_Attack" 221 "Resources/Characters/empire/acolyte/Aliases\Attack02.alias" " 80";
+event2 "snd_Attack" 193 "Resources/Characters/empire/acolyte/Aliases\Attack03.alias" "-10";
+event2 "fxcast" 174 "" " ";
+event2 "FxStrike" 204 "" " ";
+link "Idle" 1; blend 0;
+}
+state "Damage"
+{
+file "Resources\Characters\Empire\Acolyte\character_empire_acolyte_baseanims.a";
+frame0 252;
+frame1 304;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 286 "resources\characters\empire\acolyte\Aliases\human.alias" " 60";
+event2 "snd_Damage" 258 "resources\characters\empire\acolyte\Aliases\human_2.alias" " 60";
+event2 "snd_Damage" 286 "resources\characters\empire\acolyte\Aliases\gravel.alias" " 60";
+event2 "snd_Damage" 258 "resources\characters\empire\acolyte\Aliases\gravel_2.alias" " 60";
+event2 "snd_Damage" 254 "Resources/Characters/empire/acolyte/Aliases\Damage00.alias" " 70";
+event2 "snd_Damage" 252 "Resources/Characters/empire/acolyte/Aliases\Damage01.alias" " 10";
+link "Idle" 1; blend 0;
+link "Run" 0; blend 0;
+gaestate "Idle";
+}
+state "Death"
+{
+file "Resources\Characters\Empire\Acolyte\character_empire_acolyte_baseanims.a";
+frame0 304;
+frame1 380;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 334 "resources\characters\empire\acolyte\Aliases\human.alias" " 100";
+event2 "snd_Die" 316 "resources\characters\empire\acolyte\Aliases\human_2.alias" " 60";
+event2 "snd_Die" 316 "resources\characters\empire\acolyte\Aliases\gravel.alias" " 60";
+event2 "snd_Die" 334 "resources\characters\empire\acolyte\Aliases\gravel_2.alias" " 100";
+event2 "snd_Die" 305 "Resources/Characters/empire/acolyte/Aliases\Death00.alias" " 70";
+event2 "snd_Die" 335 "Resources/Characters/empire/acolyte/Aliases\Death01.alias" " 60";
+event2 "snd_Die" 330 "Resources/Characters/empire/acolyte/Aliases\Death02.alias" " 80";
+event2 "snd_Die" 304 "Resources/Characters/empire/acolyte/Aliases\Death03.alias" " 10";
+}
+state "Run"
+{
+file "Resources\Characters\Empire\Acolyte\character_empire_acolyte_baseanims.a";
+frame0 387;
+frame1 410;
+fps 15.000000;
+priority 256;
+flags 1;
+event2 "snd_Step" 394 "resources\characters\empire\acolyte\Aliases\human.alias" " 50";
+event2 "snd_Step" 400 "resources\characters\empire\acolyte\Aliases\human_2.alias" " 50";
+event2 "snd_Step" 394 "resources\characters\empire\acolyte\Aliases\gravel.alias" " 50";
+event2 "snd_Step" 400 "resources\characters\empire\acolyte\Aliases\gravel_2.alias" " 50";
+event2 "snd_Step" 406 "resources\characters\empire\acolyte\Aliases\human.alias" " 50";
+event2 "snd_Step" 388 "resources\characters\empire\acolyte\Aliases\gravel_2.alias" " 50";
+event2 "snd_Step" 388 "resources\characters\empire\acolyte\Aliases\human_2.alias" " 50";
+event2 "snd_Step" 406 "resources\characters\empire\acolyte\Aliases\gravel.alias" " 50";
+event2 "snd_Step" 390 "resources\characters\empire\acolyte\Aliases\cloth.alias" " 50";
+event2 "snd_Step" 396 "resources\characters\empire\acolyte\Aliases\cloth.alias" " 50";
+event2 "snd_Step" 402 "resources\characters\empire\acolyte\Aliases\cloth.alias" " 50";
+event2 "snd_Step" 408 "resources\characters\empire\acolyte\Aliases\cloth.alias" " 50";
+link "Idle" 0; blend 0;
+gaestate "Idle";
+}

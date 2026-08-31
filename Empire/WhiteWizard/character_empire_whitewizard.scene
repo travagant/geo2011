@@ -1,0 +1,163 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 30000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera 1.401875,1.225240,-3.049344,0.215970,0.867642,-0.036574,0.215970,0.867642,-0.036574,1.401875,1.225240,-3.049344,0.110000,-0.375000,0.000000,3.257457;
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 27 29103320
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.100000,-0.100000,-0.100000,0.100000,0.100000,0.100000
+	dwflags 1
+	plvl 512
+	lodgroup 1
+esourcefile "",-1
+	child bones "character_empire_whitewizard" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 68 37833424
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 0
+	file "resources\characters\empire\whitewizard\character_empire_whitewizard.ac"
+	plvl 512
+	child gobj "empire_whitewizard_cloth" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 65 29655296
+	dwflags 1054273
+	tech "model2x"
+	bonesuid 68 37833424
+	mesh_lods 1
+	"resources\characters\empire\whitewizard\character_empire_whitewizard.g" 0 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "332820944"
+	attr "dwParent" "53704496"
+	attr "morph" "1"
+	attr "tech" "model2x"
+	attr "name" "empire_whitewizard_cloth"
+	attr "groupname" "Scene Root"
+	attr "techname" "model2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_whitewizard.tga"
+	attr "material0_triangles_num" "1324"
+	attr "morph_track" "1"
+}
+
+	child gobj "empire_whitewizard" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 66 37735392
+	dwflags 1053761
+	tech "model2x"
+	bonesuid 68 37833424
+	mesh_lods 1
+	"resources\characters\empire\whitewizard\character_empire_whitewizard.g" 1 0.000000
+	coords -0.021327,0.911226,-0.031622,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "335297088"
+	attr "dwParent" "53704496"
+	attr "tech" "model2x"
+	attr "name" "empire_whitewizard"
+	attr "groupname" "Scene Root"
+	attr "techname" "model2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_whitewizard.tga"
+	attr "material0_triangles_num" "3724"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "2999"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "33"
+}
+
+	child gobj "empire_whitewizard_staff" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 67 37830664
+	dwflags 1053761
+	tech "model2x"
+	bonesuid 68 37833424
+	mesh_lods 1
+	"resources\characters\empire\whitewizard\character_empire_whitewizard.g" 2 0.000000
+	coords 1.015769,-0.000247,0.002807,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "336247536"
+	attr "dwParent" "53704496"
+	attr "tech" "model2x"
+	attr "name" "empire_whitewizard_staff"
+	attr "groupname" "Scene Root"
+	attr "techname" "model2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "weapon_empire_whitewizard_staff.tga"
+	attr "material0_triangles_num" "396"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "322"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+}
+
+}
+
+}
+

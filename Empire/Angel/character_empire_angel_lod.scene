@@ -1,0 +1,213 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 30000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera -6.144022,11.913057,-18.428036,0.141074,0.773378,0.224993,0.141074,0.773378,0.224993,-6.144022,11.913057,-18.428036,0.515000,0.325000,0.000000,22.617037;
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 2959 32644608
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.100000,-0.100000,-0.100000,0.100000,0.100000,0.100000
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_empire_angel" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 2960 110232888
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 0
+	file "resources\characters\empire\angel\character_empire_angel.ac"
+	plvl 512
+	looktocamera 0;
+	child gobj "lod_empire_angel_hairs" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 2968 111777320
+	dwflags 1055809
+	tech "modelalphatest2x"
+	bonesuid 2960 110232888
+	mesh_lods 1
+	"resources\characters\empire\angel\character_empire_angel_lod.g" 0 0.000000
+	coords 0.000000,1.733510,-0.003915,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 1;
+	blockshader "system\xshader\dif_at_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "346941904"
+	attr "dwParent" "53704704"
+	attr "tech" "modelalphatest2x"
+	attr "vdshader" "dif_at_light2x"
+	attr "name" "empire_angel_hairs"
+	attr "groupname" "Scene Root"
+	attr "techname" "modelalphatest2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_angel_hair.tga"
+	attr "material0_triangles_num" "170"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "134"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "3"
+	attr "twosided" "1"
+}
+
+	child gobj "lod_empire_angel_wing" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 2980 111774064
+	dwflags 1055809
+	tech "modelalphatest"
+	bonesuid 2960 110232888
+	mesh_lods 1
+	"resources\characters\empire\angel\character_empire_angel_lod.g" 1 0.000000
+	coords 0.000000,1.498356,0.153110,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 1;
+	blockshader "system\xshader\dif_at_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "347402800"
+	attr "dwParent" "53704704"
+	attr "tech" "modelalphatest"
+	attr "vdshader" "dif_at_light2x"
+	attr "twosided" "1"
+	attr "name" "empire_angel_wing"
+	attr "groupname" "Scene Root"
+	attr "techname" "modelalphatest"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_angel_hair.tga"
+	attr "material0_triangles_num" "364"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "443"
+	attr "weights_on_vertex" "4"
+	attr "bones_num" "16"
+}
+
+	child gobj "lod_empire_angel" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 2987 112665224
+	dwflags 1055809
+	tech "model2x"
+	bonesuid 2960 110232888
+	mesh_lods 1
+	"resources\characters\empire\angel\character_empire_angel_lod.g" 2 0.000000
+	coords 0.000000,1.025597,0.013937,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "374346496"
+	attr "dwParent" "53704704"
+	attr "twosided" "1"
+	attr "vdshader" "dif_light2x"
+	attr "tech" "model2x"
+	attr "name" "empire_angel"
+	attr "groupname" "Scene Root"
+	attr "techname" "model2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_angel.tga"
+	attr "material0_lightmap" "cubemap_default.tga"
+	attr "material0_triangles_num" "5062"
+	attr "material1_diffuse" "character_empire_angel_hair.tga"
+	attr "material1_triangles_num" "80"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "4165"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "41"
+}
+
+	child gobj "lod_empire_angel_cloth" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 2994 111054856
+	dwflags 1055809
+	tech "model"
+	bonesuid 2960 110232888
+	mesh_lods 1
+	"resources\characters\empire\angel\character_empire_angel_lod.g" 3 0.000000
+	coords 0.000000,0.881296,0.037851,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "374647984"
+	attr "dwParent" "53704704"
+	attr "tech" "modelalphatest"
+	attr "twosided" "1"
+	attr "vdshader" "dif_light2x"
+	attr "name" "empire_angel_cloth"
+	attr "groupname" "Scene Root"
+	attr "techname" "modelalphatest"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_angel.tga"
+	attr "material0_triangles_num" "414"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "265"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "16"
+}
+
+}
+
+}
+

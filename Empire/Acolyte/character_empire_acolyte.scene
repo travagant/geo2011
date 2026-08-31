@@ -1,0 +1,212 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 30000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	shadowint 0.750000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	shadowcolor -16777216;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	environment_map "";
+	environment_map_morning "";
+	environment_map_noon "";
+	environment_map_evening "";
+	environment_map_night "";
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	globals "804a289a77383d5d65927a7f39559a67394f6063486a23100a1d431c6789258d";
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+	load_counter 410;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 143 48870628
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.272119,-0.005680,-0.242120,0.151385,1.789232,0.165899
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_empire_acolyte" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 144 52165032
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 0
+	file "resources\characters\empire\acolyte\character_empire_acolyte.ac"
+	plvl 512
+	looktocamera 0;
+	child gobj "weapon_empire_acolyte" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 152 48695360
+	dwflags 1053761
+	tech "modelalphatest2x"
+	bonesuid 144 52165032
+	mesh_lods 1
+	"resources\characters\empire\acolyte\character_empire_acolyte.g" 0 0.000000
+	coords 0.963196,0.005281,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 1;
+	blockshader "system\xshader\dif_at_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "370586544"
+	attr "dwParent" "53705184"
+	attr "tech" "modelalphatest2x"
+	attr "vdshader" "dif_at_light2x"
+	attr "name" "weapon_empire_acolyte"
+	attr "groupname" "Scene Root"
+	attr "techname" "modelalphatest2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "weapon_empire_acolyte_staff_diffuse.tga"
+	attr "material0_triangles_num" "306"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "327"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+}
+
+	child gobj "empire_acolyte" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 162 93554464
+	dwflags 1053761
+	tech "model2x"
+	bonesuid 144 52165032
+	mesh_lods 1
+	"resources\characters\empire\acolyte\character_empire_acolyte.g" 1 0.000000
+	coords 0.015327,0.929892,-0.009385,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "366523120"
+	attr "dwParent" "53705184"
+	attr "tech" "model2x"
+	attr "vdshader" "dif_light2x"
+	attr "name" "empire_acolyte"
+	attr "groupname" "Scene Root"
+	attr "techname" "model2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_acolyte.tga"
+	attr "material0_triangles_num" "5374"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "3734"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "39"
+}
+
+	child gobj "empire_acolyte_hair" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 165 93560584
+	dwflags 1056321
+	tech "modelalphatest2x"
+	bonesuid 144 52165032
+	mesh_lods 1
+	"resources\characters\empire\acolyte\character_empire_acolyte.g" 2 0.000000
+	coords -0.004996,1.711710,-0.046462,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 1;
+	blockshader "System\XShader\dif_ab_light.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "366900128"
+	attr "dwParent" "53705184"
+	attr "twosided" "1"
+	attr "tech" "modelalphatest2x"
+	attr "vdshader" "dif_at_light2x"
+	attr "name" "empire_acolyte_hair"
+	attr "groupname" "Scene Root"
+	attr "techname" "modelalphatest2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_acolyte_hair.tga"
+	attr "material0_triangles_num" "218"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "241"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "5"
+}
+
+	child gobj "empire_acolyte_cloack" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 166 93353800
+	dwflags 1053761
+	tech "model2x"
+	bonesuid 144 52165032
+	mesh_lods 1
+	"resources\characters\empire\acolyte\character_empire_acolyte.g" 3 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "366811040"
+	attr "dwParent" "53705184"
+	attr "tech" "model2x"
+	attr "vdshader" "dif_light2x"
+	attr "morph" "1"
+	attr "name" "empire_acolyte_cloack"
+	attr "groupname" "Scene Root"
+	attr "techname" "model2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_acolyte.tga"
+	attr "material0_triangles_num" "434"
+	attr "morph_track" "1"
+}
+
+}
+
+}
+

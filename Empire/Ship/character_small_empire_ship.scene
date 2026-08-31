@@ -1,0 +1,171 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 30000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	shadowint 0.750000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	shadowcolor -16777216;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	environment_map "";
+	environment_map_morning "";
+	environment_map_noon "";
+	environment_map_evening "";
+	environment_map_night "";
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	globals "503a187a57982d1d65625a3f49057a67696f8013588a93607a0d639c3759351d";
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+	load_counter 112;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 969 73473968
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata 0.000000,0.149175,0.000034,0.000000,0.149175,0.000034
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_small_empire_ship" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 970 93651020
+	coords 0.000000,0.150000,0.000000,0.000000,1.570796,0.000000
+	dwflags 0
+	file "Resources\Characters\Empire\Ship\character_small_empire_ship.ac"
+	plvl 512
+	looktocamera 0;
+	child gobj "empire_ship_small" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 972 73345568
+	dwflags 5185
+	tech "model"
+	bonesuid 970 93651020
+	mesh_lods 1
+	"Resources\Characters\Empire\Ship\character_small_empire_ship.g" 0 0.000000
+	coords -0.027774,1.318342,-0.176658,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\dif_light2x.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "390755648"
+	attr "dwParent" "96208032"
+	attr "vdshader" "dif_light2x"
+	attr "name" "empire_ship_small"
+	attr "groupname" "Scene Root"
+	attr "lmuvdata" "428"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_ship.tga"
+	attr "material0_lightmap" "empire_ship_lightmap.tga"
+	attr "material0_triangles_num" "364"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "428"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+}
+
+	child gobj "Object011" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 974 73226196
+	dwflags 7233
+	tech "model"
+	bonesuid 970 93651020
+	mesh_lods 1
+	"Resources\Characters\Empire\Ship\character_small_empire_ship.g" 1 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\dif_light2x.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "390762224"
+	attr "dwParent" "96208032"
+	attr "morph" "1"
+	attr "vdshader" "dif_light2x"
+	attr "name" "Object011"
+	attr "groupname" "Scene Root"
+	attr "lmuvdata" "26"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_ship.tga"
+	attr "material0_lightmap" "empire_ship_lightmap.tga"
+	attr "material0_triangles_num" "30"
+	attr "morph_track" "1"
+}
+
+	child gobj "Object012" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 975 73386772
+	dwflags 7233
+	tech "model"
+	bonesuid 970 93651020
+	mesh_lods 1
+	"Resources\Characters\Empire\Ship\character_small_empire_ship.g" 2 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\dif_light2x.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "390751264"
+	attr "dwParent" "96208032"
+	attr "morph" "1"
+	attr "vdshader" "dif_light2x"
+	attr "name" "Object012"
+	attr "groupname" "Scene Root"
+	attr "lmuvdata" "46"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_ship.tga"
+	attr "material0_lightmap" "empire_ship_lightmap.tga"
+	attr "material0_triangles_num" "60"
+	attr "morph_track" "1"
+}
+
+}
+
+}
+

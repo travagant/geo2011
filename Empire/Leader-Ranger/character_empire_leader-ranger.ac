@@ -1,0 +1,85 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\empire\leader-ranger\character_empire_leader-ranger_baseanims.a";
+frame0 1;
+frame1 146;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 0;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 0;
+meshfile "resources\characters\empire\leader-ranger\character_empire_leader-ranger.g";
+}
+state "Attack"
+{
+file "resources\characters\empire\leader-ranger\character_empire_leader-ranger_baseanims.a";
+frame0 146;
+frame1 202;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 152 "Resources/Characters/empire/leader-ranger/Aliases\Attack00.alias" " 100";
+event2 "snd_Attack" 153 "Resources/Characters/empire/leader-ranger/Aliases\Attack01.alias" " 100";
+event2 "snd_Attack" 177 "Resources/Characters/empire/leader-ranger/Aliases\Attack02.alias" " 100";
+event2 "snd_Attack" 156 "resources\characters\empire\leader-ranger\Aliases\gravel_2.alias" " 100";
+event2 "snd_Attack" 179 "resources\characters\empire\leader-ranger\Aliases\gravel.alias" " 60";
+event2 "snd_Attack" 161 "Resources/Characters/empire/leader-ranger/Aliases\Attack03.alias" " 100";
+event2 "snd_Attack" 152 "Resources/Characters/empire/leader-ranger/Aliases\Attack04.alias" " 40";
+event2 "Strike" 163 "" "";
+event2 "fxcast" 146 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\empire\leader-ranger\character_empire_leader-ranger.g";
+}
+state "Damage"
+{
+file "resources\characters\empire\leader-ranger\character_empire_leader-ranger_baseanims.a";
+frame0 314;
+frame1 362;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 314 "Resources/Characters/empire/leader-ranger/Aliases\Damage00.alias" " 90";
+event2 "snd_Damage" 314 "Resources/Characters/empire/leader-ranger/Aliases\Damage01.alias" " 100";
+event2 "snd_Damage" 319 "Resources/Characters/empire/leader-ranger/Aliases\Damage02.alias" " 100";
+event2 "snd_Damage" 332 "Resources/Characters/empire/leader-ranger/Aliases\Damage03.alias" " 100";
+event2 "snd_Damage" 321 "resources\characters\empire\leader-ranger\Aliases\gravel.alias" " 100";
+event2 "snd_Damage" 344 "resources\characters\empire\leader-ranger\Aliases\gravel_2.alias" " 100";
+link "Idle" 1; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\empire\leader-ranger\character_empire_leader-ranger.g";
+}
+state "Death"
+{
+file "resources\characters\empire\leader-ranger\character_empire_leader-ranger_baseanims.a";
+frame0 362;
+frame1 393;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 362 "Resources/Characters/empire/leader-ranger/Aliases\Death00.alias" " 100";
+event2 "snd_Die" 362 "Resources/Characters/empire/leader-ranger/Aliases\Death01.alias" " 100";
+event2 "snd_Die" 368 "Resources/Characters/empire/leader-ranger/Aliases\Death02.alias" " 100";
+meshfile "resources\characters\empire\leader-ranger\character_empire_leader-ranger.g";
+}
+state "Run"
+{
+file "resources\characters\empire\leader-ranger\character_empire_leader-ranger_baseanims.a";
+frame0 395;
+frame1 406;
+fps 15.000000;
+priority 256;
+flags 1;
+event2 "snd_Step" 395 "resources\characters\empire\leader-ranger\Aliases\human.alias" " 70";
+event2 "snd_Step" 400 "resources\characters\empire\leader-ranger\Aliases\human_2.alias" " 70";
+event2 "snd_Step" 406 "resources\characters\empire\leader-ranger\Aliases\gravel.alias" " 70";
+event2 "snd_Step" 406 "resources\characters\empire\leader-ranger\Aliases\gravel_2.alias" " 70";
+event2 "snd_Step" 395 "resources\characters\empire\leader-ranger\Aliases\cloth.alias" " 70";
+event2 "snd_Step" 402 "resources\characters\empire\leader-ranger\Aliases\cloth.alias" " 70";
+link "Idle" 0; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\empire\leader-ranger\character_empire_leader-ranger.g";
+}

@@ -1,0 +1,388 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 90000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera -2.887890,4.358765,-4.108637,-0.070146,1.254629,0.449979,-0.070146,1.254629,0.449979,-2.887890,4.358765,-4.108637,0.525000,13.120003,0.000000,6.193248;
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 60315 29913208
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.010000,-0.010000,-0.010000,0.010000,0.010000,0.010000
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_empire_holyavenger_lod" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 60316 39623400
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 1048576
+	file "resources\characters\empire\holyavenger\character_empire_holyavenger_lod.ac"
+	plvl 512
+	looktocamera 0;
+	child gobj "lod_empire_holyavenger_horse" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 60324 140993504
+	dwflags 1053761
+	tech "model"
+	bonesuid 60316 39623400
+	mesh_lods 1
+	"resources\characters\empire\holyavenger\character_empire_holyavenger_lod.g" 0 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "421966496"
+	attr "dwParent" "54032992"
+	attr "vdshader" "dif_light2x"
+	attr "name" "lod_empire_holyavenger_horse"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_holyavenger_horse_complete.tga"
+	attr "material0_triangles_num" "1076"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "920"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "28"
+}
+
+	child gobj "lod_empire_holyavenger_horse_muzzle" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 60341 123998160
+	dwflags 1053761
+	tech "modelalpha"
+	bonesuid 60316 39623400
+	mesh_lods 1
+	"resources\characters\empire\holyavenger\character_empire_holyavenger_lod.g" 1 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_at_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "421981360"
+	attr "dwParent" "54032992"
+	attr "tech" "modelalpha"
+	attr "name" "lod_empire_holyavenger_horse_muzzle"
+	attr "groupname" "Scene Root"
+	attr "techname" "modelalpha"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_holyavenger_horse_element_diffuse.tga"
+	attr "material0_triangles_num" "24"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "32"
+	attr "weights_on_vertex" "2"
+	attr "bones_num" "2"
+}
+
+	child gobj "lod_empire_holyavenger" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 60348 140998352
+	dwflags 1053761
+	tech "model"
+	bonesuid 60316 39623400
+	mesh_lods 1
+	"resources\characters\empire\holyavenger\character_empire_holyavenger_lod.g" 2 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "422358032"
+	attr "dwParent" "54032992"
+	attr "vdshader" "dif_light2x"
+	attr "name" "lod_empire_holyavenger"
+	attr "groupname" "Scene Root"
+	attr "lmuvdata" "1168"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_holyavenger_complete.tga"
+	attr "material0_lightmap" "cubemap_default.tga"
+	attr "material0_triangles_num" "1328"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "1168"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "17"
+}
+
+	child gobj "lod_weapon_empire_holyavenger_left" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 60355 140964056
+	dwflags 1053761
+	tech "model"
+	bonesuid 60316 39623400
+	mesh_lods 1
+	"resources\characters\empire\holyavenger\character_empire_holyavenger_lod.g" 3 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "422454368"
+	attr "dwParent" "54032992"
+	attr "vdshader" "dif_light2x"
+	attr "name" "lod_weapon_empire_holyavenger_left"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "weapon_holyavenger_diffuse.tga"
+	attr "material0_triangles_num" "154"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "140"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+}
+
+	child gobj "lod_empire_holyavenger_hair" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 60362 124526600
+	dwflags 1055841
+	tech "model"
+	bonesuid 60316 39623400
+	mesh_lods 1
+	"resources\characters\empire\holyavenger\character_empire_holyavenger_lod.g" 4 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_at_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "422704912"
+	attr "dwParent" "54032992"
+	attr "twosided" "1"
+	attr "glow" "1"
+	attr "morph_frames" "10"
+	attr "fps" "15"
+	attr "morph" "1"
+	attr "vdshader" "dif_at_light2x"
+	attr "fps" "15"
+	attr "name" "lod_empire_holyavenger_hair"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_holyavenger_diffuse_hair.tga"
+	attr "material0_triangles_num" "214"
+	attr "morph_track" "1"
+}
+
+	child gobj "lod_empire_holyavenger_clothes" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 60369 123871424
+	dwflags 1055809
+	tech "model"
+	bonesuid 60316 39623400
+	mesh_lods 1
+	"resources\characters\empire\holyavenger\character_empire_holyavenger_lod.g" 5 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "422736592"
+	attr "dwParent" "54032992"
+	attr "vdshader" "dif_light2x"
+	attr "twosided" "1"
+	attr "name" "lod_empire_holyavenger_clothes"
+	attr "groupname" "Scene Root"
+	attr "lmuvdata" "63"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_holyavenger_complete.tga"
+	attr "material0_lightmap" "cubemap_default.tga"
+	attr "material0_triangles_num" "83"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "63"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "5"
+}
+
+	child gobj "lod_empire_holyavenger_cloack" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 60376 124383824
+	dwflags 1055809
+	tech "model"
+	bonesuid 60316 39623400
+	mesh_lods 1
+	"resources\characters\empire\holyavenger\character_empire_holyavenger_lod.g" 6 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "422875968"
+	attr "dwParent" "54032992"
+	attr "morph" "1"
+	attr "twosided" "1"
+	attr "vdshader" "dif_light2x"
+	attr "name" "lod_empire_holyavenger_cloack"
+	attr "groupname" "Scene Root"
+	attr "lmuvdata" "154"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_holyavenger_complete.tga"
+	attr "material0_lightmap" "cubemap_default.tga"
+	attr "material0_triangles_num" "246"
+	attr "morph_track" "1"
+}
+
+	child gobj "lod_weapon_empire_holyavenger_right" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 60383 124940296
+	dwflags 1053761
+	tech "model"
+	bonesuid 60316 39623400
+	mesh_lods 1
+	"resources\characters\empire\holyavenger\character_empire_holyavenger_lod.g" 7 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "422904864"
+	attr "dwParent" "54032992"
+	attr "vdshader" "dif_light2x"
+	attr "name" "lod_weapon_empire_holyavenger_right"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "weapon_holyavenger_diffuse.tga"
+	attr "material0_triangles_num" "154"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "140"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+}
+
+	child 	goclass "VDGoWeaponTrace" "VDGoWeaponTrace" 
+{
+	uid 60385 29723800
+	dwflags 1
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	texture "resources\fx\fx_resouces\textures\weapontrace\weapontrace_holy.t"
+	tech "weapontrace"
+	lifetime 0.450000
+	maxdist 0.300000
+	bonetraceuid 60316 39623400
+	fadeonevent 0
+	fadetime 1.000000
+	boneid 38
+	boneid 39
+	boneid 40
+	boneid 41
+}
+
+	child 	goclass "VDGoWeaponTrace" "VDGoWeaponTrace" 
+{
+	uid 60387 124692312
+	dwflags 1
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	texture "resources\fx\fx_resouces\textures\weapontrace\weapontrace_holy.t"
+	tech "weapontrace"
+	lifetime 0.450000
+	maxdist 0.300000
+	bonetraceuid 60316 39623400
+	fadeonevent 0
+	fadetime 1.000000
+	boneid 29
+	boneid 30
+	boneid 31
+	boneid 32
+}
+
+}
+
+}
+

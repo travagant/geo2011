@@ -1,0 +1,3 @@
+alias "step_2" {
+	sound 100, "$(Sounds)/footsteps/gravel_2/footsteps_gravel_2_layer_07.wav", 100, 3;
+}

@@ -1,0 +1,63 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\empire\mage\character_empire_mage_baseanims_lod.a";
+frame0 1;
+frame1 112;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 0;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 4;
+meshfile "resources\characters\empire\mage\character_empire_mage.g";
+}
+state "Attack"
+{
+file "resources\characters\empire\mage\character_empire_mage_baseanims_lod.a";
+frame0 112;
+frame1 182;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "FxStrike" 146 "" "";
+event2 "fxcast" 112 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\empire\mage\character_empire_mage.g";
+}
+state "Damage"
+{
+file "resources\characters\empire\mage\character_empire_mage_baseanims_lod.a";
+frame0 182;
+frame1 226;
+fps 15.000000;
+priority 256;
+flags 0;
+link "Idle" 1; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\empire\mage\character_empire_mage.g";
+}
+state "Death"
+{
+file "resources\characters\empire\mage\character_empire_mage_baseanims_lod.a";
+frame0 226;
+frame1 260;
+fps 15.000000;
+priority 256;
+flags 0;
+meshfile "resources\characters\empire\mage\character_empire_mage.g";
+}
+state "Run"
+{
+file "resources\characters\empire\mage\character_empire_mage_baseanims_lod.a";
+frame0 282;
+frame1 293;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Idle" 0; blend 4;
+gaestate "Idle";
+meshfile "resources\characters\empire\mage\character_empire_mage.g";
+}

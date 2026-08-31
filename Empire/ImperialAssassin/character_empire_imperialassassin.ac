@@ -1,0 +1,82 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\empire\imperialassassin\character_empire_imperialassassin_baseanims.a";
+frame0 1;
+frame1 72;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 0;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 4;
+meshfile "resources\characters\empire\imperialassassin\character_empire_imperialassassin.g";
+}
+state "Attack"
+{
+file "resources\characters\empire\imperialassassin\character_empire_imperialassassin_baseanims.a";
+frame0 132;
+frame1 180;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 140"Resources/Characters/empire/imperialassassin/Aliases\Attack02.alias" " 100";
+event2 "snd_Attack" 150"Resources/Characters/empire/imperialassassin/Aliases\Attack03.alias" " 100";
+event2 "snd_Attack" 154 "Resources/Characters/empire/imperialassassin/Aliases\Attack05.alias" " 100";
+event2 "Strike" 156 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\empire\imperialassassin\character_empire_imperialassassin.g";
+}
+state "Damage"
+{
+file "resources\characters\empire\imperialassassin\character_empire_imperialassassin_baseanims.a";
+frame0 180;
+frame1 216;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 180 "Resources/Characters/empire/imperialassassin/Aliases\Damage00.alias" " 100";
+event2 "snd_Damage" 186 "Resources/Characters/empire/imperialassassin/Aliases\Damage01.alias" " 100";
+event2 "snd_Damage" 205 "Resources/Characters/empire/imperialassassin/Aliases\Damage02.alias" " 70";
+event2 "snd_Damage" 180 "Resources/Characters/empire/imperialassassin/Aliases\Damage03.alias" " 100";
+event2 "snd_Damage" 197 "Resources/Characters/empire/imperialassassin/Aliases\Damage04.alias" " 100";
+link "Idle" 1; blend 0;
+link "Run" 1; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\empire\imperialassassin\character_empire_imperialassassin.g";
+}
+state "Death"
+{
+file "resources\characters\empire\imperialassassin\character_empire_imperialassassin_baseanims.a";
+frame0 216;
+frame1 240;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 216 "Resources/Characters/empire/imperialassassin/Aliases\Death00.alias" " 100";
+event2 "snd_Die" 216 "Resources/Characters/empire/imperialassassin/Aliases\Death01.alias" " 100";
+meshfile "resources\characters\empire\imperialassassin\character_empire_imperialassassin.g";
+}
+state "Run"
+{
+file "resources\characters\empire\imperialassassin\character_empire_imperialassassin_baseanims.a";
+frame0 244;
+frame1 264;
+fps 15.000000;
+priority 256;
+flags 1;
+event2 "snd_Step" 255 "Resources/Characters/empire/imperialassassin/Aliases\Run00.alias" " 50";
+event2 "snd_Step" 260 "Resources/Characters/empire/imperialassassin/Aliases\Run01.alias" " 50";
+event2 "snd_Step" 250 "Resources/Characters/empire/imperialassassin/Aliases\Run02.alias" " 50";
+event2 "snd_Step" 245 "Resources/Characters/empire/imperialassassin/Aliases\Run03.alias" " 50";
+event2 "snd_Step" 260 "resources\characters\empire\imperialassassin\Aliases\gravel.alias" " 60";
+event2 "snd_Step" 245 "resources\characters\empire\imperialassassin\Aliases\gravel_2.alias" " 60";
+event2 "snd_Step" 250 "resources\characters\empire\imperialassassin\Aliases\gravel.alias" " 60";
+event2 "snd_Step" 255 "resources\characters\empire\imperialassassin\Aliases\gravel_2.alias" " 60";
+link "Idle" 0; blend 4;
+gaestate "Idle";
+meshfile "resources\characters\empire\imperialassassin\character_empire_imperialassassin.g";
+}
+

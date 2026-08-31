@@ -1,0 +1,6 @@
+alias "human_2" {
+	sound 100, "$(Sounds)\footsteps\human_2\footsteps_human_2_01.wav", 100, 3;
+	sound 100, "$(Sounds)\footsteps\human_2\footsteps_human_2_02.wav", 100, 3;
+	sound 100, "$(Sounds)\footsteps\human_2\footsteps_human_2_03.wav", 100, 3;
+	sound 100, "$(Sounds)\footsteps\human_2\footsteps_human_2_04.wav", 100, 3;
+}

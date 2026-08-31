@@ -1,0 +1,63 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\empire\imperialpriestess\character_empire_imperialpriestess_iadd_lod.a";
+frame0 1;
+frame1 218;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 0;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 5;
+meshfile "resources\characters\empire\imperialpriestess\character_empire_imperialpriestess.g";
+}
+state "Attack"
+{
+file "resources\characters\empire\imperialpriestess\character_empire_imperialpriestess_iadd_lod.a";
+frame0 218;
+frame1 273;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "FxStrike" 232 "" "";
+event2 "fxcast" 218 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\empire\imperialpriestess\character_empire_imperialpriestess.g";
+}
+state "Damage"
+{
+file "resources\characters\empire\imperialpriestess\character_empire_imperialpriestess_iadd_lod.a";
+frame0 273;
+frame1 311;
+fps 15.000000;
+priority 256;
+flags 0;
+link "Idle" 1; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\empire\imperialpriestess\character_empire_imperialpriestess.g";
+}
+state "Death"
+{
+file "resources\characters\empire\imperialpriestess\character_empire_imperialpriestess_iadd_lod.a";
+frame0 311;
+frame1 361;
+fps 15.000000;
+priority 256;
+flags 0;
+meshfile "resources\characters\empire\imperialpriestess\character_empire_imperialpriestess.g";
+}
+state "Run"
+{
+file "resources\characters\empire\imperialpriestess\character_empire_imperialpriestess_run_lod.a";
+frame0 1;
+frame1 12;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Idle" 0; blend 4;
+gaestate "Idle";
+meshfile "resources\characters\empire\imperialpriestess\character_empire_imperialpriestess.g";
+}

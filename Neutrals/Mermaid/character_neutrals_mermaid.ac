@@ -1,0 +1,74 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\neutrals\mermaid\character_neutrals_mermaid_baseanims.a";
+frame0 1;
+frame1 60;
+fps 20.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 0;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 0;
+meshfile "resources\characters\neutrals\mermaid\character_neutrals_mermaid.g";
+}
+state "Attack"
+{
+file "resources\characters\neutrals\mermaid\character_neutrals_mermaid_baseanims.a";
+frame0 60;
+frame1 106;
+fps 17.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 60 "Resources/Characters/neutrals/mermaid/Aliases\Attack00.alias" " 100";
+event2 "snd_Attack" 85 "Resources/Characters/neutrals/mermaid/Aliases\Attack01.alias" " 100";
+event2 "snd_Attack" 77 "Resources/Characters/neutrals/mermaid/Aliases\Attack02.alias" " 100";
+event2 "Strike" 88 "" "";
+event2 "fxcast" 60 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\neutrals\mermaid\character_neutrals_mermaid.g";
+}
+state "Damage"
+{
+file "resources\characters\neutrals\mermaid\character_neutrals_mermaid_baseanims.a";
+frame0 106;
+frame1 136;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 106 "Resources/Characters/neutrals/mermaid/Aliases\Damage00.alias" " 100";
+event2 "snd_Damage" 120 "Resources/Characters/neutrals/mermaid/Aliases\Damage01.alias" " 70";
+event2 "snd_Damage" 106 "Resources/Characters/neutrals/mermaid/Aliases\Damage01.alias" " 100";
+link "Idle" 1; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\mermaid\character_neutrals_mermaid.g";
+}
+state "Death"
+{
+file "resources\characters\neutrals\mermaid\character_neutrals_mermaid_baseanims.a";
+frame0 136;
+frame1 170;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 136 "Resources/Characters/neutrals/mermaid/Aliases\Death00.alias" " 100";
+event2 "snd_Die" 136 "Resources/Characters/neutrals/mermaid/Aliases\Death01.alias" " 100";
+event2 "snd_Die" 153 "Resources/Characters/neutrals/mermaid/Aliases\Death01.alias" " 70";
+meshfile "resources\characters\neutrals\mermaid\character_neutrals_mermaid.g";
+}
+state "Run"
+{
+file "resources\characters\neutrals\mermaid\character_neutrals_mermaid_baseanims.a";
+frame0 173;
+frame1 200;
+fps 15.000000;
+priority 256;
+flags 1;
+event2 "snd_Step" 173 "Resources/Characters/neutrals/mermaid/Aliases\Run00.alias" " 80";
+event2 "snd_Step" 187 "Resources/Characters/neutrals/mermaid/Aliases\Run00.alias" " 70";
+link "Idle" 0; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\mermaid\character_neutrals_mermaid.g";
+}

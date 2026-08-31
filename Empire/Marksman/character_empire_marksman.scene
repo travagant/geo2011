@@ -1,0 +1,237 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 90000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera -1.524802,1.866236,-1.834946,-0.818831,1.551670,-1.200397,0.757972,0.849078,0.216883,-1.524802,1.866236,-1.834946,0.320000,13.404998,0.000000,4.560753;
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 78 31277880
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.010000,-0.010000,-0.010000,0.010000,0.010000,0.010000
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_empire_marksman" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 79 31756744
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 1048576
+	file "resources\characters\empire\marksman\character_empire_marksman.ac"
+	plvl 512
+	child gobj "empire_marksman" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 94 39718840
+	dwflags 1053761
+	tech "model2x"
+	bonesuid 79 31756744
+	mesh_lods 1
+	"resources\characters\empire\marksman\character_empire_marksman.g" 0 0.000000
+	coords -0.034828,0.999988,-0.079677,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "441271248"
+	attr "dwParent" "53639184"
+	attr "name" "empire_marksman"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_marksman.tga"
+	attr "material0_triangles_num" "5117"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "3939"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "31"
+}
+
+	child gobj "empire_marksman_cloth" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 110 41639944
+	dwflags 1053761
+	tech "model2x"
+	bonesuid 79 31756744
+	mesh_lods 1
+	"resources\characters\empire\marksman\character_empire_marksman.g" 1 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "441322672"
+	attr "dwParent" "53639184"
+	attr "morph" "1"
+	attr "name" "empire_marksman_cloth"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_marksman.tga"
+	attr "material0_triangles_num" "240"
+	attr "morph_track" "1"
+}
+
+	child gobj "empire_marksman_bow" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 117 41705616
+	dwflags 1053761
+	tech "model2x"
+	bonesuid 79 31756744
+	mesh_lods 1
+	"resources\characters\empire\marksman\character_empire_marksman.g" 2 0.000000
+	coords 0.930016,1.093052,0.011940,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "472563872"
+	attr "dwParent" "53639184"
+	attr "name" "empire_marksman_bow"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "weapon_empire_marksman_diffuse.tga"
+	attr "material0_triangles_num" "396"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "324"
+	attr "weights_on_vertex" "2"
+	attr "bones_num" "4"
+}
+
+	child gobj "empire_marksman_arrow" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 124 41714368
+	dwflags 1053761
+	tech "model2x"
+	bonesuid 79 31756744
+	mesh_lods 1
+	"resources\characters\empire\marksman\character_empire_marksman.g" 3 0.000000
+	coords -0.378787,0.002018,0.000167,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "472548320"
+	attr "dwParent" "53639184"
+	attr "name" "empire_marksman_arrow"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_marksman.tga"
+	attr "material0_triangles_num" "30"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "68"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+}
+
+	child gobj "empire_marksman_quiver" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 131 41721984
+	dwflags 1053761
+	tech "model2x"
+	bonesuid 79 31756744
+	mesh_lods 1
+	"resources\characters\empire\marksman\character_empire_marksman.g" 4 0.000000
+	coords -0.095393,1.402446,0.174456,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "472803664"
+	attr "dwParent" "53639184"
+	attr "Mass" "0,000000"
+	attr "Ellasticity" "0,300000"
+	attr "Friction" "0,300000"
+	attr "Unyielding" "0"
+	attr "Phantom" "0"
+	attr "Simulation_Geometry" "2"
+	attr "Proxy_Geometry" "<None>"
+	attr "Use_Display_Proxy" "0"
+	attr "Disable_Collisions" "0"
+	attr "Inactive" "0"
+	attr "Display_Proxy" "<None>"
+	attr "name" "empire_marksman_quiver"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_marksman.tga"
+	attr "material0_triangles_num" "110"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "151"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+}
+
+}
+
+}
+

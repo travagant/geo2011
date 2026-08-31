@@ -1,0 +1,111 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\empire\leader-warrior\character_empire_leader-warrior_baseanims.a";
+frame0 1;
+frame1 304;
+fps 30.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 0;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 4;
+meshfile "resources\characters\empire\leader-warrior\character_empire_leader-warrior.g";
+}
+state "Attack"
+{
+file "resources\characters\empire\leader-warrior\character_empire_leader-warrior_baseanims.a";
+frame0 304;
+frame1 456;
+fps 30.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 328 "Resources/Characters/empire/leader-warrior/Aliases\Attack00.alias" " 100";
+event2 "snd_Attack" 383 "Resources/Characters/empire/leader-warrior/Aliases\Attack01.alias" " 100";
+event2 "snd_Attack" 342 "Resources/Characters/empire/leader-warrior/Aliases\Attack02.alias" " 100";
+event2 "snd_Attack" 346 "Resources/Characters/empire/leader-warrior/Aliases\Attack03.alias" " 100";
+event2 "snd_Attack" 328 "Resources/Characters/empire/leader-warrior/Aliases\Attack04.alias" " 100";
+event2 "snd_Attack" 337 "resources\characters\empire\leader-warrior\Aliases\human.alias" " 70";
+event2 "snd_Attack" 349 "resources\characters\empire\leader-warrior\Aliases\human_2.alias" " 70";
+event2 "snd_Attack" 358 "resources\characters\empire\leader-warrior\Aliases\human.alias" " 70";
+event2 "snd_Attack" 400 "resources\characters\empire\leader-warrior\Aliases\human.alias" " 70";
+event2 "snd_Attack" 418 "resources\characters\empire\leader-warrior\Aliases\human_2.alias" " 40";
+event2 "snd_Attack" 337 "resources\characters\empire\leader-warrior\Aliases\gravel.alias" " 70";
+event2 "snd_Attack" 349 "resources\characters\empire\leader-warrior\Aliases\gravel_2.alias" " 70";
+event2 "snd_Attack" 358 "resources\characters\empire\leader-warrior\Aliases\gravel.alias" " 70";
+event2 "snd_Attack" 400 "resources\characters\empire\leader-warrior\Aliases\gravel.alias" " 70";
+event2 "snd_Attack" 418 "resources\characters\empire\leader-warrior\Aliases\gravel_2.alias" " 70";
+event2 "snd_Attack" 347 "Resources/Characters/empire/leader-warrior/Aliases\Attack05.alias" " 100";
+event2 "snd_Attack" 332 "Resources/Characters/empire/leader-warrior/Aliases\Attack06.alias" " 90";
+event2 "snd_Attack" 377 "Resources/Characters/empire/leader-warrior/Aliases\Attack07.alias" " 60";
+event2 "snd_Attack" 388 "Resources/Characters/empire/leader-warrior/Aliases\Attack08.alias" " 60";
+event2 "snd_Attack" 349 "Resources/Characters/empire/leader-warrior/Aliases\Attack09.alias" " 100";
+event2 "snd_Attack" 342 "Resources/Characters/empire/leader-warrior/Aliases\Attack10.alias" " 60";
+event2 "snd_Attack" 331 "Resources/Characters/empire/leader-warrior/Aliases\Attack11.alias" " 50";
+event2 "Strike" 352 "" "";
+event2 "trail_start" 348 "" "";
+event2 "trail_end" 357 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\empire\leader-warrior\character_empire_leader-warrior.g";
+}
+state "Damage"
+{
+file "resources\characters\empire\leader-warrior\character_empire_leader-warrior_baseanims.a";
+frame0 456;
+frame1 568;
+fps 30.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 514 "Resources/Characters/empire/leader-warrior/Aliases\Damage00.alias" " 60";
+event2 "snd_Damage" 456 "Resources/Characters/empire/leader-warrior/Aliases\Damage01.alias" " 100";
+event2 "snd_Damage" 466 "Resources/Characters/empire/leader-warrior/Aliases\Damage02.alias" " 100";
+event2 "snd_Damage" 470 "resources\characters\empire\leader-warrior\Aliases\gravel.alias" " 60";
+event2 "snd_Damage" 487 "resources\characters\empire\leader-warrior\Aliases\gravel_2.alias" " 70";
+event2 "snd_Damage" 540 "resources\characters\empire\leader-warrior\Aliases\gravel.alias" " 70";
+event2 "snd_Damage" 540 "resources\characters\empire\leader-warrior\Aliases\human.alias" " 70";
+event2 "snd_Damage" 487 "resources\characters\empire\leader-warrior\Aliases\human_2.alias" " 70";
+event2 "snd_Damage" 456 "Resources/Characters/empire/leader-warrior/Aliases\Damage03.alias" " 60";
+link "Idle" 1; blend 0;
+link "Run" 1; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\empire\leader-warrior\character_empire_leader-warrior.g";
+}
+state "Death"
+{
+file "resources\characters\empire\leader-warrior\character_empire_leader-warrior_baseanims.a";
+frame0 568;
+frame1 674;
+fps 30.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 615 "Resources/Characters/empire/leader-warrior/Aliases\Death00.alias" " 100";
+event2 "snd_Die" 598 "Resources/Characters/empire/leader-warrior/Aliases\Death01.alias" " 100";
+event2 "snd_Die" 584 "Resources/Characters/empire/leader-warrior/Aliases\Death02.alias" " 100";
+event2 "snd_Die" 568 "Resources/Characters/empire/leader-warrior/Aliases\Death03.alias" " 100";
+event2 "snd_Die" 612 "resources\characters\empire\leader-warrior\Aliases\gravel.alias" " 100";
+event2 "snd_Die" 620 "resources\characters\empire\leader-warrior\Aliases\gravel_2.alias" " 100";
+event2 "snd_Die" 618 "resources\characters\empire\leader-warrior\Aliases\human.alias" " 100";
+event2 "snd_Die" 621 "resources\characters\empire\leader-warrior\Aliases\human_2.alias" " 100";
+event2 "snd_Die" 568 "Resources/Characters/empire/leader-warrior/Aliases\Death04.alias" " 60";
+meshfile "resources\characters\empire\leader-warrior\character_empire_leader-warrior.g";
+}
+state "Run"
+{
+file "resources\characters\empire\leader-warrior\character_empire_leader-warrior_baseanims.a";
+frame0 681;
+frame1 704;
+fps 30.000000;
+priority 256;
+flags 1;
+event2 "snd_Step" 681 "resources\characters\empire\leader-warrior\Aliases\gravel.alias" " 70";
+event2 "snd_Step" 681 "resources\characters\empire\leader-warrior\Aliases\gravel_2.alias" " 70";
+event2 "snd_Step" 694 "resources\characters\empire\leader-warrior\Aliases\human.alias" " 60";
+event2 "snd_Step" 694 "resources\characters\empire\leader-warrior\Aliases\human_2.alias" " 60";
+event2 "snd_Step" 685 "resources\characters\empire\leader-warrior\Aliases\plate.alias" " 60";
+event2 "snd_Step" 700 "resources\characters\empire\leader-warrior\Aliases\plate.alias" " 50";
+link "Idle" 0; blend 4;
+gaestate "Idle";
+meshfile "resources\characters\empire\leader-warrior\character_empire_leader-warrior.g";
+}

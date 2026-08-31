@@ -1,0 +1,233 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 30000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera -0.473385,3.343019,-1.750153,0.187154,1.001919,1.426742,0.187154,1.001919,1.426742,-0.473385,3.343019,-1.750153,0.625000,0.204999,0.000000,4.001215;
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 0.818182;
+	glow_color 1.000000,1.000000,1.000000;
+	load_counter 3641195;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 73 28849928
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -1.232127,-0.010000,-1.004413,1.218179,2.819075,1.304359
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_empire_rod-2" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 74 29119144
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 1048576
+	file "resources\characters\empire\rod-2\character_empire_rod-2.ac"
+	plvl 512
+	looktocamera 0;
+	child gobj "empire_rod-2_wing" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 89 40621112
+	dwflags 1053761
+	tech "modelalphatest2x"
+	bonesuid 74 29119144
+	mesh_lods 1
+	"resources\characters\empire\rod-2\character_empire_rod-2.g" 1 0.000000
+	coords -0.001883,1.741207,-0.006228,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 1;
+	blockshader "system\xshader\dif_at_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "252565648"
+	attr "dwParent" "53705040"
+	attr "tech" "modelalphatest2x"
+	attr "vdshader" "dif_at_light2x"
+	attr "name" "empire_rod-2_wing"
+	attr "groupname" "Scene Root"
+	attr "techname" "modelalphatest2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "empire_rod_wings.tga"
+	attr "material0_triangles_num" "1064"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "952"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "17"
+}
+
+	child gobj "empire_rod-2" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 117 41955504
+	dwflags 1053761
+	tech "model2x"
+	bonesuid 74 29119144
+	mesh_lods 1
+	"resources\characters\empire\rod-2\character_empire_rod-2.g" 0 0.000000
+	coords 0.000010,1.716971,0.100945,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "200461488"
+	attr "dwParent" "53705040"
+	attr "tech" "model2x"
+	attr "vdshader" "dif_light2x"
+	attr "name" "empire_rod-2"
+	attr "groupname" "Scene Root"
+	attr "techname" "model2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "empire_rod-2.tga"
+	attr "material0_triangles_num" "3086"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "2529"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "36"
+}
+
+}
+
+	child 	goclass "VDGoPoly" "Star" 
+{
+	uid 131 40436192
+	dwflags 1
+	coords 0.004775,1.864689,-0.012480,0.000000,0.000000,0.000000
+	texture "resources\fx\fx_resouces\textures\fx_star_3.t"
+	tech "particles_transparent_tx"
+	lifetime 2.000000
+	loop 1
+	lookatcamera 1
+	ps_spline_track "Size",0.000000,2.200000,3;0.000000,1.408772,0.620000,-1.150000;0.482456,1.611403,0.700000,0.520000;1.000000,1.341228,0.520000,-0.350000;
+	ps_spline_track "Spin",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "a",0.000000,255.000000,1;0.000000,255.000000,0.000000,0.000000;
+	ps_spline_track "r",0.000000,255.000000,1;0.000000,70.460526,0.000000,0.000000;
+	ps_spline_track "g",0.000000,255.000000,1;0.000000,255.000000,0.000000,0.000000;
+	ps_spline_track "b",0.000000,255.000000,1;0.000000,255.000000,0.000000,0.000000;
+	ps_spline_track "pos_x",0.000000,0.054000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "pos_y",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "pos_z",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+}
+
+	child 	goclass "VDGoPoly" "Lighting" 
+{
+	uid 134 28640024
+	dwflags 1
+	coords 0.000000,1.721136,-0.020806,4.712389,0.000000,0.000000
+	texture "resources\fx\fx_resouces\textures\fx_lighting_anim.t"
+	tech "particles2x"
+	lifetime 1.000000
+	loop 1
+	lookatcamera 0
+	ps_spline_track "Size",0.000000,1.000000,1;0.000000,0.704386,0.620000,-1.150000;
+	ps_spline_track "Spin",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "a",0.000000,255.000000,1;0.000000,255.000000,0.000000,0.000000;
+	ps_spline_track "r",0.000000,255.000000,1;0.000000,255.000000,0.000000,0.000000;
+	ps_spline_track "g",0.000000,255.000000,1;0.000000,255.000000,0.000000,0.000000;
+	ps_spline_track "b",0.000000,255.000000,1;0.000000,255.000000,0.000000,0.000000;
+	ps_spline_track "pos_x",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "pos_y",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "pos_z",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+}
+
+	child particles "Smoke" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 136 40912032
+	coords -0.012198,1.219249,0.154590,4.721083,0.000000,0.000000
+	dwflags 8971369645421365249
+	psdwflags 1837
+	plvl 512
+	file "resources\fx\fx_resouces\textures\fx_flare.t"
+	ps_number 50
+	ps_life 2.000000
+	gravity -0.500000
+	airres 10.000000
+	linesecv 0
+	ps_emissionspeed 35.000000
+	ps_emismult 1
+	ps_emittervol 0.250000,0.300000,0.000000
+	spinrand 0.000000
+	speedrand 0.000000
+	sinpr 0.000000
+	framesu 1
+	framesv 1
+	direction_randomizer_x 0.000000
+	direction_randomizer_y 0.000000
+	direction_randomizer_z 0.000000
+	sizerandomizer 0.000000
+	spinstartrandom 1
+	usingtrajectory 0
+	moveemit 0
+	moveemitv 0.500000
+	tech "particles"
+	dontfrustumprocess 1
+	objectemmitor 0
+	ps_spline_track "Alpha",0.000000,1.000000,3;0.000000,0.000000,0.560000,0.010000;0.468421,1.000000,0.660000,-0.010000;1.000000,0.000000,0.570000,-0.010000;
+	ps_spline_track "Size",0.000000,1.250000,2;0.000000,1.125000,0.000000,0.000000;1.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Speed",0.000000,1.000000,1;0.000000,0.307018,0.000000,0.000000;
+	ps_spline_track "Spin",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Y/X Ratio",0.000000,1.000000,1;0.000000,0.864035,0.000000,0.000000;
+	ps_spline_track "Mass",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Force",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave XFreq",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave YFreq",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave ZFreq",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave XPos",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave YPos",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave ZPos",0.000000,1.000000,1;0.000000,0.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave XPhase",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave YPhase",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Sin Wave ZPhase",0.000000,1.000000,1;0.000000,1.000000,0.000000,0.000000;
+	ps_spline_track "Red",0.000000,255.000000,1;0.000000,71.578949,0.670000,-0.050000;
+	ps_spline_track "Green",0.000000,255.000000,1;0.000000,255.000000,0.000000,0.000000;
+	ps_spline_track "Blue",0.000000,255.000000,1;0.000000,255.000000,0.000000,0.000000;
+}
+
+}
+

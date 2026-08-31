@@ -1,0 +1,237 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 9000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera -0.159724,1.960635,-2.368699,0.436173,1.026445,0.120183,0.436173,1.026445,0.120183,-0.159724,1.960635,-2.368699,0.350000,0.235000,0.000000,2.724397;
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 24186 29847560
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.100000,-0.100000,-0.100000,0.100000,0.100000,0.100000
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_empire_wizard" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 24187 99925984
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 1048576
+	file "resources\characters\empire\wizard\character_empire_wizard_lod.ac"
+	plvl 512
+	looktocamera 0;
+	child gobj "lod_empire_wizard" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 24195 99476104
+	dwflags 1053761
+	tech "model"
+	bonesuid 24187 99925984
+	mesh_lods 1
+	"resources\characters\empire\wizard\character_empire_wizard_lod.g" 0 0.000000
+	coords -0.002122,0.902884,0.152974,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "443988800"
+	attr "dwParent" "53639264"
+	attr "name" "empire_wizard"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_wizard_diffuse.tga"
+	attr "material0_triangles_num" "3437"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "2965"
+	attr "weights_on_vertex" "4"
+	attr "bones_num" "33"
+}
+
+	child gobj "lod_empire_wizard_head" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 24206 102440824
+	dwflags 1055809
+	tech "modelalphatest"
+	bonesuid 24187 99925984
+	mesh_lods 1
+	"resources\characters\empire\wizard\character_empire_wizard_lod.g" 1 0.000000
+	coords 0.000000,1.609633,0.090377,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 1;
+	blockshader "system\xshader\dif_at_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "444323888"
+	attr "dwParent" "53639264"
+	attr "morph" "1"
+	attr "name" "empire_wizard_head"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_wizard_head_alpha.tga"
+	attr "material0_triangles_num" "1252"
+	attr "morph_track" "1"
+	attr "twosided" "1"
+	attr "tech" "modelalphatest"
+	attr "techname" "modelalphatest"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "808"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "8"
+}
+
+	child gobj "lod_empire_wizard_cloth" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 24213 99498312
+	dwflags 1055809
+	tech "model"
+	bonesuid 24187 99925984
+	mesh_lods 1
+	"resources\characters\empire\wizard\character_empire_wizard_lod.g" 2 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "444440640"
+	attr "dwParent" "53639264"
+	attr "twosided" "1"
+	attr "tech" "modelalphatest"
+	attr "name" "empire_wizard_cloth"
+	attr "groupname" "Scene Root"
+	attr "techname" "modelalphatest"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_wizard_diffuse.tga"
+	attr "material0_triangles_num" "452"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "240"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "6"
+	attr "morph" "1"
+	attr "morph_track" "1"
+}
+
+	child gobj "lod_empire_wizard_skirt" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 24220 101999408
+	dwflags 1053761
+	tech "model"
+	bonesuid 24187 99925984
+	mesh_lods 1
+	"resources\characters\empire\wizard\character_empire_wizard_lod.g" 3 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "444555520"
+	attr "dwParent" "53639264"
+	attr "morph" "1"
+	attr "name" "empire_wizard_skirt"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_wizard_diffuse.tga"
+	attr "material0_triangles_num" "440"
+	attr "morph_track" "1"
+}
+
+	child gobj "lod_weapon_empire_wizard" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 24227 102208320
+	dwflags 1053761
+	tech "model"
+	bonesuid 24187 99925984
+	mesh_lods 1
+	"resources\characters\empire\wizard\character_empire_wizard_lod.g" 4 0.000000
+	coords 0.518693,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "375264480"
+	attr "dwParent" "53639264"
+	attr "name" "weapon_empire_wizard"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "weapon_empire_wizard_complete.tga"
+	attr "material0_triangles_num" "290"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "303"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+}
+
+}
+
+}
+

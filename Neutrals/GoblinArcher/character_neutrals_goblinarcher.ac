@@ -1,0 +1,103 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "Resources\Characters\Neutrals\GoblinArcher\character_neutrals_goblinarcher.a";
+frame0 1;
+frame1 187;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 3;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 3;
+gaestate "Run";
+}
+state "Attack"
+{
+file "Resources\Characters\Neutrals\GoblinArcher\character_neutrals_goblinarcher.a";
+frame0 188;
+frame1 226;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 220 "Resources/Characters/elves/scout/Aliases\Attack00.alias" " 80";
+event2 "snd_Attack" 190 "Resources/Characters/elves/scout/Aliases/coin.alias" " 70";
+event2 "snd_Attack" 190 "Resources/Characters/elves/scout/Aliases\Attack02.alias" " 80";
+event2 "snd_Attack" 207 "Resources/Characters/elves/scout/Aliases\Attack03.alias" " 70";
+event2 "snd_Attack" 220 "Resources/Characters/elves/scout/Aliases/coin2.alias" " 70";
+event2 "snd_Attack" 199 "Resources/Characters/elves/scout/Aliases\Attack05.alias" " 70";
+event2 "snd_Attack" 207 "Resources/Characters/elves/scout/Aliases/bow-prepare2.alias" " 70";
+event2 "snd_Attack" 197 "Resources/Characters/elves/scout/Aliases/bow-prepare.alias" " 100";
+event2 "snd_Attack" 203 "Resources/Characters/elves/scout/Aliases/shot.alias" " 80";
+event2 "Strike" 215 "" " ";
+event2 "Strike" 220 "" " ";
+event2 "snd_Attack" 212 "Resources/Characters/neutrals/goblinarcher/Aliases/shot.alias" " 100";
+event2 "snd_Attack" 204 "Resources/Characters/neutrals/goblinarcher/Aliases/shot.alias" " 100";
+event2 "snd_Attack" 209 "Resources/Characters/elves/scout/Aliases/Attack05.alias" " 100";
+link "Idle" 1; blend 0;
+}
+state "Damage"
+{
+file "Resources\Characters\Neutrals\GoblinArcher\character_neutrals_goblinarcher.a";
+frame0 226;
+frame1 250;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 391 "Resources/Characters/elves/scout/Aliases\Damage00.alias" "-40";
+event2 "snd_Damage" 227 "Resources/Characters/elves/scout/Aliases/coin.alias" " 60";
+event2 "snd_Damage" 240 "Resources/Characters/elves/scout/Aliases\Damage02.alias" " 50";
+event2 "snd_Damage" 240 "Resources/Characters/elves/scout/Aliases\Damage03.alias" " 70";
+event2 "snd_Damage" 227 "Resources/Characters/neutrals/goblinarcher/Aliases/face.alias" " 20";
+event2 "snd_Damage" 227 "Resources/Characters/neutrals/goblinarcher/Aliases/fight.alias" " 50";
+event2 "snd_Damage" 227 "Resources/Characters/neutrals/goblinarcher/Aliases/Damage04.alias" " 60";
+event2 "snd_Damage" 229 "resources/sounds/alias/plate2.alias" " 40";
+link "Idle" 1; blend 0;
+link "Run" 0; blend 0;
+gaestate "Idle";
+}
+state "Death"
+{
+file "Resources\Characters\Neutrals\GoblinArcher\character_neutrals_goblinarcher.a";
+frame0 250;
+frame1 288;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 250 "Resources/Characters/elves/scout/Aliases\Death00.alias" " 100";
+event2 "snd_Die" 255 "Resources/Characters/elves/scout/Aliases\Death01.alias" " 30";
+event2 "snd_Die" 250 "Resources/Characters/elves/scout/Aliases/armor.alias" " 5";
+event2 "snd_Die" 260 "Resources/Characters/elves/scout/Aliases\Death03.alias" " 100";
+event2 "snd_Die" 250 "Resources/Characters/elves/scout/Aliases/coin.alias" " 50";
+event2 "snd_Die" 250 "Resources/Characters/elves/scout/Aliases/fight.alias" " 50";
+event2 "snd_Die" 250 "Resources/Characters/elves/scout/Aliases/face.alias" " 10";
+event2 "snd_Die" 250 "Resources/Characters/neutrals/goblinarcher/Aliases/death-scream1.alias" "-100";
+event2 "snd_Die" 250 "Resources/Characters/neutrals/goblinarcher/Aliases/Death-scream2.alias" " 100";
+event2 "snd_Die" 255 "Resources/Characters/neutrals/goblinarcher/Aliases/Death-trem.alias" "-50";
+event2 "snd_Die" 264 "resources/sounds/alias/plate2.alias" " 30";
+event2 "snd_Die" 253 "resources/sounds/alias/plate2.alias" " 40";
+event2 "snd_Die" 272 "resources/sounds/alias/plate2.alias" " 20";
+}
+state "Run"
+{
+file "Resources\Characters\Neutrals\GoblinArcher\character_neutrals_goblinarcher.a";
+frame0 293;
+frame1 303;
+fps 15.000000;
+priority 256;
+flags 1;
+event2 "snd_Step" 299 "resources/characters/elves/scout/Aliases/armor.alias" " 5";
+event2 "snd_Step" 292 "resources/characters/elves/scout/Aliases/armor2.alias" "-50";
+event2 "snd_Step" 298 "resources/characters/elves/scout/Aliases/metal.alias" " 10";
+event2 "snd_Step" 292 "resources/characters/elves/scout/Aliases/cloth1.alias" " 30";
+event2 "snd_Step" 298 "resources/characters/elves/scout/Aliases/cloth2.alias" " 30";
+event2 "snd_Step" 303 "Resources/Characters/neutrals/goblinarcher/Aliases/metal2.alias" " 10";
+event2 "snd_Step" 303 "Resources/Characters/neutrals/goblinarcher/Aliases/stap1.alias" " 150";
+event2 "snd_Step" 299 "Resources/Characters/neutrals/goblinarcher/Aliases/step2.alias" " 150";
+event2 "snd_Step" 293 "resources/sounds/alias/plate2.alias" " 20";
+event2 "snd_Step" 298 "resources/sounds/alias/plate2.alias" " 10";
+link "Idle" 0; blend 3;
+gaestate "Idle";
+}

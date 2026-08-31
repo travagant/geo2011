@@ -1,0 +1,94 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\empire\leader-thief\character_empire_leader-thief_baseanims.a";
+frame0 1;
+frame1 124;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 0;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 3;
+meshfile "resources\characters\empire\leader-thief\character_empire_leader-thief.g";
+}
+state "Attack"
+{
+file "resources\characters\empire\leader-thief\character_empire_leader-thief_baseanims.a";
+frame0 124;
+frame1 174;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 127 "Resources/Characters/empire/leader-thief/Aliases\Attack00.alias" " 100";
+event2 "snd_Attack" 140 "resources\characters\empire\leader-thief\Aliases\gravel_2.alias" " 60";
+event2 "snd_Attack" 150 "resources\characters\empire\leader-thief\Aliases\gravel.alias" " 60";
+event2 "snd_Attack" 137 "Resources/Characters/empire/leader-thief/Aliases\Attack01.alias" " 100";
+event2 "snd_Attack" 137 "Resources/Characters/empire/leader-thief/Aliases\Attack02.alias" " 100";
+event2 "snd_Attack" 131 "Resources/Characters/empire/leader-thief/Aliases\Attack03.alias" " 100";
+event2 "snd_Attack" 144 "Resources/Characters/empire/leader-thief/Aliases\Attack04.alias" " 100";
+event2 "Strike" 139 "" "";
+event2 "trail_start" 137 "" "";
+event2 "trail_end" 140 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\empire\leader-thief\character_empire_leader-thief.g";
+}
+state "Damage"
+{
+file "resources\characters\empire\leader-thief\character_empire_leader-thief_baseanims.a";
+frame0 174;
+frame1 222;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 174 "Resources/Characters/empire/leader-thief/Aliases\Damage00.alias" " 90";
+event2 "snd_Damage" 183 "resources\characters\empire\leader-thief\Aliases\human.alias" " 90";
+event2 "snd_Damage" 183 "resources\characters\empire\leader-thief\Aliases\gravel.alias" " 90";
+event2 "snd_Damage" 207 "resources\characters\empire\leader-thief\Aliases\gravel_2.alias" " 60";
+event2 "snd_Damage" 207 "resources\characters\empire\leader-thief\Aliases\human_2.alias" " 60";
+event2 "snd_Damage" 174 "Resources/Characters/empire/leader-thief/Aliases\Damage01.alias" " 100";
+event2 "snd_Damage" 198 "Resources/Characters/empire/leader-thief/Aliases\Damage02.alias" " 100";
+link "Idle" 1; blend 0;
+link "Run" 0; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\empire\leader-thief\character_empire_leader-thief.g";
+}
+state "Death"
+{
+file "resources\characters\empire\leader-thief\character_empire_leader-thief_baseanims.a";
+frame0 229;
+frame1 277;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 229 "Resources/Characters/empire/leader-thief/Aliases\Death00.alias" " 90";
+event2 "snd_Die" 229 "resources\characters\empire\leader-thief\Aliases\gravel.alias" " 100";
+event2 "snd_Die" 240 "resources\characters\empire\leader-thief\Aliases\human.alias" " 80";
+event2 "snd_Die" 232 "resources\characters\empire\leader-thief\Aliases\gravel_2.alias" " 100";
+event2 "snd_Die" 254 "resources\characters\empire\leader-thief\Aliases\gravel_2.alias" " 100";
+event2 "snd_Die" 261 "resources\characters\empire\leader-thief\Aliases\gravel.alias" " 100";
+event2 "snd_Die" 240 "resources\characters\empire\leader-thief\Aliases\gravel_2.alias" " 100";
+event2 "snd_Die" 229 "Resources/Characters/empire/leader-thief/Aliases\Death01.alias" " 100";
+event2 "snd_Die" 254 "Resources/Characters/empire/leader-thief/Aliases\Death02.alias" " 80";
+meshfile "resources\characters\empire\leader-thief\character_empire_leader-thief.g";
+}
+state "Run"
+{
+file "resources\characters\empire\leader-thief\character_empire_leader-thief_baseanims.a";
+frame0 279;
+frame1 290;
+fps 15.000000;
+priority 256;
+flags 1;
+event2 "snd_Step" 285 "resources\characters\empire\leader-thief\Aliases\gravel.alias" " 70";
+event2 "snd_Step" 285 "resources\characters\empire\leader-thief\Aliases\human.alias" " 70";
+event2 "snd_Step" 279 "resources\characters\empire\leader-thief\Aliases\human_2.alias" " 70";
+event2 "snd_Step" 279 "resources\characters\empire\leader-thief\Aliases\gravel_2.alias" " 70";
+event2 "snd_Step" 280 "resources\characters\empire\leader-thief\Aliases\cloth.alias" " 70";
+event2 "snd_Step" 287 "resources\characters\empire\leader-thief\Aliases\cloth.alias" " 70";
+link "Idle" 0; blend 3;
+gaestate "Idle";
+meshfile "resources\characters\empire\leader-thief\character_empire_leader-thief.g";
+}

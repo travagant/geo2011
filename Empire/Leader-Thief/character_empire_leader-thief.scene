@@ -1,0 +1,105 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 9000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera -1.670299,3.099062,-1.802518,0.558160,0.154774,0.215152,0.558160,0.154774,0.215152,-1.670299,3.099062,-1.802518,0.775000,0.835000,0.000000,4.207833;
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 24631 29683720
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.010000,-0.010000,-0.010000,0.010000,0.010000,0.010000
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_empire_leader-thief" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 24698 121589768
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 0
+	file "resources\characters\empire\leader-thief\character_empire_leader-thief.ac"
+	plvl 512
+	looktocamera 0;
+	child gobj "BaseMesh" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 24697 39761224
+	dwflags 5184
+	tech "model"
+	bonesuid 24698 121589768
+	mesh_lods 1
+	"resources\characters\empire\leader-thief\character_empire_leader-thief.g" 0 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 1;
+	blockshader "system\xshader\default.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "270533408"
+	attr "dwParent" "53704736"
+	attr "name" "BaseMesh"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "4"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+	attr "material0_diffuse" "checker"
+	attr "material0_triangles_num" "2"
+}
+
+	child 	goclass "VDGoWeaponTrace" "VDGoWeaponTrace" 
+{
+	uid 24687 38789120
+	dwflags 513
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	texture "Resources\FX\FX_Resouces\Textures\Weapontrace\weapontrace_long2_blue_med.t"
+	tech "weapontrace"
+	lifetime 0.170000
+	maxdist 0.100000
+	bonetraceuid 24698 121589768
+	fadeonevent 0
+	fadetime 0.500000
+	boneid 11
+	boneid 12
+}
+
+}
+
+}
+

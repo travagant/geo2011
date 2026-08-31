@@ -1,0 +1,3 @@
+alias "Attack03" {
+	sound 100, "$(Sounds)\voices\empire\matriarch\matriarch_attack.wav", 100, 3;
+}

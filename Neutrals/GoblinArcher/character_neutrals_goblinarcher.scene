@@ -1,0 +1,276 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 30000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	shadowint 0.750000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	shadowcolor -16777216;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	environment_map "";
+	environment_map_morning "";
+	environment_map_noon "";
+	environment_map_evening "";
+	environment_map_night "";
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	globals "209a783a37586d9d75723a5f99653a47696f4063281a03104a1d638c2789659d";
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+	load_counter 532;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 91 48912112
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.100000,-0.100000,-0.100000,0.100000,0.100000,0.100000
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_neutrals_goblinarcher" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 140 58618036
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 0
+	file "Resources\Characters\Neutrals\GoblinArcher\character_neutrals_goblinarcher.ac"
+	plvl 512
+	looktocamera 0;
+	child gobj "character_neutrals_goblinarcher_alpha" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 134 58524056
+	dwflags 5185
+	tech "model"
+	bonesuid 140 58618036
+	mesh_lods 1
+	"Resources\Characters\Neutrals\GoblinArcher\character_neutrals_goblinarcher.g" 0 0.000000
+	coords -0.000940,1.836086,-0.049069,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "System\XShader\dif_at_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "386961088"
+	attr "dwParent" "97387680"
+	attr "vdshader" "dif_at_light2x"
+	attr "name" "character_neutrals_goblinarcher_alpha"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutral_goblinarcher_alpha.tga"
+	attr "material0_triangles_num" "260"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "385"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "4"
+}
+
+	child gobj "character_neutrals_goblinarcher" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 135 48905900
+	dwflags 5185
+	tech "model"
+	bonesuid 140 58618036
+	mesh_lods 1
+	"Resources\Characters\Neutrals\GoblinArcher\character_neutrals_goblinarcher.g" 1 0.000000
+	coords -0.020191,0.879131,-0.063124,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "System\XShader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "386957800"
+	attr "dwParent" "97387680"
+	attr "vdshader" "dif_light2x"
+	attr "name" "character_neutrals_goblinarcher"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutral_goblinarcher.tga"
+	attr "material0_triangles_num" "4234"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "3040"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "37"
+}
+
+	child gobj "character_neutral_goblinarcher_armor" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 136 58652816
+	dwflags 5185
+	tech "modelalphatest2x"
+	bonesuid 140 58618036
+	mesh_lods 1
+	"Resources\Characters\Neutrals\GoblinArcher\character_neutrals_goblinarcher.g" 2 0.000000
+	coords 0.000006,0.972387,-0.010911,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "System\XShader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "392212032"
+	attr "dwParent" "97387680"
+	attr "tech" "modelalphatest2x"
+	attr "name" "character_neutral_goblinarcher_armor"
+	attr "groupname" "Scene Root"
+	attr "techname" "modelalphatest2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutral_goblinarcher.tga"
+	attr "material0_triangles_num" "96"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "128"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "2"
+}
+
+	child gobj "weapon_neutrals_goblinarcher" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 137 58647792
+	dwflags 5185
+	tech "model"
+	bonesuid 140 58618036
+	mesh_lods 1
+	"Resources\Characters\Neutrals\GoblinArcher\character_neutrals_goblinarcher.g" 3 0.000000
+	coords 0.000000,-0.000000,-0.008105,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "System\XShader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "392213128"
+	attr "dwParent" "97387680"
+	attr "vdshader" "dif_light2x"
+	attr "name" "weapon_neutrals_goblinarcher"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "weapon_neutral_goblinarcher.tga"
+	attr "material0_triangles_num" "236"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "151"
+	attr "weights_on_vertex" "2"
+	attr "bones_num" "4"
+}
+
+	child gobj "neutrals_goblinarcher_arrow" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 138 58643008
+	dwflags 5185
+	tech "model"
+	bonesuid 140 58618036
+	mesh_lods 1
+	"Resources\Characters\Neutrals\GoblinArcher\character_neutrals_goblinarcher.g" 4 0.000000
+	coords 0.377545,0.002927,0.001013,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "System\XShader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "392214224"
+	attr "dwParent" "97387680"
+	attr "vdshader" "dif_light2x"
+	attr "name" "neutrals_goblinarcher_arrow"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutral_goblinarcher.tga"
+	attr "material0_triangles_num" "30"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "68"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+}
+
+	child gobj "character_neutral_goblinarcher_skirt001" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 0.000000, 0.000000, 0.000000;
+	apllyfluctuationtochildren 0;
+	uid 139 58621936
+	dwflags 5185
+	tech "model"
+	bonesuid 140 58618036
+	mesh_lods 1
+	"Resources\Characters\Neutrals\GoblinArcher\character_neutrals_goblinarcher.g" 5 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "System\XShader\dif_at_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "392216416"
+	attr "dwParent" "97387680"
+	attr "vdshader" "dif_at_light2x"
+	attr "morph" "1"
+	attr "name" "character_neutral_goblinarcher_skirt001"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutral_goblinarcher_alpha.tga"
+	attr "material0_triangles_num" "402"
+	attr "morph_track" "1"
+}
+
+}
+
+}
+

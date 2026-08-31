@@ -1,0 +1,94 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\empire\whitewizard\character_empire_whitewizard_baseanims.a";
+frame0 1;
+frame1 180;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 0;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 5;
+meshfile "resources\characters\empire\whitewizard\character_empire_whitewizard.g";
+}
+state "Attack"
+{
+file "resources\characters\empire\whitewizard\character_empire_whitewizard_baseanims.a";
+frame0 180;
+frame1 270;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 180 "Resources/Characters/empire/whitewizard/Aliases\Attack00.alias" " 100";
+event2 "snd_Attack" 198 "resources\characters\empire\whitewizard\Aliases\gravel.alias" " 70";
+event2 "snd_Attack" 216 "resources\characters\empire\whitewizard\Aliases\gravel_2.alias" " 100";
+event2 "snd_Attack" 242 "resources\characters\empire\whitewizard\Aliases\gravel.alias" " 50";
+event2 "snd_Attack" 254 "resources\characters\empire\whitewizard\Aliases\gravel_2.alias" " 50";
+event2 "snd_Attack" 208 "Resources/Characters/empire/whitewizard/Aliases\Attack01.alias" " 100";
+event2 "snd_Attack" 214 "Resources/Characters/empire/whitewizard/Aliases\Attack02.alias" " 100";
+event2 "snd_Attack" 195 "Resources/Characters/empire/whitewizard/Aliases\Attack03.alias" " 100";
+event2 "snd_Attack" 183 "Resources/Characters/empire/whitewizard/Aliases\Attack04.alias" " 100";
+event2 "snd_Attack" 235 "Resources/Characters/empire/whitewizard/Aliases\Attack05.alias" " 60";
+event2 "FxStrike" 215 "" "";
+event2 "fxcast" 180 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\empire\whitewizard\character_empire_whitewizard.g";
+}
+state "Damage"
+{
+file "resources\characters\empire\whitewizard\character_empire_whitewizard_baseanims.a";
+frame0 276;
+frame1 334;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 278 "Resources/Characters/empire/whitewizard/Aliases\Damage00.alias" " 100";
+event2 "snd_Damage" 279 "Resources/Characters/empire/whitewizard/Aliases\Damage01.alias" " 60";
+event2 "snd_Damage" 294 "Resources/Characters/empire/whitewizard/Aliases\Damage02.alias" " 100";
+event2 "snd_Damage" 306 "Resources/Characters/empire/whitewizard/Aliases\Damage03.alias" " 100";
+event2 "snd_Damage" 278 "Resources/Characters/empire/whitewizard/Aliases\Damage04.alias" " 100";
+link "Idle" 1; blend 0;
+link "Run" 0; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\empire\whitewizard\character_empire_whitewizard.g";
+}
+state "Death"
+{
+file "resources\characters\empire\whitewizard\character_empire_whitewizard_baseanims.a";
+frame0 340;
+frame1 382;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 343 "Resources/Characters/empire/whitewizard/Aliases\Death00.alias" " 100";
+event2 "snd_Die" 343 "Resources/Characters/empire/whitewizard/Aliases\Death01.alias" " 100";
+event2 "snd_Die" 356 "Resources/Characters/empire/whitewizard/Aliases\Death02.alias" " 60";
+meshfile "resources\characters\empire\whitewizard\character_empire_whitewizard.g";
+}
+state "Run"
+{
+file "resources\characters\empire\whitewizard\character_empire_whitewizard_baseanims.a";
+frame0 389;
+frame1 412;
+fps 15.000000;
+priority 256;
+flags 1;
+event2 "snd_Step" 394 "resources\characters\empire\whitewizard\Aliases\gravel.alias" " 70";
+event2 "snd_Step" 394 "resources\characters\empire\whitewizard\Aliases\human.alias" " 50";
+event2 "snd_Step" 400 "resources\characters\empire\whitewizard\Aliases\gravel_2.alias" " 60";
+event2 "snd_Step" 400 "resources\characters\empire\whitewizard\Aliases\human_2.alias" " 50";
+event2 "snd_Step" 406 "resources\characters\empire\whitewizard\Aliases\gravel.alias" " 60";
+event2 "snd_Step" 406 "resources\characters\empire\whitewizard\Aliases\human.alias" " 50";
+event2 "snd_Step" 412 "resources\characters\empire\whitewizard\Aliases\human_2.alias" " 55";
+event2 "snd_Step" 412 "resources\characters\empire\whitewizard\Aliases\gravel_2.alias" " 70";
+event2 "snd_Step" 391 "resources\characters\empire\whitewizard\Aliases\cloth.alias" " 50";
+event2 "snd_Step" 397 "resources\characters\empire\whitewizard\Aliases\cloth.alias" " 50";
+event2 "snd_Step" 403 "resources\characters\empire\whitewizard\Aliases\cloth.alias" " 50";
+event2 "snd_Step" 410 "resources\characters\empire\whitewizard\Aliases\cloth.alias" " 50";
+link "Idle" 0; blend 5;
+gaestate "Idle";
+meshfile "resources\characters\empire\whitewizard\character_empire_whitewizard.g";
+}

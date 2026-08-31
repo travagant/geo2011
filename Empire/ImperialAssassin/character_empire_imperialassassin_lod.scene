@@ -1,0 +1,269 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 90000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera -3.816285,3.418851,-2.635067,0.422023,0.843673,0.146565,0.422023,0.843673,0.146565,-3.816285,3.418851,-2.635067,0.470000,0.990000,0.000000,5.686147;
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+	load_counter 4261539;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 73 28849928
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.010000,-0.010000,-0.010000,0.010000,0.010000,0.010000
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_empire_imperialassassin" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 74 29172200
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 1048576
+	file "resources\characters\empire\imperialassassin\character_empire_imperialassassin_lod.ac"
+	plvl 512
+	looktocamera 0;
+	child 	goclass "VDGoWeaponTrace" "VDGoWeaponTrace1" 
+{
+	uid 140 28681832
+	dwflags 1
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	texture "resources\fx\fx_resouces\textures\weapontrace\weapontrace_narrow_blue2.t"
+	tech "weapontrace"
+	lifetime 0.300000
+	maxdist 0.200000
+	bonetraceuid 74 29172200
+	fadeonevent 0
+	fadetime 1.000000
+	boneid 18
+	boneid 19
+	boneid 20
+	boneid 21
+}
+
+	child 	goclass "VDGoWeaponTrace" "VDGoWeaponTrace2" 
+{
+	uid 143 28378648
+	dwflags 1
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	texture "resources\fx\fx_resouces\textures\weapontrace\weapontrace_narrow_blue2.t"
+	tech "weapontrace"
+	lifetime 0.300000
+	maxdist 0.200000
+	bonetraceuid 74 29172200
+	fadeonevent 0
+	fadetime 1.000000
+	boneid 37
+	boneid 38
+	boneid 39
+	boneid 40
+}
+
+	child gobj "lod_empire_imperialassassin_hair" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 195 40795808
+	dwflags 1055809
+	tech "model"
+	bonesuid 74 29172200
+	mesh_lods 1
+	"resources\characters\empire\imperialassassin\character_empire_imperialassassin_lod.g" 4 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "415402448"
+	attr "dwParent" "54032992"
+	attr "vdshader" "dif_light2x"
+	attr "morph" "1"
+	attr "twosided" "1"
+	attr "name" "lod_empire_imperialassassin_hair"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_assassin.tga"
+	attr "material0_triangles_num" "56"
+	attr "morph_track" "1"
+}
+
+	child gobj "lod_empire_imperialassassin_cloth" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 161 40658816
+	dwflags 1055809
+	tech "model"
+	bonesuid 74 29172200
+	mesh_lods 1
+	"resources\characters\empire\imperialassassin\character_empire_imperialassassin_lod.g" 0 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "353318448"
+	attr "dwParent" "54032992"
+	attr "vdshader" "dif_light2x"
+	attr "morph" "1"
+	attr "twosided" "1"
+	attr "name" "lod_empire_imperialassassin_cloth"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_assassin.tga"
+	attr "material0_triangles_num" "78"
+	attr "morph_track" "1"
+}
+
+	child gobj "lod_empire_imperialassassin" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 174 41993544
+	dwflags 1053761
+	tech "model"
+	bonesuid 74 29172200
+	mesh_lods 1
+	"resources\characters\empire\imperialassassin\character_empire_imperialassassin_lod.g" 1 0.000000
+	coords -0.033002,0.895587,-0.047691,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "354090048"
+	attr "dwParent" "54032992"
+	attr "vdshader" "dif_light2x"
+	attr "name" "lod_empire_imperialassassin"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_assassin.tga"
+	attr "material0_triangles_num" "1486"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "1263"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "31"
+}
+
+	child gobj "lod_weapon_empire_imperialassassin_L" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 181 41783304
+	dwflags 1053761
+	tech "model"
+	bonesuid 74 29172200
+	mesh_lods 1
+	"resources\characters\empire\imperialassassin\character_empire_imperialassassin_lod.g" 2 0.000000
+	coords 0.463434,0.000000,-0.238760,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "335066112"
+	attr "dwParent" "54032992"
+	attr "vdshader" "dif_light2x"
+	attr "name" "lod_weapon_empire_imperialassassin_L"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "weapons_empire_assassin.tga"
+	attr "material0_triangles_num" "78"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "69"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+}
+
+	child gobj "lod_weapon_empire_imperialassassin_R" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 188 42006496
+	dwflags 1053761
+	tech "model"
+	bonesuid 74 29172200
+	mesh_lods 1
+	"resources\characters\empire\imperialassassin\character_empire_imperialassassin_lod.g" 3 0.000000
+	coords -0.536566,0.000000,-0.238760,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "335103808"
+	attr "dwParent" "54032992"
+	attr "vdshader" "dif_light2x"
+	attr "name" "lod_weapon_empire_imperialassassin_R"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "weapons_empire_assassin.tga"
+	attr "material0_triangles_num" "78"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "69"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+}
+
+}
+
+}
+

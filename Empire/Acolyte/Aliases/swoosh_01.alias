@@ -1,0 +1,5 @@
+alias "swoosh_01" {
+	sound 100, "$(Sounds)\weapons\swooshes\swoosh_01\swoosh_01_01.wav", 100, 3;
+	sound 100, "$(Sounds)\weapons\swooshes\swoosh_01\swoosh_01_02.wav", 100, 3;
+	sound 100, "$(Sounds)\weapons\swooshes\swoosh_01\swoosh_01_03.wav", 100, 3;
+}

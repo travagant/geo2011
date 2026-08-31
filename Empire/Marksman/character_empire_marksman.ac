@@ -1,0 +1,96 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\empire\marksman\character_empire_marksman_baseanims.a";
+frame0 1;
+frame1 254;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 0;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 4;
+gaestate "Run";
+meshfile "resources\characters\empire\marksman\character_empire_marksman.g";
+}
+state "Attack"
+{
+file "resources\characters\empire\marksman\character_empire_marksman_baseanims.a";
+frame0 254;
+frame1 334;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 279 "Resources/Characters/empire/marksman/Aliases\Attack00.alias" " 100";
+event2 "snd_Attack" 298 "Resources/Characters/empire/marksman/Aliases\Attack01.alias" " 100";
+event2 "snd_Attack" 300 "Resources/Characters/empire/marksman/Aliases\Attack02.alias" " 50";
+event2 "snd_Attack" 277 "Resources/Characters/empire/marksman/Aliases\Attack03.alias" " 50";
+event2 "snd_Attack" 301 "Resources/Characters/empire/marksman/Aliases\Attack04.alias" " 100";
+event2 "snd_Attack" 263 "Resources/Characters/empire/marksman/Aliases\Attack05.alias" " 50";
+event2 "snd_Attack" 264 "Resources/Characters/empire/marksman/Aliases\Attack06.alias" " 100";
+event2 "snd_Attack" 309 "Resources/Characters/empire/marksman/Aliases\Attack07.alias" " 100";
+event2 "Strike" 302 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\empire\marksman\character_empire_marksman.g";
+}
+state "Damage"
+{
+file "resources\characters\empire\marksman\character_empire_marksman_baseanims.a";
+frame0 334;
+frame1 376;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 334 "Resources/Characters/empire/marksman/Aliases\Damage00.alias" " 100";
+event2 "snd_Damage" 337 "resources\characters\empire\marksman\Aliases\gravel.alias" " 100";
+event2 "snd_Damage" 352 "resources\characters\empire\marksman\Aliases\gravel.alias" " 50";
+event2 "snd_Damage" 336 "Resources/Characters/empire/marksman/Aliases\Damage01.alias" " 80";
+event2 "snd_Damage" 348 "Resources/Characters/empire/marksman/Aliases\Damage02.alias" " 100";
+link "Idle" 1; blend 0;
+link "Run" 0; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\empire\marksman\character_empire_marksman.g";
+}
+state "Death"
+{
+file "resources\characters\empire\marksman\character_empire_marksman_baseanims.a";
+frame0 376;
+frame1 420;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 376 "Resources/Characters/empire/marksman/Aliases\Death00.alias" " 100";
+event2 "snd_Die" 391 "resources\characters\empire\marksman\Aliases\gravel.alias" " 70";
+event2 "snd_Die" 391 "resources\characters\empire\marksman\Aliases\human.alias" " 70";
+event2 "snd_Die" 397 "resources\characters\empire\marksman\Aliases\human_2.alias" " 70";
+event2 "snd_Die" 397 "resources\characters\empire\marksman\Aliases\gravel_2.alias" " 70";
+event2 "snd_Die" 404 "resources\characters\empire\marksman\Aliases\gravel.alias" " 100";
+event2 "snd_Die" 404 "resources\characters\empire\marksman\Aliases\human.alias" " 100";
+event2 "snd_Die" 408 "resources\characters\empire\marksman\Aliases\human_2.alias" " 100";
+event2 "snd_Die" 408 "resources\characters\empire\marksman\Aliases\gravel_2.alias" " 100";
+event2 "snd_Die" 406 "Resources/Characters/empire/marksman/Aliases\Death01.alias" " 60";
+event2 "snd_Die" 409 "Resources/Characters/empire/marksman/Aliases\Death02.alias" " 60";
+event2 "snd_Die" 378 "Resources/Characters/empire/marksman/Aliases\Death03.alias" " 100";
+event2 "snd_Die" 403 "Resources/Characters/empire/marksman/Aliases\Death04.alias" " 100";
+meshfile "resources\characters\empire\marksman\character_empire_marksman.g";
+}
+state "Run"
+{
+file "resources\characters\empire\marksman\character_empire_marksman_baseanims.a";
+frame0 425;
+frame1 436;
+fps 15.000000;
+priority 256;
+flags 1;
+event2 "snd_Step" 430 "resources\characters\empire\marksman\Aliases\gravel.alias" " 70";
+event2 "snd_Step" 430 "resources\characters\empire\marksman\Aliases\human.alias" " 70";
+event2 "snd_Step" 436 "resources\characters\empire\marksman\Aliases\gravel_2.alias" " 70";
+event2 "snd_Step" 436 "resources\characters\empire\marksman\Aliases\human_2.alias" " 70";
+event2 "snd_Step" 425 "resources\characters\empire\marksman\Aliases\cloth.alias" " 70";
+event2 "snd_Step" 431 "resources\characters\empire\marksman\Aliases\cloth.alias" " 60";
+link "Idle" 0; blend 4;
+gaestate "Idle";
+meshfile "resources\characters\empire\marksman\character_empire_marksman.g";
+}

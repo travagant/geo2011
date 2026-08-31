@@ -1,0 +1,80 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\neutrals\werewolf\character_neutrals_werewolf_iadd.a";
+frame0 1;
+frame1 150;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 3;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 3;
+meshfile "resources\characters\neutrals\werewolf\character_neutrals_werewolf.g";
+}
+state "Attack"
+{
+file "resources\characters\neutrals\werewolf\character_neutrals_werewolf_iadd.a";
+frame0 150;
+frame1 200;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 158 "resources\characters\neutrals\werewolf\Aliases\werewolf_attack_1.alias" " 100";
+event2 "snd_Attack" 179 "resources\characters\neutrals\werewolf\Aliases\swoosh_01.alias" " 100";
+event2 "Strike" 180 "" "";
+event2 "trail_start" 178 "" "";
+event2 "trail_end" 182 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\neutrals\werewolf\character_neutrals_werewolf.g";
+}
+state "Damage"
+{
+file "resources\characters\neutrals\werewolf\character_neutrals_werewolf_iadd.a";
+frame0 200;
+frame1 230;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 200 "resources\characters\neutrals\werewolf\Aliases\werewolf_damage.alias" " 100";
+link "Idle" 1; blend 0;
+link "Damage" 0; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\werewolf\character_neutrals_werewolf.g";
+}
+state "Death"
+{
+file "resources\characters\neutrals\werewolf\character_neutrals_werewolf_iadd.a";
+frame0 230;
+frame1 300;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 230 "resources\characters\neutrals\werewolf\Aliases\werewolf_death_1.alias" " 100";
+event2 "snd_Die" 234 "resources\characters\neutrals\werewolf\Aliases\medium_creature.alias" " 70";
+event2 "snd_Die" 239 "resources\characters\neutrals\werewolf\Aliases\medium_creature_2.alias" " 60";
+event2 "snd_Die" 257 "resources\characters\neutrals\werewolf\Aliases\big_creature.alias" " 70";
+event2 "snd_Die" 266 "resources\characters\neutrals\werewolf\Aliases\gravel.alias" " 100";
+event2 "snd_Die" 271 "resources\characters\neutrals\werewolf\Aliases\gravel_2.alias" " 100";
+event2 "snd_Die" 282 "Resources/Characters/neutrals/werewolf/Aliases\Death00.alias" " 100";
+event2 "snd_Die" 258 "resources\characters\neutrals\werewolf\Aliases\gravel.alias" " 100";
+meshfile "resources\characters\neutrals\werewolf\character_neutrals_werewolf.g";
+}
+state "Run"
+{
+file "resources\characters\neutrals\werewolf\character_neutrals_werewolf_run.a";
+frame0 1;
+frame1 14;
+fps 15.000000;
+priority 256;
+flags 1;
+event2 "snd_Step" 4 "resources\characters\neutrals\werewolf\Aliases\medium_creature.alias" " 70";
+event2 "snd_Step" 11 "resources\characters\neutrals\werewolf\Aliases\medium_creature_2.alias" " 60";
+event2 "snd_Step" 4 "resources\characters\neutrals\werewolf\Aliases\gravel.alias" " 70";
+event2 "snd_Step" 11 "resources\characters\neutrals\werewolf\Aliases\gravel_2.alias" " 60";
+link "Idle" 0; blend 3;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\werewolf\character_neutrals_werewolf.g";
+}

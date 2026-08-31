@@ -1,0 +1,83 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 30000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera 0.198552,3.076129,-1.135557,0.144612,2.234658,-0.597954,0.025422,0.375291,0.589966,0.198552,3.076129,-1.135557,1.000000,-0.100000,0.000000,20.000000;
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 49 28569392
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.100000,-0.100000,-0.100000,0.100000,0.100000,0.100000
+	dwflags 1
+	plvl 512
+	child gobj "empire_leader-ranger_set1_body" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 123 38532336
+	dwflags 1054273
+	tech "model"
+	mesh_lods 1
+	"resources\characters\empire\leader-ranger\body\empire_leader-ranger_set1_body.g" 0 0.000000
+	coords 0.000000,1.093012,0.108504,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "318494736"
+	attr "dwParent" "53704736"
+	attr "vdshader" "dif_light2x"
+	attr "name" "empire_leader-ranger_set1_body"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "7"
+	attr "material0_diffuse" "character_empire_leader-ranger_set1_body_diffuse.tga"
+	attr "material0_triangles_num" "832"
+	attr "material1_diffuse" "character_empire_leader-ranger_set1_feet_diffuse.tga"
+	attr "material1_triangles_num" "0"
+	attr "material2_diffuse" "character_empire_leader-ranger_set1_arms_diffuse.tga"
+	attr "material2_triangles_num" "0"
+	attr "material3_diffuse" "character_empire_leader-ranger_set1_hands_diffuse.tga"
+	attr "material3_triangles_num" "0"
+	attr "material4_diffuse" "character_empire_leader-ranger_set1_hat_diffuse.tga"
+	attr "material4_triangles_num" "0"
+	attr "material5_diffuse" "character_empire_leader-ranger_set1_head_diffuse.tga"
+	attr "material5_triangles_num" "0"
+	attr "material6_diffuse" "character_empire_leader-ranger_set1_legs_diffuse.tga"
+	attr "material6_triangles_num" "0"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "757"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "11"
+}
+
+}
+

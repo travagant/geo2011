@@ -1,0 +1,92 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\empire\defenderoffaith\character_empire_defenderoffaith_baseanims.a";
+frame0 1;
+frame1 95;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 0;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 3;
+meshfile "resources\characters\empire\defenderoffaith\character_empire_defenderoffaith.g";
+}
+state "Attack"
+{
+file "resources\characters\empire\defenderoffaith\character_empire_defenderoffaith_baseanims.a";
+frame0 95;
+frame1 145;
+fps 18.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 97 "Resources/Characters/empire/defenderoffaith/Aliases\Attack00.alias" " 100";
+event2 "snd_Attack" 104 "Resources/Characters/empire/defenderoffaith/Aliases\Attack01.alias" " 100";
+event2 "snd_Attack" 117 "Resources/Characters/empire/defenderoffaith/Aliases\Attack02.alias" " 100";
+event2 "snd_Attack" 129 "Resources/Characters/empire/defenderoffaith/Aliases\Attack03.alias" " 80";
+event2 "snd_Attack" 105 "Resources/Characters/empire/defenderoffaith/Aliases\Attack04.alias" " 100";
+event2 "snd_Attack" 134 "Resources/Characters/empire/defenderoffaith/Aliases\Attack05.alias" " 100";
+event2 "snd_Attack" 116 "Resources/Characters/empire/defenderoffaith/Aliases\Attack06.alias" " 100";
+event2 "snd_Attack" 141 "Resources/Characters/empire/defenderoffaith/Aliases\Attack07.alias" " 100";
+event2 "snd_Attack" 118 "Resources/Characters/empire/defenderoffaith/Aliases\Attack08.alias" " 100";
+event2 "snd_Attack" 118 "Resources/Characters/empire/defenderoffaith/Aliases\Attack09.alias" " 100";
+event2 "snd_Attack" 95 "resources\characters\empire\defenderoffaith\Aliases\horse_attack.alias" " 90";
+event2 "Strike" 120 "" "";
+event2 "trail_start" 116 "" "";
+event2 "trail_end" 122 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\empire\defenderoffaith\character_empire_defenderoffaith.g";
+}
+state "Damage"
+{
+file "resources\characters\empire\defenderoffaith\character_empire_defenderoffaith_baseanims.a";
+frame0 145;
+frame1 181;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 145 "Resources/Characters/empire/defenderoffaith/Aliases\Damage00.alias" " 100";
+event2 "snd_Damage" 152 "Resources/Characters/empire/defenderoffaith/Aliases\Damage01.alias" " 100";
+event2 "snd_Damage" 157 "Resources/Characters/empire/defenderoffaith/Aliases\Damage02.alias" " 100";
+event2 "snd_Damage" 168 "Resources/Characters/empire/defenderoffaith/Aliases\Damage03.alias" " 100";
+event2 "snd_Damage" 175 "Resources/Characters/empire/defenderoffaith/Aliases\Damage04.alias" " 90";
+event2 "snd_Damage" 145 "Resources/Characters/empire/defenderoffaith/Aliases\Damage05.alias" " 100";
+event2 "snd_Damage" 146 "Resources/Characters/empire/defenderoffaith/Aliases\Damage06.alias" " 90";
+event2 "snd_Damage" 145 "resources\characters\empire\defenderoffaith\Aliases\horse_damage.alias" " 80";
+link "Idle" 1; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\empire\defenderoffaith\character_empire_defenderoffaith.g";
+}
+state "Death"
+{
+file "resources\characters\empire\defenderoffaith\character_empire_defenderoffaith_baseanims.a";
+frame0 181;
+frame1 217;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 181 "Resources/Characters/empire/defenderoffaith/Aliases\Death00.alias" " 100";
+event2 "snd_Die" 196 "Resources/Characters/empire/defenderoffaith/Aliases\Death01.alias" " 70";
+event2 "snd_Die" 187 "Resources/Characters/empire/defenderoffaith/Aliases\Death02.alias" " 100";
+event2 "snd_Die" 181 "Resources/Characters/empire/defenderoffaith/Aliases\Death03.alias" " 100";
+event2 "snd_Die" 181 "resources\characters\empire\defenderoffaith\Aliases\horse_death.alias" " 80";
+meshfile "resources\characters\empire\defenderoffaith\character_empire_defenderoffaith.g";
+}
+state "Run"
+{
+file "resources\characters\empire\defenderoffaith\character_empire_defenderoffaith_baseanims.a";
+frame0 221;
+frame1 230;
+fps 15.000000;
+priority 256;
+flags 1;
+event2 "snd_Step" 227 "Resources/Characters/empire/defenderoffaith/Aliases\plate.alias" " 70";
+event2 "snd_Step" 225 "Resources/Characters/empire/defenderoffaith/Aliases\horse_step_3.alias" " 100";
+event2 "snd_Step" 226 "resources\characters\empire\defenderoffaith\Aliases\gravel.alias" " 100";
+event2 "snd_Step" 228 "resources\characters\empire\defenderoffaith\Aliases\gravel_2.alias" " 100";
+link "Idle" 0; blend 3;
+gaestate "Idle";
+meshfile "resources\characters\empire\defenderoffaith\character_empire_defenderoffaith.g";
+}

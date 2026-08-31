@@ -1,0 +1,97 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\neutrals\spearman\character_neutrals_spearman_baseanims.a";
+frame0 1;
+frame1 160;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 3;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 3;
+meshfile "resources\characters\neutrals\spearman\character_neutrals_spearman.g";
+}
+state "Attack"
+{
+file "resources\characters\neutrals\spearman\character_neutrals_spearman_baseanims.a";
+frame0 160;
+frame1 212;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 160 "Resources/Characters/neutrals/spearman/Aliases\Attack00.alias" " 100";
+event2 "snd_Attack" 175 "Resources/Characters/neutrals/spearman/Aliases\Attack01.alias" " 100";
+event2 "snd_Attack" 205 "Resources/Characters/neutrals/spearman/Aliases\Attack02.alias" " 80";
+event2 "snd_Attack" 186 "Resources/Characters/neutrals/spearman/Aliases\Attack03.alias" " 100";
+event2 "snd_Attack" 175 "Resources/Characters/neutrals/spearman/Aliases\Attack04.alias" " 100";
+event2 "snd_Attack" 168 "resources\characters\neutrals\spearman\Aliases\human.alias" " 100";
+event2 "snd_Attack" 177 "resources\characters\neutrals\spearman\Aliases\human_2.alias" " 100";
+event2 "snd_Attack" 200 "resources\characters\neutrals\spearman\Aliases\human_2.alias" " 70";
+event2 "snd_Attack" 205 "resources\characters\neutrals\spearman\Aliases\human.alias" " 70";
+event2 "snd_Attack" 160 "Resources/Characters/neutrals/spearman/Aliases\Attack05.alias" " 100";
+event2 "snd_Attack" 173 "Resources/Characters/neutrals/spearman/Aliases\Attack06.alias" " 100";
+event2 "Strike" 179 "" "";
+link "Idle" 1; blend 0;
+link "Damage" 0; blend 0;
+meshfile "resources\characters\neutrals\spearman\character_neutrals_spearman.g";
+}
+state "Damage"
+{
+file "resources\characters\neutrals\spearman\character_neutrals_spearman_baseanims.a";
+frame0 212;
+frame1 254;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 220 "Resources/Characters/neutrals/spearman/Aliases\Damage00.alias" " 100";
+event2 "snd_Damage" 212 "Resources/Characters/neutrals/spearman/Aliases\Damage01.alias" " 70";
+event2 "snd_Damage" 217 "Resources/Characters/neutrals/spearman/Aliases\Damage02.alias" " 100";
+event2 "snd_Damage" 241 "Resources/Characters/neutrals/spearman/Aliases\Damage03.alias" " 100";
+event2 "snd_Damage" 220 "resources\characters\neutrals\spearman\Aliases\human_2.alias" " 100";
+event2 "snd_Damage" 246 "resources\characters\neutrals\spearman\Aliases\human.alias" " 80";
+event2 "snd_Damage" 212 "Resources/Characters/neutrals/spearman/Aliases\Damage04.alias" " 100";
+link "Idle" 1; blend 0;
+link "Run" 0; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\spearman\character_neutrals_spearman.g";
+}
+state "Death"
+{
+file "resources\characters\neutrals\spearman\character_neutrals_spearman_baseanims.a";
+frame0 254;
+frame1 314;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 257 "Resources/Characters/neutrals/spearman/Aliases\Death00.alias" " 100";
+event2 "snd_Die" 301 "Resources/Characters/neutrals/spearman/Aliases\Death01.alias" " 100";
+event2 "snd_Die" 297 "Resources/Characters/neutrals/spearman/Aliases\Death02.alias" " 70";
+event2 "snd_Die" 274 "resources\characters\neutrals\spearman\Aliases\human.alias" " 80";
+event2 "snd_Die" 268 "resources\characters\neutrals\spearman\Aliases\human_2.alias" " 70";
+event2 "snd_Die" 297 "resources\characters\neutrals\spearman\Aliases\human_2.alias" " 70";
+event2 "snd_Die" 300 "resources\characters\neutrals\spearman\Aliases\human.alias" " 100";
+event2 "snd_Die" 254 "Resources/Characters/neutrals/spearman/Aliases\Death03.alias" " 100";
+event2 "snd_Die" 298 "Resources/Characters/neutrals/spearman/Aliases\Death04.alias" " 100";
+meshfile "resources\characters\neutrals\spearman\character_neutrals_spearman.g";
+}
+state "Run"
+{
+file "resources\characters\neutrals\spearman\character_neutrals_spearman_baseanims.a";
+frame0 335;
+frame1 346;
+fps 15.000000;
+priority 256;
+flags 1;
+event2 "snd_Step" 341 "Resources/Characters/neutrals/spearman/Aliases\Run00.alias" " 40";
+event2 "snd_Step" 337 "Resources/Characters/neutrals/spearman/Aliases\Run01.alias" " 50";
+event2 "snd_Step" 342 "resources\characters\neutrals\spearman\Aliases\human.alias" " 80";
+event2 "snd_Step" 337 "resources\characters\neutrals\spearman\Aliases\human_2.alias" " 70";
+event2 "snd_Step" 336 "resources\characters\neutrals\spearman\Aliases\gravel.alias" " 70";
+event2 "snd_Step" 343 "resources\characters\neutrals\spearman\Aliases\gravel_2.alias" " 70";
+link "Idle" 0; blend 3;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\spearman\character_neutrals_spearman.g";
+}

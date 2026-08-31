@@ -1,0 +1,815 @@
+{
+  "asset": {
+    "version": "2.0",
+    "generator": "generated with dis3tool v1.1 by root.ext@gmail.com"
+  },
+  "scenes": [
+    {
+      "nodes": [
+        0,
+        1,
+        2,
+        3
+      ]
+    }
+  ],
+  "scene": 0,
+  "nodes": [
+    {
+      "name": "empire_rod-1_alpha",
+      "mesh": 0,
+      "skin": 0
+    },
+    {
+      "name": "empire_rod-1",
+      "mesh": 1,
+      "skin": 1
+    },
+    {
+      "name": "empire_rod-1_sword",
+      "mesh": 2
+    },
+    {
+      "name": "Reference",
+      "rotation": [
+        0.0,
+        0.0,
+        0.707106769,
+        0.707106769
+      ],
+      "translation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "children": [
+        4,
+        9
+      ]
+    },
+    {
+      "name": "Hips",
+      "rotation": [
+        0.998422742,
+        -0.0206789076,
+        -0.0488913432,
+        -0.01827739
+      ],
+      "translation": [
+        1.814588,
+        -1.5394815E-07,
+        0.647069156
+      ],
+      "children": [
+        5
+      ]
+    },
+    {
+      "name": "Spine",
+      "rotation": [
+        0.00327800727,
+        -0.07613182,
+        -0.01267632,
+        0.9970118
+      ],
+      "translation": [
+        0.11294274,
+        1.59167E-07,
+        -0.0203033816
+      ],
+      "children": [
+        6
+      ]
+    },
+    {
+      "name": "Spine1",
+      "rotation": [
+        -0.0380187035,
+        0.140889421,
+        -0.0493098125,
+        0.9880654
+      ],
+      "translation": [
+        0.297434151,
+        -0.00172455469,
+        0.0153768938
+      ],
+      "children": [
+        7
+      ]
+    },
+    {
+      "name": "Neck",
+      "rotation": [
+        -0.00307259546,
+        -0.269411325,
+        -0.0172098111,
+        0.9628665
+      ],
+      "translation": [
+        0.407289773,
+        -0.0162618756,
+        0.0140993092
+      ],
+      "children": [
+        8
+      ]
+    },
+    {
+      "name": "Head",
+      "rotation": [
+        0.04824521,
+        0.0400207341,
+        -0.0599394254,
+        0.9962319
+      ],
+      "translation": [
+        0.211046576,
+        -0.00103344838,
+        0.00325777126
+      ]
+    },
+    {
+      "name": "Sword",
+      "rotation": [
+        -0.49999994,
+        0.5,
+        -0.5,
+        0.5
+      ],
+      "translation": [
+        1.77193725,
+        3.47230569E-15,
+        -0.02
+      ]
+    }
+  ],
+  "accessors": [
+    {
+      "bufferView": 0,
+      "byteOffset": 0,
+      "componentType": 5125,
+      "count": 4698,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 0,
+      "componentType": 5126,
+      "count": 1386,
+      "type": "VEC3",
+      "min": [
+        -0.5090573,
+        1.9766134,
+        -0.276911527
+      ],
+      "max": [
+        0.5083063,
+        4.049485,
+        0.76334
+      ]
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 12,
+      "componentType": 5126,
+      "count": 1386,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 24,
+      "componentType": 5126,
+      "count": 1386,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 32,
+      "componentType": 5126,
+      "count": 1386,
+      "type": "VEC4"
+    },
+    {
+      "bufferView": 1,
+      "byteOffset": 48,
+      "componentType": 5121,
+      "count": 1386,
+      "type": "VEC4"
+    },
+    {
+      "bufferView": 2,
+      "byteOffset": 0,
+      "componentType": 5126,
+      "count": 3,
+      "type": "MAT4"
+    },
+    {
+      "bufferView": 3,
+      "byteOffset": 0,
+      "componentType": 5125,
+      "count": 1704,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 4,
+      "byteOffset": 0,
+      "componentType": 5126,
+      "count": 541,
+      "type": "VEC3",
+      "min": [
+        -0.728667557,
+        -0.0137730641,
+        -0.7399284
+      ],
+      "max": [
+        0.7514526,
+        1.19916451,
+        0.7957532
+      ]
+    },
+    {
+      "bufferView": 4,
+      "byteOffset": 12,
+      "componentType": 5126,
+      "count": 541,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 4,
+      "byteOffset": 24,
+      "componentType": 5126,
+      "count": 541,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 4,
+      "byteOffset": 32,
+      "componentType": 5126,
+      "count": 541,
+      "type": "VEC4"
+    },
+    {
+      "bufferView": 4,
+      "byteOffset": 48,
+      "componentType": 5121,
+      "count": 541,
+      "type": "VEC4"
+    },
+    {
+      "bufferView": 5,
+      "byteOffset": 0,
+      "componentType": 5126,
+      "count": 1,
+      "type": "MAT4"
+    },
+    {
+      "bufferView": 6,
+      "byteOffset": 0,
+      "componentType": 5125,
+      "count": 660,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 7,
+      "byteOffset": 0,
+      "componentType": 5126,
+      "count": 257,
+      "type": "VEC3",
+      "min": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "max": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "bufferView": 7,
+      "byteOffset": 12,
+      "componentType": 5126,
+      "count": 257,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 7,
+      "byteOffset": 24,
+      "componentType": 5126,
+      "count": 257,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 8,
+      "byteOffset": 0,
+      "componentType": 5126,
+      "count": 201,
+      "type": "SCALAR",
+      "min": [
+        0.0
+      ],
+      "max": [
+        6.666667
+      ]
+    },
+    {
+      "bufferView": 9,
+      "byteOffset": 0,
+      "componentType": 5126,
+      "count": 201,
+      "type": "VEC4"
+    },
+    {
+      "bufferView": 10,
+      "byteOffset": 0,
+      "componentType": 5126,
+      "count": 201,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 9,
+      "byteOffset": 3216,
+      "componentType": 5126,
+      "count": 201,
+      "type": "VEC4"
+    },
+    {
+      "bufferView": 10,
+      "byteOffset": 2412,
+      "componentType": 5126,
+      "count": 201,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 9,
+      "byteOffset": 6432,
+      "componentType": 5126,
+      "count": 201,
+      "type": "VEC4"
+    },
+    {
+      "bufferView": 10,
+      "byteOffset": 4824,
+      "componentType": 5126,
+      "count": 201,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 9,
+      "byteOffset": 9648,
+      "componentType": 5126,
+      "count": 201,
+      "type": "VEC4"
+    },
+    {
+      "bufferView": 10,
+      "byteOffset": 7236,
+      "componentType": 5126,
+      "count": 201,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 9,
+      "byteOffset": 12864,
+      "componentType": 5126,
+      "count": 201,
+      "type": "VEC4"
+    },
+    {
+      "bufferView": 10,
+      "byteOffset": 9648,
+      "componentType": 5126,
+      "count": 201,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 9,
+      "byteOffset": 16080,
+      "componentType": 5126,
+      "count": 201,
+      "type": "VEC4"
+    },
+    {
+      "bufferView": 10,
+      "byteOffset": 12060,
+      "componentType": 5126,
+      "count": 201,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 9,
+      "byteOffset": 19296,
+      "componentType": 5126,
+      "count": 201,
+      "type": "VEC4"
+    },
+    {
+      "bufferView": 10,
+      "byteOffset": 14472,
+      "componentType": 5126,
+      "count": 201,
+      "type": "VEC3"
+    }
+  ],
+  "skins": [
+    {
+      "name": "skin0",
+      "inverseBindMatrices": 6,
+      "joints": [
+        8,
+        7,
+        6
+      ]
+    },
+    {
+      "name": "skin1",
+      "inverseBindMatrices": 13,
+      "joints": [
+        3
+      ]
+    }
+  ],
+  "meshes": [
+    {
+      "name": "empire_rod-1_alpha",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 1,
+            "NORMAL": 2,
+            "TEXCOORD_0": 3,
+            "WEIGHTS_0": 4,
+            "JOINTS_0": 5
+          },
+          "indices": 0,
+          "mode": 4,
+          "material": 0
+        }
+      ]
+    },
+    {
+      "name": "empire_rod-1",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 8,
+            "NORMAL": 9,
+            "TEXCOORD_0": 10,
+            "WEIGHTS_0": 11,
+            "JOINTS_0": 12
+          },
+          "indices": 7,
+          "mode": 4,
+          "material": 1
+        }
+      ]
+    },
+    {
+      "name": "empire_rod-1_sword",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 15,
+            "NORMAL": 16,
+            "TEXCOORD_0": 17
+          },
+          "indices": 14,
+          "mode": 4,
+          "material": 2
+        }
+      ]
+    }
+  ],
+  "animations": [
+    {
+      "channels": [
+        {
+          "sampler": 0,
+          "target": {
+            "node": 3,
+            "path": "rotation"
+          }
+        },
+        {
+          "sampler": 1,
+          "target": {
+            "node": 3,
+            "path": "translation"
+          }
+        },
+        {
+          "sampler": 2,
+          "target": {
+            "node": 4,
+            "path": "rotation"
+          }
+        },
+        {
+          "sampler": 3,
+          "target": {
+            "node": 4,
+            "path": "translation"
+          }
+        },
+        {
+          "sampler": 4,
+          "target": {
+            "node": 5,
+            "path": "rotation"
+          }
+        },
+        {
+          "sampler": 5,
+          "target": {
+            "node": 5,
+            "path": "translation"
+          }
+        },
+        {
+          "sampler": 6,
+          "target": {
+            "node": 6,
+            "path": "rotation"
+          }
+        },
+        {
+          "sampler": 7,
+          "target": {
+            "node": 6,
+            "path": "translation"
+          }
+        },
+        {
+          "sampler": 8,
+          "target": {
+            "node": 7,
+            "path": "rotation"
+          }
+        },
+        {
+          "sampler": 9,
+          "target": {
+            "node": 7,
+            "path": "translation"
+          }
+        },
+        {
+          "sampler": 10,
+          "target": {
+            "node": 8,
+            "path": "rotation"
+          }
+        },
+        {
+          "sampler": 11,
+          "target": {
+            "node": 8,
+            "path": "translation"
+          }
+        },
+        {
+          "sampler": 12,
+          "target": {
+            "node": 9,
+            "path": "rotation"
+          }
+        },
+        {
+          "sampler": 13,
+          "target": {
+            "node": 9,
+            "path": "translation"
+          }
+        }
+      ],
+      "samplers": [
+        {
+          "input": 18,
+          "output": 19,
+          "interpolation": "LINEAR"
+        },
+        {
+          "input": 18,
+          "output": 20,
+          "interpolation": "LINEAR"
+        },
+        {
+          "input": 18,
+          "output": 21,
+          "interpolation": "LINEAR"
+        },
+        {
+          "input": 18,
+          "output": 22,
+          "interpolation": "LINEAR"
+        },
+        {
+          "input": 18,
+          "output": 23,
+          "interpolation": "LINEAR"
+        },
+        {
+          "input": 18,
+          "output": 24,
+          "interpolation": "LINEAR"
+        },
+        {
+          "input": 18,
+          "output": 25,
+          "interpolation": "LINEAR"
+        },
+        {
+          "input": 18,
+          "output": 26,
+          "interpolation": "LINEAR"
+        },
+        {
+          "input": 18,
+          "output": 27,
+          "interpolation": "LINEAR"
+        },
+        {
+          "input": 18,
+          "output": 28,
+          "interpolation": "LINEAR"
+        },
+        {
+          "input": 18,
+          "output": 29,
+          "interpolation": "LINEAR"
+        },
+        {
+          "input": 18,
+          "output": 30,
+          "interpolation": "LINEAR"
+        },
+        {
+          "input": 18,
+          "output": 31,
+          "interpolation": "LINEAR"
+        },
+        {
+          "input": 18,
+          "output": 32,
+          "interpolation": "LINEAR"
+        },
+        {
+          "input": 18,
+          "output": 33,
+          "interpolation": "LINEAR"
+        }
+      ]
+    }
+  ],
+  "bufferViews": [
+    {
+      "name": "mesh_indexes_empire_rod-1_alpha",
+      "buffer": 0,
+      "byteOffset": 0,
+      "byteLength": 18792,
+      "target": 34963
+    },
+    {
+      "name": "mesh_vertexes_empire_rod-1_alpha",
+      "buffer": 0,
+      "byteOffset": 18792,
+      "byteLength": 72072,
+      "byteStride": 52,
+      "target": 34962
+    },
+    {
+      "name": "mesh_bones_empire_rod-1_alpha",
+      "buffer": 0,
+      "byteOffset": 90864,
+      "byteLength": 192
+    },
+    {
+      "name": "mesh_indexes_empire_rod-1",
+      "buffer": 0,
+      "byteOffset": 91056,
+      "byteLength": 6816,
+      "target": 34963
+    },
+    {
+      "name": "mesh_vertexes_empire_rod-1",
+      "buffer": 0,
+      "byteOffset": 97872,
+      "byteLength": 28132,
+      "byteStride": 52,
+      "target": 34962
+    },
+    {
+      "name": "mesh_bones_empire_rod-1",
+      "buffer": 0,
+      "byteOffset": 126004,
+      "byteLength": 64
+    },
+    {
+      "name": "mesh_indexes_empire_rod-1_sword",
+      "buffer": 0,
+      "byteOffset": 126068,
+      "byteLength": 2640,
+      "target": 34963
+    },
+    {
+      "name": "mesh_vertexes_empire_rod-1_sword",
+      "buffer": 0,
+      "byteOffset": 128708,
+      "byteLength": 8224,
+      "byteStride": 32,
+      "target": 34962
+    },
+    {
+      "name": "frames",
+      "buffer": 0,
+      "byteOffset": 136932,
+      "byteLength": 804
+    },
+    {
+      "name": "bones_rotate",
+      "buffer": 0,
+      "byteOffset": 137736,
+      "byteLength": 22512
+    },
+    {
+      "name": "bones_translate",
+      "buffer": 0,
+      "byteOffset": 160248,
+      "byteLength": 16884
+    }
+  ],
+  "buffers": [
+    {
+      "uri": "character_empire_rod-1.bin",
+      "byteLength": 177132
+    }
+  ],
+  "images": [
+    {
+      "uri": "empire_rod-1_alpha.dds"
+    },
+    {
+      "uri": "empire_rod-1.dds"
+    }
+  ],
+  "textures": [
+    {
+      "source": 0
+    },
+    {
+      "source": 1
+    }
+  ],
+  "materials": [
+    {
+      "name": "material0",
+      "alphaMode": "MASK",
+      "pbrMetallicRoughness": {
+        "baseColorTexture": {
+          "index": 0,
+          "texCoord": 0
+        },
+        "metallicFactor": 0.0
+      },
+      "emissiveFactor": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "material1",
+      "alphaMode": "MASK",
+      "pbrMetallicRoughness": {
+        "baseColorTexture": {
+          "index": 1,
+          "texCoord": 0
+        },
+        "metallicFactor": 0.0
+      },
+      "emissiveFactor": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "material2",
+      "alphaMode": "MASK",
+      "pbrMetallicRoughness": {
+        "baseColorTexture": {
+          "index": 0,
+          "texCoord": 0
+        },
+        "metallicFactor": 0.0
+      },
+      "emissiveFactor": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ]
+}

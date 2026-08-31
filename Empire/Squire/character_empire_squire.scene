@@ -1,0 +1,285 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 30000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera 3.195025,3.801842,-2.961576,0.150821,-0.008196,-1.195073,0.150821,-0.008196,-1.195073,3.195025,3.801842,-2.961576,0.825000,-1.045000,0.000000,5.186916;
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 221 31071256
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.010000,-0.010000,-0.010000,0.010000,0.010000,0.010000
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_empire_squire" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 222 31424832
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 0
+	file "resources\characters\empire\squire\character_empire_squire.ac"
+	plvl 512
+	looktocamera 0;
+	child gobj "empire_squire_skirt" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 230 40788528
+	dwflags 1056321
+	tech "model"
+	bonesuid 222 31424832
+	mesh_lods 1
+	"resources\characters\empire\squire\character_empire_squire.g" 0 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "302787072"
+	attr "dwParent" "53704704"
+	attr "twosided" "1"
+	attr "morph" "1"
+	attr "vdshader" "dif_light2x"
+	attr "name" "empire_squire_skirt"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_squire_diffuse.tga"
+	attr "material0_triangles_num" "410"
+	attr "morph_track" "1"
+}
+
+	child gobj "empire_squire_legs" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 238 41058312
+	dwflags 1053761
+	tech "model"
+	bonesuid 222 31424832
+	mesh_lods 1
+	"resources\characters\empire\squire\character_empire_squire.g" 1 0.000000
+	coords -0.000057,0.513035,-0.044890,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "303055216"
+	attr "dwParent" "53704704"
+	attr "vdshader" "dif_light2x"
+	attr "name" "empire_squire_legs"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_squire_diffuse.tga"
+	attr "material0_triangles_num" "780"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "738"
+	attr "weights_on_vertex" "2"
+	attr "bones_num" "7"
+}
+
+	child gobj "empire_squire_lhad" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 245 39861176
+	dwflags 1053761
+	tech "model"
+	bonesuid 222 31424832
+	mesh_lods 1
+	"resources\characters\empire\squire\character_empire_squire.g" 2 0.000000
+	coords 0.003291,1.117022,0.033079,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "303460560"
+	attr "dwParent" "53704704"
+	attr "vdshader" "dif_light2x"
+	attr "name" "empire_squire_lhad"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_squire_diffuse.tga"
+	attr "material0_triangles_num" "1020"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "662"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "12"
+}
+
+	child gobj "weapon_empire_squire" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 252 31354944
+	dwflags 1053761
+	tech "model"
+	bonesuid 222 31424832
+	mesh_lods 1
+	"resources\characters\empire\squire\character_empire_squire.g" 3 0.000000
+	coords 0.379661,0.000000,-0.011868,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "359165104"
+	attr "dwParent" "53704704"
+	attr "vdshader" "dif_light2x"
+	attr "name" "weapon_empire_squire"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "weapon_empire_sword_diffuse.tga"
+	attr "material0_triangles_num" "188"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "193"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+}
+
+	child gobj "empire_squire_head" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 259 109867016
+	dwflags 1053761
+	tech "model"
+	bonesuid 222 31424832
+	mesh_lods 1
+	"resources\characters\empire\squire\character_empire_squire.g" 4 0.000000
+	coords 0.000000,1.664994,-0.009930,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "360111280"
+	attr "dwParent" "53704704"
+	attr "vdshader" "dif_light2x"
+	attr "name" "empire_squire_head"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_squire_head.tga"
+	attr "material0_triangles_num" "1614"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "1062"
+	attr "weights_on_vertex" "2"
+	attr "bones_num" "5"
+}
+
+	child gobj "empire_squire" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 266 31553864
+	dwflags 1053761
+	tech "model"
+	bonesuid 222 31424832
+	mesh_lods 1
+	"resources\characters\empire\squire\character_empire_squire.g" 5 0.000000
+	coords 0.000000,1.347093,0.016599,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "360610992"
+	attr "dwParent" "53704704"
+	attr "vdshader" "dif_light2x"
+	attr "name" "empire_squire"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_squire_diffuse.tga"
+	attr "material0_triangles_num" "1892"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "1737"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "15"
+}
+
+	child 	goclass "VDGoWeaponTrace" "VDGoWeaponTrace" 
+{
+	uid 268 30610512
+	dwflags 1073741825
+	coords 0.000000,0.000000,0.000000,0.057303,3.141147,1.511441
+	texture "resources\fx\fx_resouces\textures\weapontrace\weapontrace_narrow_blue.t"
+	tech "weapontrace"
+	lifetime 0.150000
+	maxdist 0.100000
+	bonetraceuid 222 31424832
+	fadeonevent 0
+	fadetime 1.000000
+	boneid 35
+	boneid 36
+}
+
+}
+
+}
+

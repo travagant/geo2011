@@ -1,0 +1,8 @@
+Blender 4.5.8 LTS, д3core d3core-диагностика: character_empire_apprentice.g (281296 байт)
+.g character_empire_apprentice.g: 281296 байт
+  +00000000 tag=3 материал size=174
+  +000000B6 tag=3 материал size=184
+  +00000176 tag=1 заголовок (a=4, mesh_count=4)
+  +00000182 tag=2 меш vcount=2174 tcount=2706 bones=41 weights_on_vertex=3 meta={'dwNode': '51051696', 'dwParent': '55867312', 'vdshader': 'dif_light2x', 'name': 'empire_apprentice', 'groupname': 'Scene Root', 'materials_num': '1', 'material0_diffuse': 'character_empire_apprentice_diffuse.tga', 'material0_triangles_num': '2706', 'new_vertex_weights_format': '1', 'vertexs_weights_num': '2174', 'weights_on_vertex': '3', 'bones_num': '41'}
+  +0002401C tag=2 меш vcount=516 tcount=756 bones=0 weights_on_vertex=0 meta={'dwNode': '345406448', 'dwParent': '55867312', 'vdshader': 'dif_light2x', 'morph': '1', 'name': 'empire_apprentice_skirt', 'groupname': 'Scene Root', 'materials_num': '1', 'material0_diffuse': 'character_empire_apprentice_diffuse.tga', 'material0_triangles_num': '756', 'morph_track': '1'}
+  ОШИБКА на позиции 183794: character_empire_apprentice.g: не хватает 3158256361 байт для пропуск (позиция 183794, размер 281296)

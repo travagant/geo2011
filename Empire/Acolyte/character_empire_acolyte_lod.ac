@@ -1,0 +1,64 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "Resources\Characters\Empire\Acolyte\character_empire_acolyte_baseanims_lod.a";
+frame0 1;
+frame1 174;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 0;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 0;
+meshfile "resources\characters\empire\acolyte\character_empire_acolyte_lod.g";
+}
+state "Attack"
+{
+file "Resources\Characters\Empire\Acolyte\character_empire_acolyte_baseanims_lod.a";
+frame0 174;
+frame1 252;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "fxcast" 174 "" "";
+event2 "FxStrike" 204 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\empire\acolyte\character_empire_acolyte_lod.g";
+}
+state "Damage"
+{
+file "Resources\Characters\Empire\Acolyte\character_empire_acolyte_baseanims_lod.a";
+frame0 252;
+frame1 304;
+fps 15.000000;
+priority 256;
+flags 0;
+link "Idle" 1; blend 0;
+link "Run" 0; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\empire\acolyte\character_empire_acolyte_lod.g";
+}
+state "Death"
+{
+file "Resources\Characters\Empire\Acolyte\character_empire_acolyte_baseanims_lod.a";
+frame0 304;
+frame1 380;
+fps 15.000000;
+priority 256;
+flags 0;
+meshfile "resources\characters\empire\acolyte\character_empire_acolyte_lod.g";
+}
+state "Run"
+{
+file "Resources\Characters\Empire\Acolyte\character_empire_acolyte_baseanims_lod.a";
+frame0 387;
+frame1 410;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Idle" 0; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\empire\acolyte\character_empire_acolyte_lod.g";
+}

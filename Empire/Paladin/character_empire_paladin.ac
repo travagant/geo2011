@@ -1,0 +1,103 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\empire\paladin\character_empire_paladin_baseanims.a";
+frame0 1;
+frame1 190;
+fps 30.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 0;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 8;
+meshfile "resources\characters\empire\paladin\character_empire_paladin.g";
+}
+state "Attack"
+{
+file "resources\characters\empire\paladin\character_empire_paladin_baseanims.a";
+frame0 190;
+frame1 310;
+fps 30.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 202 "Resources/Characters/empire/paladin/Aliases\Attack00.alias" " 100";
+event2 "snd_Attack" 190 "resources\characters\empire\paladin\Aliases\horse_attack.alias" " 90";
+event2 "snd_Attack" 256 "Resources/Characters/empire/paladin/Aliases\Attack01.alias" " 100";
+event2 "snd_Attack" 223 "resources\characters\empire\paladin\Aliases\swoosh_01.alias" " 100";
+event2 "snd_Attack" 220 "Resources/Characters/empire/paladin/Aliases\Attack02.alias" " 90";
+event2 "snd_Attack" 256 "Resources/Characters/empire/paladin/Aliases\Attack03.alias" " 100";
+event2 "snd_Attack" 216 "Resources/Characters/empire/paladin/Aliases\Attack04.alias" " 100";
+event2 "snd_Attack" 222 "Resources/Characters/empire/paladin/Aliases\Attack05.alias" " 100";
+event2 "Strike" 227 "" "";
+event2 "trail_start" 220 "" "";
+event2 "trail_end" 226 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\empire\paladin\character_empire_paladin.g";
+}
+state "Damage"
+{
+file "resources\characters\empire\paladin\character_empire_paladin_baseanims.a";
+frame0 310;
+frame1 382;
+fps 30.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 310 "Resources/Characters/empire/paladin/Aliases\Damage00.alias" " 100";
+event2 "snd_Damage" 310 "resources\characters\empire\paladin\Aliases\horse_damage.alias" " 100";
+event2 "snd_Damage" 310 "Resources/Characters/empire/paladin/Aliases\Damage01.alias" " 100";
+event2 "snd_Damage" 310 "Resources/Characters/empire/paladin/Aliases\Damage02.alias" " 100";
+event2 "snd_Damage" 350 "Resources/Characters/empire/paladin/Aliases\Damage03.alias" " 100";
+event2 "snd_Damage" 355 "Resources/Characters/empire/paladin/Aliases\Damage08.alias" " 100";
+event2 "snd_Damage" 370 "Resources/Characters/empire/paladin/Aliases\Damage09.alias" " 80";
+event2 "snd_Damage" 323 "Resources/Characters/empire/paladin/Aliases\Damage10.alias" " 100";
+event2 "snd_Damage" 334 "Resources/Characters/empire/paladin/Aliases\Damage11.alias" " 70";
+event2 "snd_Damage" 355 "resources\characters\empire\paladin\Aliases\gravel.alias" " 100";
+event2 "snd_Damage" 370 "resources\characters\empire\paladin\Aliases\gravel_2.alias" " 100";
+event2 "snd_Damage" 323 "resources\characters\empire\paladin\Aliases\gravel.alias" " 100";
+event2 "snd_Damage" 334 "resources\characters\empire\paladin\Aliases\gravel_2.alias" " 100";
+link "Idle" 1; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\empire\paladin\character_empire_paladin.g";
+}
+state "Death"
+{
+file "resources\characters\empire\paladin\character_empire_paladin_baseanims.a";
+frame0 382;
+frame1 454;
+fps 30.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 382 "Resources/Characters/empire/paladin/Aliases\Death00.alias" " 100";
+event2 "snd_Die" 382 "resources\characters\empire\paladin\Aliases\horse_death.alias" " 100";
+event2 "snd_Die" 395 "Resources/Characters/empire/paladin/Aliases\Death01.alias" " 80";
+event2 "snd_Die" 418 "Resources/Characters/empire/paladin/Aliases\Death02.alias" " 70";
+event2 "snd_Die" 395 "resources\characters\empire\paladin\Aliases\gravel.alias" " 100";
+event2 "snd_Die" 418 "resources\characters\empire\paladin\Aliases\gravel.alias" " 100";
+meshfile "resources\characters\empire\paladin\character_empire_paladin.g";
+}
+state "Run"
+{
+file "resources\characters\empire\paladin\character_empire_paladin_baseanims.a";
+frame0 464;
+frame1 504;
+fps 30.000000;
+priority 256;
+flags 1;
+event2 "snd_Step" 471 "Resources/Characters/empire/paladin/Aliases\Run00.alias" " 100";
+event2 "snd_Step" 491 "Resources/Characters/empire/paladin/Aliases\Run00.alias" " 100";
+event2 "snd_Step" 478 "resources\characters\empire\paladin\Aliases\plate.alias" " 70";
+event2 "snd_Step" 498 "resources\characters\empire\paladin\Aliases\plate.alias" " 60";
+event2 "snd_Step" 471 "resources\characters\empire\paladin\Aliases\gravel.alias" " 100";
+event2 "snd_Step" 473 "resources\characters\empire\paladin\Aliases\gravel_2.alias" " 100";
+event2 "snd_Step" 477 "resources\characters\empire\paladin\Aliases\gravel.alias" " 100";
+event2 "snd_Step" 479 "resources\characters\empire\paladin\Aliases\gravel_2.alias" " 100";
+event2 "snd_Step" 491 "resources\characters\empire\paladin\Aliases\gravel_2.alias" " 100";
+event2 "snd_Step" 493 "resources\characters\empire\paladin\Aliases\gravel.alias" " 100";
+event2 "snd_Step" 495 "resources\characters\empire\paladin\Aliases\gravel.alias" " 100";
+event2 "snd_Step" 499 "resources\characters\empire\paladin\Aliases\gravel.alias" " 100";
+link "Idle" 0; blend 10;
+gaestate "Idle";
+meshfile "resources\characters\empire\paladin\character_empire_paladin.g";
+}

@@ -1,0 +1,86 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\empire\imperialknight\character_empire_imperialknight_baseanims.a";
+frame0 1;
+frame1 45;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 0;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 4;
+meshfile "resources\characters\empire\imperialknight\character_empire_imperialknight.g";
+}
+state "Attack"
+{
+file "resources\characters\empire\imperialknight\character_empire_imperialknight_baseanims.a";
+frame0 45;
+frame1 104;
+fps 16.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 50 "Resources/Characters/empire/imperialknight/Aliases\Attack00.alias" " 100";
+event2 "snd_Attack" 74 "Resources/Characters/empire/imperialknight/Aliases\Attack01.alias" " 100";
+event2 "snd_Attack" 45 "resources\characters\empire\imperialknight\Aliases\horse_attack.alias" " 90";
+event2 "snd_Attack" 52 "Resources/Characters/empire/imperialknight/Aliases\Attack02.alias" " 100";
+event2 "snd_Attack" 77 "Resources/Characters/empire/imperialknight/Aliases\Attack03.alias" " 100";
+event2 "snd_Attack" 87 "Resources/Characters/empire/imperialknight/Aliases\Attack04.alias" " 100";
+event2 "snd_Attack" 78 "Resources/Characters/empire/imperialknight/Aliases\Attack05.alias" " 100";
+event2 "snd_Attack" 76 "Resources/Characters/empire/imperialknight/Aliases\Attack06.alias" " 100";
+event2 "snd_Attack" 76 "Resources/Characters/empire/imperialknight/Aliases\Attack07.alias" " 100";
+event2 "Strike" 77 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\empire\imperialknight\character_empire_imperialknight.g";
+}
+state "Damage"
+{
+file "resources\characters\empire\imperialknight\character_empire_imperialknight_baseanims.a";
+frame0 104;
+frame1 140;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 104 "Resources/Characters/empire/imperialknight/Aliases\Damage00.alias" " 100";
+event2 "snd_Damage" 104 "resources\characters\empire\imperialknight\Aliases\horse_damage.alias" " 80";
+event2 "snd_Damage" 104 "Resources/Characters/empire/imperialknight/Aliases\Damage01.alias" " 100";
+event2 "snd_Damage" 104 "Resources/Characters/empire/imperialknight/Aliases\Damage02.alias" " 70";
+event2 "snd_Damage" 111 "Resources/Characters/empire/imperialknight/Aliases\Damage03.alias" " 100";
+event2 "snd_Damage" 116 "Resources/Characters/empire/imperialknight/Aliases\Damage04.alias" " 100";
+event2 "snd_Damage" 126 "Resources/Characters/empire/imperialknight/Aliases\Damage05.alias" " 100";
+event2 "snd_Damage" 134 "Resources/Characters/empire/imperialknight/Aliases\Damage03.alias" " 100";
+link "Idle" 1; blend 0;
+link "Run" 0; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\empire\imperialknight\character_empire_imperialknight.g";
+}
+state "Death"
+{
+file "resources\characters\empire\imperialknight\character_empire_imperialknight_baseanims.a";
+frame0 140;
+frame1 176;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 140 "Resources/Characters/empire/imperialknight/Aliases\Death00.alias" " 100";
+event2 "snd_Die" 140 "resources\characters\empire\imperialknight\Aliases\horse_death.alias" " 90";
+meshfile "resources\characters\empire\imperialknight\character_empire_imperialknight.g";
+}
+state "Run"
+{
+file "resources\characters\empire\imperialknight\character_empire_imperialknight_baseanims.a";
+frame0 176;
+frame1 185;
+fps 15.000000;
+priority 256;
+flags 1;
+event2 "snd_Step" 181 "resources\characters\empire\imperialknight\Aliases\gravel.alias" " 100";
+event2 "snd_Step" 184 "resources\characters\empire\imperialknight\Aliases\gravel_2.alias" " 100";
+event2 "snd_Step" 180 "Resources/Characters/empire/imperialknight/Aliases\Run00.alias" " 100";
+event2 "snd_Step" 179 "Resources/Characters/empire/imperialknight/Aliases\Run01.alias" " 50";
+link "Idle" 0; blend 5;
+gaestate "Idle";
+meshfile "resources\characters\empire\imperialknight\character_empire_imperialknight.g";
+}

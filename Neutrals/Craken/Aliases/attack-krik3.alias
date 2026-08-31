@@ -1,0 +1,6 @@
+alias "Attack-Krik3" {
+	sound 100, "$(Sounds)/neutrals_craken/attack-krick-11.wav", 100, 3;
+	sound 100, "$(Sounds)/neutrals_craken/attack-krick-111.wav", 100, 3;
+	sound 100, "$(Sounds)/neutrals_craken/attack-krick-1111.wav", 100, 3;
+	sound 100, "$(Sounds)/neutrals_craken/attack-krick-11111.wav", 100, 3;
+}

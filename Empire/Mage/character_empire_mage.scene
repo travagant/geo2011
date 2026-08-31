@@ -1,0 +1,172 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 30000.000000;
+	nearplane 0.100000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera -0.712629,2.219903,-2.165617,0.504751,0.919061,0.524233,0.504751,0.919061,0.524233,-0.712629,2.219903,-2.165617,0.415000,0.425000,0.000000,3.226376;
+}
+
+group "Scene Root" 
+{
+	uid 93 26878012
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.010000,-0.010000,-0.010000,0.010000,0.010000,0.010000
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_empire_mage" 
+{
+	uid 94 26684972
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 1048576
+	file "resources\characters\empire\mage\character_empire_mage.ac"
+	plvl 512
+	child gobj "empire_mage" 
+{
+	uid 102 186803852
+	dwflags 1053761
+	tech "model2x"
+	bonesuid 94 26684972
+	mesh_lods 1
+	"resources\characters\empire\mage\character_empire_mage.g" 0 0.000000
+	coords -0.000042,0.892570,-0.043047,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "341935184"
+	attr "dwParent" "53966752"
+	attr "tech" "model2x"
+	attr "name" "empire_mage"
+	attr "groupname" "Scene Root"
+	attr "techname" "model2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_mage.tga"
+	attr "material0_triangles_num" "3015"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "2269"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "24"
+}
+
+	child gobj "empire_mage_skirt" 
+{
+	uid 110 172934740
+	dwflags 1055809
+	tech "model2x"
+	bonesuid 94 26684972
+	mesh_lods 1
+	"resources\characters\empire\mage\character_empire_mage.g" 1 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "342015152"
+	attr "dwParent" "53966752"
+	attr "tech" "model2x"
+	attr "morph" "1"
+	attr "twosided" "1"
+	attr "name" "empire_mage_skirt"
+	attr "groupname" "Scene Root"
+	attr "techname" "model2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_mage.tga"
+	attr "material0_triangles_num" "280"
+	attr "morph_track" "1"
+}
+
+	child gobj "empire_mage_cloack" 
+{
+	uid 117 185894476
+	dwflags 1055809
+	tech "model2x"
+	bonesuid 94 26684972
+	mesh_lods 1
+	"resources\characters\empire\mage\character_empire_mage.g" 2 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "342074320"
+	attr "dwParent" "53966752"
+	attr "tech" "model2x"
+	attr "morph" "1"
+	attr "twosided" "1"
+	attr "name" "empire_mage_cloack"
+	attr "groupname" "Scene Root"
+	attr "techname" "model2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_mage.tga"
+	attr "material0_triangles_num" "208"
+	attr "morph_track" "1"
+}
+
+	child gobj "empire_mage_L_glove" 
+{
+	uid 124 186236956
+	dwflags 1053761
+	tech "model2x"
+	bonesuid 94 26684972
+	mesh_lods 1
+	"resources\characters\empire\mage\character_empire_mage.g" 3 0.000000
+	coords 0.507111,1.161946,0.007650,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "314468768"
+	attr "dwParent" "53966752"
+	attr "tech" "model2x"
+	attr "name" "empire_mage_L_glove"
+	attr "groupname" "Scene Root"
+	attr "techname" "model2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_mage.tga"
+	attr "material0_triangles_num" "562"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "374"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "12"
+}
+
+	child gobj "empire_mage_R_glove" 
+{
+	uid 131 185952452
+	dwflags 1053761
+	tech "model2x"
+	bonesuid 94 26684972
+	mesh_lods 1
+	"resources\characters\empire\mage\character_empire_mage.g" 4 0.000000
+	coords -0.507111,1.161946,0.007650,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "314330288"
+	attr "dwParent" "53966752"
+	attr "tech" "model2x"
+	attr "name" "empire_mage_R_glove"
+	attr "groupname" "Scene Root"
+	attr "techname" "model2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_mage.tga"
+	attr "material0_triangles_num" "554"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "372"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "12"
+}
+
+}
+
+}
+

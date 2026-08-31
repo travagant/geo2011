@@ -1,0 +1,82 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\empire\knight\character_empire_knight_baseanims.a";
+frame0 1;
+frame1 64;
+fps 13.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 0;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 3;
+meshfile "resources\characters\empire\knight\character_empire_knight.g";
+}
+state "Attack"
+{
+file "resources\characters\empire\knight\character_empire_knight_baseanims.a";
+frame0 64;
+frame1 120;
+fps 23.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 64 "Resources/Characters/empire/knight/Aliases\Attack00.alias" " 100";
+event2 "snd_Attack" 81 "Resources/Characters/empire/knight/Aliases\Attack01.alias" " 100";
+event2 "snd_Attack" 81 "Resources/Characters/empire/knight/Aliases\Attack02.alias" " 100";
+event2 "snd_Attack" 93 "Resources/Characters/empire/knight/Aliases\Attack03.alias" " 80";
+event2 "snd_Attack" 81 "Resources/Characters/empire/knight/Aliases\Attack04.alias" " 100";
+event2 "snd_Attack" 69 "Resources/Characters/empire/knight/Aliases\Attack05.alias" " 100";
+event2 "Strike" 83 "" "";
+event2 "trail_start" 76 "" "";
+event2 "trail_end" 86 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\empire\knight\character_empire_knight.g";
+}
+state "Damage"
+{
+file "resources\characters\empire\knight\character_empire_knight_baseanims.a";
+frame0 120;
+frame1 160;
+fps 18.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 120 "Resources/Characters/empire/knight/Aliases\Damage00.alias" " 100";
+event2 "snd_Damage" 120 "Resources/Characters/empire/knight/Aliases\Damage01.alias" " 100";
+event2 "snd_Damage" 124 "Resources/Characters/empire/knight/Aliases\Damage02.alias" " 100";
+event2 "snd_Damage" 133 "resources\characters\empire\knight\Aliases\gravel.alias" " 100";
+event2 "snd_Damage" 141 "resources\characters\empire\knight\Aliases\gravel_2.alias" " 100";
+link "Idle" 1; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\empire\knight\character_empire_knight.g";
+}
+state "Death"
+{
+file "resources\characters\empire\knight\character_empire_knight_baseanims.a";
+frame0 160;
+frame1 220;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 160 "Resources/Characters/empire/knight/Aliases\Death00.alias" " 100";
+event2 "snd_Die" 160 "Resources/Characters/empire/knight/Aliases\Death01.alias" " 100";
+meshfile "resources\characters\empire\knight\character_empire_knight.g";
+}
+state "Run"
+{
+file "resources\characters\empire\knight\character_empire_knight_baseanims.a";
+frame0 223;
+frame1 233;
+fps 15.000000;
+priority 256;
+flags 1;
+event2 "snd_Step" 229 "resources\characters\empire\knight\Aliases\gravel.alias" " 70";
+event2 "snd_Step" 223 "resources\characters\empire\knight\Aliases\gravel_2.alias" " 70";
+event2 "snd_Step" 223 "resources\characters\empire\knight\Aliases\human.alias" " 80";
+event2 "snd_Step" 229 "resources\characters\empire\knight\Aliases\human_2.alias" " 80";
+event2 "snd_Step" 225 "resources\characters\empire\knight\Aliases\plate.alias" " 60";
+link "Idle" 0; blend 4;
+gaestate "Idle";
+meshfile "resources\characters\empire\knight\character_empire_knight.g";
+}

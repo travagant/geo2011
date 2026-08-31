@@ -1,0 +1,87 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 30000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera 1.078804,16.829418,-10.752060,0.000000,0.000000,0.000000,0.000000,0.000000,0.000000,1.078805,16.829420,-10.752060,1.000000,-0.100000,0.000000,20.000000;
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 49 28569392
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.100000,-0.100000,-0.100000,0.100000,0.100000,0.100000
+	dwflags 1
+	plvl 512
+	child bones "character_empire_leader-ranger" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 95 36789472
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 512
+	file "resources\characters\empire\leader-ranger\character_empire_leader-ranger.ac"
+	plvl 512
+	child gobj "BaseMesh" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 94 28963856
+	dwflags 5184
+	tech "model"
+	bonesuid 95 36789472
+	mesh_lods 1
+	"resources\characters\empire\leader-ranger\character_empire_leader-ranger.g" 0 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\default.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "456596656"
+	attr "dwParent" "53704736"
+	attr "name" "BaseMesh"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "4"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+	attr "material0_diffuse" "checker"
+	attr "material0_triangles_num" "2"
+}
+
+}
+
+}
+

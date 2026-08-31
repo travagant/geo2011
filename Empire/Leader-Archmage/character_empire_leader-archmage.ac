@@ -1,0 +1,85 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\empire\leader-archmage\character_empire_leader-archmage_baseanims.a";
+frame0 1;
+frame1 160;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 0;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 0;
+meshfile "resources\characters\empire\leader-archmage\character_empire_leader-archmage.g";
+}
+state "Attack"
+{
+file "resources\characters\empire\leader-archmage\character_empire_leader-archmage_baseanims.a";
+frame0 160;
+frame1 230;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 166 "Resources/Characters/empire/leader-archmage/Aliases\Attack00.alias" " 90";
+event2 "snd_Attack" 194 "Resources/Characters/empire/leader-archmage/Aliases\Attack01.alias" " 100";
+event2 "snd_Attack" 197 "Resources/Characters/empire/leader-archmage/Aliases\Attack02.alias" " 100";
+event2 "snd_Attack" 171 "Resources/Characters/empire/leader-archmage/Aliases\Attack03.alias" " 100";
+event2 "snd_Attack" 216 "Resources/Characters/empire/leader-archmage/Aliases\Attack04.alias" " 100";
+event2 "fxcast" 160 "" "";
+event2 "FxStrike" 200 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\empire\leader-archmage\character_empire_leader-archmage.g";
+}
+state "Damage"
+{
+file "resources\characters\empire\leader-archmage\character_empire_leader-archmage_baseanims.a";
+frame0 230;
+frame1 270;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 230 "Resources/Characters/empire/leader-archmage/Aliases\Damage00.alias" " 100";
+event2 "snd_Damage" 240 "resources\characters\empire\leader-archmage\Aliases\gravel.alias" " 70";
+event2 "snd_Damage" 240 "resources\characters\empire\leader-archmage\Aliases\human.alias" " 70";
+event2 "snd_Damage" 259 "resources\characters\empire\leader-archmage\Aliases\gravel_2.alias" " 70";
+event2 "snd_Damage" 259 "resources\characters\empire\leader-archmage\Aliases\human_2.alias" " 70";
+event2 "snd_Damage" 230 "Resources/Characters/empire/leader-archmage/Aliases\Damage01.alias" " 100";
+event2 "snd_Damage" 250 "Resources/Characters/empire/leader-archmage/Aliases\Damage02.alias" " 70";
+link "Idle" 1; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\empire\leader-archmage\character_empire_leader-archmage.g";
+}
+state "Death"
+{
+file "resources\characters\empire\leader-archmage\character_empire_leader-archmage_baseanims.a";
+frame0 270;
+frame1 299;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 270 "Resources/Characters/empire/leader-archmage/Aliases\Death00.alias" " 100";
+event2 "snd_Die" 279 "resources\characters\empire\leader-archmage\Aliases\human.alias" " 80";
+event2 "snd_Die" 279 "resources\characters\empire\leader-archmage\Aliases\gravel.alias" " 80";
+event2 "snd_Die" 272 "Resources/Characters/empire/leader-archmage/Aliases\Death01.alias" " 80";
+meshfile "resources\characters\empire\leader-archmage\character_empire_leader-archmage.g";
+}
+state "Run"
+{
+file "resources\characters\empire\leader-archmage\character_empire_leader-archmage_baseanims.a";
+frame0 301;
+frame1 312;
+fps 15.000000;
+priority 256;
+flags 1;
+event2 "snd_Step" 307 "resources\characters\empire\leader-archmage\Aliases\gravel.alias" " 80";
+event2 "snd_Step" 301 "resources\characters\empire\leader-archmage\Aliases\gravel_2.alias" " 70";
+event2 "snd_Step" 307 "resources\characters\empire\leader-archmage\Aliases\human.alias" " 70";
+event2 "snd_Step" 301 "resources\characters\empire\leader-archmage\Aliases\human_2.alias" " 70";
+event2 "snd_Step" 301 "Resources/Characters/empire/leader-archmage/Aliases\cloth.alias" " 80";
+event2 "snd_Step" 307 "Resources/Characters/empire/leader-archmage/Aliases\cloth.alias" " 70";
+link "Idle" 0; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\empire\leader-archmage\character_empire_leader-archmage.g";
+}

@@ -1,0 +1,64 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\empire\paladin\character_empire_paladin_baseanims_lod.a";
+frame0 1;
+frame1 190;
+fps 30.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 0;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 8;
+meshfile "resources\characters\empire\paladin\character_empire_paladin.g";
+}
+state "Attack"
+{
+file "resources\characters\empire\paladin\character_empire_paladin_baseanims_lod.a";
+frame0 190;
+frame1 310;
+fps 30.000000;
+priority 256;
+flags 0;
+event2 "Strike" 227 "" "";
+event2 "trail_start" 220 "" "";
+event2 "trail_end" 226 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\empire\paladin\character_empire_paladin.g";
+}
+state "Damage"
+{
+file "resources\characters\empire\paladin\character_empire_paladin_baseanims_lod.a";
+frame0 310;
+frame1 382;
+fps 30.000000;
+priority 256;
+flags 0;
+link "Idle" 1; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\empire\paladin\character_empire_paladin.g";
+}
+state "Death"
+{
+file "resources\characters\empire\paladin\character_empire_paladin_baseanims_lod.a";
+frame0 382;
+frame1 454;
+fps 30.000000;
+priority 256;
+flags 0;
+meshfile "resources\characters\empire\paladin\character_empire_paladin.g";
+}
+state "Run"
+{
+file "resources\characters\empire\paladin\character_empire_paladin_baseanims_lod.a";
+frame0 464;
+frame1 504;
+fps 30.000000;
+priority 256;
+flags 1;
+link "Idle" 0; blend 10;
+gaestate "Idle";
+meshfile "resources\characters\empire\paladin\character_empire_paladin.g";
+}

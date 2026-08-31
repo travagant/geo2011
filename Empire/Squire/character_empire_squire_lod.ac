@@ -1,0 +1,64 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\empire\squire\character_empire_squire_iadd_lod.a";
+frame0 1;
+frame1 47;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 0;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 0;
+meshfile "resources\characters\empire\squire\character_empire_squire.g";
+}
+state "Attack"
+{
+file "resources\characters\empire\squire\character_empire_squire_iadd_lod.a";
+frame0 47;
+frame1 92;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "Strike" 65 "" "";
+event2 "trail_start" 63 "" "";
+event2 "trail_end" 64 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\empire\squire\character_empire_squire.g";
+}
+state "Damage"
+{
+file "resources\characters\empire\squire\character_empire_squire_iadd_lod.a";
+frame0 94;
+frame1 125;
+fps 15.000000;
+priority 256;
+flags 0;
+link "Idle" 1; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\empire\squire\character_empire_squire.g";
+}
+state "Death"
+{
+file "resources\characters\empire\squire\character_empire_squire_iadd_lod.a";
+frame0 125;
+frame1 169;
+fps 15.000000;
+priority 256;
+flags 0;
+meshfile "resources\characters\empire\squire\character_empire_squire.g";
+}
+state "Run"
+{
+file "resources\characters\empire\squire\character_empire_squire_run_lod.a";
+frame0 0;
+frame1 9;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Idle" 0; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\empire\squire\character_empire_squire.g";
+}

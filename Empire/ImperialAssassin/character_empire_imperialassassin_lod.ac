@@ -1,0 +1,77 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\empire\imperialassassin\character_empire_imperialassassin_baseanims_lod.a";
+frame0 1;
+frame1 72;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 0;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 4;
+meshfile "resources\characters\empire\imperialassassin\character_empire_imperialassassin.g";
+}
+state "Attack"
+{
+file "resources\characters\empire\imperialassassin\character_empire_imperialassassin_baseanims_lod.a";
+frame0 65;
+frame1 132;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "Strike" 99 "" "";
+event2 "trail_start" 95 "" "";
+event2 "trail_end" 99 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\empire\imperialassassin\character_empire_imperialassassin.g";
+}
+state "Damage"
+{
+file "resources\characters\empire\imperialassassin\character_empire_imperialassassin_baseanims_lod.a";
+frame0 180;
+frame1 216;
+fps 15.000000;
+priority 256;
+flags 0;
+link "Idle" 1; blend 0;
+link "Run" 1; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\empire\imperialassassin\character_empire_imperialassassin.g";
+}
+state "Death"
+{
+file "resources\characters\empire\imperialassassin\character_empire_imperialassassin_baseanims_lod.a";
+frame0 216;
+frame1 240;
+fps 15.000000;
+priority 256;
+flags 0;
+meshfile "resources\characters\empire\imperialassassin\character_empire_imperialassassin.g";
+}
+state "Run"
+{
+file "resources\characters\empire\imperialassassin\character_empire_imperialassassin_baseanims_lod.a";
+frame0 244;
+frame1 264;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Idle" 0; blend 4;
+gaestate "Idle";
+meshfile "resources\characters\empire\imperialassassin\character_empire_imperialassassin.g";
+}
+state "Attack2"
+{
+file "resources\characters\empire\imperialassassin\character_empire_imperialassassin_baseanims_lod.a";
+frame0 132;
+frame1 180;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "Strike" 154 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\empire\imperialassassin\character_empire_imperialassassin.g";
+}

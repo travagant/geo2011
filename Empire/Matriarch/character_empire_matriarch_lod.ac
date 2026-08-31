@@ -1,0 +1,64 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\empire\matriarch\character_empire_matriarch_baseanims_lod.a";
+frame0 1;
+frame1 100;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 0;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 4;
+meshfile "resources\characters\empire\matriarch\character_empire_matriarch.g";
+}
+state "Attack"
+{
+file "resources\characters\empire\matriarch\character_empire_matriarch_baseanims_lod.a";
+frame0 100;
+frame1 152;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "FxStrike" 120 "" "";
+event2 "fxcast" 100 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\empire\matriarch\character_empire_matriarch.g";
+}
+state "Damage"
+{
+file "resources\characters\empire\matriarch\character_empire_matriarch_baseanims_lod.a";
+frame0 152;
+frame1 195;
+fps 15.000000;
+priority 256;
+flags 0;
+link "Idle" 1; blend 0;
+link "Run" 0; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\empire\matriarch\character_empire_matriarch.g";
+}
+state "Death"
+{
+file "resources\characters\empire\matriarch\character_empire_matriarch_baseanims_lod.a";
+frame0 195;
+frame1 243;
+fps 15.000000;
+priority 256;
+flags 0;
+meshfile "resources\characters\empire\matriarch\character_empire_matriarch.g";
+}
+state "Run"
+{
+file "resources\characters\empire\matriarch\character_empire_matriarch_baseanims_lod.a";
+frame0 257;
+frame1 268;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Idle" 0; blend 4;
+gaestate "Idle";
+meshfile "resources\characters\empire\matriarch\character_empire_matriarch.g";
+}

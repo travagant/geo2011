@@ -1,0 +1,103 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\neutrals\kingsguard\character_neutrals_kingsguard_baseanims.a";
+frame0 1;
+frame1 80;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 3;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 3;
+meshfile "resources\characters\neutrals\kingsguard\character_neutrals_kingsguard.g";
+}
+state "Attack"
+{
+file "resources\characters\neutrals\kingsguard\character_neutrals_kingsguard_baseanims.a";
+frame0 80;
+frame1 128;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 80 "Resources/Characters/neutrals/kingsguard/Aliases\Attack00.alias" " 100";
+event2 "snd_Attack" 96 "Resources/Characters/neutrals/kingsguard/Aliases\Attack01.alias" " 100";
+event2 "snd_Attack" 103 "resources\characters\neutrals\kingsguard\Aliases\gravel.alias" " 100";
+event2 "snd_Attack" 103 "resources\characters\neutrals\kingsguard\Aliases\human.alias" " 100";
+event2 "snd_Attack" 103 "resources\characters\neutrals\kingsguard\Aliases\medium_creature_2.alias" " 90";
+event2 "snd_Attack" 117 "resources\characters\neutrals\kingsguard\Aliases\gravel_2.alias" " 100";
+event2 "snd_Attack" 117 "resources\characters\neutrals\kingsguard\Aliases\human.alias" " 100";
+event2 "snd_Attack" 117 "resources\characters\neutrals\kingsguard\Aliases\medium_creature.alias" " 80";
+event2 "snd_Attack" 123 "resources\characters\neutrals\kingsguard\Aliases\gravel.alias" " 80";
+event2 "snd_Attack" 127 "resources\characters\neutrals\kingsguard\Aliases\gravel_2.alias" " 80";
+event2 "snd_Attack" 90 "resources\characters\neutrals\kingsguard\Aliases\gravel.alias" " 50";
+event2 "snd_Attack" 101 "Resources/Characters/neutrals/kingsguard/Aliases\Attack02.alias" " 100";
+event2 "snd_Attack" 100 "resources\characters\neutrals\kingsguard\Aliases\swoosh_01.alias" " 100";
+event2 "snd_Attack" 107 "Resources/Characters/neutrals/kingsguard/Aliases\Attack03.alias" " 100";
+event2 "Strike" 102 "" "";
+event2 "trail_start" 95 "" "";
+event2 "trail_end" 100 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\neutrals\kingsguard\character_neutrals_kingsguard.g";
+}
+state "Damage"
+{
+file "resources\characters\neutrals\kingsguard\character_neutrals_kingsguard_baseanims.a";
+frame0 128;
+frame1 150;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 128 "Resources/Characters/neutrals/kingsguard/Aliases\Damage00.alias" " 100";
+event2 "snd_Damage" 136 "resources\characters\neutrals\kingsguard\Aliases\medium_creature.alias" " 70";
+event2 "snd_Damage" 136 "resources\characters\neutrals\kingsguard\Aliases\human_2.alias" " 80";
+event2 "snd_Damage" 136 "resources\characters\neutrals\kingsguard\Aliases\gravel_2.alias" " 100";
+event2 "snd_Damage" 143 "resources\characters\neutrals\kingsguard\Aliases\gravel.alias" " 50";
+event2 "snd_Damage" 138 "Resources/Characters/neutrals/kingsguard/Aliases\Damage01.alias" " 60";
+link "Idle" 1; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\kingsguard\character_neutrals_kingsguard.g";
+}
+state "Death"
+{
+file "resources\characters\neutrals\kingsguard\character_neutrals_kingsguard_baseanims.a";
+frame0 150;
+frame1 181;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 150 "Resources/Characters/neutrals/kingsguard/Aliases\Death00.alias" " 100";
+event2 "snd_Die" 160 "Resources/Characters/neutrals/kingsguard/Aliases\Death01.alias" " 100";
+event2 "snd_Die" 172 "Resources/Characters/neutrals/kingsguard/Aliases\Death02.alias" " 100";
+meshfile "resources\characters\neutrals\kingsguard\character_neutrals_kingsguard.g";
+}
+state "Run"
+{
+file "resources\characters\neutrals\kingsguard\character_neutrals_kingsguard_baseanims.a";
+frame0 184;
+frame1 213;
+fps 15.000000;
+priority 256;
+flags 1;
+event2 "snd_Step" 190 "resources\characters\neutrals\kingsguard\Aliases\human.alias" " 80";
+event2 "snd_Step" 190 "resources\characters\neutrals\kingsguard\Aliases\medium_creature.alias" " 70";
+event2 "snd_Step" 190 "resources\characters\neutrals\kingsguard\Aliases\gravel.alias" " 100";
+event2 "snd_Step" 198 "resources\characters\neutrals\kingsguard\Aliases\gravel_2.alias" " 70";
+event2 "snd_Step" 198 "resources\characters\neutrals\kingsguard\Aliases\human_2.alias" " 80";
+event2 "snd_Step" 198 "resources\characters\neutrals\kingsguard\Aliases\medium_creature_2.alias" " 80";
+event2 "snd_Step" 205 "resources\characters\neutrals\kingsguard\Aliases\human.alias" " 100";
+event2 "snd_Step" 205 "resources\characters\neutrals\kingsguard\Aliases\medium_creature.alias" " 70";
+event2 "snd_Step" 205 "resources\characters\neutrals\kingsguard\Aliases\gravel.alias" " 90";
+event2 "snd_Step" 213 "resources\characters\neutrals\kingsguard\Aliases\gravel_2.alias" " 70";
+event2 "snd_Step" 213 "resources\characters\neutrals\kingsguard\Aliases\human_2.alias" " 80";
+event2 "snd_Step" 213 "resources\characters\neutrals\kingsguard\Aliases\medium_creature_2.alias" " 90";
+event2 "snd_Step" 186 "resources\characters\neutrals\kingsguard\Aliases\cloth.alias" " 60";
+event2 "snd_Step" 194 "resources\characters\neutrals\kingsguard\Aliases\cloth.alias" " 60";
+event2 "snd_Step" 202 "resources\characters\neutrals\kingsguard\Aliases\cloth.alias" " 60";
+event2 "snd_Step" 209 "resources\characters\neutrals\kingsguard\Aliases\cloth.alias" " 60";
+link "Idle" 0; blend 3;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\kingsguard\character_neutrals_kingsguard.g";
+}

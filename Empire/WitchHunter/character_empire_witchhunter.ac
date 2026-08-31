@@ -1,0 +1,107 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\empire\witchhunter\character_empire_witchhunter_baseanims.a";
+frame0 1;
+frame1 138;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 2;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 3;
+meshfile "resources\characters\empire\witchhunter\character_empire_witchhunter.g";
+}
+state "Attack"
+{
+file "resources\characters\empire\witchhunter\character_empire_witchhunter_baseanims.a";
+frame0 138;
+frame1 174;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 143 "Resources/Characters/empire/witchhunter/Aliases\Attack00.alias" " 100";
+event2 "snd_Attack" 150 "Resources/Characters/empire/witchhunter/Aliases\Attack01.alias" " 100";
+event2 "snd_Attack" 143 "Resources/Characters/empire/witchhunter/Aliases\Attack02.alias" " 100";
+event2 "snd_Attack" 167 "Resources/Characters/empire/witchhunter/Aliases\Attack03.alias" " 60";
+event2 "snd_Attack" 138 "Resources/Characters/empire/witchhunter/Aliases\Attack04.alias" " 100";
+event2 "snd_Attack" 148 "resources\characters\empire\witchhunter\Aliases\gravel.alias" " 70";
+event2 "snd_Attack" 148 "resources\characters\empire\witchhunter\Aliases\human.alias" " 70";
+event2 "snd_Attack" 159 "resources\characters\empire\witchhunter\Aliases\gravel_2.alias" " 70";
+event2 "snd_Attack" 167 "resources\characters\empire\witchhunter\Aliases\gravel_2.alias" " 70";
+event2 "snd_Attack" 167 "resources\characters\empire\witchhunter\Aliases\human_2.alias" " 60";
+event2 "snd_Attack" 150 "Resources/Characters/empire/witchhunter/Aliases\Attack05.alias" " 100";
+event2 "snd_Attack" 143 "Resources/Characters/empire/witchhunter/Aliases\Attack06.alias" " 100";
+event2 "snd_Attack" 149 "Resources/Characters/empire/witchhunter/Aliases\Attack07.alias" " 100";
+event2 "Strike" 145 "" "";
+event2 "Strike" 153 "" "";
+event2 "trail_start" 141 "" "";
+event2 "trail_end" 147 "" "";
+event2 "trail_start" 147 "" "";
+event2 "trail_end" 159 "" "";
+event2 "fxcast" 138 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\empire\witchhunter\character_empire_witchhunter.g";
+}
+state "Damage"
+{
+file "resources\characters\empire\witchhunter\character_empire_witchhunter_baseanims.a";
+frame0 174;
+frame1 200;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 174 "Resources/Characters/empire/witchhunter/Aliases\Damage00.alias" " 100";
+event2 "snd_Damage" 188 "Resources/Characters/empire/witchhunter/Aliases\Damage01.alias" " 100";
+event2 "snd_Damage" 176 "Resources/Characters/empire/witchhunter/Aliases\Damage02.alias" " 100";
+event2 "snd_Damage" 181 "resources\characters\empire\witchhunter\Aliases\gravel.alias" " 70";
+event2 "snd_Damage" 197 "resources\characters\empire\witchhunter\Aliases\gravel_2.alias" " 60";
+link "Idle" 1; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\empire\witchhunter\character_empire_witchhunter.g";
+}
+state "Death"
+{
+file "resources\characters\empire\witchhunter\character_empire_witchhunter_baseanims.a";
+frame0 200;
+frame1 240;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 200 "Resources/Characters/empire/witchhunter/Aliases\Death00.alias" " 100";
+event2 "snd_Die" 228 "Resources/Characters/empire/witchhunter/Aliases\Death01.alias" " 80";
+event2 "snd_Die" 208 "resources\characters\empire\witchhunter\Aliases\gravel.alias" " 70";
+event2 "snd_Die" 208 "resources\characters\empire\witchhunter\Aliases\human.alias" " 70";
+event2 "snd_Die" 231 "resources\characters\empire\witchhunter\Aliases\human_2.alias" " 100";
+event2 "snd_Die" 231 "resources\characters\empire\witchhunter\Aliases\gravel_2.alias" " 100";
+event2 "snd_Die" 203 "Resources/Characters/empire/witchhunter/Aliases\Death02.alias" " 100";
+event2 "snd_Die" 225 "Resources/Characters/empire/witchhunter/Aliases\Death03.alias" " 100";
+event2 "snd_Die" 230 "Resources/Characters/empire/witchhunter/Aliases\Death04.alias" " 80";
+meshfile "resources\characters\empire\witchhunter\character_empire_witchhunter.g";
+}
+state "Run"
+{
+file "resources\characters\empire\witchhunter\character_empire_witchhunter_baseanims.a";
+frame0 246;
+frame1 265;
+fps 15.000000;
+priority 256;
+flags 1;
+event2 "snd_Step" 250 "resources\characters\empire\witchhunter\Aliases\gravel.alias" " 70";
+event2 "snd_Step" 250 "resources\characters\empire\witchhunter\Aliases\human.alias" " 70";
+event2 "snd_Step" 255 "resources\characters\empire\witchhunter\Aliases\gravel_2.alias" " 60";
+event2 "snd_Step" 255 "resources\characters\empire\witchhunter\Aliases\human_2.alias" " 60";
+event2 "snd_Step" 260 "resources\characters\empire\witchhunter\Aliases\gravel.alias" " 60";
+event2 "snd_Step" 260 "resources\characters\empire\witchhunter\Aliases\human.alias" " 60";
+event2 "snd_Step" 265 "resources\characters\empire\witchhunter\Aliases\gravel_2.alias" " 70";
+event2 "snd_Step" 265 "resources\characters\empire\witchhunter\Aliases\human_2.alias" " 65";
+event2 "snd_Step" 247 "resources\characters\empire\witchhunter\Aliases\cloth.alias" " 50";
+event2 "snd_Step" 251 "resources\characters\empire\witchhunter\Aliases\cloth.alias" " 50";
+event2 "snd_Step" 256 "resources\characters\empire\witchhunter\Aliases\cloth.alias" " 50";
+event2 "snd_Step" 262 "resources\characters\empire\witchhunter\Aliases\cloth.alias" " 50";
+link "Idle" 0; blend 3;
+gaestate "Idle";
+meshfile "resources\characters\empire\witchhunter\character_empire_witchhunter.g";
+}

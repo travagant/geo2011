@@ -1,0 +1,95 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\neutrals\darkservant\character_neutrals_darkservant_iadd.a";
+frame0 1;
+frame1 20;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 4;
+link "Damage" 0; blend 2;
+link "Death" 0; blend 2;
+link "Run" 0; blend 4;
+meshfile "resources\characters\neutrals\darkservant\character_neutrals_darkservant.g";
+}
+state "Attack"
+{
+file "resources\characters\neutrals\darkservant\character_neutrals_darkservant_iadd.a";
+frame0 20;
+frame1 70;
+fps 18.000000;
+priority 256;
+flags 0;
+event2 "snd_Attack" 33 "resources\characters\neutrals\darkservant\Aliases\darkservant_attack_1.alias" " 100";
+event2 "snd_Attack" 48 "resources\characters\neutrals\darkservant\Aliases\darkservant_attack_2.alias" " 100";
+event2 "snd_Attack" 57 "Resources/Characters/neutrals/darkservant/Aliases\Attack00.alias" " 100";
+event2 "snd_Attack" 35 "Resources/Characters/neutrals/darkservant/Aliases\Attack01.alias" " 80";
+event2 "snd_Attack" 50 "Resources/Characters/neutrals/darkservant/Aliases\Attack02.alias" " 80";
+event2 "snd_Attack" 36 "resources\characters\neutrals\darkservant\Aliases\swoosh_01.alias" " 100";
+event2 "snd_Attack" 52 "resources\characters\neutrals\darkservant\Aliases\swoosh_01.alias" " 100";
+event2 "snd_Attack" 37 "Resources/Characters/neutrals/darkservant/Aliases\Attack03.alias" " 90";
+event2 "snd_Attack" 50 "Resources/Characters/neutrals/darkservant/Aliases\Attack04.alias" " 80";
+event2 "Strike" 38 "" "";
+event2 "trail_start" 33 "" "";
+event2 "trail_end" 41 "" "";
+event2 "Strike" 51 "" "";
+event2 "trail_start" 47 "" "";
+event2 "trail_end" 55 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\neutrals\darkservant\character_neutrals_darkservant.g";
+}
+state "Damage"
+{
+file "resources\characters\neutrals\darkservant\character_neutrals_darkservant_iadd.a";
+frame0 70;
+frame1 85;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Damage" 70 "resources\characters\neutrals\darkservant\Aliases\darkservant_damage.alias" " 100";
+event2 "snd_Damage" 70 "Resources/Characters/neutrals/darkservant/Aliases\Damage00.alias" " 100";
+event2 "snd_Damage" 70 "Resources/Characters/neutrals/darkservant/Aliases\Damage01.alias" " 100";
+link "Idle" 1; blend 0;
+link "Run" 0; blend 0;
+link "Damage" 0; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\darkservant\character_neutrals_darkservant.g";
+}
+state "Death"
+{
+file "resources\characters\neutrals\darkservant\character_neutrals_darkservant_iadd.a";
+frame0 85;
+frame1 130;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "snd_Die" 85 "resources\characters\neutrals\darkservant\Aliases\darkservant_death.alias" " 100";
+event2 "snd_Die" 85 "Resources/Characters/neutrals/darkservant/Aliases\Death00.alias" " 100";
+meshfile "resources\characters\neutrals\darkservant\character_neutrals_darkservant.g";
+}
+state "Run"
+{
+file "resources\characters\neutrals\darkservant\character_neutrals_darkservant_run.a";
+frame0 1;
+frame1 20;
+fps 15.000000;
+priority 256;
+flags 1;
+event2 "snd_Step" 6 "resources\characters\neutrals\darkservant\Aliases\human.alias" " 70";
+event2 "snd_Step" 11 "resources\characters\neutrals\darkservant\Aliases\human_2.alias" " 50";
+event2 "snd_Step" 16 "resources\characters\neutrals\darkservant\Aliases\human.alias" " 72";
+event2 "snd_Step" 1 "resources\characters\neutrals\darkservant\Aliases\human_2.alias" " 60";
+event2 "snd_Step" 6 "resources\characters\neutrals\darkservant\Aliases\gravel.alias" " 50";
+event2 "snd_Step" 11 "resources\characters\neutrals\darkservant\Aliases\gravel_2.alias" " 50";
+event2 "snd_Step" 1 "resources\characters\neutrals\darkservant\Aliases\gravel.alias" " 50";
+event2 "snd_Step" 16 "resources\characters\neutrals\darkservant\Aliases\gravel_2.alias" " 50";
+event2 "snd_Step" 3 "resources\characters\neutrals\darkservant\Aliases\cloth.alias" " 50";
+event2 "snd_Step" 8 "resources\characters\neutrals\darkservant\Aliases\cloth.alias" " 50";
+event2 "snd_Step" 13 "resources\characters\neutrals\darkservant\Aliases\cloth.alias" " 50";
+event2 "snd_Step" 18 "resources\characters\neutrals\darkservant\Aliases\cloth.alias" " 50";
+link "Idle" 0; blend 4;
+gaestate "Idle";
+meshfile "resources\characters\neutrals\darkservant\character_neutrals_darkservant.g";
+}

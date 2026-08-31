@@ -1,0 +1,64 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\empire\whitewizard\character_empire_whitewizard_baseanims_lod.a";
+frame0 1;
+frame1 180;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 0;
+link "Damage" 0; blend 0;
+link "Death" 0; blend 0;
+link "Run" 0; blend 5;
+meshfile "resources\characters\empire\whitewizard\character_empire_whitewizard.g";
+}
+state "Attack"
+{
+file "resources\characters\empire\whitewizard\character_empire_whitewizard_baseanims_lod.a";
+frame0 180;
+frame1 270;
+fps 15.000000;
+priority 256;
+flags 0;
+event2 "FxStrike" 215 "" "";
+event2 "fxcast" 180 "" "";
+link "Idle" 1; blend 0;
+meshfile "resources\characters\empire\whitewizard\character_empire_whitewizard.g";
+}
+state "Damage"
+{
+file "resources\characters\empire\whitewizard\character_empire_whitewizard_baseanims_lod.a";
+frame0 276;
+frame1 334;
+fps 15.000000;
+priority 256;
+flags 0;
+link "Idle" 1; blend 0;
+link "Run" 0; blend 0;
+gaestate "Idle";
+meshfile "resources\characters\empire\whitewizard\character_empire_whitewizard.g";
+}
+state "Death"
+{
+file "resources\characters\empire\whitewizard\character_empire_whitewizard_baseanims_lod.a";
+frame0 340;
+frame1 382;
+fps 15.000000;
+priority 256;
+flags 0;
+meshfile "resources\characters\empire\whitewizard\character_empire_whitewizard.g";
+}
+state "Run"
+{
+file "resources\characters\empire\whitewizard\character_empire_whitewizard_baseanims_lod.a";
+frame0 389;
+frame1 412;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Idle" 0; blend 5;
+gaestate "Idle";
+meshfile "resources\characters\empire\whitewizard\character_empire_whitewizard.g";
+}

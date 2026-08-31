@@ -1,0 +1,349 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 90000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera 3.848278,3.134675,0.354488,0.255841,0.858426,-1.657688,0.255841,0.858426,-1.657688,3.848278,3.134675,0.354488,0.505000,10.484999,0.000000,4.704866;
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+	load_counter 1289615;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 162 30587160
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.010000,-0.010000,-0.010000,0.010000,0.010000,0.010000
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_empire_defenderoffaith" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 163 123832336
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 1048576
+	file "resources\characters\empire\defenderoffaith\character_empire_defenderoffaith_lod.ac"
+	plvl 512
+	looktocamera 0;
+	child 	goclass "VDGoWeaponTrace" "VDGoWeaponTrace" 
+{
+	uid 167 30485440
+	dwflags 1
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	texture "resources\fx\fx_resouces\textures\weapontrace\weapontrace_narrow_blue2.t"
+	tech "weapontrace"
+	lifetime 0.200000
+	maxdist 0.200000
+	bonetraceuid 163 123832336
+	fadeonevent 0
+	fadetime 1.000000
+	boneid 49
+	boneid 48
+}
+
+	child gobj "lod_empire_defenderoffaith_horse" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 181 39415104
+	dwflags 1054273
+	tech "model2x"
+	bonesuid 163 123832336
+	mesh_lods 1
+	"resources\characters\empire\defenderoffaith\character_empire_defenderoffaith_lod.g" 0 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 1;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "438290112"
+	attr "dwParent" "53639104"
+	attr "tech" "model2x"
+	attr "twosided" "1"
+	attr "morph" "1"
+	attr "name" "empire_defenderoffaith_horse"
+	attr "groupname" "Scene Root"
+	attr "techname" "model2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_defenderoffaith_horse.tga"
+	attr "material0_triangles_num" "2972"
+	attr "morph_track" "1"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "3526"
+	attr "weights_on_vertex" "4"
+	attr "bones_num" "40"
+	attr "vdshader" "dif_light2x"
+}
+
+	child gobj "lod_empire_defenderoffaith_head" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 201 125207800
+	dwflags 1055809
+	tech "model2x"
+	bonesuid 163 123832336
+	mesh_lods 1
+	"resources\characters\empire\defenderoffaith\character_empire_defenderoffaith_lod.g" 1 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 1;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "438551296"
+	attr "dwParent" "53639104"
+	attr "twosided" "1"
+	attr "tech" "model2x"
+	attr "morph" "1"
+	attr "name" "empire_defenderoffaith_head"
+	attr "groupname" "Scene Root"
+	attr "techname" "model2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_defenderoffaith_head.tga"
+	attr "material0_triangles_num" "588"
+	attr "morph_track" "1"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "358"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+	attr "vdshader" "dif_light2x"
+}
+
+	child gobj "lod_empire_defenderoffaith" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 208 31048528
+	dwflags 1053761
+	tech "model2x"
+	bonesuid 163 123832336
+	mesh_lods 1
+	"resources\characters\empire\defenderoffaith\character_empire_defenderoffaith_lod.g" 2 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 1;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "375364784"
+	attr "dwParent" "53639104"
+	attr "tech" "model2x"
+	attr "name" "empire_defenderoffaith"
+	attr "groupname" "Scene Root"
+	attr "techname" "model2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_defenderoffaith_diffuse.tga"
+	attr "material0_triangles_num" "4065"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "4015"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "21"
+	attr "vdshader" "dif_light2x"
+}
+
+	child gobj "lod_empire_defenderoffaith_feather" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 215 123808592
+	dwflags 1055809
+	tech "modelalphatest2x"
+	bonesuid 163 123832336
+	mesh_lods 1
+	"resources\characters\empire\defenderoffaith\character_empire_defenderoffaith_lod.g" 3 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 1;
+	blockshader "system\xshader\dif_at_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "375374240"
+	attr "dwParent" "53639104"
+	attr "tech" "modelalphatest2x"
+	attr "name" "empire_defenderoffaith_feather"
+	attr "groupname" "Scene Root"
+	attr "techname" "modelalphatest2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_defenderoffaith_feather.tga"
+	attr "material0_triangles_num" "124"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "1750"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "21"
+	attr "twosided" "1"
+	attr "morph" "1"
+	attr "morph_track" "1"
+	attr "vdshader" "dif_at_light2x"
+}
+
+	child gobj "lod_empire_defenderoffaith_clothes" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 228 39251728
+	dwflags 1055809
+	tech "model2x"
+	bonesuid 163 123832336
+	mesh_lods 1
+	"resources\characters\empire\defenderoffaith\character_empire_defenderoffaith_lod.g" 4 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 1;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "375454896"
+	attr "dwParent" "53639104"
+	attr "tech" "model2x"
+	attr "name" "empire_defenderoffaith_clothes"
+	attr "groupname" "Scene Root"
+	attr "techname" "model2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_empire_defenderoffaith_diffuse.tga"
+	attr "material0_triangles_num" "170"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "62"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+	attr "twosided" "1"
+	attr "morph" "1"
+	attr "morph_track" "1"
+	attr "vdshader" "dif_light2x"
+}
+
+	child gobj "weapon_empire_defenderoffait_shield" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 235 123618512
+	dwflags 1053761
+	tech "model2x"
+	bonesuid 163 123832336
+	mesh_lods 1
+	"resources\characters\empire\defenderoffaith\character_empire_defenderoffaith_lod.g" 5 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 1;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "427936704"
+	attr "dwParent" "53639104"
+	attr "tech" "model2x"
+	attr "name" "weapon_empire_defenderoffait_shield"
+	attr "groupname" "Scene Root"
+	attr "techname" "model2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "weapon_empire_defenderoffait_shield.tga"
+	attr "material0_triangles_num" "132"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "131"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+	attr "vdshader" "dif_light2x"
+}
+
+	child gobj "weapon_empire_defenderoffait_sword" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 242 123631736
+	dwflags 1053761
+	tech "model2x"
+	bonesuid 163 123832336
+	mesh_lods 1
+	"resources\characters\empire\defenderoffaith\character_empire_defenderoffaith_lod.g" 6 0.000000
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 1;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "428076208"
+	attr "dwParent" "53639104"
+	attr "tech" "model2x"
+	attr "name" "weapon_empire_defenderoffait_sword"
+	attr "groupname" "Scene Root"
+	attr "techname" "model2x"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "weapon_empire_defenderoffait_sword.tga"
+	attr "material0_triangles_num" "291"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "275"
+	attr "weights_on_vertex" "1"
+	attr "bones_num" "1"
+	attr "vdshader" "dif_light2x"
+}
+
+}
+
+}
+

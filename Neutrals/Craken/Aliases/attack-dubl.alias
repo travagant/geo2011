@@ -1,0 +1,9 @@
+alias "Attack-dubl" {
+	sound 100, "$(Sounds)/neutrals_craken/monster_foot_tree_006.wav", 100, 3;
+	sound 100, "$(Sounds)/neutrals_craken/wood_hit.wav", 100, 3;
+	sound 100, "$(Sounds)/neutrals_craken/attack_tree_000.wav", 100, 3;
+	sound 100, "$(Sounds)/neutrals_craken/attack_tree_001.wav", 100, 3;
+	sound 100, "$(Sounds)/neutrals_craken/attack_tree_002.wav", 100, 3;
+	sound 100, "$(Sounds)/neutrals_craken/attack_tree_004.wav", 100, 3;
+	sound 100, "$(Sounds)/neutrals_craken/attack_tree_005.wav", 100, 3;
+}

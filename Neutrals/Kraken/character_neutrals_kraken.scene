@@ -1,0 +1,146 @@
+globalsettings 
+{
+	fov 1.100000;
+	farplane 90000.000000;
+	nearplane 0.100000;
+	waterlevel 0.000000;
+	toolsscale 0.010000;
+	ambcolor -13684945;
+	portalrm 0;
+	postprocess 0;
+	postprocess_glow 0;
+	postprocess_blur 0;
+	fogparams 1,2634320,0.660000,300.000000,5500.000000;
+	guicamera -1.674268,2.485009,-5.233235,0.067262,1.377798,1.184017,0.067262,1.377798,1.184017,-1.674268,2.485009,-5.233235,0.165000,0.265000,0.000000,6.740917;
+	blur_burn 1.000000;
+	glow_power 1.000000;
+	glow_offset 1.000000;
+	glow_color 1.000000,1.000000,1.000000;
+}
+
+group "Scene Root" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 632 31119976
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	obbdata -0.010000,-0.010000,-0.010000,0.010000,0.010000,0.010000
+	dwflags 1
+	plvl 512
+	lodgroup 1
+	child bones "character_neutrals_kraken" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 633 102707192
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	dwflags 1048640
+	file "resources\characters\neutrals\kraken\character_neutrals_kraken.ac"
+	plvl 512
+	looktocamera 0;
+	child gobj "neutral_kraken_alpha" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 636 100461632
+	dwflags 1055809
+	tech "modelalpha2x"
+	bonesuid 633 102707192
+	mesh_lods 1
+	"resources\characters\neutrals\kraken\character_neutrals_kraken.g" 0 0.000000
+	coords 0.000000,2.180021,0.157078,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 1;
+	blockshader "system\xshader\dif_at_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "408340912"
+	attr "dwParent" "53639104"
+	attr "twosided" "1"
+	attr "vdshader" "dif_at_light2x"
+	attr "name" "neutral_kraken_alpha"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutral_kraken_alpha.tga"
+	attr "material0_triangles_num" "404"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "255"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "7"
+	attr "tech" "modelalphatest"
+	attr "techname" "modelalphatest"
+}
+
+	child gobj "neutral_kraken" 
+{
+	isrotate 0, 0, 0;
+	rotate 0.000000, 0.000000, 0.000000;
+	apllytransformtochildren 0;
+	isfluctuation 0, 0, 0;
+	fluctuation 0.000000, 0.000000, 0.000000;
+	fluctuationamplitude 1.000000, 1.000000, 1.000000;
+	apllyfluctuationtochildren 0;
+	uid 640 40972856
+	dwflags 1054273
+	tech "model2x"
+	bonesuid 633 102707192
+	mesh_lods 1
+	"resources\characters\neutrals\kraken\character_neutrals_kraken.g" 1 0.000000
+	coords 0.000000,1.129825,0.395356,0.000000,0.000000,0.000000
+	fragmentshader "system\fragment\default.fr"
+	transparentshader "system\xshader\transparent.xshader";
+	alphainrendertoshadowmap 0;
+	blockshader "system\xshader\dif_light2x.xshader"
+	lights_num 4
+	plvl 512
+	attr "dwNode" "435833856"
+	attr "dwParent" "53639104"
+	attr "vdshader" "dif_light2x"
+	attr "name" "neutral_kraken"
+	attr "groupname" "Scene Root"
+	attr "materials_num" "1"
+	attr "material0_diffuse" "character_neutral_kraken_diffuse.tga"
+	attr "material0_triangles_num" "4596"
+	attr "new_vertex_weights_format" "1"
+	attr "vertexs_weights_num" "2878"
+	attr "weights_on_vertex" "3"
+	attr "bones_num" "32"
+}
+
+	child 	goclass "VDGoWeaponTrace" "VDGoWeaponTrace" 
+{
+	uid 642 30676048
+	dwflags 1
+	coords 0.000000,0.000000,0.000000,0.000000,0.000000,0.000000
+	texture "resources\fx\fx_resouces\textures\weapontrace\weapontrace_light_yellow_hi.t"
+	tech "weapontrace"
+	lifetime 0.200000
+	maxdist 0.100000
+	bonetraceuid 633 102707192
+	fadeonevent 0
+	fadetime 1.000000
+	boneid 22
+	boneid 23
+	boneid 24
+}
+
+}
+
+}
+

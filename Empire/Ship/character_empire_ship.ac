@@ -1,0 +1,26 @@
+// ANIMATION CONFIGURATION file
+version 0.2
+state "Idle"
+{
+file "resources\characters\empire\ship\character_empire_ship.a";
+frame0 5;
+frame1 84;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Attack" 0; blend 0;
+link "Run" 0; blend 4;
+meshfile "resources\characters\empire\ship\character_empire_ship.g";
+}
+state "Run"
+{
+file "resources\characters\empire\ship\character_empire_ship.a";
+frame0 90;
+frame1 180;
+fps 15.000000;
+priority 256;
+flags 1;
+link "Idle" 0; blend 4;
+gaestate "Idle";
+meshfile "resources\characters\empire\ship\character_empire_ship.g";
+}
