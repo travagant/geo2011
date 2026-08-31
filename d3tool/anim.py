@@ -119,8 +119,11 @@ def _scan_morph_tracks(trailing: bytes) -> List[MorphTrack]:
                 data_len != want_len - 24 - nlen:
             o += 4
             continue
-        out.append(MorphTrack(name=name, frame_count=frames, vertex_count=vc,
-                              positions=trailing[pos_o:pos_o + data_len]))
+        out.append(MorphTrack(
+            name=name, frame_count=frames, vertex_count=vc,
+            positions=trailing[pos_o:pos_o + data_len],
+            tag=struct.unpack_from("<I", trailing, o + 8)[0],
+            raw_record=trailing[o:pos_o + data_len]))
         o = pos_o + data_len
     return out
 
@@ -300,7 +303,7 @@ def write_anim(anim: AnimFile) -> bytes:
 
 
 def _preamble_for(nframes: int, a: int = 5, b: int = 5) -> bytes:
-    """Build a canonical record preamble (``[a][b][frame_count][0.02]``)."""
+    """Build a record preamble (``[a][b][frame_count][0.02]``)."""
     return struct.pack("<IIIf", a, b, nframes, 0.02)
 
 
@@ -310,9 +313,10 @@ def build_anim(
 ) -> AnimFile:
     """Build an :class:`AnimFile` from ``(name, parent, frames)`` tuples.
 
-    The global header mirrors the dis3tool layout; each record uses the
-    canonical preamble with ``a = b = 5`` (engine accepts any small value;
-    the exporter writes varying values that are not required for playback).
+    The global header mirrors the dis3tool layout; each record preamble is
+    ``[len(name) + 1][len(parent) + 1][frame_count][0.02]`` — verified
+    against all 6764 bone records of the shipped corpus (the pair counts
+    the NUL-terminated strings, matching the C-struct writing code).
     """
     # 20-byte header: [magic][len-8 (padded later)][bones][frames][unk=15]
     hdr = bytearray(struct.pack("<5I", 9, 0, len(bones), frame_count, 15))
@@ -320,9 +324,14 @@ def build_anim(
     anim = AnimFile(bone_count=len(bones), frame_count=frame_count)
     for name, parent, frames in bones:
         nf = len(frames) or frame_count
-        anim.bones.append(BoneAnim(name, parent, nf, frames, _preamble_for(nf)))
+        anim.bones.append(BoneAnim(
+            name, parent, nf, frames,
+            _preamble_for(nf, len(name) + 1, len(parent) + 1)))
     anim.header = bytes(hdr)
-    # recompute header length field (offset 4 = total_len - 8)
+    # recompute the header length field (offset 4): it covers everything the
+    # writer emits except the trailing block, minus the 8-byte magic/len pair
+    # itself (verified against all 152 corpus `.a` files)
     total = len(write_anim(anim))
-    anim.header = struct.pack("<5I", 9, total - 8, len(bones), frame_count, 15)
+    anim.header = struct.pack("<5I", 9, total - 8 - len(anim.trailing),
+                              len(bones), frame_count, 15)
     return anim

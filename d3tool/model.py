@@ -142,6 +142,10 @@ class MorphTrack:
     vertex_count: int = 0
     # raw position bytes: frame-major, vertex_count * vec3 float32 per frame
     positions: bytes = b""
+    # record-type tag (third u32; observed 15 / 16 / 30) and the verbatim
+    # full record bytes (header + name + positions) when parsed from a file
+    tag: int = 15
+    raw_record: bytes = b""
 
 
 @dataclass
@@ -274,6 +278,11 @@ class GltfModel:
     # (empty for a rigid export) -- the ground truth a donated original is
     # verified against on reverse export
     accessor_wj: List[tuple] = field(default_factory=list)
+    # morph-target animation on this sub-mesh: the `.a` stream name (from the
+    # ``morph_<name>_<k>`` bufferView names) and the verbatim per-frame
+    # POSITION accessor bytes (one entry per baked frame)
+    morph_name: str = ""
+    target_positions: List[bytes] = field(default_factory=list)
     # sub-meshes 2..N of a compound export (meshes[1:]); the first mesh is
     # described by this model's own fields.
     submodels: List["GltfModel"] = field(default_factory=list)

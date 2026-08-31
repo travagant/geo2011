@@ -450,14 +450,48 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
     # animation binary
     if anim:
         try:
-            animfile = gltfmod.animation_from_gltf(m)
-            if animfile.bones:
+            # Name the rebuilt .a exactly as the .ac references it (the
+            # Idle/combined file from detect_anim_files), so the engine can
+            # resolve the path.  Typically <base>_iadd.a but some assets
+            # use <base>.a or <base>_baseanims.a.
+            idle_name = anim_files.get("Idle") or (base + "_iadd.a")
+            # Donate the original `.a` files (same reuse rule as the `.g`
+            # donor): they supply the bone order/parents/record preambles
+            # and the trailing morph-stream scaffolding a glTF animation
+            # cannot carry (record tag, foreign units' streams), adopted
+            # only when the rebuilt data verifies against them.  A unit
+            # whose `.ac` names several `.a` files was exported as ONE
+            # concatenated glTF animation — the named stream is sliced
+            # back out of it at the donor frame-count boundaries.
+            folder_a = os.path.dirname(gltf_path)
+            stream_names: List[str] = []
+            try:
+                for nm in acmod.detect_anim_files(folder_a, base).values():
+                    if nm and nm not in stream_names \
+                            and os.path.isfile(os.path.join(folder_a, nm)):
+                        stream_names.append(nm)
+            except Exception:  # noqa: BLE001 - never break an export
+                stream_names = []
+            idle_base = os.path.basename(idle_name)
+            if idle_base not in stream_names:
+                stream_names = ([idle_base] + [n for n in stream_names
+                                               if n != idle_base]
+                                if stream_names else [])
+            streams = []
+            for nm in stream_names:
+                try:
+                    acand = animmod.parse_anim(
+                        open(os.path.join(folder_a, nm), "rb").read())
+                    if not acand.raw:
+                        streams.append((nm, acand))
+                except Exception:  # noqa: BLE001
+                    pass
+            donor_a = next((a for n, a in streams if n == idle_base), None)
+            animfile = gltfmod.animation_from_gltf(m, donor=donor_a,
+                                                   streams=streams,
+                                                   out_name=idle_base)
+            if animfile.bones or animfile.morphs:
                 a_bytes = animmod.write_anim(animfile)
-                # Name the rebuilt .a exactly as the .ac references it (the
-                # Idle/combined file from detect_anim_files), so the engine can
-                # resolve the path.  Typically <base>_iadd.a but some assets
-                # use <base>.a or <base>_baseanims.a.
-                idle_name = anim_files.get("Idle") or (base + "_iadd.a")
                 out_a = os.path.join(out_dir, os.path.basename(idle_name))
                 with open(out_a, "wb") as fh:
                     fh.write(a_bytes)
