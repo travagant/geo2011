@@ -377,6 +377,50 @@ def _resolve_texture(g_path: str, attrs, texture: Optional[str],
     return os.path.basename(out_dds)
 
 
+def _emit_compound_textures(g_path: str, mesh, out_dir: str,
+                            quiet: bool) -> None:
+    """Sit every sub-mesh material texture next to a compound glTF export.
+
+    The sub-mesh ``material0_diffuse`` / ``material0_lightmap`` attributes
+    name a historical ``.tga``; dis3tool references the same stem as ``.dds``
+    in the glTF.  The glTF writer derives those URIs itself — here we only
+    make the file exist: copy an already-converted ``.dds`` or convert the
+    shipped ``.t`` container.
+    """
+    import shutil
+
+    def _names():
+        yield mesh.material_diffuse, False
+        yield mesh.lightmap, True
+        for part in mesh.parts:
+            yield part.material_diffuse, False
+            yield part.lightmap, True
+
+    src_dir = os.path.dirname(os.path.abspath(g_path))
+    for value, _is_lm in _names():
+        if not value:
+            continue
+        stem = os.path.splitext(value)[0]
+        dds = stem + ".dds"
+        dst = os.path.join(out_dir, dds)
+        if os.path.exists(dst):
+            continue
+        src_dds = os.path.join(src_dir, dds)
+        src_t = os.path.join(src_dir, stem + ".t")
+        try:
+            if os.path.exists(src_dds):
+                shutil.copy2(src_dds, dst)
+            elif os.path.exists(src_t):
+                texmod.convert_file(src_t, dst)
+            else:
+                continue
+            if not quiet:
+                ui.wrote(dst)
+        except Exception as exc:  # noqa: BLE001
+            if not quiet:
+                ui.fail(f"{dds}: texture conversion failed — {exc}")
+
+
 def _export_gl(g_path: str, anim_path: Optional[str], out: Optional[str],
                texture: Optional[str], quiet: bool = False) -> None:
     if not quiet:
@@ -391,8 +435,15 @@ def _export_gl(g_path: str, anim_path: Optional[str], out: Optional[str],
     attrs, _ = gfile.parse_attributes(data)
     out_dir = os.path.dirname(os.path.abspath(out))
     os.makedirs(out_dir, exist_ok=True)
-    uri = _resolve_texture(g_path, attrs, texture, out_dir, quiet)
-    gt, bt = gltfout.write_gltf_to(out, mesh, anim, texture=uri)
+    if mesh.parts:
+        # compound container: the glTF derives its per-sub-mesh material
+        # URIs from the `.g` attributes (tga -> dds rename), matching the
+        # dis3tool reference exports; we only stage the image files
+        _emit_compound_textures(g_path, mesh, out_dir, quiet)
+        gt, bt = gltfout.write_gltf_to(out, mesh, anim)
+    else:
+        uri = _resolve_texture(g_path, attrs, texture, out_dir, quiet)
+        gt, bt = gltfout.write_gltf_to(out, mesh, anim, texture=uri)
     if not quiet:
         ui.wrote(gt)
         ui.wrote(bt)

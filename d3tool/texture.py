@@ -43,7 +43,7 @@ import os
 from dataclasses import dataclass, field
 from typing import Dict, Optional
 
-# GM `.t` pixel-format code -> DDS fourCC / block size.
+# GM `.t` pixel-format code -> DDS fourCC / block size for compressed codes.
 _T_FMT_TO_DDS = {
     6: (b"DXT1", 8),
     7: (b"DXT3", 16),
@@ -51,8 +51,24 @@ _T_FMT_TO_DDS = {
 }
 _DDS_FOURCC_TO_T = {v[0]: k for k, v in _T_FMT_TO_DDS.items()}
 
+# Bytes of payload per-pixel rate for every known GM format code, checked
+# against every bundled `.t` (the payload of mip i is exactly
+# ``(w>>i) * (h>>i) * rate`` bytes, clamped to 1 px per side — the GM engine
+# does NOT 4x4-block-align the sub-mips, unlike a naive DXT layout).
+_T_FMT_RATE = {
+    1: 2.0,     # 16-bit uncompressed (weapon diffuse leaders)
+    2: 2.0,     # 16-bit uncompressed (UI icons)
+    6: 0.5,     # DXT1
+    7: 1.0,     # DXT3
+    8: 1.0,     # DXT5
+}
+
 # GM format code for the 16-bit A1R5G5B5 form (UI rings/small icons).
 _T_FMT_16BBP = 3
+# GM format codes for the uncompressed 32-bit A8R8G8B8 form.
+_T_FMT_32BBP = {4, 5}
+# All 16-bit uncompressed GM codes (payload is w*h*2 per mip).
+_T_FMT_16BBP_ALL = {1, 2, 3, 5 - 2}  # {1, 2, 3}
 
 T_HEADER_SIZE = 59
 DDS_HEADER_SIZE = 128
@@ -73,6 +89,8 @@ class TextureInfo:
     r5g5b5: bool = False
     #: Raw 59-byte GM header from the source ``.t`` (preserved for round-trip).
     t_header: Optional[bytes] = None
+    #: Cubemap face count inferred at parse (``cubemap_default.t`` == 6).
+    faces: int = 1
     #: The compressed pixel payload (byte-identical between `.t` and `.dds`).
     payload: bytes = b""
     #: Original filename extension (for error messages / logging).
@@ -80,25 +98,38 @@ class TextureInfo:
 
     @property
     def block_size(self) -> int:
-        if self.r5g5b5:
-            return 2  # A1R5G5B5 is 2 bytes per pixel
+        if self.r5g5b5 or self.gm_format in _T_FMT_16BBP_ALL:
+            return 2  # 16-bit form: 2 bytes per pixel
+        if self.gm_format in _T_FMT_32BBP:
+            return 4
         return _T_FMT_TO_DDS[self.gm_format][1]
 
+    @property
+    def uncompressed_bpp(self) -> int:
+        # bytes per pixel for the uncompressed GM formats (0 for compressed)
+        if self.r5g5b5 or self.gm_format in _T_FMT_16BBP_ALL:
+            return 2
+        if self.gm_format in _T_FMT_32BBP:
+            return 4
+        return 0
+
     def payload_size(self) -> int:
-        # DXT formats are 4x4 block compressed (8/16 bytes per block).  The
-        # 16-bit A1R5G5B5 form is uncompressed: 2 bytes *per pixel*, so the
-        # payload is width*height*2 for each mip (no /4 block rounding).
-        if self.r5g5b5:
-            return sum(
-                max(1, self.width // 2 ** i) * max(1, self.height // 2 ** i) * 2
-                for i in range(max(self.mip_count, 1))
-            )
-        return sum(
-            ((max(1, self.width // 2 ** i) + 3) // 4)
-            * ((max(1, self.height // 2 ** i) + 3) // 4)
-            * self.block_size
-            for i in range(max(self.mip_count, 1))
-        )
+        # Every mip is stored as pixel_count * rate bytes (no 4x4 block
+        # alignment), the chain cutting off once a mip would hold less than
+        # four bytes of data -- verified against all bundled textures.
+        rate = _T_FMT_RATE.get(self.gm_format)
+        if rate is None:
+            rate = 2.0 if (self.r5g5b5 or self.gm_format in _T_FMT_16BBP_ALL) else 4.0
+        total = 0.0
+        for i in range(max(self.mip_count, 1)):
+            wi = self.width >> i
+            hi = self.height >> i
+            if wi == 0 or hi == 0:
+                # the GM mip chain stops once a side underflows (no clamping
+                # to one pixel) — matches every bundled texture.
+                break
+            total += wi * hi * rate
+        return int(total) * max(1, self.faces)
 
 
 def _u32(b: bytes, off: int) -> int:
@@ -118,11 +149,12 @@ def parse_t(data: bytes, source: str = "") -> TextureInfo:
     height = _u32(data, 20)
     fourcc = None
     r5g5b5 = fmt == _T_FMT_16BBP
-    if not r5g5b5:
-        if fmt not in _T_FMT_TO_DDS:
-            raise ValueError(f"unsupported .t pixel format code {fmt}")
+    if fmt not in _T_FMT_TO_DDS and fmt not in _T_FMT_16BBP_ALL \
+            and fmt not in _T_FMT_32BBP:
+        raise ValueError(f"unsupported .t pixel format code {fmt}")
+    if fmt in _T_FMT_TO_DDS:
         fourcc = _T_FMT_TO_DDS[fmt][0]
-    return TextureInfo(
+    ti = TextureInfo(
         width=width,
         height=height,
         mip_count=mips,
@@ -133,6 +165,11 @@ def parse_t(data: bytes, source: str = "") -> TextureInfo:
         payload=data[T_HEADER_SIZE:],
         source=source,
     )
+    # cubemap: payload holds 6 identical faces of the base pixel block
+    base = ti.payload_size()
+    if fmt in _T_FMT_32BBP and base and len(ti.payload) == base * 6:
+        ti.faces = 6
+    return ti
 
 
 def _build_t_header(
@@ -161,8 +198,11 @@ def _build_t_header(
         for off in (32, 36, 40):
             struct.pack_into("<I", hdr, off, 0x01000000)
         struct.pack_into("<I", hdr, 52, 0x00417000)
-    # Always refresh the fields that describe the pixel data.
-    struct.pack_into("<I", hdr, 4, info.gm_format)
+    # Always refresh the fields that describe the pixel data.  The GM format
+    # byte is kept when an original header is available: codes 2/3 share the
+    # same 16-bit encoding on the DDS side, so only the source `.t` knows it.
+    if orig_header is None:
+        struct.pack_into("<I", hdr, 4, info.gm_format)
     struct.pack_into(
         "<I", hdr, 12, mip_count if mip_count is not None else info.mip_count
     )
@@ -202,6 +242,8 @@ def parse_dds(data: bytes, source: str = "") -> TextureInfo:
         if pf_bits == 16 and rmask == 0x7C00:
             gm_format = _T_FMT_16BBP
             r5g5b5 = True
+        elif pf_bits == 32 and rmask == 0xFF0000:
+            gm_format = 5  # uncompressed 32-bit A8R8G8B8-class GM code
         else:
             raise ValueError(f"unsupported DDS RGB format (bits={pf_bits}, "
                              f"rmask=0x{rmask:x})")
@@ -230,21 +272,31 @@ def build_dds_header(info: TextureInfo) -> bytes:
     struct.pack_into("<I", hdr, 8, 0x000A1007)                # dwFlags
     struct.pack_into("<I", hdr, 12, info.height)
     struct.pack_into("<I", hdr, 16, info.width)
-    top_mip_pitch = (
-        ((info.width + 3) // 4) * ((info.height + 3) // 4) * info.block_size
-    )
+    if info.uncompressed_bpp:
+        top_mip_pitch = info.width * info.height * info.uncompressed_bpp
+    else:
+        top_mip_pitch = (
+            ((info.width + 3) // 4) * ((info.height + 3) // 4) * info.block_size
+        )
     struct.pack_into("<I", hdr, 20, top_mip_pitch)             # pitch/linear size
     struct.pack_into("<I", hdr, 24, 0)                         # depth
     struct.pack_into("<I", hdr, 28, info.mip_count)            # mipmap count
     # DDS_PIXELFORMAT (offset 76)
     struct.pack_into("<I", hdr, 76, 32)                        # pf.dwSize
-    if info.r5g5b5:
+    if info.r5g5b5 or info.gm_format in _T_FMT_16BBP_ALL:
         struct.pack_into("<I", hdr, 80, 0x40 | 0x1)            # DDPF_RGB|ALPHAPIXELS
         struct.pack_into("<I", hdr, 88, 16)                    # dwRGBBitCount
         struct.pack_into("<I", hdr, 92, 0x7C00)                # R mask
         struct.pack_into("<I", hdr, 96, 0x03E0)                # G mask
         struct.pack_into("<I", hdr, 100, 0x001F)               # B mask
         struct.pack_into("<I", hdr, 104, 0x8000)               # A mask
+    elif info.gm_format in _T_FMT_32BBP:
+        struct.pack_into("<I", hdr, 80, 0x40 | 0x1)            # DDPF_RGB|ALPHAPIXELS
+        struct.pack_into("<I", hdr, 88, 32)                    # dwRGBBitCount
+        struct.pack_into("<I", hdr, 92, 0x00FF0000)            # R mask
+        struct.pack_into("<I", hdr, 96, 0x0000FF00)            # G mask
+        struct.pack_into("<I", hdr, 100, 0x000000FF)           # B mask
+        struct.pack_into("<I", hdr, 104, 0xFF000000)           # A mask
     else:
         struct.pack_into("<I", hdr, 80, 0x4)                    # DDPF_FOURCC
         hdr[84:88] = info.fourcc

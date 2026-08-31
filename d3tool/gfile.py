@@ -31,7 +31,7 @@ from __future__ import annotations
 import struct
 from typing import Dict, List, Tuple
 
-from .model import Bone, SkinnedMesh, Vertex
+from .model import Bone, MeshPart, SkinnedMesh, Vertex
 
 # default per-vertex prefix written by dis3tool for a 2-influence skin
 VERTEX_MAGIC = bytes.fromhex("5ce6ac0b")
@@ -48,30 +48,25 @@ def _cstr(data, o):
     return raw, o + ln
 
 
-def _find_attr_block(data: bytes, start: int) -> int:
-    """Locate the start of the attribute block by scanning for ``dwNode``."""
-    i = data.find(b"dwNode", start)
+def _scan_attr_block(data: bytes, start: int, limit: int = 64) -> int:
+    """Locate the attribute block start by scanning for ``dwNode``.
+
+    Returns -1 when no plausible block is found within ``limit`` bytes.
+    """
+    i = data.find(b"dwNode", start, start + limit + 6)
     if i < 0:
-        raise ValueError("could not locate dwNode attribute")
+        return -1
     return i - 8  # [num_attrs u32][key_len u32] precede the key
 
 
-def parse_geometry_file(data: bytes) -> SkinnedMesh:
-    """Parse a `.g` binary into a :class:`SkinnedMesh`.
+def _find_attr_block(data: bytes, start: int) -> int:
+    i = _scan_attr_block(data, start, 1 << 20)
+    if i < 0:
+        raise ValueError("could not locate dwNode attribute")
+    return i
 
-    Counts are read from the attribute block (``vertexs_weights_num``,
-    ``material0_triangles_num``, ``weights_on_vertex``) which is the most
-    reliable source; the prelude is used only as a cross-check.
-    """
-    o = 120
-    name1, o = _cstr(data, o)
-    name2, o = _cstr(data, o)
-    names_end = o
 
-    prelude = [_u32(data, o + 4 * i) for i in range(10)] if o + 40 <= len(data) else []
-
-    attr_start = _find_attr_block(data, o + 4)
-    o = attr_start
+def _read_attrs(data: bytes, o: int) -> Tuple[Dict[str, str], int]:
     num_attrs = _u32(data, o)
     o += 4
     attrs: Dict[str, str] = {}
@@ -79,19 +74,25 @@ def parse_geometry_file(data: bytes) -> SkinnedMesh:
         key, o = _cstr(data, o)
         val, o = _cstr(data, o)
         attrs[key.rstrip(b"\x00").decode("latin1")] = val.rstrip(b"\x00").decode("latin1")
+    return attrs, o
 
-    w = int(attrs.get("weights_on_vertex", "2"))
-    vertex_count = int(attrs["vertexs_weights_num"])
-    tri_count = int(attrs["material0_triangles_num"])
-    n_stored = (w - 1) if w >= 2 else 0   # stored weights per vertex
-    n_bones = w if w >= 2 else 0          # bone indices per vertex
-    step = 40 + 4 * n_stored + n_bones
 
-    vertex_start = o
-    magic = data[vertex_start:vertex_start + 4]
+def _material_tri_total(attrs: Dict[str, str]) -> int:
+    """Sum of all ``materialK_triangles_num`` entries (index block size)."""
+    return sum(
+        int(v) for k, v in attrs.items()
+        if k.startswith("material") and k.endswith("_triangles_num")
+    )
+
+
+def _parse_vertices(data: bytes, o: int, vc: int, w: int,
+                    step: int) -> Tuple[List[Vertex], bytes]:
+    """Read ``vc`` vertex records of ``step`` bytes starting at ``o``."""
     vertices: List[Vertex] = []
-    for i in range(vertex_count):
-        base = vertex_start + i * step
+    n_stored = (w - 1) if w >= 2 else 0
+    n_bones = w if w >= 2 else 0
+    for i in range(vc):
+        base = o + i * step
         rec = data[base:base + step]
         pos = struct.unpack_from("<3f", rec, 4)
         nrm = struct.unpack_from("<3f", rec, 16)
@@ -101,46 +102,163 @@ def parse_geometry_file(data: bytes) -> SkinnedMesh:
         bones_off = 40 + 4 * n_stored
         bones = list(rec[bones_off:bones_off + n_bones]) if n_bones else []
         vertices.append(Vertex(pos, nrm, uv, diffuse, tuple(stored), tuple(bones)))
+    return vertices, data[o:o + 4]
 
-    index_start = vertex_start + vertex_count * step
-    indices = list(struct.unpack_from(f"<{tri_count * 3}I", data, index_start))
 
-    o = index_start + tri_count * 3 * 4
+def _parse_bone_descriptors(data: bytes, o: int, bones_num: int):
+    """Read up to ``bones_num`` bone descriptors after the index block.
+
+    Each descriptor is ``[u32 str_len] name+NUL`` + 4x4 matrix (16 x f32).
+    Stops early on implausible lengths (the layout variants put the morph
+    track or the next mesh block right where bones would be).
+    """
     bones: List[Bone] = []
-    bones_num = int(attrs.get("bones_num", "0"))
     while o < len(data) and (not bones_num or len(bones) < bones_num):
         if o + 4 > len(data):
             break
         ln = _u32(data, o)
-        # sanity check the name length, then the 64-byte matrix must fit
         if ln == 0 or ln > 256 or o + ln + 64 > len(data):
             break
-        o += 4
-        name_raw = data[o:o + ln]
-        o += ln
-        m = struct.unpack_from("<16f", data, o)
-        o += 64
-        bones.append(Bone(name_raw.rstrip(b"\x00").decode("latin1"), m))
+        name_start = o + 4
+        raw = data[name_start:name_start + ln]
+        m_off = name_start + ln
+        m = struct.unpack_from("<16f", data, m_off)
+        o = m_off + 64
+        bones.append(Bone(raw.rstrip(b"\x00").decode("latin1"), m))
+    return bones, o
+
+
+def _scan_block_count(data: bytes, o: int, tc: int) -> Tuple[int, bytes]:
+    """Count vertex records of a morph block (fixed 40-byte stride).
+
+    Morph sub-meshes keep no per-vertex weights: records are 40 bytes with a
+    constant 4-byte prefix ("magic").  Scanning the prefix run length gives
+    the vertex count; the following ``tc * 3`` indices must reference those
+    vertices, which is used as a sanity cross-check.
+    """
+    magic = data[o:o + 4]
+    if len(magic) < 4:
+        return 0, magic
+    vc = 0
+    while o + 40 <= len(data) and data[o:o + 4] == magic:
+        vc += 1
+        o += 40
+    # cross-check: the next block should be tc*3 plausible indices
+    if tc:
+        try:
+            idx = struct.unpack_from(f"<{tc * 3}I", data, o)
+            if not all(x < vc for x in idx):
+                return 0, magic
+        except struct.error:
+            return 0, magic
+    return vc, magic
+
+
+def parse_geometry_file(data: bytes) -> SkinnedMesh:
+    """Parse a `.g` binary into a :class:`SkinnedMesh`.
+
+    Counts are read from the attribute block (``vertexs_weights_num``,
+    ``material0_triangles_num``, ``weights_on_vertex``) which is the most
+    reliable source; the prelude is used only as a cross-check.  Compound
+    containers (weapon + body + hair + morph meshes) stack further meshes
+    after the first which are exposed via :attr:`SkinnedMesh.parts`; bytes
+    that do not fit the parsed structure are kept verbatim (``raw``), so the
+    file round-trips byte-for-byte regardless.
+    """
+    try:
+        return _parse_geometry_file(data)
+    except Exception:  # noqa: BLE001 - unknown layout: pass through verbatim
+        return SkinnedMesh(raw=data)
+
+
+def _parse_geometry_file(data: bytes) -> SkinnedMesh:
+    o = 120
+    name1, o = _cstr(data, o)
+    name2, o = _cstr(data, o)
+    names_end = o
+
+    attr_start = _find_attr_block(data, o + 4)
+    attrs, o = _read_attrs(data, attr_start)
+
+    w = int(attrs.get("weights_on_vertex", "0" if "morph" in attrs else "2"))
+    is_morph = w == 0
+    vertex_count = int(attrs.get("vertexs_weights_num") or 0)
+    # a mesh may carry several material groups; the index block holds all of
+    # them back to back (dis3tool merges them into one primitive, material0).
+    tri_count = _material_tri_total(attrs) or int(attrs.get("material0_triangles_num") or 0)
+    bones_num = int(attrs.get("bones_num", "0"))
+    # a mesh nominally bound to a single bone but referencing several bones
+    # (lod_empire_golem: w=1, 18 bones) actually stores the full w=2 record
+    # (1.0 weight + two joint bytes per vertex) — same rule as for parts.
+    w_eff = 2 if w == 1 and bones_num > 1 else w
+    # a morph mesh keeps full 40-byte records (no weights): count by prefix scan
+    step = 40 + (4 * (w_eff - 1) + w_eff if w_eff >= 2 else 0)
+
+    vertex_start = o
+    if vertex_count == 0 and is_morph:
+        vertex_count, magic = _scan_block_count(data, vertex_start, tri_count)
+    elif vertex_start + 4 <= len(data):
+        magic = data[vertex_start:vertex_start + 4]
+    else:
+        magic = b""
+    if not vertex_count or vertex_count * step + tri_count * 12 > len(data) - vertex_start:
+        raise ValueError("vertex counts unusable")
+
+    vertices, magic0 = _parse_vertices(
+        data, vertex_start, vertex_count, w_eff, step)
+    if magic0:
+        magic = magic0
+
+    index_start = vertex_start + vertex_count * step
+    indices = list(struct.unpack_from(f"<{tri_count * 3}I", data, index_start))
+    o = index_start + tri_count * 3 * 4
+
+    # lightmap UV block (TEXCOORD_1), between the index block and the bone
+    # descriptors; its presence is flagged by the `lmuvdata` attribute.
+    lm_uv = b""
+    if "lmuvdata" in attrs:
+        lm_n = vertex_count * 8
+        lm_uv = data[o:o + lm_n]
+        o += lm_n
+
+    bones: List[Bone] = []
+    # morph meshes are boneless: what follows is the morph track, which must
+    # stay in `trailing` (a "bone" here would eat its first ~70 bytes).
+    if not is_morph:
+        bones, o = _parse_bone_descriptors(data, o, bones_num)
 
     mesh = SkinnedMesh(
         name=name1.rstrip(b"\x00").decode("latin1"),
         unit_name=attrs.get("name", name1.rstrip(b"\x00").decode("latin1")),
         geometry_file=name2.rstrip(b"\x00").decode("latin1"),
-        vertex_count=vertex_count,
+        vertex_count=vertex_count ,
         tri_count=tri_count,
         vertices=vertices,
         indices=indices,
         bones=bones,
         material_diffuse=attrs.get("material0_diffuse", ""),
+        lm_uv=lm_uv,
+        lightmap=attrs.get("material0_lightmap", ""),
+        morph=is_morph,
         vertex_magic=magic,
-        weights_on_vertex=w,
+        weights_on_vertex=w_eff,
         preamble=data[names_end:attr_start],
         header=data[:120],
         trailing=data[o:],
     )
-    # If the parsed single-mesh reconstruction would not reproduce the whole
-    # file (e.g. compound / non-character .g like weapon+character LOD),
-    # keep the original bytes verbatim so it round-trips losslessly.
+
+    # compound containers (Empire characters etc.) stack further sub-meshes in
+    # the trailing region; try to parse the stack (robust: unknown layouts
+    # simply stop and stay in `trailing`).
+    if mesh.trailing:
+        parts, end_rest = _parse_compound_parts(mesh.trailing)
+        if parts:
+            mesh.parts = parts
+            mesh.trailing = mesh.trailing[end_rest:]
+
+    # If the parsed reconstruction would not reproduce the whole file, keep
+    # the original bytes verbatim so it round-trips losslessly (the writer
+    # short-circuits on `raw`); `parts` stay available for glTF export.
     try:
         rebuilt = write_geometry_file(mesh, attrs)
     except Exception:  # noqa: BLE001
@@ -148,6 +266,127 @@ def parse_geometry_file(data: bytes) -> SkinnedMesh:
     if rebuilt != data:
         mesh.raw = data
     return mesh
+
+
+def _parse_compound_parts(buf: bytes) -> Tuple[List[MeshPart], int]:
+    """Parse the stacked sub-meshes of a compound `.g` trailing block.
+
+    Each sub-mesh is either introduced by a standard header ``[7 x u32]``
+    (tag 2, id, 0, vertex_count, tri_count, ?, 6) followed by the 56-byte
+    scene block and an attribute block, or (rarely, immediately after
+    another block) starts with a short float-ish prefix before its attribute
+    block.  Parsing stops at the first layout variant that does not fit.
+    Returns the parsed parts plus the number of consumed bytes.
+    """
+    parts: List[MeshPart] = []
+    o = 0
+    n = len(buf)
+    while o + 4 <= n:
+        block_start = o
+        hdr_vc = hdr_tc = 0
+        # standard 28-byte header + 56-byte scene block?
+        if (o + 28 <= n and _u32(buf, o) == 2 and _u32(buf, o + 24) == 6):
+            # the header itself carries the vertex/tri counts (a couple of
+            # blocks omit them from the attribute block, e.g. rod-1's sword)
+            hdr_vc, hdr_tc = _u32(buf, o + 12), _u32(buf, o + 16)
+            attr_o = _scan_attr_block(buf, o + 28, 120)
+        else:
+            attr_o = _scan_attr_block(buf, o, 96)
+        if attr_o < 0:
+            break
+        try:
+            attrs, vo = _read_attrs(buf, attr_o)
+        except Exception:
+            break
+
+        name = attrs.get("name", "")
+        if not name:
+            break
+        # every corpus part without a `weights_on_vertex` attribute exports
+        # from dis3tool as a morph-static mesh (zeroed base positions, stride
+        # 32) — e.g. rod-1's sword has neither the weights nor the morph
+        # attribute, yet lands in the morph bucket — so the safe default for
+        # a *part* is morph, not the w=2 skinned default of the main mesh.
+        w = int(attrs.get("weights_on_vertex", "0"))
+        morph = w == 0 or "morph" in attrs
+        bones_num = int(attrs.get("bones_num", "0"))
+        vc = int(attrs.get("vertexs_weights_num") or 0)
+        tc = _material_tri_total(attrs)
+        magic = b""
+        if not vc and morph:
+            vc, magic = _scan_block_count(buf, vo, tc)
+        if not vc:
+            vc = hdr_vc
+        if not tc:
+            tc = hdr_tc
+        if not vc:
+            break
+
+        # vertex stride:
+        #  - skinned: 40 + 4*(w-1) + w
+        #  - rigid w=1 single-bone weapon: 40
+        #  - w=1 bound to several bones: the engine deliberately stores the
+        #    full two-influence record (the 1.0 weight + two joint bytes) —
+        #    byte-for-byte the w=2 layout (spider abdomen, armour plates).
+        w_eff = 2 if w == 1 and bones_num > 1 else w
+        step = 40 if w_eff <= 1 else 40 + 4 * (w_eff - 1) + w_eff
+        if vc * step + tc * 12 > n - vo and w_eff > 1 \
+                and vc * 40 + tc * 12 <= n - vo and bones_num == 0 \
+                and "weights_on_vertex" not in attrs:
+            # attr-less rigid sub-block (rod-1's sword): 40-byte records,
+            # no weights, no bones
+            w_eff = 1
+            step = 40
+        if vc * step + tc * 12 > n - vo:
+            break
+        try:
+            vertices, vmagic = _parse_vertices(buf, vo, vc, w_eff, step)
+        except struct.error:
+            break
+        oi = vo + vc * step
+        if vmagic and not magic:
+            magic = vmagic
+        try:
+            indices = list(struct.unpack_from(f"<{tc * 3}I", buf, oi)) if tc else []
+        except struct.error:
+            break
+        o = oi + tc * 12
+
+        lm_uv = b""
+        if "lmuvdata" in attrs:
+            lm_uv = buf[o:o + vc * 8]
+            o += vc * 8
+
+        bones: List[Bone] = []
+        if not morph:
+            bones, o = _parse_bone_descriptors(buf, o, bones_num)
+
+        # a morph sub-mesh may carry a baked position track of its own (the
+        # `morph_frames` attribute): frames * vc * 12 raw float positions
+        # following the (empty) bone list — hair in the HolyAvenger .g.
+        baked = int(attrs.get("morph_frames") or 0)
+        if baked and morph:
+            o += baked * vc * 12
+        if o > n or o < block_start:
+            break
+
+        parts.append(MeshPart(
+            name=name,
+            vertex_count=vc,
+            tri_count=tc,
+            vertices=vertices,
+            indices=indices,
+            bones=bones,
+            weights_on_vertex=w_eff,
+            morph=morph,
+            material_diffuse=attrs.get("material0_diffuse", ""),
+            lm_uv=lm_uv,
+            lightmap=attrs.get("material0_lightmap", ""),
+            vertex_magic=magic,
+            attrs=attrs,
+            raw=buf[block_start:o],
+        ))
+    return parts, o
 
 
 # 120-byte header captured verbatim from a dis3tool `version 3` skin export.
@@ -265,10 +504,18 @@ def write_geometry_file(mesh: SkinnedMesh, attrs: Dict[str, str]) -> bytes:
 
     chunks.append(struct.pack(f"<{len(mesh.indices)}I", *mesh.indices))
 
+    # lightmap UV block (TEXCOORD_1), between indices and the bone descriptors
+    if mesh.lm_uv:
+        chunks.append(mesh.lm_uv)
+
     for b in mesh.bones:
         nb = b.name.encode("latin1") + b"\x00"
         chunks.append(struct.pack("<I", len(nb)) + nb)
         chunks.append(struct.pack("<16f", *b.matrix))
+
+    # compound sub-meshes keep their original bytes verbatim
+    for part in mesh.parts:
+        chunks.append(part.raw)
 
     # any trailing payload (morph frames, shadow volumes, ...)
     chunks.append(mesh.trailing)
@@ -278,15 +525,20 @@ def write_geometry_file(mesh: SkinnedMesh, attrs: Dict[str, str]) -> bytes:
 
 def parse_attributes(data: bytes) -> Tuple[Dict[str, str], int]:
     """Parse only the attribute block; returns (attrs, offset after block)."""
-    o = 120
-    _, o = _cstr(data, o)
-    _, o = _cstr(data, o)
-    o = _find_attr_block(data, o + 4)
-    num = _u32(data, o)
-    o += 4
-    attrs: Dict[str, str] = {}
-    for _ in range(num):
-        key, o = _cstr(data, o)
-        val, o = _cstr(data, o)
-        attrs[key.rstrip(b"\x00").decode("latin1")] = val.rstrip(b"\x00").decode("latin1")
-    return attrs, o
+    try:
+        o = 120
+        _, o = _cstr(data, o)
+        _, o = _cstr(data, o)
+        o = _find_attr_block(data, o + 4)
+        num = _u32(data, o)
+        o += 4
+        attrs: Dict[str, str] = {}
+        for _ in range(num):
+            key, o = _cstr(data, o)
+            val, o = _cstr(data, o)
+            attrs[key.rstrip(b"\x00").decode("latin1")] = \
+                val.rstrip(b"\x00").decode("latin1")
+        return attrs, o
+    except (IndexError, struct.error) as exc:
+        raise ValueError(f"corrupt or truncated .g attribute block: {exc}") \
+            from exc

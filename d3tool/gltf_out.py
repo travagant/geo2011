@@ -13,16 +13,30 @@ Coordinate-system mapping (confirmed against the bundled units):
 * ``.a`` bone rest frame ``[quat, trans]`` ==  the glTF node ``rotation`` +
   ``translation``.
 * ``.a`` per-frame samples == the glTF animation channel outputs.
+* animation keyframe times == ``float32(k * float32(1/30))`` seconds — dis3tool
+  lays one keyframe per frame on a 30 fps time base (the 3ds Max default), so
+  the glTF ``frames`` input runs 0 .. (n_frames-1)/30 seconds, *not* a
+  normalised 0..1 range.
+
+Compound ``.g`` containers (``mesh.parts`` non-empty) take the
+:func:`_write_compound_gltf` path: one glTF mesh/skin/node per sub-mesh, the
+tga->dds material rename driven by the ``material0_diffuse`` attribute, an
+optional light-map ``normalTexture`` (``material0_lightmap`` attribute ->
+``TEXCOORD_1`` from the ``lm_uv`` block), and morph targets lifted from the
+``AnimFile.morphs`` streams plus the synthesised identity ``morph_weights``
+matrix — exactly the layout the dis3tool reference exports use (verified
+byte-for-byte on the bundled Goblin / HolyAvenger / Golem corpus).
 """
 from __future__ import annotations
 
 import json
 import math
+import os
 import struct
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from .anim import AnimFile, BoneAnim
-from .model import SkinnedMesh
+from .model import MorphTrack, SkinnedMesh
 
 
 class _BufferShortError(Exception):
@@ -33,7 +47,12 @@ def _u32(idx: int) -> bytes:
     return struct.pack("<I", idx)
 
 
-def node_hierarchy(bones: List[BoneAnim]) -> Tuple[Dict[str, int], Dict[str, str], List[str]]:
+def _F32(x: float) -> float:
+    """Round ``x`` to the nearest float32 value (stored in a Python float)."""
+    return struct.unpack("<f", struct.pack("<f", x))[0]
+
+
+def node_hierarchy(bones: List[BoneAnim]) -> Tuple[Dict[str, list], Dict[str, str], List[str], List[str]]:
     """Return ``(children_map, parent_map, roots)`` for the animated bones.
 
     dis3tool animation configs sometimes list the *same* tip bone under more
@@ -71,7 +90,7 @@ def node_hierarchy(bones: List[BoneAnim]) -> Tuple[Dict[str, int], Dict[str, str
     for b in bones:
         if b.name not in seen:
             dfs(b.name)
-    return children, parent, order
+    return children, parent, order, roots
 
 
 def write_gltf(
@@ -79,13 +98,28 @@ def write_gltf(
     anim: Optional[AnimFile] = None,
     output_name: str = "character",
     texture: Optional[str] = None,
+    textures: Optional[Dict[str, str]] = None,
+    lightmaps: Optional[Dict[str, str]] = None,
 ) -> Tuple[bytes, dict]:
     """Render a glTF 2.0 document + its binary buffer for a GM mesh.
 
     Returns ``(bin_bytes, gltf)``.  The ``gltf`` layout mimics the dis3tool
     export (accessors 0..9: indices, POSITION, NORMAL, TEXCOORD_0, WEIGHTS_0,
     JOINTS_0, inverseBindMatrices, frames, bones_rotate, bones_translate).
+
+    Compound meshes (``mesh.parts`` non-empty) take the :func:`_write_compound_gltf`
+    route.  ``textures`` / ``lightmaps`` optionally override the material URI
+    per sub-mesh display name (``"*"`` is a catch-all); the defaults are the
+    ``material0_diffuse`` / ``material0_lightmap`` attributes with the
+    historical ``.tga`` -> ``.dds`` rename dis3tool applies.
     """
+    if not mesh.parts and not mesh.vertices:
+        raise ValueError(
+            "cannot export glTF for an empty mesh (unreadable .g layout: "
+            "the source bytes are only preserved verbatim via `raw`)")
+    if mesh.parts:
+        return _write_compound_gltf(mesh, anim, output_name,
+                                    textures or {}, lightmaps or {})
     n_verts = len(mesh.vertices)
     bones = mesh.bones
 
@@ -131,7 +165,12 @@ def write_gltf(
     if anim_bones:
         n_frames = anim.frame_count or max(len(b.frames) for b in anim_bones) or 1
         if n_frames > 1:
-            step = 1.0 / (n_frames - 1)
+            # 30 fps time base, matching dis3tool byte-for-byte: a viewer gets
+            # (n_frames-1)/30 seconds of animation per channel, the same
+            # pace the reference export has.  Multiplying by the float32
+            # step and packing to float32 reproduces the reference `frames`
+            # accessor exactly (verified for all bundled units).
+            step = _F32(1.0 / 30.0)
             frames = [k * step for k in range(n_frames)]
         else:
             frames = [0.0]
@@ -231,7 +270,7 @@ def write_gltf(
     node_list: List[dict] = [{"name": mesh.name}]
     name_to_idx: Dict[str, int] = {}
     if anim_bones:
-        children, parent, order = node_hierarchy(anim_bones)
+        children, parent, order, roots = node_hierarchy(anim_bones)
         # node 0 = mesh; skeleton nodes indices 1..N in hierarchy order
         for off, nm in enumerate(order):
             name_to_idx[nm] = 1 + off
@@ -336,18 +375,523 @@ def write_gltf(
 
 
 def write_gltf_to(path: str, mesh: SkinnedMesh, anim: Optional[AnimFile] = None,
-                  texture: Optional[str] = None) -> Tuple[str, str]:
+                  texture: Optional[str] = None,
+                  textures: Optional[Dict[str, str]] = None,
+                  lightmaps: Optional[Dict[str, str]] = None) -> Tuple[str, str]:
     """Write ``<base>.gltf`` and ``<base>.bin``; returns (gltf_path, bin_path)."""
-    import os
     base = os.path.splitext(path)[0]
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-    bin_bytes, doc = write_gltf(mesh, anim, os.path.basename(base), texture)
+    bin_bytes, doc = write_gltf(mesh, anim, os.path.basename(base), texture,
+                                textures=textures, lightmaps=lightmaps)
     bin_path = base + ".bin"
     with open(bin_path, "wb") as fh:
         fh.write(bin_bytes)
     with open(path, "w", encoding="utf-8") as fh:
-        json.dump(doc, fh)
+        if mesh.parts:
+            # the dis3tool reference exports are indent-2 JSON
+            json.dump(doc, fh, indent=2)
+        else:
+            json.dump(doc, fh)
     return path, bin_path
+
+
+# ---------------------------------------------------------------------------
+# Compound containers (mesh.parts)
+# ---------------------------------------------------------------------------
+
+class _Sub:
+    """One sub-mesh of a compound `.g` container, flattened for export."""
+
+    __slots__ = ("name", "vertices", "indices", "bones", "morph", "lm_uv",
+                 "lightmap", "material_diffuse")
+
+    def __init__(self, name, vertices, indices, bones, morph, lm_uv,
+                 lightmap, material_diffuse):
+        self.name = name
+        self.vertices = vertices
+        self.indices = indices
+        self.bones = bones
+        self.morph = morph
+        self.lm_uv = lm_uv
+        self.lightmap = lightmap
+        self.material_diffuse = material_diffuse
+
+
+def _compound_subs(mesh: SkinnedMesh) -> List[_Sub]:
+    """Flatten ``mesh`` + ``mesh.parts`` into ordered sub-mesh records."""
+    base_name = mesh.unit_name or mesh.name or "mesh"
+    subs = [_Sub(base_name, mesh.vertices, mesh.indices, mesh.bones,
+                 getattr(mesh, "morph", False), mesh.lm_uv, mesh.lightmap,
+                 mesh.material_diffuse)]
+    for part in mesh.parts:
+        subs.append(_Sub(part.name, part.vertices, part.indices, part.bones,
+                         part.morph, part.lm_uv, part.lightmap,
+                         part.material_diffuse))
+    return subs
+
+
+def _tex_uri(value: str, overrides: Dict[str, str], sub_name: str) -> Optional[str]:
+    """Resolve the glTF image URI for a sub-mesh material attribute.
+
+    The `.g` attribute stores a ``.tga`` name (historical 3ds Max texture
+    reference); dis3tool renames it to the ``.dds`` actually shipped with
+    the game.  ``overrides`` maps the sub-mesh display name (or ``"*"`` for
+    a catch-all) to an explicit URI.
+    """
+    override = overrides.get(sub_name) or overrides.get("*")
+    if override:
+        return override
+    if not value:
+        return None
+    stem, _ = os.path.splitext(value)
+    return stem + ".dds"
+
+
+def _compound_weights_joints(vertex) -> Tuple[List[float], List[int]]:
+    """dis3tool's verbatim WEIGHTS_0/JOINTS_0 packing for compound exports.
+
+    Separating the concerns the same way the reference buffers do:
+
+    * ``JOINTS_0`` is the verbatim bone-index array, zero-padded to 4 lanes,
+      where any lane with an exactly-zero final weight is reported as 0
+      (explicit zero *bones* in the source are data and read back verbatim;
+      only the weight-driven zero lanes are masked).
+    * ``WEIGHTS_0``: trailing explicit-zero stored lanes are dropped and the
+      implied complement (``1.0 - sum(stored)``, double precision) is placed
+      right after the nonzero prefix.  For a **positive** complement both
+      are kept verbatim, even at f32-residue scale (``1.49e-08``).  A
+      **negative** complement means the stored lanes exceeded 1.0 by
+      rounding: the lanes are renormalised lane-over-lane in float32
+      (mirroring the C++ exporter) and the slot reads an exact ``0.0``.
+      Exception: vertices anchored at joint 0 treat the complement as pure
+      float32 accumulation noise and write ``0.0`` when the stored lanes,
+      summed in single precision the way the C++ exporter would, already
+      add up to exactly ``1.0f`` (e.g. 0.903+0.097).  A complement with a
+      real float32 remainder (e.g. 0.84792+0.15205 → 2.65e-05, kept by
+      dis3tool in the zombie mesh) is preserved verbatim.
+    """
+    def _f32(x):
+        return struct.unpack("<f", struct.pack("<f", x))[0]
+
+    stored = [float(x) for x in vertex.stored_weights]
+    while stored and stored[-1] == 0.0:
+        stored.pop()
+    total = sum(stored)
+    implied = 1.0 - total
+    if vertex.bones and vertex.bones[0] == 0:
+        lanes = stored
+        # single-precision running sum, mirroring the exporter
+        s32 = 0.0
+        for x in stored:
+            s32 = _f32(s32 + x)
+        impl = 0.0 if s32 == 1.0 or implied <= 0.0 else implied
+    elif implied > 0.0 or total == 0.0:
+        lanes = stored
+        impl = implied
+    else:
+        lanes = [_f32(_f32(x) / _f32(total)) for x in stored]
+        impl = 0.0
+    w = [_f32(x) for x in (lanes + [impl])]
+    while len(w) < 4:
+        w.append(0.0)
+    j = [int(x) & 0xFF for x in vertex.bones]
+    while len(j) < 4:
+        j.append(0)
+    j = [b if wt != 0.0 else 0 for b, wt in zip(j, w)]
+    return w[:4], j[:4]
+
+
+def _write_compound_gltf(mesh: SkinnedMesh, anim: Optional[AnimFile],
+                         output_name: str, textures: Dict[str, str],
+                         lightmaps: Dict[str, str]) -> Tuple[bytes, dict]:
+    """Export a compound ``.g`` container the way dis3tool does.
+
+    Buffer layout, sub by sub (in container order): ``mesh_indexes_<name>``,
+    ``mesh_vertexes_<name>`` (stride 52 skinned / 32 morph-static / 20
+    static), optional ``mesh_bones_<name>`` (inverse bind matrices),
+    optional ``mesh_lmuv_<name>`` (light-map UVs -> ``TEXCOORD_1``).  Then
+    the shared animation arrays (``frames`` / ``bones_rotate`` /
+    ``bones_translate``), one ``morph_<name>_<k>`` float3 position buffer
+    per morph-target frame per morph sub-mesh, and finally the single
+    identity ``morph_weights`` matrix sampled by every ``weights`` channel.
+    Accessor order per sub: indices, POSITION, NORMAL, TEXCOORD_0,
+    WEIGHTS_0, JOINTS_0, IBM, TEXCOORD_1 (light-map accessor always last for
+    its sub-mesh); then frames + interleaved rotation/translation channels;
+    then the morph-target buffers; then the weights matrix accessor.
+    """
+    subs = _compound_subs(mesh)
+    anim_bones: List[BoneAnim] = anim.bones if anim and anim.bones else []
+    n_frames = 0
+    if anim_bones:
+        n_frames = anim.frame_count or max(len(b.frames) for b in anim_bones) or 1
+
+    # morph streams, matched to sub-meshes by name (with a unique-vertex-size
+    # fallback for `.a` files that carry foreign streams, e.g. DarkServant)
+    morph_tracks = list(anim.morphs) if anim else []
+    sub_track: List[Optional[MorphTrack]] = [None] * len(subs)
+    used: set = set()
+    for i, sub in enumerate(subs):
+        if not sub.morph:
+            continue
+        for track in morph_tracks:
+            if track.name == sub.name and id(track) not in used:
+                sub_track[i] = track
+                used.add(id(track))
+                break
+    for i, sub in enumerate(subs):
+        if not sub.morph or sub_track[i] is not None:
+            continue
+        cands = [t for t in morph_tracks
+                 if t.vertex_count == len(sub.vertices) and id(t) not in used]
+        if len(cands) == 1:
+            sub_track[i] = cands[0]
+            used.add(id(cands[0]))
+
+    # ---- binary blobs, in reference order ----
+    blobs: List[Tuple[str, bytes, Optional[int], Optional[int]]] = []
+
+    def _append(name, data, target=None, stride=None):
+        blobs.append((name, data, target, stride))
+        return len(blobs) - 1
+
+    sub_blobs: List[dict] = []
+    for sub in subs:
+        entry = {}
+        entry["indexes"] = _append(
+            f"mesh_indexes_{sub.name}",
+            b"".join(struct.pack("<I", x) for x in sub.indices), 34963)
+        if sub.bones:
+            vbuf = bytearray()
+            for v in sub.vertices:
+                # dis3tool copies the vertex verbatim; a handful of assets
+                # carry NaN normals (e.g. the HolyAvenger muzzle) and the
+                # reference export keeps NaN as-is
+                w, j = _compound_weights_joints(v)
+                vbuf += struct.pack(
+                    "<3f3f2f4f4B",
+                    *v.position, *v.normal, *v.uv, *w, *j,
+                )
+            entry["vertexes"] = _append(f"mesh_vertexes_{sub.name}",
+                                        bytes(vbuf), 34962, 52)
+        elif sub.morph:
+            # dis3tool zeroes the base POSITION of a morph-deformer mesh —
+            # the morph targets carry the full absolute shape per frame.
+            vbuf = b"".join(
+                struct.pack("<3f3f2f", 0.0, 0.0, 0.0, *v.normal, *v.uv)
+                for v in sub.vertices
+            )
+            entry["vertexes"] = _append(f"mesh_vertexes_{sub.name}", vbuf,
+                                        34962, 32)
+        else:
+            vbuf = b"".join(struct.pack("<3f2f", *v.position, *v.uv)
+                            for v in sub.vertices)
+            entry["vertexes"] = _append(f"mesh_vertexes_{sub.name}", vbuf,
+                                        34962, 20)
+        if sub.bones:
+            entry["bones"] = _append(
+                f"mesh_bones_{sub.name}",
+                b"".join(struct.pack("<16f", *b.matrix) for b in sub.bones))
+        if sub.lm_uv:
+            entry["lmuv"] = _append(f"mesh_lmuv_{sub.name}", sub.lm_uv)
+        sub_blobs.append(entry)
+
+    # frames / rotations / translations (dis3tool order, shared by all skins
+    # and by the morph-weights samplers)
+    frames: List[float] = []
+    rot: List[float] = []
+    tra: List[float] = []
+    n_morph_frames = 0
+    for t in sub_track:
+        if t is not None:
+            n_morph_frames = t.frame_count
+            break
+    if anim_bones:
+        if n_frames > 1:
+            step = _F32(1.0 / 30.0)
+            frames = [k * step for k in range(n_frames)]
+        else:
+            frames = [0.0]
+        for b in anim_bones:
+            for k in range(n_frames):
+                fr = b.frames[k] if k < len(b.frames) else b.rest[:7]
+                rot.extend(fr[0:4])
+                tra.extend(fr[4:7])
+        frames_bv = _append("frames", struct.pack(f"<{len(frames)}f", *frames))
+        rot_bv = _append("bones_rotate", struct.pack(f"<{len(rot)}f", *rot))
+        tra_bv = _append("bones_translate", struct.pack(f"<{len(tra)}f", *tra))
+    elif n_morph_frames:
+        # morph-only animation object (no bone tracks at all, e.g.
+        # fatimp_lod.a): the weights samplers still need a times input
+        step = _F32(1.0 / 30.0)
+        frames = ([k * step for k in range(n_morph_frames)]
+                  if n_morph_frames > 1 else [0.0])
+        frames_bv = _append("frames", struct.pack(f"<{len(frames)}f", *frames))
+
+    # morph target buffers: all frames of sub A, then all frames of sub B
+    # (sub order), each with `vertex_count` absolute float3 positions
+    morph_blobs: List[List[int]] = [[] for _ in subs]
+    for si, (sub, track) in enumerate(zip(subs, sub_track)):
+        if track is None:
+            continue
+        rec = track.vertex_count * 12
+        # dis3tool names the morph buffers after the `.a` stream, not after
+        # the mesh (they differ for e.g. the Goblin `neutrals_` streams)
+        for k in range(track.frame_count):
+            morph_blobs[si].append(_append(
+                f"morph_{track.name}_{k}",
+                track.positions[k * rec:(k + 1) * rec], 34962))
+    n_morph_frames = 0
+    for track in sub_track:
+        if track is not None:
+            n_morph_frames = track.frame_count
+            break
+    if n_morph_frames:
+        block = bytearray()
+        for i in range(n_morph_frames):
+            block += struct.pack("<f", 0.0) * i
+            block += struct.pack("<f", 1.0)
+            block += struct.pack("<f", 0.0) * (n_morph_frames - 1 - i)
+        weights_bv = _append("morph_weights", bytes(block))
+
+    # ---- assemble buffer + bufferViews ----
+    buf = bytearray()
+    bufferViews: List[dict] = []
+    bv_of: List[int] = []
+    for name, data, target, stride in blobs:
+        view = {"name": name, "buffer": 0, "byteOffset": len(buf),
+                "byteLength": len(data)}
+        buf += data
+        if stride is not None:
+            view["byteStride"] = stride
+        if target is not None:
+            view["target"] = target
+        bufferViews.append(view)
+        bv_of.append(len(bufferViews) - 1)
+
+    # ---- accessors, in reference order ----
+    accessors: List[dict] = []
+
+    def _acc(bv, ct, count, typ, off=0, extra=None):
+        a = {"bufferView": bv_of[bv], "byteOffset": off, "componentType": ct,
+             "count": count, "type": typ}
+        if extra:
+            a.update(extra)
+        accessors.append(a)
+        return len(accessors) - 1
+
+    subs_acc: List[Tuple[int, dict, Optional[int]]] = []
+    for sub, entry in zip(subs, sub_blobs):
+        idx_acc = _acc(entry["indexes"], 5125, len(sub.indices), "SCALAR")
+        if sub.morph and not sub.bones:
+            # the base POSITION block of a morph mesh is all-zero (the shape
+            # lives in the targets) and dis3tool reports zeroed min/max too
+            pos_mm = {"min": [0.0, 0.0, 0.0], "max": [0.0, 0.0, 0.0]}
+        else:
+            xs = [v.position[0] for v in sub.vertices]
+            ys = [v.position[1] for v in sub.vertices]
+            zs = [v.position[2] for v in sub.vertices]
+            pos_mm = {"min": [min(xs), min(ys), min(zs)],
+                      "max": [max(xs), max(ys), max(zs)]} if sub.vertices else None
+        attrs = {}
+        attrs["POSITION"] = _acc(entry["vertexes"], 5126, len(sub.vertices),
+                                 "VEC3", 0, pos_mm)
+        if sub.bones or sub.morph:
+            attrs["NORMAL"] = _acc(entry["vertexes"], 5126,
+                                   len(sub.vertices), "VEC3", 12)
+            attrs["TEXCOORD_0"] = _acc(entry["vertexes"], 5126,
+                                       len(sub.vertices), "VEC2", 24)
+        else:
+            attrs["TEXCOORD_0"] = _acc(entry["vertexes"], 5126,
+                                       len(sub.vertices), "VEC2", 12)
+        ibm_acc = None
+        if sub.bones and anim_bones:
+            attrs["WEIGHTS_0"] = _acc(entry["vertexes"], 5126,
+                                      len(sub.vertices), "VEC4", 32)
+            attrs["JOINTS_0"] = _acc(entry["vertexes"], 5121,
+                                     len(sub.vertices), "VEC4", 48)
+            ibm_acc = _acc(entry["bones"], 5126, len(sub.bones), "MAT4")
+        if sub.lm_uv:
+            # TEXCOORD_1 always comes last in the sub's accessor range
+            attrs["TEXCOORD_1"] = _acc(entry["lmuv"], 5126,
+                                       len(sub.vertices), "VEC2")
+        subs_acc.append((idx_acc, attrs, ibm_acc))
+
+    frames_acc = rot_acc0 = None
+    if anim_bones:
+        frames_acc = _acc(frames_bv, 5126, len(frames), "SCALAR", 0,
+                          {"min": [min(frames)], "max": [max(frames)]})
+        rot_acc0 = _acc(rot_bv, 5126, n_frames, "VEC4")
+        first_tra = _acc(tra_bv, 5126, n_frames, "VEC3")
+        assert first_tra == rot_acc0 + 1
+        for i in range(1, len(anim_bones)):
+            _acc(rot_bv, 5126, n_frames, "VEC4", i * n_frames * 16)
+            _acc(tra_bv, 5126, n_frames, "VEC3", i * n_frames * 12)
+    elif n_morph_frames:
+        frames_acc = _acc(frames_bv, 5126, len(frames), "SCALAR", 0,
+                          {"min": [min(frames)], "max": [max(frames)]})
+
+    morph_acc: List[Optional[List[int]]] = [None] * len(subs)
+    for si, track in enumerate(sub_track):
+        if track is None:
+            continue
+        accs = []
+        rec = track.vertex_count * 12
+        for k, blob in enumerate(morph_blobs[si]):
+            frame = track.positions[k * rec:(k + 1) * rec]
+            pts = struct.unpack(f"<{track.vertex_count * 3}f", frame)
+            pos_mm = {
+                "min": [min(pts[0::3]), min(pts[1::3]), min(pts[2::3])],
+                "max": [max(pts[0::3]), max(pts[1::3]), max(pts[2::3])],
+            } if track.vertex_count else None
+            accs.append(_acc(blob, 5126, track.vertex_count, "VEC3", 0, pos_mm))
+        morph_acc[si] = accs
+    weights_acc = None
+    if n_morph_frames:
+        # quirk of the dis3tool exporter: the closing morph_weights accessor
+        # carries no explicit byteOffset key
+        acc = {"bufferView": bv_of[weights_bv], "componentType": 5126,
+               "count": n_morph_frames * n_morph_frames, "type": "SCALAR"}
+        accessors.append(acc)
+        weights_acc = len(accessors) - 1
+
+    # ---- nodes ----
+    n_subs = len(subs)
+    node_list: List[dict] = []
+    name_to_idx: Dict[str, int] = {}
+    if anim_bones:
+        children, parent, order, roots = node_hierarchy(anim_bones)
+        for off, nm in enumerate(order):
+            name_to_idx[nm] = n_subs + off
+        bmap = {b.name: b for b in anim_bones}
+    else:
+        children, order, roots, bmap = {}, [], [], {}
+
+    # sub-mesh nodes first (flat siblings), then the skeleton hierarchy
+    skins: List[dict] = []
+    n_skin = 0
+    for si, sub in enumerate(subs):
+        node = {"name": sub.name, "mesh": si}
+        if sub.bones and anim_bones:
+            node["skin"] = n_skin
+            n_skin += 1
+        node_list.append(node)
+    if anim_bones:
+        for nm in order:
+            b = bmap[nm]
+            rest = b.frames[0][:7] if b.frames else b.rest[:7]
+            node = {"name": nm, "rotation": list(rest[0:4]),
+                    "translation": list(rest[4:7])}
+            kids = [name_to_idx[c] for c in children.get(nm, [])]
+            if kids:
+                node["children"] = kids
+            node_list.append(node)
+        # sub-bones missing from the animation bind to the skeleton root —
+        # that is what dis3tool emits (e.g. the WitchHunter's
+        # Marksman_eyelid_up maps onto the Reference root), not a stub node
+        root_idx = name_to_idx[order[0]] if order else n_subs
+        for sub in subs:
+            for b in sub.bones:
+                name_to_idx.setdefault(b.name, root_idx)
+
+    for si, sub in enumerate(subs):
+        if not sub.bones or not anim_bones:
+            # without animation dis3tool emits no skins at all (the skinned
+            # stride and IBM buffers stay, but the primitives lose
+            # WEIGHTS_0/JOINTS_0 and the scene only holds the sub-meshes)
+            continue
+        joints = [name_to_idx[b.name] for b in sub.bones]
+        skins.append({"name": f"skin{len(skins)}", "joints": joints,
+                      "inverseBindMatrices": subs_acc[si][2]})
+
+    # ---- meshes / materials ----
+    images: List[dict] = []
+    textures_js: List[dict] = []
+    image_slot: Dict[str, int] = {}
+
+    def _image(uri: str) -> int:
+        slot = image_slot.get(uri)
+        if slot is None:
+            slot = len(images)
+            image_slot[uri] = slot
+            images.append({"uri": uri})
+            textures_js.append({"source": slot})
+        return slot
+
+    meshes_js: List[dict] = []
+    mat_list: List[dict] = []
+    for si, sub in enumerate(subs):
+        idx_acc, attrs, _ibm = subs_acc[si]
+        prim = {"attributes": attrs, "indices": idx_acc, "mode": 4}
+        track = sub_track[si]
+        if track is not None:
+            prim["targets"] = [{"POSITION": a} for a in morph_acc[si]]
+        mat = {"name": f"material{si}", "alphaMode": "MASK"}
+        diffuse_uri = _tex_uri(sub.material_diffuse, textures, sub.name)
+        lm_uri = _tex_uri(sub.lightmap, lightmaps, sub.name)
+        if diffuse_uri:
+            mat["pbrMetallicRoughness"] = {
+                "baseColorTexture": {"index": _image(diffuse_uri),
+                                     "texCoord": 0},
+                "metallicFactor": 0.0}
+        if lm_uri:
+            mat["normalTexture"] = {"index": _image(lm_uri), "texCoord": 0}
+        mat["emissiveFactor"] = [0.0, 0.0, 0.0]
+        mat_list.append(mat)
+        prim["material"] = si
+        mesh_js = {"name": sub.name, "primitives": [prim]}
+        if track is not None:
+            mesh_js["weights"] = [0.0] * track.frame_count
+        meshes_js.append(mesh_js)
+
+    # ---- final document ----
+    doc: dict = {
+        "asset": {"version": "2.0", "generator": "d3tool (geo2011 reverse)"},
+        "scene": 0,
+        "scenes": [{"nodes": list(range(n_subs)) + (
+            [name_to_idx[r] for r in roots] if anim_bones else [])}],
+        "nodes": node_list,
+        "meshes": meshes_js,
+        "accessors": accessors,
+        "bufferViews": bufferViews,
+        "buffers": [{"uri": output_name + ".bin", "byteLength": len(buf)}],
+        "images": images,
+        "textures": textures_js,
+        "materials": mat_list,
+    }
+    if skins:
+        # dis3tool omits the key entirely for animation-less exports
+        doc["skins"] = skins
+
+    if anim_bones or any(t is not None for t in sub_track):
+        channels = []
+        samplers = []
+        if anim_bones:
+            sent: set = set()
+            for i, b in enumerate(anim_bones):
+                nidx = name_to_idx.get(b.name, n_subs)
+                rot_acc = rot_acc0 + 2 * i
+                tra_acc = rot_acc0 + 2 * i + 1
+                for path, acc in (("rotation", rot_acc),
+                                  ("translation", tra_acc)):
+                    key = (nidx, path)
+                    if key in sent:
+                        continue
+                    sent.add(key)
+                    samplers.append({"input": frames_acc, "output": acc,
+                                     "interpolation": "LINEAR"})
+                    channels.append({"sampler": len(samplers) - 1,
+                                     "target": {"node": nidx, "path": path}})
+        if frames_acc is not None and weights_acc is not None:
+            for si, track in enumerate(sub_track):
+                if track is None:
+                    continue
+                samplers.append({"input": frames_acc, "output": weights_acc,
+                                 "interpolation": "LINEAR"})
+                channels.append({"sampler": len(samplers) - 1,
+                                 "target": {"node": si, "path": "weights"}})
+        doc["animations"] = [{"channels": channels, "samplers": samplers}]
+
+    return bytes(buf), doc
 
 
 def validate_gltf(path: str, base_dir: Optional[str] = None) -> Tuple[int, int, int]:
@@ -451,14 +995,32 @@ def validate_gltf(path: str, base_dir: Optional[str] = None) -> Tuple[int, int, 
                     errors += 1
     # animation sampler inputs/outputs must have matching counts, and channel
     # output types must match the path (rotation=VEC4, translation=VEC3).
+    # Morph-weight samplers are special: each input tick expands to a scalar
+    # per morph target, so output.count == input.count * len(prim.targets).
     for anim in doc.get("animations", []):
         path_of = {c["sampler"]: c["target"]["path"] for c in anim["channels"]}
+        node_of = {c["sampler"]: c["target"].get("node")
+                   for c in anim["channels"]}
         for idx, smp in enumerate(anim["samplers"]):
             i_acc = doc["accessors"][smp["input"]]
             o_acc = doc["accessors"][smp["output"]]
-            if i_acc["count"] != o_acc["count"]:
-                errors += 1
             want = path_of.get(idx)
+            if want == "weights":
+                n_targets = 0
+                node_i = node_of.get(idx)
+                if node_i is not None and node_i < len(doc.get("nodes", [])):
+                    mesh_i = doc["nodes"][node_i].get("mesh")
+                    if mesh_i is not None:
+                        prims = doc["meshes"][mesh_i].get("primitives", [])
+                        if prims:
+                            n_targets = len(prims[0].get("targets", []))
+                if n_targets and o_acc["count"] != \
+                        i_acc["count"] * n_targets:
+                    errors += 1
+                elif not n_targets and o_acc["count"] != i_acc["count"]:
+                    errors += 1
+            elif i_acc["count"] != o_acc["count"]:
+                errors += 1
             if want == "rotation" and o_acc["type"] != "VEC4":
                 errors += 1
             elif want == "translation" and o_acc["type"] != "VEC3":

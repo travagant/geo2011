@@ -33,6 +33,8 @@ import struct
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 
+from .model import MorphTrack
+
 _SAMPLE = 7  # floats per TRS sample: quat(4) + trans(3)
 _SAMPLE_BYTES = _SAMPLE * 4  # 28
 _PREAMBLE = 16  # bytes: [a][b][frame_count][0.02]
@@ -61,6 +63,58 @@ class AnimFile:
     header: bytes = b""          # verbatim global header (first 36 bytes)
     bones: List[BoneAnim] = field(default_factory=list)
     trailing: bytes = b""
+    # vertex-morph streams parsed out of the trailing block (byte ranges stay
+    # inside `trailing`, so round-tripping remains verbatim).
+    morphs: List[MorphTrack] = field(default_factory=list)
+
+
+def _scan_morph_tracks(trailing: bytes) -> List[MorphTrack]:
+    """Recover vertex-morph streams from an `.a` file's trailing block.
+
+    Morph-record marker: ``[u32 14][u32 len-8][u32 15][frame_count]
+    [vertex_count][name_len][name + NUL]`` followed by ``frame_count *
+    vertex_count * 3`` float32 positions (absolute frame positions, the first
+    frame being the base pose).  Bounds are checked aggressively — some `.a`
+    files ship streams belonging to *other* units (e.g. the DarkServant
+    carries 7 foreign tracks), and anything that does not fit the buffer is
+    quietly ignored.
+    """
+    out: List[MorphTrack] = []
+    o = 0
+    n = len(trailing)
+    while o + 24 <= n:
+        if struct.unpack_from("<I", trailing, o)[0] != 14:
+            o += 4
+            continue
+        # total payload length including this header (the u32 stores total-8)
+        want_len = struct.unpack_from("<I", trailing, o + 4)[0] + 8
+        # third u32 is a record-type tag — observed 15 / 16 / 30 across the
+        # corpus and never used by the reader, so it is not gated on.
+        frames = struct.unpack_from("<I", trailing, o + 12)[0]
+        vc = struct.unpack_from("<I", trailing, o + 16)[0]
+        nlen = struct.unpack_from("<I", trailing, o + 20)[0]
+        if (want_len < 24 or o + want_len > n or not (0 < nlen < 128)
+                or o + 24 + nlen > n):
+            o += 4
+            continue
+        name_raw = trailing[o + 24:o + 24 + nlen]
+        if name_raw[-1:] != b"\x00" or not all(32 <= c < 127 for c in name_raw[:-1]):
+            o += 4
+            continue
+        name = name_raw[:-1].decode("latin1", "replace")
+        data_len = frames * vc * 12
+        pos_o = o + 24 + nlen
+        # exact-fit check: the header + name + frames*vc positions must come
+        # out to exactly the declared stream length (kills false positives
+        # inside animation data)
+        if vc == 0 or frames == 0 or pos_o + data_len > n or \
+                data_len != want_len - 24 - nlen:
+            o += 4
+            continue
+        out.append(MorphTrack(name=name, frame_count=frames, vertex_count=vc,
+                              positions=trailing[pos_o:pos_o + data_len]))
+        o = pos_o + data_len
+    return out
 
 
 def _u32(data, o):
@@ -111,6 +165,7 @@ def parse_anim(data: bytes) -> AnimFile:
         anim.bones.append(BoneAnim(name, parent, nf, frames, pream))
 
     anim.trailing = data[o:]
+    anim.morphs = _scan_morph_tracks(anim.trailing)
     return anim
 
 
