@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import d3tool
 from d3tool import anim as animmod
+from d3tool import cli as climod
 from d3tool import gfile, gltf, ac as acmod, gltf_out, scene as scenemod
 from d3tool import texture as texmod
 
@@ -883,22 +884,32 @@ def test_validate_gltf_accepts_the_bundled_reference_files():
     """`validate_gltf` required morph-weight `output.count ==
     input.count * len(targets)`, but dis3tool writes `input.count ** 2` — and
     `_write_compound_gltf` replicates that for byte parity.  The validator
-    therefore rejected 8 of the 98 bundled reference glTFs, i.e. ground truth."""
+    therefore rejected 8 of the 98 bundled reference glTFs, i.e. ground truth.
+
+    Since then two further reference quirks were identified as deliberate
+    dis3tool output that the writers reproduce for parity, reported as
+    warnings, not errors:
+
+    * Rod-1      sampler 14 declares output=33 with 33 accessors (0..32)
+    * WaterSnake 4 animation channels target nodes 47-50 with 47 nodes (x2
+                 paths = 8 warnings)
+    * Wildboar   1 animation channel targets node 37 with 37 nodes (x2 = 2)
+    """
     from d3tool import gltf_out
     bad = []
+    warned = {}
     for p in sorted(glob.glob(os.path.join(REPO, "*", "*", "*.gltf"))):
-        errs, _w, _i = gltf_out.validate_gltf(p)
+        errs, warns, _i = gltf_out.validate_gltf(p)
         if errs:
             bad.append((os.path.relpath(p, REPO), errs))
-    # The three genuine defects in shipped references, all of them
-    # out-of-range indices that d3tool must not reproduce:
-    #   Rod-1      sampler 14 declares output=33 with 33 accessors (0..32)
-    #   WaterSnake 4 animation channels target nodes 47-50 with 47 nodes (x2
-    #              paths = 8 errors)
-    #   Wildboar   1 animation channel targets node 37 with 37 nodes (x2 = 2)
-    assert bad == [("Empire/Rod-1/character_empire_rod-1.gltf", 1),
-                   ("Neutrals/WaterSnake/character_neutrals_watersnake.gltf", 8),
-                   ("Neutrals/Wildboar/character_neutrals_wildboar.gltf", 2)], bad
+        if warns:
+            warned[os.path.relpath(p, REPO)] = warns
+    assert not bad, bad
+    assert warned == {
+        "Empire/Rod-1/character_empire_rod-1.gltf": 1,
+        "Neutrals/WaterSnake/character_neutrals_watersnake.gltf": 8,
+        "Neutrals/Wildboar/character_neutrals_wildboar.gltf": 2,
+    }, warned
 
 
 def test_validate_gltf_rejects_channels_targeting_missing_nodes():
@@ -1132,6 +1143,155 @@ def test_node_hierarchy_trails_bones_only_a_later_stream_carries():
     children, parent, order, roots = gltf_out.node_hierarchy(bones, 3)
     assert order == ["Root", "Fore", "Hand", "LateHand"], order
     assert children["Fore"] == ["Hand", "LateHand"], children["Fore"]
+
+
+def _export_like_the_harness(rel_g):
+    """Forward-export a corpus unit the way tests/corpus_parity.run does."""
+    g_path = os.path.join(REPO, rel_g)
+    folder = os.path.dirname(g_path)
+    stem = os.path.splitext(os.path.basename(g_path))[0]
+    mesh = gfile.parse_geometry_file(open(g_path, "rb").read())
+    a_path = climod._find_animation_for_geometry(g_path)
+    an = (climod._load_anim_stream(g_path, a_path, True)
+          if a_path else None)
+    texture = None
+    if not mesh.parts and mesh.material_diffuse:
+        texture = os.path.splitext(mesh.material_diffuse)[0] + ".dds"
+    binb, doc = gltf_out.write_gltf(mesh, an, stem, texture=texture)
+    ref = json.load(open(os.path.join(folder, stem + ".gltf")))
+    refbin = open(os.path.join(folder, stem + ".bin"), "rb").read()
+    return binb, doc, ref, refbin
+
+
+def test_rigid_export_when_the_animation_is_unresolvable():
+    """Blacknaga's .ac points at mermaid's .a, which is not in its folder.
+
+    The dis3tool reference ships the unit rigid: one mesh node, no skin, a
+    primitive without WEIGHTS_0/JOINTS_0 and accessors stopping after
+    TEXCOORD_0 — while the buffer keeps the skinned stride-52 vertex block
+    and the mesh_bones IBM block, unreferenced but present.
+    """
+    binb, doc, ref, refbin = _export_like_the_harness(
+        os.path.join("Neutrals", "Blacknaga",
+                     "character_neutrals_blacknaga.g"))
+    assert [n.get("name") for n in doc["nodes"]] == ref["nodes"][0].get(
+        "name") or doc["nodes"] == ref["nodes"]
+    assert len(doc["nodes"]) == 1 and "skin" not in doc["nodes"][0]
+    assert "skins" not in doc and "animations" not in doc
+    prim = doc["meshes"][0]["primitives"][0]
+    assert set(prim["attributes"]) == {"POSITION", "NORMAL", "TEXCOORD_0"}
+    assert len(doc["accessors"]) == 4 and len(ref["accessors"]) == 4
+    bv_names = [bv["name"] for bv in doc["bufferViews"]]
+    assert bv_names == [bv["name"] for bv in ref["bufferViews"]]
+    # the bin keeps the full skinned layout — byte length parity included
+    assert len(binb) == len(refbin)
+    assert doc["bufferViews"][2]["byteLength"] == \
+        ref["bufferViews"][2]["byteLength"] > 0
+
+
+def test_find_animation_returns_none_when_the_ac_points_outside_the_folder():
+    """dis3tool loads only what the unit's own .ac names; a stream missing
+    from the unit folder means a rigid export, not a conventional-name
+    guess (Blacknaga points at mermaid, watersnake_sea at a .a bundled
+    with neither)."""
+    def find(rel):
+        return climod._find_animation_for_geometry(
+            os.path.join(REPO, rel))
+    assert find(os.path.join("Neutrals", "Blacknaga",
+                             "character_neutrals_blacknaga.g")) is None
+    assert find(os.path.join("Neutrals", "WaterSnake",
+                             "character_neutrals_watersnake_sea.g")) is None
+    assert find(os.path.join("Neutrals", "WaterSnake",
+                             "character_neutrals_watersnake.g")) is not None
+    assert find(os.path.join("Neutrals", "Wolf",
+                             "character_neutrals_wolf.g")) is not None
+
+
+def test_compound_writer_animates_only_the_primary_skeleton():
+    """DarkServant's .ac concatenates `_iadd.a` and `_run.a`; Bone02 exists
+    only in the latter.  The reference gives it a trailing node but no
+    channel and no rot/tra storage: 69 of 70 bones are animated, and the
+    morph_weights matrix stays sized by the *total* frame count."""
+    binb, doc, ref, refbin = _export_like_the_harness(
+        os.path.join("Neutrals", "DarkServant",
+                     "character_neutrals_darkservant.g"))
+    assert len(doc["accessors"]) == len(ref["accessors"]) == 204
+    ra, ga = ref["animations"][0], doc["animations"][0]
+    assert len(ga["channels"]) == len(ra["channels"]) == 140
+    assert len(ga["samplers"]) == len(ra["samplers"]) == 140
+    # bones_rotate / bones_translate cover 69 bones x 152 frames
+    bv_rot = [bv for bv in doc["bufferViews"]
+              if bv["name"] == "bones_rotate"][0]
+    ref_rot = [bv for bv in ref["bufferViews"]
+               if bv["name"] == "bones_rotate"][0]
+    assert bv_rot["byteLength"] == ref_rot["byteLength"] == 69 * 152 * 16
+    assert len(binb) == len(refbin)
+    # and the weights channels close the animation, as in the reference
+    assert [c["target"]["path"] for c in ga["channels"][-2:]] == \
+        ["weights", "weights"]
+    assert [c["target"]["path"] for c in ra["channels"][-2:]] == \
+        ["weights", "weights"]
+
+
+def test_duplicate_bone_channels_are_counted_positionally():
+    """WaterSnake lists `null` five times: nodes exist for the first only,
+    yet all 50 bones get channels, targets counted as node-slot + position —
+    so the last four pairs dangle past the 47-node list and every unique
+    bone after a duplicate aims one slot high.  The same rule puts
+    Wildboar's last pair on node 37 of 37."""
+    for rel in (os.path.join("Neutrals", "WaterSnake",
+                             "character_neutrals_watersnake.g"),
+                os.path.join("Neutrals", "Wildboar",
+                             "character_neutrals_wildboar.g")):
+        _binb, doc, ref, _refbin = _export_like_the_harness(rel)
+        got = [c["target"]["node"]
+               for c in doc["animations"][0]["channels"]]
+        want = [c["target"]["node"]
+                for c in ref["animations"][0]["channels"]]
+        assert got == want, rel
+        assert len(got) == len(want)
+
+
+def test_attrless_part_keeps_real_positions_and_a_stray_sampler():
+    """Rod-1's sword part carries no .g attributes at all.  The reference
+    exports it at the morph-static stride but with real positions, reports
+    zeroed POSITION min/max, and appends one stray sampler aimed at the
+    accessor index just past the end that no channel references."""
+    binb, doc, ref, refbin = _export_like_the_harness(
+        os.path.join("Empire", "Rod-1", "character_empire_rod-1.g"))
+    # ...the stray sampler: 15 samplers, 14 channels, output dangling
+    ga = doc["animations"][0]
+    assert len(ga["samplers"]) == 15 and len(ga["channels"]) == 14
+    stray = ga["samplers"][-1]
+    assert stray["output"] == len(doc["accessors"]) == 33
+    assert stray["output"] not in [c["sampler"] for c in ga["channels"]]
+    assert ref["animations"][0]["samplers"][-1] == stray
+    # ...the sword vertex block carries the reference's real positions
+    bv = [b for b in doc["bufferViews"]
+          if b["name"] == "mesh_vertexes_empire_rod-1_sword"][0]
+    off = bv["byteOffset"]
+    assert binb[off:off + bv["byteLength"]] == \
+        refbin[off:off + bv["byteLength"]]
+    # ...yet the POSITION accessor keeps the zeroed min/max quirk
+    sword_mesh = doc["meshes"][[m["name"] for m in doc["meshes"]]
+                               .index("empire_rod-1_sword")]
+    pos = doc["accessors"][sword_mesh["primitives"][0]["attributes"]
+                           ["POSITION"]]
+    assert pos["min"] == [0.0, 0.0, 0.0] and pos["max"] == [0.0, 0.0, 0.0]
+
+
+def test_scene_lists_every_parentless_skeleton_node():
+    """Scene nodes = sub-meshes + every node whose parent is not a bone, in
+    node order.  DarkServant's ROOT_demons_thief_lod and Bone02 (parent
+    `Scene Root`) therefore trail the skeleton root in its reference."""
+    _binb, doc, ref, _refbin = _export_like_the_harness(
+        os.path.join("Neutrals", "DarkServant",
+                     "character_neutrals_darkservant.g"))
+    assert doc["scenes"] == ref["scenes"]
+    assert doc["scenes"][0]["nodes"] == [0, 1, 2, 3, 4, 72, 73]
+    # the trailing nodes are exactly those two bones
+    names = [doc["nodes"][i]["name"] for i in (72, 73)]
+    assert names == ["ROOT_demons_thief_lod", "Bone02"]
 
 
 def anim_bone_stub(name, parent=""):

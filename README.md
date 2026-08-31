@@ -204,9 +204,20 @@ one of the 247 `.g` files forward-exports and every one of the 98 bundled
   their reverse export correctly writes no `.a`.
 
 **Parity benchmark.** `tests/corpus_parity.py` compares a forward export
-against the bundled dis3tool reference, byte for byte: **10 EXACT, 69
-BIN-NEAR** (differing only in a handful of ±1ulp float32 lanes) and **6
-FAIL** out of 85, down from 9/46/30 at the start of this work.
+against the bundled dis3tool reference, byte for byte: **10 EXACT, 75
+BIN-NEAR** (differing only in a handful of ±1ulp float32 lanes) and **0
+FAIL** out of 85 — down from 9/46/30 at the start of this work and 10/69/6
+after the animation-concatenation round.  The last six FAILs fell to three
+findings: the compound writer now animates only the first stream's bones
+(DarkServant's `Bone02`), duplicate-name bones get one channel pair each
+with targets *counted positionally* — so WaterSnake's four extra `null`
+bones dangle past the node list exactly like the reference (Wildboar 37 of
+37) — and a unit whose `.ac` names a stream outside its folder ships rigid
+(Blacknaga, watersnake_sea), matching dis3tool's own resolution instead of
+guessing a conventional `.a`.  Rod-1 closed through two reference quirks
+reproduced verbatim: its attrless sword part keeps real positions at the
+morph-static stride (with zeroed POSITION min/max), and the exporter emits
+the stray 15th sampler aimed at accessor 33 of 33.
 
 **Root cause of the morph failures (measured).** 24 bundled units have an
 `.ac` that references *more than one* `.a` (Angel names five: idle/attack/run/

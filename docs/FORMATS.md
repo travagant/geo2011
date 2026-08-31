@@ -60,6 +60,46 @@ dis3tool **preserves the glTF influence order** — it does **not** re-sort by
 weight.  So to convert back you take the first `w` of the 4 component
 `(weight, joint)` pairs verbatim.
 
+### Export conventions (what `d3tool export-gl` reproduces byte-for-byte)
+
+These behaviours were established by diffing all 85 bundled dis3tool
+reference exports; the writer reproduces them — quirks included — so its
+output is structurally identical to the reference (the only residual
+differences are ±1-ulp float32 lanes from dis3tool's order-dependent C++
+float renormalisation):
+
+* **Animation resolution / rigid exports.**  dis3tool loads only the `.a`
+  stream(s) the unit's own `.ac` names, resolved inside the unit folder.
+  When the named stream is not there the unit ships **rigid**: one mesh
+  node, no bone nodes, no `skins` key, primitives without
+  `WEIGHTS_0/JOINTS_0`, accessors stopping after `TEXCOORD_0` — while the
+  buffer keeps the skinned stride-52 vertex block and the `mesh_bones` IBM
+  block, unreferenced (Blacknaga's config points at mermaid's `.a`,
+  watersnake_sea at a `.a` bundled with neither).
+* **Channel targets are counted, not resolved.**  Every bone of the primary
+  stream(s) gets a rotation + translation channel aimed at
+  `node_slot + list position`.  A duplicate-name bone (`null` five times in
+  WaterSnake, `null_Bone_Tip` twice in Wildboar) has no node of its own, so
+  its channels dangle past the node list (Wildboar 37 of 37 nodes,
+  WaterSnake 47..50 of 47) and every *unique* bone after a duplicate aims
+  one slot high.
+* **Only the first stream's bones are animated.**  Bones that
+  `concat_anims` appended from a later `.a` (AirElemental's
+  LeftLeftHand/Tail02, DarkServant's Bone02) get a trailing node but no
+  channel and no rot/tra storage; `skin.joints` stays on the full list.
+* **Scene roots** are the sub-meshes plus every skeleton node whose parent
+  is not a bone, in node order (DarkServant's `ROOT_demons_thief_lod` /
+  `Bone02`, parent `Scene Root`, trail the skeleton root).
+* **Compound static parts.**  A part with `morph: 1` in its attribute block
+  is a morph-deformer: stride-32 vertexes with the base positions zeroed
+  and zeroed POSITION min/max.  A part with **no attributes at all**
+  (rod-1's sword) keeps the same stride but *real* positions, still with
+  zeroed POSITION min/max — and its presence makes dis3tool append one
+  stray animation sampler aimed at the accessor index just past the end
+  (output 33 of 33 in Rod-1), referenced by no channel.
+* `validate_gltf` reports the two reference quirk classes above as
+  warnings, not errors, so a faithful export still validates with 0 errors.
+
 ---
 
 ## 2. The GM `.g` geometry file

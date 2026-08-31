@@ -22,6 +22,10 @@ frame1 210;
 fps 15.000000;
 priority 256;
 flags 0;
+event2 "snd_Attack" 150 "Resources/Characters/neutrals/airelemental/Aliases\Attack00.alias" " 100";
+event2 "snd_Attack" 180 "Resources/Characters/neutrals/airelemental/Aliases\Attack01.alias" " 100";
+event2 "FxStrike" 185 "" "";
+event2 "fxcast" 150 "" "";
 link "Idle" 1; blend 0;
 meshfile "resources\characters\neutrals\airelemental\character_neutrals_airelemental.g";
 }
@@ -33,6 +37,7 @@ frame1 270;
 fps 15.000000;
 priority 256;
 flags 0;
+event2 "snd_Damage" 210 "Resources/Characters/neutrals/airelemental/Aliases\Damage00.alias" " 100";
 link "Idle" 1; blend 0;
 link "Run" 0; blend 0;
 gaestate "Idle";
@@ -46,6 +51,7 @@ frame1 345;
 fps 15.000000;
 priority 256;
 flags 0;
+event2 "snd_Die" 270 "Resources/Characters/neutrals/airelemental/Aliases\Death00.alias" " 100";
 meshfile "resources\characters\neutrals\airelemental\character_neutrals_airelemental.g";
 }
 state "Run"
@@ -56,6 +62,7 @@ frame1 16;
 fps 15.000000;
 priority 256;
 flags 1;
+event2 "snd_Step" 1 "Resources/Characters/neutrals/airelemental/Aliases\Run01.alias" " 60";
 link "Idle" 0; blend 3;
 gaestate "Idle";
 meshfile "resources\characters\neutrals\airelemental\character_neutrals_airelemental.g";

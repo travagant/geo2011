@@ -27,30 +27,20 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from d3tool import ac as acmod            # noqa: E402
-from d3tool import cli as climod
+from d3tool import cli as climod          # noqa: E402
 from d3tool import gfile                  # noqa: E402
 from d3tool import gltf_out as gltfout    # noqa: E402
 
 
 def _anim_for(g_path: str):
-    folder = os.path.dirname(os.path.abspath(g_path))
-    stem = os.path.splitext(os.path.basename(g_path))[0]
-    ac_path = os.path.join(folder, stem + ".ac")
-    if os.path.isfile(ac_path):
-        cfg = acmod.parse_ac(open(ac_path, "r", encoding="utf-8-sig",
-                                  errors="replace").read())
-        for state in cfg.states:
-            if state.file:
-                cand = os.path.join(
-                    folder, state.file.replace("\\", "/").rsplit("/", 1)[-1])
-                if os.path.isfile(cand):
-                    return cand
-    for suffix in ("_baseanims.a", "_iadd.a", ".a"):
-        cand = os.path.join(folder, stem + suffix)
-        if os.path.isfile(cand):
-            return cand
-    return None
+    """Animation choice — the CLI's own resolver, which mirrors dis3tool.
+
+    dis3tool loads the stream the unit's `.ac` names; when that stream is
+    not in the unit folder it ships the mesh **rigid** (Blacknaga points at
+    mermaid's `.a`, watersnake_sea at a `.a` bundled with neither), so the
+    resolver returns None there instead of guessing a conventional `.a`.
+    """
+    return climod._find_animation_for_geometry(g_path)
 
 
 def _json_diffs(r, g, path=""):

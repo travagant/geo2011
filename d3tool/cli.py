@@ -596,6 +596,12 @@ def _find_animation_for_geometry(g_path: str) -> Optional[str]:
     important for names such as ``*_iadd.a`` and ``*_baseanims.a``.  LOD files
     normally share the main model's config.  If no config gives an answer, use
     conventional names, then a sole animation in the directory.
+
+    When the config *names* streams but none of them exists in the unit
+    folder, there is no fallback: dis3tool exports such a unit rigid
+    (Blacknaga's config points at mermaid's `.a`, which is not in its
+    folder), and guessing a conventional `.a` here would animate a mesh the
+    reference leaves rigid.
     """
     folder = os.path.dirname(os.path.abspath(g_path))
     stem = os.path.splitext(os.path.basename(g_path))[0]
@@ -608,14 +614,20 @@ def _find_animation_for_geometry(g_path: str) -> Optional[str]:
         try:
             cfg = acmod.parse_ac(open(ac_path, "r", encoding="utf-8-sig",
                                       errors="replace").read())
-            for state in cfg.states:
-                if state.file:
-                    candidate = os.path.join(
-                        folder, state.file.replace("\\", "/").rsplit("/", 1)[-1])
-                    if os.path.isfile(candidate):
-                        return candidate
         except OSError:
-            pass
+            continue
+        named = False
+        for state in cfg.states:
+            if state.file:
+                named = True
+                candidate = os.path.join(
+                    folder, state.file.replace("\\", "/").rsplit("/", 1)[-1])
+                if os.path.isfile(candidate):
+                    return candidate
+        if named:
+            # The unit's own config names streams that are not in its
+            # folder — ship it rigid, like the dis3tool reference does.
+            return None
 
     for base in dict.fromkeys((stem, main_stem)):
         for suffix in (".a", "_iadd.a", "_baseanims.a"):
@@ -661,6 +673,9 @@ def _export_all(folder: str, out_dir: str, use_anim: bool = True) -> int:
             detail = os.path.relpath(target, os.getcwd())
             if animation:
                 detail += f"  + {os.path.basename(animation)}"
+            elif use_anim:
+                # the unit's .ac names a stream its folder does not have
+                detail += "  + no animation (rigid, like the dis3tool export)"
             ui.ok(detail)
             succeeded += 1
         except Exception as exc:  # noqa: BLE001

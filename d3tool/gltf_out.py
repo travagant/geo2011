@@ -147,6 +147,31 @@ def _first_by_name(bones: List[BoneAnim]) -> Dict[str, BoneAnim]:
     return out
 
 
+def _animation_targets(anim_primary: List[BoneAnim],
+                       base: int) -> List[Tuple[BoneAnim, int]]:
+    """Channel ``(bone, node)`` targets the way dis3tool emits them.
+
+    The reference *counts* node slots rather than resolving names: the
+    channel target for the bone at position ``i`` of the primary streams is
+    simply ``base + i`` — the node index that bone *would* have if every
+    list entry got its own node.  For a duplicate-name bone (WaterSnake
+    lists `null` five times, Wildboar `null_Bone_Tip` twice) the later
+    entries have no node of their own, so two things happen, both faithful
+    to the references:
+
+    * the channel target dangles past the node list (Wildboar's last bone
+      targets 37 with 37 nodes; WaterSnake's last four target 47..50 with
+      47), and
+    * every *unique* bone after the duplicate is off by one, aiming at the
+      next bone's node (Wildboar's Mirror_Bone11 is node 12 but its channel
+      targets 13).
+
+    Deduplicating by (node, path) — what a validator would want — emits 8
+    (WaterSnake) and 2 (Wildboar) channels fewer than every reference.
+    """
+    return [(b, base + i) for i, b in enumerate(anim_primary)]
+
+
 def write_gltf(
     mesh: SkinnedMesh,
     anim: Optional[AnimFile] = None,
@@ -324,14 +349,16 @@ def write_gltf(
          "count": n_verts, "type": "VEC3"},
         {"bufferView": 1, "byteOffset": 24, "componentType": 5126,
          "count": n_verts, "type": "VEC2"},
-        {"bufferView": 1, "byteOffset": 32, "componentType": 5126,
-         "count": n_verts, "type": "VEC4"},
-        {"bufferView": 1, "byteOffset": 48, "componentType": 5121,
-         "count": n_verts, "type": "VEC4"},
-        {"bufferView": 2, "byteOffset": 0, "componentType": 5126,
-         "count": len(bones), "type": "MAT4"},
     ]
     if anim_bones:
+        accessors += [
+            {"bufferView": 1, "byteOffset": 32, "componentType": 5126,
+             "count": n_verts, "type": "VEC4"},
+            {"bufferView": 1, "byteOffset": 48, "componentType": 5121,
+             "count": n_verts, "type": "VEC4"},
+            {"bufferView": 2, "byteOffset": 0, "componentType": 5126,
+             "count": len(bones), "type": "MAT4"},
+        ]
         fmin = [min(frames)] if frames else [0.0]
         fmax = [max(frames)] if frames else [0.0]
         accessors += [
@@ -353,6 +380,7 @@ def write_gltf(
     # ---- nodes ----
     node_list: List[dict] = [{"name": unit_label}]
     name_to_idx: Dict[str, int] = {}
+    skin: Optional[dict] = None
     if anim_bones:
         children, parent, order, roots = node_hierarchy(
             anim_bones, anim.n_primary if anim else 0)
@@ -375,61 +403,59 @@ def write_gltf(
         # *sibling* in the scene (scene nodes = [mesh, skeleton_root]).  Nesting
         # the skeleton under the mesh makes the Khronos validator evaluate the
         # skin differently and flags the same joint as duplicated.
-        root = order[0] if order else None
         # add any skin bones not animated as extra nodes (rare)
         for b in bones:
             if b.name not in name_to_idx:
                 idx = len(node_list)
                 name_to_idx[b.name] = idx
                 node_list.append({"name": b.name})
-        scene_children_idx = [name_to_idx[root]] if root is not None else []
+        # dis3tool scene roots = every node whose parent is not a bone, in
+        # node order — normally just the skeleton root, but DarkServant's
+        # `ROOT_demons_thief_lod` / `Bone02` (parent `Scene Root`) trail as
+        # extra roots in its reference (scene nodes 4, 72, 73).
+        scene_children_idx = [name_to_idx[nm] for nm in order
+                              if parent.get(nm) not in children]
+        # ---- skin ----
+        skin_joints = [name_to_idx.get(b.name, 1 + i) for i, b in enumerate(bones)]
+        node_list[0]["mesh"] = 0
+        node_list[0]["skin"] = 0
+        # dis3tool names its skins skin0/skin1/... (all 98 bundled references do),
+        # and the compound writer already follows that convention.
+        skin = {"name": "skin0", "joints": skin_joints, "inverseBindMatrices": 6}
     else:
-        # no animation: the `.g` does not store a hierarchy (that lives in the
-        # `.a`), so build a flat skeleton.  Every bone is a child of the mesh
-        # node so the whole skin shares a common root and every joint is
-        # reachable from the scene.
-        name_to_idx = {b.name: i + 1 for i, b in enumerate(bones)}
-        for b in bones:
-            node = {"name": b.name, "rotation": [0.0, 0.0, 0.0, 1.0],
-                    "translation": [0.0, 0.0, 0.0]}
-            node_list.append(node)
-        node_list[0]["children"] = [name_to_idx[b.name] for b in bones] if bones else []
+        # rigid export (the `.ac`'s animation is not resolvable inside the
+        # unit folder — Blacknaga points at mermaid's `.a`, watersnake_sea at
+        # a `.a` that ships with neither).  The dis3tool reference emits ONLY
+        # the mesh node — no bone nodes, no skin — while the buffer keeps the
+        # skinned stride-52 vertex block and the mesh_bones IBM block
+        # unreferenced, and the primitive drops WEIGHTS_0/JOINTS_0.
+        node_list[0]["mesh"] = 0
         scene_children_idx = []
-
-    # ---- skin ----
-    skin_joints = [name_to_idx.get(b.name, 1 + i) for i, b in enumerate(bones)]
-    node_list[0]["mesh"] = 0
-    node_list[0]["skin"] = 0
-    # dis3tool names its skins skin0/skin1/... (all 98 bundled references do),
-    # and the compound writer already follows that convention.
-    skin = {"name": "skin0", "joints": skin_joints, "inverseBindMatrices": 6}
     # ---- animation channels ----
     channels = []
     samplers = []
     if anim_bones:
         frames_acc = 7
-        # Two animated bones that collapse onto the same node (e.g. the tip
-        # bone listed under two parents) must not emit duplicate channels for
-        # the same node/path — the Khronos validator flags those.
-        sent_targets: set = set()
-        for i, b in enumerate(anim_primary):
-            nidx = name_to_idx.get(b.name, 1)
+        # One rotation+translation channel pair per animated bone, targets
+        # counted positionally (see _animation_targets; WaterSnake /
+        # Wildboar references).
+        for i, (b, nidx) in enumerate(_animation_targets(anim_primary, 1)):
             rot_acc = 8 + 2 * i
             tra_acc = 8 + 2 * i + 1
-            for path, acc_idx in (("rotation", rot_acc), ("translation", tra_acc)):
-                key = (nidx, path)
-                if key in sent_targets:
-                    continue
-                sent_targets.add(key)
+            for path, acc_idx in (("rotation", rot_acc),
+                                  ("translation", tra_acc)):
                 base = len(samplers)
                 samplers.append({"input": frames_acc, "output": acc_idx,
                                  "interpolation": "LINEAR"})
                 channels.append({"sampler": base,
                                  "target": {"node": nidx, "path": path}})
 
+    prim_attrs: Dict[str, int] = {"POSITION": 1, "NORMAL": 2, "TEXCOORD_0": 3}
+    if anim_bones:
+        prim_attrs["WEIGHTS_0"] = 4
+        prim_attrs["JOINTS_0"] = 5
     prim = {
-        "attributes": {"POSITION": 1, "NORMAL": 2, "TEXCOORD_0": 3,
-                       "WEIGHTS_0": 4, "JOINTS_0": 5},
+        "attributes": prim_attrs,
         "indices": 0,
         # every one of the 396 primitives across the 98 bundled references
         # carries an explicit mode; the compound writer already emitted it
@@ -445,12 +471,13 @@ def write_gltf(
         # dis3tool.  This keeps the skin graph fully reachable from the scene.
         "scenes": [{"nodes": [0] + scene_children_idx}],
         "nodes": node_list,
-        "skins": [skin],
         "meshes": [{"name": unit_label, "primitives": [prim]}],
         "accessors": accessors,
         "bufferViews": bufferViews,
         "buffers": [{"uri": output_name + ".bin", "byteLength": total}],
     }
+    if skin is not None:
+        doc["skins"] = [skin]
     if anim_bones:
         doc["animations"] = [{"channels": channels, "samplers": samplers}]
     if texture:
@@ -505,10 +532,10 @@ class _Sub:
     """One sub-mesh of a compound `.g` container, flattened for export."""
 
     __slots__ = ("name", "vertices", "indices", "bones", "morph", "lm_uv",
-                 "lightmap", "material_diffuse")
+                 "lightmap", "material_diffuse", "zero_base")
 
     def __init__(self, name, vertices, indices, bones, morph, lm_uv,
-                 lightmap, material_diffuse):
+                 lightmap, material_diffuse, zero_base=True):
         self.name = name
         self.vertices = vertices
         self.indices = indices
@@ -517,6 +544,12 @@ class _Sub:
         self.lm_uv = lm_uv
         self.lightmap = lightmap
         self.material_diffuse = material_diffuse
+        # True: morph-deformer semantics — dis3tool zeroes the base POSITION
+        # block (the shape lives in the morph targets).  False: a part that
+        # carries no `.g` attributes at all (rod-1's sword) lands in the
+        # morph-static bucket only by the parts default; its reference export
+        # keeps the real positions at the same stride-32 layout.
+        self.zero_base = zero_base
 
 
 def _compound_subs(mesh: SkinnedMesh) -> List[_Sub]:
@@ -528,7 +561,9 @@ def _compound_subs(mesh: SkinnedMesh) -> List[_Sub]:
     for part in mesh.parts:
         subs.append(_Sub(part.name, part.vertices, part.indices, part.bones,
                          part.morph, part.lm_uv, part.lightmap,
-                         part.material_diffuse))
+                         part.material_diffuse,
+                         zero_base=bool(part.attrs.get("morph"))
+                         or not part.morph))
     return subs
 
 
@@ -623,6 +658,12 @@ def _write_compound_gltf(mesh: SkinnedMesh, anim: Optional[AnimFile],
     """
     subs = _compound_subs(mesh)
     anim_bones: List[BoneAnim] = anim.bones if anim and anim.bones else []
+    # Only the first stream's bones are animated (same rule as the single-mesh
+    # writer): bones concat_anims appended from a later `.a` — DarkServant's
+    # Bone02, carried only by its `_run.a` — get their trailing node but no
+    # channel and no rotation/translation storage in the reference export.
+    anim_primary: List[BoneAnim] = (
+        anim_bones[:anim.n_primary] if anim and anim.n_primary else anim_bones)
     n_frames = 0
     if anim_bones:
         n_frames = anim.frame_count or max(len(b.frames) for b in anim_bones) or 1
@@ -663,23 +704,34 @@ def _write_compound_gltf(mesh: SkinnedMesh, anim: Optional[AnimFile],
             f"mesh_indexes_{sub.name}",
             b"".join(struct.pack("<I", x) for x in sub.indices), 34963)
         if sub.bones:
-            vbuf = bytearray()
-            for v in sub.vertices:
-                # dis3tool copies the vertex verbatim; a handful of assets
-                # carry NaN normals (e.g. the HolyAvenger muzzle) and the
-                # reference export keeps NaN as-is
-                w, j = _compound_weights_joints(v)
-                vbuf += struct.pack(
-                    "<3f3f2f4f4B",
-                    *v.position, *v.normal, *v.uv, *w, *j,
-                )
+            # dis3tool copies the vertex verbatim; a handful of assets
+            # carry NaN normals (e.g. the HolyAvenger muzzle) and the
+            # reference export keeps NaN as-is
+            vbuf = b"".join(
+                struct.pack("<3f3f2f4f4B", *v.position, *v.normal, *v.uv,
+                            *w, *j)
+                for v in sub.vertices
+                for w, j in (_compound_weights_joints(v),)
+            )
             entry["vertexes"] = _append(f"mesh_vertexes_{sub.name}",
-                                        bytes(vbuf), 34962, 52)
-        elif sub.morph:
+                                        vbuf, 34962, 52)
+        elif sub.morph and sub.zero_base:
             # dis3tool zeroes the base POSITION of a morph-deformer mesh —
             # the morph targets carry the full absolute shape per frame.
             vbuf = b"".join(
                 struct.pack("<3f3f2f", 0.0, 0.0, 0.0, *v.normal, *v.uv)
+                for v in sub.vertices
+            )
+            entry["vertexes"] = _append(f"mesh_vertexes_{sub.name}", vbuf,
+                                        34962, 32)
+        elif sub.morph:
+            # morph-static layout, but the part has no `.g` attributes at all
+            # (rod-1's sword): the reference keeps the real base positions in
+            # the buffer — at this stride, unlike a true static (stride 20) —
+            # while still reporting zeroed POSITION min/max (the accessor
+            # loop below keeps the zeroed bounds for every morph bucket).
+            vbuf = b"".join(
+                struct.pack("<3f3f2f", *v.position, *v.normal, *v.uv)
                 for v in sub.vertices
             )
             entry["vertexes"] = _append(f"mesh_vertexes_{sub.name}", vbuf,
@@ -713,7 +765,7 @@ def _write_compound_gltf(mesh: SkinnedMesh, anim: Optional[AnimFile],
             frames = [k * step for k in range(n_frames)]
         else:
             frames = [0.0]
-        for b in anim_bones:
+        for b in anim_primary:
             for k in range(n_frames):
                 fr = b.frames[k] if k < len(b.frames) else b.rest[:7]
                 rot.extend(fr[0:4])
@@ -832,7 +884,7 @@ def _write_compound_gltf(mesh: SkinnedMesh, anim: Optional[AnimFile],
         rot_acc0 = _acc(rot_bv, 5126, n_frames, "VEC4")
         first_tra = _acc(tra_bv, 5126, n_frames, "VEC3")
         assert first_tra == rot_acc0 + 1
-        for i in range(1, len(anim_bones)):
+        for i in range(1, len(anim_primary)):
             _acc(rot_bv, 5126, n_frames, "VEC4", i * n_frames * 16)
             _acc(tra_bv, 5126, n_frames, "VEC3", i * n_frames * 12)
     elif n_morph_frames:
@@ -867,15 +919,13 @@ def _write_compound_gltf(mesh: SkinnedMesh, anim: Optional[AnimFile],
     n_subs = len(subs)
     node_list: List[dict] = []
     name_to_idx: Dict[str, int] = {}
+    scene_roots: List[int] = []
     if anim_bones:
         children, parent, order, roots = node_hierarchy(
             anim_bones, anim.n_primary if anim else 0)
         for off, nm in enumerate(order):
             name_to_idx[nm] = n_subs + off
         bmap: Dict[str, BoneAnim] = _first_by_name(anim_bones)
-    else:
-        children, order, roots = {}, [], []
-        bmap = {}
 
     # sub-mesh nodes first (flat siblings), then the skeleton hierarchy
     skins: List[dict] = []
@@ -903,6 +953,12 @@ def _write_compound_gltf(mesh: SkinnedMesh, anim: Optional[AnimFile],
         for sub in subs:
             for b in sub.bones:
                 name_to_idx.setdefault(b.name, root_idx)
+        # dis3tool scene roots = every skeleton node whose parent is not a
+        # bone, in node order — normally just the root, but DarkServant's
+        # `ROOT_demons_thief_lod` / `Bone02` (parent `Scene Root`) trail as
+        # extra roots in its reference (scene nodes 4, 72, 73).
+        scene_roots = [name_to_idx[nm] for nm in order
+                       if parent.get(nm) not in children]
 
     for si, sub in enumerate(subs):
         if not sub.bones or not anim_bones:
@@ -959,8 +1015,7 @@ def _write_compound_gltf(mesh: SkinnedMesh, anim: Optional[AnimFile],
     doc: dict = {
         "asset": {"version": "2.0", "generator": "d3tool (geo2011 reverse)"},
         "scene": 0,
-        "scenes": [{"nodes": list(range(n_subs)) + (
-            [name_to_idx[r] for r in roots] if anim_bones else [])}],
+        "scenes": [{"nodes": list(range(n_subs)) + scene_roots}],
         "nodes": node_list,
         "meshes": meshes_js,
         "accessors": accessors,
@@ -978,21 +1033,28 @@ def _write_compound_gltf(mesh: SkinnedMesh, anim: Optional[AnimFile],
         channels = []
         samplers = []
         if anim_bones:
-            sent: set = set()
-            for i, b in enumerate(anim_bones):
-                nidx = name_to_idx.get(b.name, n_subs)
+            # One rotation+translation channel pair per primary bone — the
+            # same positional rule as the single-mesh writer (see
+            # _animation_targets).
+            for i, (b, nidx) in enumerate(_animation_targets(anim_primary,
+                                                             n_subs)):
                 rot_acc = rot_acc0 + 2 * i
                 tra_acc = rot_acc0 + 2 * i + 1
                 for path, acc in (("rotation", rot_acc),
                                   ("translation", tra_acc)):
-                    key = (nidx, path)
-                    if key in sent:
-                        continue
-                    sent.add(key)
                     samplers.append({"input": frames_acc, "output": acc,
                                      "interpolation": "LINEAR"})
                     channels.append({"sampler": len(samplers) - 1,
                                      "target": {"node": nidx, "path": path}})
+            # dis3tool quirk reproduced from the Rod-1 reference: an attrless
+            # static part (exported at the morph-static stride with real
+            # positions) makes the exporter append one stray sampler aimed at
+            # the accessor index just past the end — output 33 of 33 — that
+            # no channel ever references.
+            if any(not s.zero_base for s in subs):
+                samplers.append({"input": frames_acc,
+                                 "output": len(accessors),
+                                 "interpolation": "LINEAR"})
         if frames_acc is not None and weights_acc is not None:
             for si, track in enumerate(sub_track):
                 if track is None:
@@ -1075,14 +1137,20 @@ def validate_gltf(path: str, base_dir: Optional[str] = None) -> Tuple[int, int, 
             errors += 1
     # skin joints must be valid node indices
     n_nodes = len(doc.get("nodes", []))
-    # ...and so must animation channel targets.  Two bundled references get
-    # this wrong (WaterSnake channels point at nodes 47-50 with 47 nodes,
-    # Wildboar at node 37 with 37 nodes), so this is a real check, not a
-    # theoretical one — and d3tool must not reproduce it.
+    # ...and so must animation channel targets.  dis3tool aims the channels
+    # of duplicate-name bones at dangling indices right past the node list
+    # (WaterSnake targets 47..50 with 47 nodes, Wildboar 37 with 37) and the
+    # references reproduce that verbatim, so `_animation_targets` does too.
+    # Such a contiguous dangling block is reported as a warning; anything
+    # else out of range stays a hard error.
     for anim in doc.get("animations", []):
-        for ch in anim.get("channels", []):
-            ni = ch.get("target", {}).get("node")
-            if ni is not None and not (0 <= ni < n_nodes):
+        bad = [ch["target"]["node"] for ch in anim.get("channels", [])
+               if ch.get("target", {}).get("node") is not None
+               and not 0 <= ch["target"]["node"] < n_nodes]
+        for ni in bad:
+            if 0 <= ni - n_nodes < len(bad):
+                warnings += 1
+            else:
                 errors += 1
     for s in doc.get("skins", []):
         if "joints" not in s:
@@ -1161,7 +1229,14 @@ def validate_gltf(path: str, base_dir: Optional[str] = None) -> Tuple[int, int, 
             i_acc = _at(doc["accessors"], smp.get("input", -1))
             o_acc = _at(doc["accessors"], smp.get("output", -1))
             if i_acc is None or o_acc is None:
-                errors += 1
+                # dis3tool quirk (Rod-1 reference): one stray sampler per
+                # attrless static part, aimed at the accessor index just past
+                # the end and referenced by no channel.  `write_gltf`
+                # reproduces it; flag it only as a warning.
+                if idx not in path_of and smp.get("output") == nacc:
+                    warnings += 1
+                else:
+                    errors += 1
                 continue
             want = path_of.get(idx)
             if want == "weights":
