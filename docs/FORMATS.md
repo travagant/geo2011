@@ -28,6 +28,8 @@ Key structure (AirElemental as the reference unit, 3453 verts / 5056 tris /
     `pos(12) + normal(12) + uv(8) + weights(16) + joints(4)`.
   * 2 `mesh_bones...`   `byteLength = bones*4*16` (38 × MAT4 = 2432).
   * 3 `frames`, 4 `bones_rotate`, 5 `bones_translate` — the animation tracks.
+    `frames[k] = float32(k * float32(1/30))` — one keyframe per frame on a
+    30 fps clock (0 .. (n−1)/30 seconds), *not* a normalised 0..1 range.
 * `meshes[0]` one primitive with `POSITION/NORMAL/TEXCOORD_0/WEIGHTS_0/JOINTS_0`.
 * `skins[0]` with `joints` (list of node indices) and
   `inverseBindMatrices` (accessor → `bufferView` 2, `componentType` 5126,
@@ -219,8 +221,10 @@ there); this does not affect the rendered pose because the weight is 0.
 `d3tool/gltf_out.py` writes a glTF whose POSITION, NORMAL, TEXCOORD_0,
 WEIGHTS_0, JOINTS_0, indices and inverse-bind matrices are byte-for-byte
 identical to the reference dis3tool export (the 21 zero-weight joint slots
-aside).  The animation is sampled from the `.a` frame count (the `.a` uses its
-own frame rate; dis3tool re-samples to 30 fps in the glTF).  The exported glTF
+aside).  The animation is sampled from the `.a` frame count, one keyframe per frame on
+the dis3tool 30 fps clock: input times are `float32(k * float32(1/30))`
+seconds, reproduced byte-for-byte (a normalised 0..1 range would play the clip
+~12× too fast and look coarse in viewers).  The exported glTF
 passes the official Khronos glTF Validator with **0 errors**.
 
 ### `.g` round-trip fidelity

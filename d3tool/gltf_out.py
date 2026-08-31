@@ -13,6 +13,10 @@ Coordinate-system mapping (confirmed against the bundled units):
 * ``.a`` bone rest frame ``[quat, trans]`` ==  the glTF node ``rotation`` +
   ``translation``.
 * ``.a`` per-frame samples == the glTF animation channel outputs.
+* animation keyframe times == ``float32(k * float32(1/30))`` seconds — dis3tool
+  lays one keyframe per frame on a 30 fps time base (the 3ds Max default), so
+  the glTF ``frames`` input runs 0 .. (n_frames-1)/30 seconds, *not* a
+  normalised 0..1 range.
 """
 from __future__ import annotations
 
@@ -31,6 +35,11 @@ class _BufferShortError(Exception):
 
 def _u32(idx: int) -> bytes:
     return struct.pack("<I", idx)
+
+
+def _F32(x: float) -> float:
+    """Round ``x`` to the nearest float32 value (stored in a Python float)."""
+    return struct.unpack("<f", struct.pack("<f", x))[0]
 
 
 def node_hierarchy(bones: List[BoneAnim]) -> Tuple[Dict[str, int], Dict[str, str], List[str]]:
@@ -131,7 +140,12 @@ def write_gltf(
     if anim_bones:
         n_frames = anim.frame_count or max(len(b.frames) for b in anim_bones) or 1
         if n_frames > 1:
-            step = 1.0 / (n_frames - 1)
+            # 30 fps time base, matching dis3tool byte-for-byte: a viewer gets
+            # (n_frames-1)/30 seconds of animation per channel, the same
+            # pace the reference export has.  Multiplying by the float32
+            # step and packing to float32 reproduces the reference `frames`
+            # accessor exactly (verified for all bundled units).
+            step = _F32(1.0 / 30.0)
             frames = [k * step for k in range(n_frames)]
         else:
             frames = [0.0]

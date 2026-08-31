@@ -231,6 +231,20 @@ def test_forward_export_matches_gltf():
             assert all(all(abs(a - b) < 1e-5 for a, b in zip(x, y))
                         for x, y in zip(r, m)), label
 
+    # Animation time base: one keyframe per `.a` frame on a 30 fps clock,
+    # t[k] = float32(k * float32(1/30)) seconds — not a normalised 0..1
+    # range.  The dis3tool reference uses exactly this clock (verified
+    # byte-for-byte for every bundled unit), so our track must equal its
+    # prefix; the reference is longer only because its source `.a` carried
+    # 363 frames instead of 346.
+    f32 = lambda x: struct.unpack("<f", struct.pack("<f", x))[0]  # noqa: E731
+    step = f32(1.0 / 30.0)
+    mine_t = [t[0] for t in acc(doc, binb, 7)]
+    ref_t = [t[0] for t in acc(ref, refbin, 7)]
+    assert len(mine_t) == an.frame_count
+    assert mine_t == [f32(k * step) for k in range(len(mine_t))]
+    assert mine_t == ref_t[: len(mine_t)]
+
 
 def test_forward_export_weights_normalized():
     """Forward-exported glTF WEIGHTS_0 must sum to 1.0 per vertex (deduped by
