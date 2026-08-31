@@ -26,6 +26,7 @@ from typing import List, Optional, Tuple
 
 from . import __version__
 from . import ac as acmod
+from . import alias as aliasmod
 from . import anim as animmod
 from . import gfile
 from . import gltf as gltfmod
@@ -118,6 +119,52 @@ def _analyze_unit(path: str) -> int:
             ui.fail(f"{os.path.basename(gltf)}: parse error {exc}")
             had_error = 1
 
+    scene_files = sorted(glob.glob(os.path.join(path, "*.scene")))
+    scene_rows = []
+    for sc in scene_files:
+        try:
+            doc = scenemod.parse_scene(
+                open(sc, "rb").read().decode("latin-1"))
+            kinds = {k: len(doc.find_all(k))
+                     for k in ("gobj", "bones", "goclass", "particles")
+                     if doc.find_all(k)}
+            desc = " ".join(f"{k}:{v}" for k, v in kinds.items()) or "empty"
+            scene_rows.append((os.path.basename(sc), desc,
+                               str(len(doc.find_all("bones")[0].files()))
+                               if doc.find_all("bones") else "0"))
+        except Exception as exc:  # noqa: BLE001
+            ui.fail(f"{os.path.basename(sc)}: parse error {exc}")
+            had_error = 1
+    if scene_rows:
+        ui.table(scene_rows,
+                 headers=[".scene scene", "nodes", "file refs"])
+
+    alias_dir = os.path.join(path, "Aliases")
+    if os.path.isdir(alias_dir):
+        n_alias = n_entries = n_bad = 0
+        empty = 0
+        for cur, _dirs, files in os.walk(alias_dir):
+            for fn in sorted(files):
+                if not fn.lower().endswith(".alias"):
+                    continue
+                ap = os.path.join(cur, fn)
+                try:
+                    adoc = aliasmod.parse_alias_bytes(open(ap, "rb").read())
+                    n_alias += 1
+                    n_entries += len(adoc.sounds)
+                    if not adoc.sounds:
+                        empty += 1
+                except Exception as exc:  # noqa: BLE001
+                    n_bad += 1
+                    ui.fail(f"{os.path.relpath(ap, path)}: "
+                            f"parse error {exc}")
+                    had_error = 1
+        if n_alias or n_bad:
+            summary = (f"Aliases: {n_alias} files, {n_entries} sound "
+                       f"entries ({empty} muted)")
+            if n_bad:
+                summary += f", {n_bad} unparsable"
+            ui.info(summary)
     if g_rows:
         ui.table(g_rows, headers=[".g geometry", "verts", "tris", "bones",
                                   "slots", "diffuse"])
@@ -314,6 +361,10 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
             fh.write(scene_bytes)
         if not quiet:
             ui.wrote(out_scene, "reused (particle emitters preserved)")
+        try:
+            scenemod.parse_scene(scene_bytes.decode("latin-1"))
+        except Exception as exc:  # noqa: BLE001
+            ui.warn(f"{base}.scene copied but does not parse: {exc}")
     else:
         scene_text = scenemod.write_scene(sm.name, base, res, attrs,
                                           gobj_name=sm.name)
@@ -362,6 +413,11 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
                 with open(os.path.join(dst_dir, fn), "wb") as fh:
                     fh.write(payload)
                 n_alias += 1
+                try:
+                    aliasmod.parse_alias_bytes(payload)
+                except Exception as exc:  # noqa: BLE001
+                    ui.warn(f"Aliases/{fn}: copied but does not parse "
+                            f"({exc})")
         if not quiet:
             ui.wrote(os.path.join(out_dir, "Aliases"),
                      f"{n_alias} sound/FX alias files (referenced by the .ac)")

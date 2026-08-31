@@ -700,7 +700,10 @@ def test_public_api_is_re_exported():
                  "load_gltf", "mesh_to_skinned", "animation_from_gltf",
                  "parse_anim", "write_anim", "build_anim",
                  "parse_ac", "write_ac", "default_ac", "detect_anim_files",
-                 "write_scene", "write_gltf", "write_gltf_to", "validate_gltf",
+                 "write_scene", "parse_scene", "render_scene",
+                 "count_particles", "parse_alias", "parse_alias_bytes",
+                 "write_alias", "write_alias_bytes",
+                 "write_gltf", "write_gltf_to", "validate_gltf",
                  "parse_t", "parse_dds", "t_to_dds", "dds_to_t", "convert_file",
                  "Bone", "Vertex", "SkinnedMesh", "MeshPart", "MorphTrack",
                  "AnimFile", "BoneAnim", "AnimConfig", "State", "TextureInfo"):
@@ -1292,6 +1295,169 @@ def test_scene_lists_every_parentless_skeleton_node():
     # the trailing nodes are exactly those two bones
     names = [doc["nodes"][i]["name"] for i in (72, 73)]
     assert names == ["ROOT_demons_thief_lod", "Bone02"]
+
+
+def _corpus_files(ext):
+    """Every Empire//Neutrals file with ``ext``, sorted (recursive)."""
+    return (sorted(glob.glob(os.path.join(REPO, "Empire", "**", "*" + ext),
+                              recursive=True))
+            + sorted(glob.glob(os.path.join(REPO, "Neutrals", "**", "*" + ext),
+                               recursive=True)))
+
+
+def test_scene_parser_roundtrips_every_shipped_scene():
+    """parse_scene / render_scene must be lossless on all 245 shipped
+    `.scene` files -- Latin-1 bytes, mixed LF/CRLF line endings, keyless
+    mesh lines and column-0 child headers included."""
+    from d3tool import scene as scenemod
+    files = _corpus_files(".scene")
+    assert len(files) >= 244, len(files)
+    kinds = {}
+    for p in files:
+        raw = open(p, "rb").read()
+        doc = scenemod.parse_scene(raw.decode("latin-1"))
+        assert scenemod.render_scene(doc).encode("latin-1") == raw, p
+        for node in doc.root.walk():
+            kinds[node.kind] = kinds.get(node.kind, 0) + 1
+    # the shapes that actually occur in the corpus
+    for kind in ("group", "bones", "gobj", "goclass", "particles"):
+        assert kinds.get(kind), f"no {kind} nodes found in corpus scenes"
+
+
+def test_scene_parser_extracts_air_elemental_structure():
+    """The AirElemental scene: one bones child under Scene Root, nine
+    particle emitters, the .ac referenced by the bones node."""
+    from d3tool import scene as scenemod
+    p = os.path.join(REPO, "Neutrals", "AirElemental",
+                     "character_neutrals_airelemental.scene")
+    doc = scenemod.parse_scene(open(p, encoding="latin-1").read())
+    assert doc.settings.props["fov"] == "1.100000"
+    assert doc.root.name == "Scene Root"
+    bones = doc.find_all("bones")
+    assert len(bones) == 1
+    assert [f for f in bones[0].files()
+            if f.endswith(".ac")] == [
+        "resources\\characters\\neutrals\\airelemental\\"
+        "character_neutrals_airelemental.ac"]
+    assert len(doc.find_all("particles")) == 9
+    assert scenemod.count_particles(doc) == 9
+
+
+def test_scene_parser_rejects_broken_structure():
+    from d3tool import scene as scenemod
+    for text in ('group "A" \n\tfov 1;\n',          # no opening brace
+                 'group "A" \n{\n\tfov 1;\n',        # never closed
+                 'group "A" \n}\n',                    # close without open
+                 'group "A" \n{\n}\n}\n'):           # extra close
+        try:
+            scenemod.parse_scene(text)
+        except ValueError:
+            continue
+        raise AssertionError(f"parser accepted broken scene {text!r}")
+
+
+def test_alias_parser_roundtrips_every_shipped_alias():
+    """All 1300 `.alias` files re-emit byte-for-byte -- including the
+    CP1251-encoded Craken file and the 87 empty (muted) blocks."""
+    from d3tool import alias as aliasmod
+    files = _corpus_files(".alias")
+    assert len(files) == 1294, len(files)
+    n_empty = 0
+    encs = {}
+    for p in files:
+        raw = open(p, "rb").read()
+        doc = aliasmod.parse_alias_bytes(raw)
+        assert aliasmod.write_alias_bytes(doc) == raw, p
+        encs[doc.encoding] = encs.get(doc.encoding, 0) + 1
+        if not doc.sounds:
+            n_empty += 1
+    assert encs == {"utf-8": 1293, "cp1251": 1}, encs
+    assert n_empty == 87, n_empty
+
+
+def test_alias_parser_reads_entries_macros_and_cp1251():
+    from d3tool import alias as aliasmod
+    p = os.path.join(REPO, "Empire", "Acolyte", "Aliases", "attack00.alias")
+    doc = aliasmod.parse_alias_bytes(open(p, "rb").read())
+    assert doc.name == "Attack00"
+    assert doc.sounds[0].use == 100 and doc.sounds[0].play == 100
+    assert doc.sounds[0].flags == 3
+    assert doc.sounds[0].path.startswith("$(Sounds)\\")
+    # attack00.alias is one of the 236 files shipped without the comment
+    # header; a headered sibling documents the format
+    assert doc.preamble == ""
+    doc2 = aliasmod.parse_alias_bytes(
+        open(os.path.join(REPO, "Empire", "Acolyte", "Aliases",
+                          "cloth.alias"), "rb").read())
+    assert doc2.preamble.startswith("// alias configuration file")
+    # Craken's Cyrillic-named CP1251 file round-trips through the same API
+    import glob as _glob
+    cyr = [q for q in _glob.glob(os.path.join(REPO, "Neutrals", "Craken",
+                                              "Aliases", "*.alias"))
+           if "ттт" in q]
+    assert cyr
+    raw = open(cyr[0], "rb").read()
+    doc = aliasmod.parse_alias_bytes(raw)
+    assert doc.encoding == "cp1251"
+    assert aliasmod.write_alias_bytes(doc) == raw
+
+
+def test_alias_parser_rejects_garbage():
+    from d3tool import alias as aliasmod
+    for text in ("", "sound 100, \"x.wav\", 1, 1;\n",
+                 'alias "A" {\n\tsound 100, "x";\n}\n',
+                 'alias "A" {\n'):
+        try:
+            aliasmod.parse_alias(text)
+        except ValueError:
+            continue
+        raise AssertionError(f"parser accepted broken alias {text!r}")
+
+
+def test_confirm_prompts_on_a_tty_even_without_colour():
+    """`confirm` used to treat colour support as interactivity: under
+    NO_COLOR it silently took the destructive default.  The prompt must
+    appear whenever stdin is a TTY, coloured or not."""
+    import io as _io
+    from d3tool import ui
+
+    class _FakeTTY:
+        def __init__(self, data):
+            self.buffer = _io.StringIO(data)
+
+        def isatty(self):
+            return True
+
+        def readline(self):
+            return self.buffer.readline()
+
+    answers = {"y\n": True, "n\n": False, "\n": True}
+    old_stdin = sys.stdin
+    old_nocolor = os.environ.get("NO_COLOR")
+    os.environ["NO_COLOR"] = "1"   # colour must not gate the prompt
+    try:
+        for data, expected in answers.items():
+            sys.stdin = _FakeTTY(data)
+            assert ui.confirm("ok?", default=True) is expected, data
+            sys.stdin = _FakeTTY(data)
+            assert ui.confirm("ok?", default=False) is (
+                expected if data != "\n" else False), data
+    finally:
+        sys.stdin = old_stdin
+        if old_nocolor is None:
+            os.environ.pop("NO_COLOR", None)
+        else:
+            os.environ["NO_COLOR"] = old_nocolor
+
+
+def test_confirm_defaults_without_reading_on_piped_stdin():
+    import io as _io
+    from d3tool import ui
+    # a non-TTY stdin (like StringIO with no isatty override) must return
+    # the default WITHOUT consuming input -- batch scripts never hang
+    sentinel = _io.StringIO("n\n")
+    assert ui.confirm("ok?", default=True) is True
+    assert sentinel.getvalue() == "n\n"  # untouched
 
 
 def anim_bone_stub(name, parent=""):

@@ -248,6 +248,44 @@ them.  `d3tool/scene.py` therefore does two things:
 * otherwise it generates a faithful, particle-free scene (correct
   `bones`/`gobj` node names, full `globalsettings`, attribute block).
 
+### Parsing `.scene`
+
+`parse_scene` / `render_scene` round-trip every shipped `.scene` byte-for-byte
+(244 under Empire//Neutrals plus the `out_rev` sample)
+byte-for-byte (Latin-1 bytes; five files mix LF and CRLF per line, so brace
+lines are stored verbatim).  The grammar, quirks included:
+
+* `globalsettings`, `group "<name>"` and `child <kind> "<name>"` open blocks;
+  braces sit alone on their line, at column 0 (dis3tool exports) or
+  tab-indented (d3tool's own generated scenes);
+* kinds seen across the corpus: `gobj` (618), `group` (271 incl. nested),
+  `bones` (160), `goclass` (74 - the only header with a second quoted
+  argument), `particles` (52);
+* props are `key value[;]` - the semicolon is optional (`uid 181 40875272`),
+  and quoted values may contain commas and semicolons, so a prop never spans
+  lines; a few props are keyless (the gobj mesh line `"<path>.g" 0 0.000000`);
+* indentation does not encode depth - dis3tool puts `child particles` at
+  column 0 inside a `bones` block.
+
+## 4b. The `.alias` sound-alias file
+
+Text, one block per file (1294 across the corpus):
+
+    // alias configuration file
+    //  ...
+
+    alias "Attack00" {
+    	sound 100, "$(Sounds)\clothes\cloth\cloth_02_03.wav", 100, 3;
+    }
+
+* `sound <use chance>, "<file>", <play chance>, <flags>;` - `flags` bit 0 =
+  enabled, bit 1 = play with accelerated animation; 236 files ship without
+  the comment header, 87 have an **empty** block (a muted event);
+* 1293 files are ASCII/UTF-8; Craken's Cyrillic-named file is CP1251 -
+  `parse_alias_bytes` decodes UTF-8 -> CP1251 -> Latin-1 and records the
+  codec so `write_alias_bytes` re-encodes losslessly;
+* `parse_alias` / `write_alias` round-trip all 1294 files byte-for-byte.
+
 ---
 
 ## 5. Implemented in `d3tool/`
@@ -259,7 +297,13 @@ them.  `d3tool/scene.py` therefore does two things:
   structural `validate_gltf` self-check (bidirectional tool).
 * `d3tool/ac.py` — parse & write `.ac`; detect the real `.a` files.
 * `d3tool/anim.py` — parse & write the `.a` animation binary (byte-faithful).
-* `d3tool/scene.py` — generate a minimal `.scene`.
+* `d3tool/scene.py` — parse & write `.scene`: any shipped scene parses into a
+  node tree (`group` / `bones` / `gobj` / `goclass` / `particles`, props with
+  optional semicolons, keyless mesh lines, mixed LF/CRLF endings) and
+  re-renders byte-for-byte; generate a minimal `.scene` for units that ship
+  none.
+* `d3tool/alias.py` — parse & write `.alias` (byte-exact for all 1294 bundled
+  files, including the CP1251 one; empty "muted" blocks preserved).
 * `d3tool/cli.py` — `analyze`, `export` (glTF → original), `export-gl`
   (original → glTF), `validate`, `import`.
 

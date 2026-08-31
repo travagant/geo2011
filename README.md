@@ -307,28 +307,33 @@ skeleton with children in `.a` record order; it matches 79 of the 83 bundled
 references.  The four misses are `Blacknaga` (rigid, no bone nodes),
 `WaterSnake` and `Wildboar` (duplicate bone names) and `AirElemental` (above).
 
-*`DarkServant`* still differs — 394 JSON diffs, first at
-`/meshes/1/primitives/0/targets/0/POSITION` (161 vs 163) — and the compound
-writer has not yet had the same primary-bone treatment applied.  Open.
+*`DarkServant`* was the last compound holdout — the compound writer now has
+the same primary-bone treatment (its `Bone02`, carried only by `_run.a`,
+keeps the trailing node but gets no channel), so it matches the reference
+structurally like every other unit.
 
 **Validator note.** `validate_gltf` accepts *both* morph-weight output shapes:
 the spec's `input.count * len(targets)` and dis3tool's `input.count ** 2`
 (which `_write_compound_gltf` replicates for byte parity).  Requiring only the
 former made the validator reject 8 of the 98 bundled reference glTFs — i.e.
-ground truth.  One reference still fails, correctly: `Empire/Rod-1` declares
-animation sampler 14 `output=33` while its document has 33 accessors, so the
-index is out of range in dis3tool's own file.
+ground truth.  Two further dis3tool quirks are now *reproduced for parity*
+and reported as warnings, not errors: Rod-1's stray sampler 14 (`output=33`
+with 33 accessors, referenced by no channel) and the dangling duplicate-bone
+channel targets of WaterSnake (nodes 47–50 of 47) / Wildboar (node 37 of 37).
 
 **Sound aliases.** The corpus holds 1294 `.alias` files, referenced from the
-`.ac` `event2` entries.  Two things worth knowing: the files on disk are
+`.ac` `event2` entries.  Three things worth knowing: the files on disk are
 lowercase (`attack00.alias`) while the references are CamelCase
-(`Attack00.alias`), so any resolver must be case-insensitive; and 261 of the
-2065 references point at resources outside this repository (shared
-`resources/sounds/alias/*` and cross-unit folders such as
-`Characters/elves/scout/`).  d3tool does not *resolve* alias paths, but a
-reverse export now copies the unit's own `Aliases/` folder alongside the `.ac`
-that references it, so the exported unit is self-contained instead of shipping
-with 2065 dangling `event2` references.
+(`Attack00.alias`), so any resolver must be case-insensitive; 87 of them have
+an empty block (a muted event — they must round-trip as empty, not be
+dropped); and 261 of the 2065 references point at resources outside this
+repository (shared `resources/sounds/alias/*` and cross-unit folders such as
+`Characters/elves/scout/`).  `d3tool/alias.py` now parses and re-emits all
+1294 byte-for-byte — including Craken's CP1251-encoded `ттт.alias` — the
+reverse export copy validates each file, and `analyze` reports per-folder
+alias health instead of copying blind.  1293 files are ASCII/UTF-8 and one is
+CP1251, so the byte-level readers decode UTF-8 → CP1251 → Latin-1 and
+remember which codec to re-encode with.
 
 **Known limitation.** `Neutrals/OrcKing/weapon_neutrals_orcking_sword.dds` is
 written by dis3tool with a 24-bit RGB header over a 32-bit payload, so its own

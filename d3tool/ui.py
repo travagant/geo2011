@@ -126,8 +126,16 @@ def banner() -> None:
 
 
 def confirm(question: str, default: bool = True) -> bool:
-    """Ask a yes/no question (only when interactive)."""
-    if not _USE_COLOR:
+    """Ask a yes/no question (only when interactive).
+
+    Interactivity is a *TTY stdin*, not colour support: under ``NO_COLOR``
+    the prompt must still appear (uncoloured), because silently taking the
+    destructive default is exactly what a colour-blind terminal must not
+    cause.  Piped / non-interactive stdin keeps taking the default without
+    reading, so batch scripts never hang on a prompt.
+    """
+    interactive = hasattr(sys.stdin, "isatty") and sys.stdin.isatty()
+    if not interactive:
         return default
     suffix = " [Y/n]" if default else " [y/N]"
     while True:
