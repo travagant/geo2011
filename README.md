@@ -34,26 +34,40 @@ Pure Python 3 (no third-party dependencies).  Install as a package to get the
 
 ```bash
 pip install -e .          # provides the `d3tool` console script (or just `python3 -m d3tool`)
+```
+
+### The two everyday commands
+
+```bash
+# IMPORT a model INTO the game: glTF -> GM (.g/.scene/.ac/.a/.t + Aliases)
+d3tool import unit.gltf -o unit
+
+# EXPORT a model OUT of the game: GM (.g/.a) -> glTF (.gltf/.bin)
+#   the animation is auto-detected via the unit's .ac (use --no-anim for rigid)
+d3tool export unit.g -o unit.gltf
+```
+
+Both directions are byte-exact against the bundled dis3tool reference corpus
+(85/85 each way).  `d3tool export` also accepts an explicit `-a anim.a`;
+`export-gl` remains as an alias.
+
+### More commands
+
+```bash
 # analyze a unit folder
 python3 -m d3tool analyze Neutrals/AirElemental
-
-# reverse export: glTF -> original .g / .scene / .ac / .a
-python3 -m d3tool export Neutrals/AirElemental/character_neutrals_airelemental.gltf -o out
-
-# forward export: original .g/.a -> glTF (viewer-ready)
-python3 -m d3tool export-gl \
-  Neutrals/AirElemental/character_neutrals_airelemental.g \
-  -a Neutrals/AirElemental/character_neutrals_airelemental_iadd.a \
-  -o out/unit.gltf
 
 # one command: recursively convert every .g, with animations and textures
 python3 -m d3tool export-all Neutrals -o gltf
 
+# full cycle over a unit folder (reverse + forward round-trip)
+python3 -m d3tool bundle Neutrals/AirElemental -o bundle
+
 # structural self-check of a glTF
 python3 -m d3tool validate out/unit.gltf
 
-# inspect a .g
-python3 -m d3tool import Neutrals/AirElemental/character_neutrals_airelemental.g
+# dump a parsed .g as JSON
+python3 -m d3tool dump Neutrals/AirElemental/character_neutrals_airelemental.g
 
 # convert the native .t texture to a .dds (or back)
 python3 -m d3tool texture convert Neutrals/AirElemental/character_neutrals_airelemental.t \
@@ -72,7 +86,8 @@ python3 tests/test_corpus.py
 python3 -m pytest tests/ -q
 
 # parity benchmark against the bundled dis3tool reference exports
-python3 tests/corpus_parity.py
+python3 tests/corpus_parity.py         # forward: 85/85 EXACT
+python3 tests/reverse_parity.py        # reverse: 85/85 EXACT
 ```
 
 ### Portable release (no install needed)

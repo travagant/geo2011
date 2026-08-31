@@ -156,7 +156,7 @@ def test_cli_export_and_roundtrip():
                         "character_neutrals_airelemental")
     with tempfile.TemporaryDirectory() as d:
         r = subprocess.run(
-            [sys.executable, "-m", "d3tool", "export", base + ".gltf",
+            [sys.executable, "-m", "d3tool", "import", base + ".gltf",
              "-o", os.path.join(d, "re")],
             capture_output=True, text=True, cwd=REPO, check=False)
         assert r.returncode == 0, r.stderr
@@ -992,14 +992,14 @@ def test_import_refuses_an_unparsable_g():
     with tempfile.TemporaryDirectory() as td:
         p = os.path.join(td, "garbage.g")
         open(p, "wb").write(junk)
-        r = subprocess.run([sys.executable, "-m", "d3tool", "import", p],
+        r = subprocess.run([sys.executable, "-m", "d3tool", "dump", p],
                            capture_output=True, text=True, cwd=REPO,
                            check=False)
         assert r.returncode == 1, r.stdout
         assert "unparsed" in r.stdout + r.stderr
         good = os.path.join(REPO, "Neutrals", "Wildboar",
                             "character_neutrals_wildboar.g")
-        r2 = subprocess.run([sys.executable, "-m", "d3tool", "import", good],
+        r2 = subprocess.run([sys.executable, "-m", "d3tool", "dump", good],
                             capture_output=True, text=True, cwd=REPO,
                             check=False)
         assert r2.returncode == 0, r2.stderr
@@ -1740,3 +1740,55 @@ def test_donorless_reverse_adopts_main_material_from_glTF():
     ref = json.load(open(os.path.join(folder, stem + ".gltf")))
     assert mine["images"] == ref["images"]
     assert mine["materials"] == ref["materials"]
+
+
+def test_export_auto_detects_animation_without_minus_a():
+    """`d3tool export <g>` with no `-a` resolves the animation itself via
+    the unit's `.ac` (concatenating every stream it names) and the output
+    matches the dis3tool reference byte-for-byte (bin identical, JSON
+    equal modulo the generator signature)."""
+    import struct as _struct
+    unit = os.path.join(REPO, "Empire", "Angel")
+    stem = "character_empire_angel"
+    with tempfile.TemporaryDirectory() as d:
+        out = os.path.join(d, stem + ".gltf")
+        r = climod._run(["export", os.path.join(unit, stem + ".g"),
+                         "-o", out])
+        assert r == 0, "export must succeed without -a"
+        bin_ok = open(os.path.join(d, stem + ".bin"), "rb").read() == \
+            open(os.path.join(unit, stem + ".bin"), "rb").read()
+        assert bin_ok, "auto-animation export .bin must match the reference"
+
+        def f32walk(r_, g_, path=""):
+            bad = []
+            if isinstance(r_, dict) and isinstance(g_, dict):
+                for k in r_.keys() & g_.keys():
+                    bad += f32walk(r_[k], g_[k], path + "/" + str(k))
+            elif isinstance(r_, list) and isinstance(g_, list):
+                for i, (x, y) in enumerate(zip(r_, g_)):
+                    bad += f32walk(x, y, f"{path}/{i}")
+            elif path == "/asset/generator":
+                return bad
+            elif isinstance(r_, (int, float)) and not isinstance(r_, bool):
+                if _struct.pack("<f", r_) != _struct.pack("<f", g_):
+                    bad.append(path)
+            elif r_ != g_:
+                bad.append(path)
+            return bad
+
+        ref = json.load(open(os.path.join(unit, stem + ".gltf")))
+        mine = json.load(open(out))
+        assert not f32walk(ref, mine), "JSON must be f32-equal to the reference"
+
+
+def test_export_of_a_gltf_file_routes_to_import():
+    """`export` used to mean the reverse direction; a `.gltf` input is
+    routed to `import` with a notice instead of failing."""
+    unit = os.path.join(REPO, "Neutrals", "AirElemental")
+    stem = "character_neutrals_airelemental"
+    with tempfile.TemporaryDirectory() as d:
+        out = os.path.join(d, "rev")
+        r = climod._run(["export", os.path.join(unit, stem + ".gltf"),
+                         "-o", out])
+        assert r == 0
+        assert os.path.isfile(os.path.join(out, stem + ".g"))

@@ -993,10 +993,12 @@ def _build_parser() -> argparse.ArgumentParser:
                     "glTF & the original GM (.g/.a/.scene/.ac) formats.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=textwrap.dedent("""\
-            examples:
+            the two everyday commands:
+              d3tool import  unit.gltf -o unit     # glTF → game (.g/.scene/.ac/.a/.t)
+              d3tool export  unit.g -o unit.gltf   # game → glTF (animation auto-detected)
+
+            more:
               d3tool analyze Neutrals/AirElemental
-              d3tool export Neutrals/AirElemental/character_neutrals_airelemental.gltf -o out
-              d3tool export-gl Neutrals/AirElemental/character_neutrals_airelemental.g -a .../iadd.a -o out/unit.gltf
               d3tool export-all Neutrals -o gltf
               d3tool bundle Neutrals/AirElemental -o bundle
               d3tool validate out/unit.gltf
@@ -1009,22 +1011,37 @@ def _build_parser() -> argparse.ArgumentParser:
     p_analyze = sub.add_parser("analyze", help="inspect a unit folder")
     p_analyze.add_argument("path")
 
-    p_export = sub.add_parser("export", help="glTF → GM (.g/.scene/.ac/.a)")
-    p_export.add_argument("gltf")
-    p_export.add_argument("-o", "--out", default=".")
-    p_export.add_argument("--weights-on-vertex", type=_weights_on_vertex,
+    p_import = sub.add_parser(
+        "import",
+        help="IMPORT a model into the game: glTF → GM "
+             "(.g/.scene/.ac/.a/.t + Aliases)")
+    p_import.add_argument("gltf")
+    p_import.add_argument("-o", "--out", default=".",
+                          help="output folder (default: current)")
+    p_import.add_argument("--weights-on-vertex", type=_weights_on_vertex,
                           default=0, metavar="N",
                           help="influence slots to write (2/3/4; 0=auto-detect)")
-    p_export.add_argument("--no-anim", action="store_true",
+    p_import.add_argument("--no-anim", action="store_true",
                           help="do not rebuild the .a animation file")
 
-    p_g2gl = sub.add_parser("export-gl", help="GM .g/.a → glTF (.gltf/.bin)")
-    p_g2gl.add_argument("g")
-    p_g2gl.add_argument("-a", "--anim", default=None,
-                        help="optional .a animation file")
-    p_g2gl.add_argument("-o", "--out", default=None,
-                        help="output glTF path (default <base>.gltf)")
-    p_g2gl.add_argument("-t", "--texture", default=None)
+    def _add_export_args(p):
+        p.add_argument("g")
+        p.add_argument("-a", "--anim", default=None,
+                       help=".a animation file (default: auto-detect next "
+                            "to the .g via the unit's .ac)")
+        p.add_argument("-o", "--out", default=None,
+                       help="output glTF path (default: <base>.gltf)")
+        p.add_argument("-t", "--texture", default=None)
+        p.add_argument("--no-anim", action="store_true",
+                       help="do not attach an animation (rigid model)")
+
+    p_export = sub.add_parser(
+        "export",
+        help="EXPORT a game model to glTF: GM (.g/.a) → (.gltf/.bin)")
+    _add_export_args(p_export)
+    p_g2gl = sub.add_parser("export-gl",
+                            help="alias of `export` (GM → glTF)")
+    _add_export_args(p_g2gl)
 
     p_all = sub.add_parser(
         "export-all", help="recursively convert every .g file to glTF")
@@ -1045,8 +1062,8 @@ def _build_parser() -> argparse.ArgumentParser:
     p_validate = sub.add_parser("validate", help="structural glTF self-check")
     p_validate.add_argument("gltf")
 
-    p_import = sub.add_parser("import", help="dump a parsed .g as JSON")
-    p_import.add_argument("gfile")
+    p_dump = sub.add_parser("dump", help="dump a parsed .g as JSON")
+    p_dump.add_argument("gfile")
 
     p_texture = sub.add_parser(
         "texture", help="inspect / convert .t (GM) <-> .dds textures")
@@ -1068,11 +1085,25 @@ def main(argv=None) -> int:
 
     if args.cmd == "analyze":
         return _analyze_unit(args.path)
-    elif args.cmd == "export":
+    elif args.cmd == "import":
         _export(args.gltf, args.out, args.weights_on_vertex,
                 anim=not args.no_anim)
-    elif args.cmd == "export-gl":
-        _export_gl(args.g, args.anim, args.out, args.texture)
+    elif args.cmd in ("export", "export-gl"):
+        g = args.g
+        if g.lower().endswith((".gltf", ".glb")):
+            # pre-2026 `d3tool export <file.gltf>` meant the reverse
+            # direction; route it to `import` and say so rather than fail
+            ui.section("note")
+            ui.info("`export` now exports GM → glTF; routing the .gltf "
+                    "input to `import` (glTF → GM)")
+            _export(g, args.out or ".", 0, anim=not args.no_anim)
+            return 0
+        anim = args.anim
+        if anim is None and not args.no_anim:
+            anim = _find_animation_for_geometry(g)
+            if anim:
+                ui.info(f"animation: {os.path.basename(anim)}")
+        _export_gl(g, anim, args.out, args.texture)
     elif args.cmd == "export-all":
         return _export_all(args.folder, args.out, use_anim=not args.no_anim)
     elif args.cmd == "bundle":
@@ -1092,7 +1123,7 @@ def main(argv=None) -> int:
         ui.table([("errors", str(errors)), ("warnings", str(warnings)),
                   ("accessors", str(infos))])
         return 1 if errors else 0
-    elif args.cmd == "import":
+    elif args.cmd == "dump":
         data = open(args.gfile, "rb").read()
         mesh = gfile.parse_geometry_file(data)
         if mesh.parse_error:

@@ -326,11 +326,13 @@ def test_cli_commands_exit_cleanly():
     with tempfile.TemporaryDirectory() as tmp, _quiet():
         for argv, want in (
             (["analyze", unit], 0),
-            (["export", stem + ".gltf", "-o", os.path.join(tmp, "rev")], 0),
+            (["import", stem + ".gltf", "-o", os.path.join(tmp, "rev")], 0),
+            (["export", stem + ".g", "-o",
+              os.path.join(tmp, "fwd", "u.gltf")], 0),
             (["export-gl", stem + ".g", "-a", stem + "_iadd.a",
-              "-o", os.path.join(tmp, "fwd", "u.gltf")], 0),
+              "-o", os.path.join(tmp, "fwd2", "u.gltf")], 0),
             (["validate", os.path.join(tmp, "fwd", "u.gltf")], 0),
-            (["import", stem + ".g"], 0),
+            (["dump", stem + ".g"], 0),
             (["bundle", unit, "-o", os.path.join(tmp, "b")], 0),
             (["texture", "info", stem + ".t"], 0),
             (["texture", "convert", stem + ".t",
