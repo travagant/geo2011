@@ -156,7 +156,7 @@ def test_cli_export_and_roundtrip():
                         "character_neutrals_airelemental")
     with tempfile.TemporaryDirectory() as d:
         r = subprocess.run(
-            [sys.executable, "-m", "d3tool", "import", base + ".gltf",
+            [sys.executable, "-m", "d3tool", "export", base + ".gltf",
              "-o", os.path.join(d, "re")],
             capture_output=True, text=True, cwd=REPO, check=False)
         assert r.returncode == 0, r.stderr
@@ -1742,8 +1742,8 @@ def test_donorless_reverse_adopts_main_material_from_glTF():
     assert mine["materials"] == ref["materials"]
 
 
-def test_export_auto_detects_animation_without_minus_a():
-    """`d3tool export <g>` with no `-a` resolves the animation itself via
+def test_import_auto_detects_animation_without_minus_a():
+    """`d3tool import <g>` with no `-a` resolves the animation itself via
     the unit's `.ac` (concatenating every stream it names) and the output
     matches the dis3tool reference byte-for-byte (bin identical, JSON
     equal modulo the generator signature)."""
@@ -1752,9 +1752,9 @@ def test_export_auto_detects_animation_without_minus_a():
     stem = "character_empire_angel"
     with tempfile.TemporaryDirectory() as d:
         out = os.path.join(d, stem + ".gltf")
-        r = climod._run(["export", os.path.join(unit, stem + ".g"),
+        r = climod._run(["import", os.path.join(unit, stem + ".g"),
                          "-o", out])
-        assert r == 0, "export must succeed without -a"
+        assert r == 0, "import must succeed without -a"
         bin_ok = open(os.path.join(d, stem + ".bin"), "rb").read() == \
             open(os.path.join(unit, stem + ".bin"), "rb").read()
         assert bin_ok, "auto-animation export .bin must match the reference"
@@ -1781,14 +1781,19 @@ def test_export_auto_detects_animation_without_minus_a():
         assert not f32walk(ref, mine), "JSON must be f32-equal to the reference"
 
 
-def test_export_of_a_gltf_file_routes_to_import():
-    """`export` used to mean the reverse direction; a `.gltf` input is
-    routed to `import` with a notice instead of failing."""
+def test_import_export_route_legacy_calls_by_extension():
+    """`import` = GM → glTF, `export` = glTF → GM; a mismatched extension
+    routes to the right command with a notice instead of failing."""
     unit = os.path.join(REPO, "Neutrals", "AirElemental")
     stem = "character_neutrals_airelemental"
     with tempfile.TemporaryDirectory() as d:
+        # legacy/confused `import <file.gltf>` -> routes to export (GM out)
         out = os.path.join(d, "rev")
-        r = climod._run(["export", os.path.join(unit, stem + ".gltf"),
-                         "-o", out])
-        assert r == 0
+        assert climod._run(["import", os.path.join(unit, stem + ".gltf"),
+                            "-o", out]) == 0
         assert os.path.isfile(os.path.join(out, stem + ".g"))
+        # legacy/confused `export <file.g>` -> routes to import (glTF out)
+        out2 = os.path.join(d, "fwd.gltf")
+        assert climod._run(["export", os.path.join(unit, stem + ".g"),
+                            "-o", out2]) == 0
+        assert os.path.isfile(os.path.join(d, "fwd.bin"))

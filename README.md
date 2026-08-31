@@ -39,17 +39,19 @@ pip install -e .          # provides the `d3tool` console script (or just `pytho
 ### The two everyday commands
 
 ```bash
-# IMPORT a model INTO the game: glTF -> GM (.g/.scene/.ac/.a/.t + Aliases)
-d3tool import unit.gltf -o unit
-
-# EXPORT a model OUT of the game: GM (.g/.a) -> glTF (.gltf/.bin)
+# IMPORT a model FROM the game FOR editing: GM (.g/.a) -> glTF
 #   the animation is auto-detected via the unit's .ac (use --no-anim for rigid)
-d3tool export unit.g -o unit.gltf
+d3tool import unit.g -o unit.gltf
+
+# EXPORT an edited model BACK INTO the game: glTF -> GM
+#   (.g/.scene/.ac/.a/.t + Aliases)
+d3tool export unit.gltf -o unit
 ```
 
 Both directions are byte-exact against the bundled dis3tool reference corpus
-(85/85 each way).  `d3tool export` also accepts an explicit `-a anim.a`;
-`export-gl` remains as an alias.
+(85/85 each way).  `d3tool import` also accepts an explicit `-a anim.a`;
+`export-gl` remains as an alias of `import`.  Mismatched extensions route to
+the right command with a notice, so old scripts keep working.
 
 ### More commands
 

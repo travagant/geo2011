@@ -994,8 +994,8 @@ def _build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=textwrap.dedent("""\
             the two everyday commands:
-              d3tool import  unit.gltf -o unit     # glTF → game (.g/.scene/.ac/.a/.t)
-              d3tool export  unit.g -o unit.gltf   # game → glTF (animation auto-detected)
+              d3tool import  unit.g    -o unit.gltf   # game → glTF (edit it anywhere)
+              d3tool export  unit.gltf -o unit        # glTF → game (.g/.scene/.ac/.a/.t)
 
             more:
               d3tool analyze Neutrals/AirElemental
@@ -1011,20 +1011,9 @@ def _build_parser() -> argparse.ArgumentParser:
     p_analyze = sub.add_parser("analyze", help="inspect a unit folder")
     p_analyze.add_argument("path")
 
-    p_import = sub.add_parser(
-        "import",
-        help="IMPORT a model into the game: glTF → GM "
-             "(.g/.scene/.ac/.a/.t + Aliases)")
-    p_import.add_argument("gltf")
-    p_import.add_argument("-o", "--out", default=".",
-                          help="output folder (default: current)")
-    p_import.add_argument("--weights-on-vertex", type=_weights_on_vertex,
-                          default=0, metavar="N",
-                          help="influence slots to write (2/3/4; 0=auto-detect)")
-    p_import.add_argument("--no-anim", action="store_true",
-                          help="do not rebuild the .a animation file")
-
-    def _add_export_args(p):
+    # `import` brings a game model INTO the editing pipeline (glTF); the
+    # old `export-gl` is kept as an alias of it
+    def _add_gm_source_args(p):
         p.add_argument("g")
         p.add_argument("-a", "--anim", default=None,
                        help=".a animation file (default: auto-detect next "
@@ -1035,13 +1024,27 @@ def _build_parser() -> argparse.ArgumentParser:
         p.add_argument("--no-anim", action="store_true",
                        help="do not attach an animation (rigid model)")
 
+    p_import = sub.add_parser(
+        "import",
+        help="IMPORT a game model for editing: GM (.g/.a) → glTF "
+             "(.gltf/.bin); animation auto-detected via the .ac")
+    _add_gm_source_args(p_import)
+    p_g2gl = sub.add_parser("export-gl",
+                            help="alias of `import` (GM → glTF)")
+    _add_gm_source_args(p_g2gl)
+
     p_export = sub.add_parser(
         "export",
-        help="EXPORT a game model to glTF: GM (.g/.a) → (.gltf/.bin)")
-    _add_export_args(p_export)
-    p_g2gl = sub.add_parser("export-gl",
-                            help="alias of `export` (GM → glTF)")
-    _add_export_args(p_g2gl)
+        help="EXPORT an edited model back INTO the game: glTF → GM "
+             "(.g/.scene/.ac/.a/.t + Aliases)")
+    p_export.add_argument("gltf")
+    p_export.add_argument("-o", "--out", default=".",
+                          help="output folder (default: current)")
+    p_export.add_argument("--weights-on-vertex", type=_weights_on_vertex,
+                          default=0, metavar="N",
+                          help="influence slots to write (2/3/4; 0=auto-detect)")
+    p_export.add_argument("--no-anim", action="store_true",
+                          help="do not rebuild the .a animation file")
 
     p_all = sub.add_parser(
         "export-all", help="recursively convert every .g file to glTF")
@@ -1085,25 +1088,36 @@ def main(argv=None) -> int:
 
     if args.cmd == "analyze":
         return _analyze_unit(args.path)
-    elif args.cmd == "import":
-        _export(args.gltf, args.out, args.weights_on_vertex,
-                anim=not args.no_anim)
-    elif args.cmd in ("export", "export-gl"):
-        g = args.g
-        if g.lower().endswith((".gltf", ".glb")):
-            # pre-2026 `d3tool export <file.gltf>` meant the reverse
-            # direction; route it to `import` and say so rather than fail
+    elif args.cmd in ("import", "export", "export-gl"):
+        # pipeline semantics: import = game → glTF (edit), export =
+        # glTF → game (ship back).  Legacy calls route by extension so
+        # old scripts keep working either way.
+        source = str(getattr(args, "g", None)
+                     or getattr(args, "gltf") or "")
+        cmd = "import" if args.cmd in ("import", "export-gl") else "export"
+        if cmd == "export" and source.lower().endswith(".g"):
             ui.section("note")
-            ui.info("`export` now exports GM → glTF; routing the .gltf "
-                    "input to `import` (glTF → GM)")
-            _export(g, args.out or ".", 0, anim=not args.no_anim)
-            return 0
-        anim = args.anim
-        if anim is None and not args.no_anim:
-            anim = _find_animation_for_geometry(g)
-            if anim:
-                ui.info(f"animation: {os.path.basename(anim)}")
-        _export_gl(g, anim, args.out, args.texture)
+            ui.info("`export` is glTF → GM; routing the .g input to "
+                    "`import` (GM → glTF)")
+            cmd = "import"
+        elif cmd == "import" and source.lower().endswith((".gltf", ".glb")):
+            ui.section("note")
+            ui.info("`import` is GM → glTF; routing the .gltf input to "
+                    "`export` (glTF → GM)")
+            cmd = "export"
+        if cmd == "import":
+            # a routed call may come from the other parser: probe the attrs
+            anim = getattr(args, "anim", None)
+            if anim is None and not getattr(args, "no_anim", False):
+                anim = _find_animation_for_geometry(source)
+                if anim:
+                    ui.info(f"animation: {os.path.basename(anim)}")
+            _export_gl(source, anim, args.out,
+                       getattr(args, "texture", None))
+        else:
+            _export(source, args.out,
+                    getattr(args, "weights_on_vertex", 0),
+                    anim=not getattr(args, "no_anim", False))
     elif args.cmd == "export-all":
         return _export_all(args.folder, args.out, use_anim=not args.no_anim)
     elif args.cmd == "bundle":
