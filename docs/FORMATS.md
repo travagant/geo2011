@@ -60,13 +60,28 @@ dis3tool **preserves the glTF influence order** — it does **not** re-sort by
 weight.  So to convert back you take the first `w` of the 4 component
 `(weight, joint)` pairs verbatim.
 
+On export dis3tool repacks those numbers with an exact rule — implemented in
+`d3tool.model.pack_weights_joints`, byte-verified against all 292 569 skinned
+vertices of the 85-unit reference corpus (0 mismatches):
+
+* stored lanes are copied **verbatim** (no renormalisation, no trimming);
+* the complement `c = float32(1.0 - sum(stored))` is computed from the
+  **double-precision** sum, then rounded once to float32;
+* `c > 0` is merged into the first already-listed lane whose bone equals the
+  implied bone `bones[w-1]` (a single-precision add), or appended as an extra
+  lane when that bone is not listed;
+* `c <= 0` changes nothing (the stored lanes already reach 1.0f or overshoot
+  it by rounding — both stay verbatim, even mid-ulp ties);
+* `JOINTS_0` is the bone array padded to 4 lanes where any lane whose weight
+  is **exactly 0.0** is reported as joint 0; a tiny residue lane (2.98e-08)
+  keeps its joint.
+
 ### Export conventions (what `d3tool export-gl` reproduces byte-for-byte)
 
 These behaviours were established by diffing all 85 bundled dis3tool
-reference exports; the writer reproduces them — quirks included — so its
-output is structurally identical to the reference (the only residual
-differences are ±1-ulp float32 lanes from dis3tool's order-dependent C++
-float renormalisation):
+reference exports; the writer reproduces them — quirks included — and the
+export is **byte-identical** to the reference (`tests/corpus_parity.py`:
+85/85 EXACT — both the glTF JSON, float32-bitwise, and the `.bin`):
 
 * **Animation resolution / rigid exports.**  dis3tool loads only the `.a`
   stream(s) the unit's own `.ac` names, resolved inside the unit folder.
@@ -87,6 +102,12 @@ float renormalisation):
   `concat_anims` appended from a later `.a` (AirElemental's
   LeftLeftHand/Tail02, DarkServant's Bone02) get a trailing node but no
   channel and no rot/tra storage; `skin.joints` stays on the full list.
+  Frame filling across streams is **positional**: each stream's record at
+  index *i* lands on the output slot *i* even when the name drifted
+  (AirElemental's `run.a` names record 6 `LeftLeftHand` while the slot is
+  `LeftHand` — the reference's LeftHand frames 346..362 are exactly
+  `run.a` record 6's 17 samples; same for `Tail02` → `RightTail02` and
+  DarkServant's `Bone02` → `ROOT_demons_thief_lod`).
 * **Scene roots** are the sub-meshes plus every skeleton node whose parent
   is not a bone, in node order (DarkServant's `ROOT_demons_thief_lod` /
   `Bone02`, parent `Scene Root`, trail the skeleton root).

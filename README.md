@@ -204,20 +204,38 @@ one of the 247 `.g` files forward-exports and every one of the 98 bundled
   their reverse export correctly writes no `.a`.
 
 **Parity benchmark.** `tests/corpus_parity.py` compares a forward export
-against the bundled dis3tool reference, byte for byte: **10 EXACT, 75
-BIN-NEAR** (differing only in a handful of ±1ulp float32 lanes) and **0
-FAIL** out of 85 — down from 9/46/30 at the start of this work and 10/69/6
-after the animation-concatenation round.  The last six FAILs fell to three
-findings: the compound writer now animates only the first stream's bones
-(DarkServant's `Bone02`), duplicate-name bones get one channel pair each
-with targets *counted positionally* — so WaterSnake's four extra `null`
-bones dangle past the node list exactly like the reference (Wildboar 37 of
-37) — and a unit whose `.ac` names a stream outside its folder ships rigid
-(Blacknaga, watersnake_sea), matching dis3tool's own resolution instead of
-guessing a conventional `.a`.  Rod-1 closed through two reference quirks
-reproduced verbatim: its attrless sword part keeps real positions at the
-morph-static stride (with zeroed POSITION min/max), and the exporter emits
-the stray 15th sampler aimed at accessor 33 of 33.
+against the bundled dis3tool reference, byte for byte: **85 EXACT, 0
+BIN-NEAR, 0 FAIL** out of 85 — the glTF JSON is float32-bitwise equal *and*
+every `.bin` byte matches.  (Trajectory: 9/46/30 at the start of this work,
+10/69/6 after the animation-concatenation round, 10/75/0 after the
+channel-target/rigid/compound fixes.)  The last red zone fell to two
+findings, each pinned by an exhaustive per-vertex/per-frame diff:
+
+* **Weight packing** (`d3tool.model.pack_weights_joints`): dis3tool keeps
+  the stored lanes verbatim, computes the complement
+  `c = float32(1 - sum(stored))` from the *double-precision* sum, merges a
+  positive `c` into the first lane whose bone repeats in the implied bone
+  slot (else appends it), never touches a non-positive `c`, and masks a
+  joint only when its weight is *exactly* 0.0 — a 2.98e-08 residue keeps
+  its joint.  Byte-verified on all 292 569 skinned vertices of the corpus
+  (0 mismatches); the earlier ±1ulp red zone was the renormalising
+  approximation this replaced.
+* **Cross-stream frame filling** (`anim.concat_anims`): the bone *list* is
+  the first-seen-name union, but each stream's *frames* land on the output
+  slot of the same **record index**, name notwithstanding — AirElemental's
+  `run.a` names record 6 `LeftLeftHand` while the slot is `LeftHand`, and
+  the reference's LeftHand frames 346..362 are exactly that record's 17
+  samples (DarkServant's `Bone02` → the `ROOT_demons_thief_lod` slot the
+  same way).
+
+Earlier rounds (10/75/0 state) closed the last six FAILs with: the compound
+writer animating only the first stream's bones (DarkServant's `Bone02`),
+duplicate-name bones getting one channel pair each with targets *counted
+positionally* (WaterSnake's four extra `null` bones dangle past the node
+list exactly like the reference, Wildboar 37 of 37), units whose `.ac`
+names a stream outside their folder shipping rigid (Blacknaga,
+watersnake_sea), and Rod-1's attrless sword part keeping real positions at
+the morph-static stride with the stray 15th sampler aimed at accessor 33.
 
 **Root cause of the morph failures (measured).** 24 bundled units have an
 `.ac` that references *more than one* `.a` (Angel names five: idle/attack/run/
@@ -228,12 +246,14 @@ damage/death).  dis3tool **concatenates every one of them** — verified on all
 (`_run.a`, 25 frames), while `_iadd.a` carries 356.  Target #0 matches
 `character_empire_cleric_run.a` frame 0 bit-for-bit (max diff 0.0000).
 
-**Implemented.** `anim.concat_anims` joins the streams in `.ac` order (a bone
-absent from one stream holds its rest pose for that stretch) and takes the
-morph tracks from the **last** one; `_export_gl` calls it through
-`cli._load_anim_stream`, and a lone stream passes through untouched so the 97
-single-`.a` units are unaffected.  All 16 multi-`.a` units that have a
-reference now match it on both frame count *and* morph-target count.
+**Implemented.** `anim.concat_anims` joins the streams in `.ac` order —
+primary slots read each stream's record at the same index (name drift
+included; a slot with no record at all holds its rest pose for that
+stretch) — and takes the morph tracks from the **last** one;
+`_export_gl` calls it through `cli._load_anim_stream`, and a lone stream
+passes through untouched so the 97 single-`.a` units are unaffected.  All
+16 multi-`.a` units that have a reference now match it on frame count,
+morph-target count *and* bytes.
 
 Two further details the reference pinned down:
 
@@ -291,16 +311,17 @@ skinned unit (Wolf: 33 / 1126).  Rigidness was an operator's choice at
 dis3tool export time; nothing in the `.g`, the `.ac` or the file names signals
 it.  d3tool therefore skins and animates them, which is the faithful reading.
 
-*`AirElemental`* — structural parity reached; only ±1 ulp float lanes differ.
-Its two extra bones (`LeftLeftHand`, `Tail02`) exist only in the *second*
-animation stream (`_run.a`), which `concat_anims` appends.  The reference
-emits them as the last two nodes, still lists `LeftLeftHand` under
-`LeftForeArm` (`children [7, 43]`), and gives them **no channel**: its 84
-channels target exactly the 42 primary bones and its buffer is
-`2 * 363 * (16 + 12) = 20328` bytes smaller than one that animated them.
-`node_hierarchy` now walks only the primary skeleton and trails the rest, and
-the single-mesh writer allocates accessors and channels for the primary bones
-alone.
+*`AirElemental`* — byte-exact now.  Its two extra bones (`LeftLeftHand`,
+`Tail02`) exist only in the *second* animation stream (`_run.a`), which
+`concat_anims` appends; the same stream's records 6/41 also *fill* the
+`LeftHand`/`RightTail02` slots' second stretch (the name-drifted record
+above).  The reference emits the extras as the last two nodes, still lists
+`LeftLeftHand` under `LeftForeArm` (`children [7, 43]`), and gives them
+**no channel**: its 84 channels target exactly the 42 primary bones and its
+buffer is `2 * 363 * (16 + 12) = 20328` bytes smaller than one that
+animated them.  `node_hierarchy` walks only the primary skeleton and trails
+the rest, and the single-mesh writer allocates accessors and channels for
+the primary bones alone.
 
 **Node order (measured).**  The reference order is a depth-first walk of the
 skeleton with children in `.a` record order; it matches 79 of the 83 bundled

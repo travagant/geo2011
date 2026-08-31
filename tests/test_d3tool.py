@@ -706,6 +706,7 @@ def test_public_api_is_re_exported():
                  "write_gltf", "write_gltf_to", "validate_gltf",
                  "parse_t", "parse_dds", "t_to_dds", "dds_to_t", "convert_file",
                  "Bone", "Vertex", "SkinnedMesh", "MeshPart", "MorphTrack",
+                 "pack_weights_joints",
                  "AnimFile", "BoneAnim", "AnimConfig", "State", "TextureInfo"):
         assert hasattr(d3tool, name), f"d3tool.{name} is not re-exported"
         assert name in d3tool.__all__, f"{name} missing from __all__"
@@ -1458,6 +1459,125 @@ def test_confirm_defaults_without_reading_on_piped_stdin():
     sentinel = _io.StringIO("n\n")
     assert ui.confirm("ok?", default=True) is True
     assert sentinel.getvalue() == "n\n"  # untouched
+
+
+def test_pack_weights_joints_matches_reference_counterexamples():
+    """The exact dis3tool WEIGHTS_0/JOINTS_0 packing, pinned on the vertices
+    that drove the derivation (byte-verified on all 292 569 skinned corpus
+    vertices, 0 mismatches):
+
+    * stored lanes stay **verbatim** — the complement of a float32-sum that
+      already reaches 1.0 is noise and must not be re-rounded (Acolyte
+      v35: 1-w0 rounds to a tie whose float32-nearest differs from the
+      stored lane the reference keeps);
+    * a positive complement merges **into the duplicate-bone lane** when
+      the implied bone repeats (ImperialKnight cloak v85: bones (4,5,4),
+      0.125+0.125 = 0.25 in lane 0), else it is appended (v18-class);
+    * the complement is computed from the **double-precision** sum, not a
+      float32 running sum (0.903+0.097 classes);
+    * JOINTS_0 masks a lane only when its weight is **exactly** 0.0 — a
+      2.98e-08 residue keeps its joint (the old 1e-4 threshold broke it).
+    """
+    from d3tool import model
+    f32 = lambda x: struct.unpack("<f", struct.pack("<f", x))[0]  # noqa: E731
+
+    # verbatim: total misses 1.0 by 2e-10, ref keeps both stored lanes
+    w, j = model.pack_weights_joints(
+        (0.2318541705608368, 0.7681458592414856), (7, 0, 0))
+    assert w == (0.2318541705608368, 0.7681458592414856, 0.0, 0.0)
+    assert j == (7, 0, 0, 0)
+
+    # duplicate implied bone: complement merges into lane 0, joint stays 4
+    w, j = model.pack_weights_joints((0.125, 0.75), (4, 5, 4))
+    assert w == (0.25, 0.75, 0.0, 0.0)
+    assert j == (4, 5, 0, 0)
+
+    # joint-0 merge: the complement nudges lane 0 up one float32 step
+    w, j = model.pack_weights_joints(
+        (0.42888399958610535, 0.5711159706115723), (0, 1, 0))
+    assert w == (0.42888402938842773, 0.5711159706115723, 0.0, 0.0)
+    assert j == (0, 1, 0, 0)
+
+    # appended complement: a 2.98e-08 residue keeps its (non-zero) joint
+    w, j = model.pack_weights_joints(
+        (0.7205365896224976, 0.27946338057518005), (1, 2, 3))
+    assert w[2] == f32(1.0 - (0.7205365896224976 + 0.27946338057518005))
+    assert 0.0 < w[2] < 1e-7
+    assert j == (1, 2, 3, 0), "the residue lane must keep joint 3"
+
+    # exact-zero stored lane: the joint is masked, the weight stays 0.0
+    w, j = model.pack_weights_joints((0.0, 0.5, 0.5), (3, 8, 1, 0))
+    assert w == (0.0, 0.5, 0.5, 0.0)
+    assert j == (0, 8, 1, 0)
+
+    # negative complement (stored lanes overshoot 1.0 by rounding): verbatim
+    # f32(0.2)+f32(0.8) = 1.0000000149 -> c < 0 changes nothing
+    w, j = model.pack_weights_joints((0.2, 0.8), (2, 5))
+    assert w == (f32(0.2), f32(0.8), 0.0, 0.0)
+    assert j == (2, 5, 0, 0)
+
+    # no stored lanes: rigid vertex, full weight on its bone (or joint 0)
+    assert model.pack_weights_joints((), ()) == \
+        ((1.0, 0.0, 0.0, 0.0), (0, 0, 0, 0))
+    assert model.pack_weights_joints((), (6,)) == \
+        ((1.0, 0.0, 0.0, 0.0), (6, 0, 0, 0))
+
+
+def test_concat_anims_fills_primary_slots_by_record_index():
+    """Frame filling across concatenated streams is **positional**: the C++
+    exporter walks the per-stream record arrays in parallel, so a stream
+    record lands on the slot of the same index even when its name drifted
+    (AirElemental `run.a` record 6 `LeftLeftHand` -> the `LeftHand` slot;
+    DarkServant `run.a` record 68 `Bone02` -> `ROOT_demons_thief_lod`).
+    Bones with brand-new names are appended after the primary skeleton."""
+    from d3tool import anim
+
+    def stream(bones, frame_count):
+        a = anim.AnimFile()
+        a.frame_count = frame_count
+        a.bones = []
+        for name, frames in bones:
+            b = anim.BoneAnim(name, "", frame_count)
+            b.frames = list(frames)
+            a.bones.append(b)
+        return a
+
+    s1 = stream([("LeftHand", [(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0)] * 2),
+                 ("RightTail02", [(0.1,) * 7] * 2)], 2)
+    s2 = stream([("LeftLeftHand", [(9.0,) * 7] * 3),
+                 ("RightTail02", [(0.5,) * 7] * 3)], 3)
+    cat = animmod.concat_anims([s1, s2])
+    assert cat.frame_count == 5
+    assert cat.n_primary == 2
+    assert [b.name for b in cat.bones] == ["LeftHand", "RightTail02",
+                                           "LeftLeftHand"]
+    # slot 0 takes stream2's *record 0* frames for the second stretch,
+    # despite the name drift
+    assert cat.bones[0].frames[:2] == s1.bones[0].frames
+    assert cat.bones[0].frames[2:] == s2.bones[0].frames
+    # matching name and index agree
+    assert cat.bones[1].frames[2:] == s2.bones[1].frames
+    # the appended new-name bone keeps its own samples
+    assert cat.bones[2].frames[2:] == s2.bones[0].frames
+
+
+def test_forward_export_bytes_match_references_on_red_zone_units():
+    """Byte parity against the bundled dis3tool references for the units that
+    drove the last two rules: Werewolf (float32 weight packing),
+    AirElemental and DarkServant (cross-stream record-index concat).
+    tests/corpus_parity.py extends this to all 85 reference units."""
+    import corpus_parity  # tests/ is on sys.path under pytest
+    for rel in (os.path.join("Neutrals", "Werewolf",
+                             "character_neutrals_werewolf.g"),
+                os.path.join("Neutrals", "AirElemental",
+                             "character_neutrals_airelemental.g"),
+                os.path.join("Neutrals", "DarkServant",
+                             "character_neutrals_darkservant.g")):
+        binb, doc, ref, refbin = _export_like_the_harness(rel)
+        unit = os.path.basename(rel)
+        assert binb == refbin, f"{unit}: .bin must be byte-identical"
+        diffs = corpus_parity._json_diffs(ref, doc)
+        assert not diffs, f"{unit}: {diffs[:3]}"
 
 
 def anim_bone_stub(name, parent=""):

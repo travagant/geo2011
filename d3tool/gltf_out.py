@@ -36,7 +36,7 @@ import struct
 from typing import Dict, List, Optional, Tuple
 
 from .anim import AnimFile, BoneAnim
-from .model import MorphTrack, SkinnedMesh
+from .model import MorphTrack, SkinnedMesh, pack_weights_joints
 
 
 class _BufferShortError(Exception):
@@ -219,23 +219,14 @@ def write_gltf(
         nrm = v.normal
         if any(math.isnan(x) or math.isinf(x) for x in nrm):
             nrm = (0.0, 0.0, 1.0)
-        # Normalise the 4 weight slots so they sum to exactly 1.0 as float32,
-        # matching the reference dis3tool export.  The `.g` stores weights as
-        # float32 and keeps a tiny residual, so the naive sum can read e.g.
-        # 0.9999995, which the Khronos validator rejects.  We drop weight
-        # components that are effectively zero, then renormalise.
-        w = list(v.gltf_weights)
-        # drop negligible influences (the real dis3tool exporter collapses them)
-        w = [x if x > 1e-4 else 0.0 for x in w]
-        s = float(sum(w))
-        if s > 0.0:
-            w = [x / s for x in w]
-        # float32-quantise so the stored buffer is exact
-        w = [struct.unpack("<f", struct.pack("<f", x))[0] for x in w]
+        # WEIGHTS_0/JOINTS_0 exactly as dis3tool packs them (see
+        # pack_weights_joints -- byte-verified against the reference corpus).
+        # The `.g` stores float32 weights with a tiny residual; the exporter
+        # keeps it verbatim instead of renormalising.
+        w, j = pack_weights_joints(v.stored_weights, v.bones)
         vbuf += struct.pack(
             "<3f3f2f4f4B",
-            *v.position, *nrm, *v.uv, *w,
-            *[int(x) & 0xFF for x in v.gltf_joints],
+            *v.position, *nrm, *v.uv, *w, *j,
         )
     ibuf = b"".join(struct.pack("<I", x) for x in mesh.indices)
 
@@ -587,55 +578,15 @@ def _tex_uri(value: str, overrides: Dict[str, str], sub_name: str) -> Optional[s
 def _compound_weights_joints(vertex) -> Tuple[List[float], List[int]]:
     """dis3tool's verbatim WEIGHTS_0/JOINTS_0 packing for compound exports.
 
-    Separating the concerns the same way the reference buffers do:
-
-    * ``JOINTS_0`` is the verbatim bone-index array, zero-padded to 4 lanes,
-      where any lane with an exactly-zero final weight is reported as 0
-      (explicit zero *bones* in the source are data and read back verbatim;
-      only the weight-driven zero lanes are masked).
-    * ``WEIGHTS_0``: trailing explicit-zero stored lanes are dropped and the
-      implied complement (``1.0 - sum(stored)``, double precision) is placed
-      right after the nonzero prefix.  For a **positive** complement both
-      are kept verbatim, even at f32-residue scale (``1.49e-08``).  A
-      **negative** complement means the stored lanes exceeded 1.0 by
-      rounding: the lanes are renormalised lane-over-lane in float32
-      (mirroring the C++ exporter) and the slot reads an exact ``0.0``.
-      Exception: vertices anchored at joint 0 treat the complement as pure
-      float32 accumulation noise and write ``0.0`` when the stored lanes,
-      summed in single precision the way the C++ exporter would, already
-      add up to exactly ``1.0f`` (e.g. 0.903+0.097).  A complement with a
-      real float32 remainder (e.g. 0.84792+0.15205 → 2.65e-05, kept by
-      dis3tool in the zombie mesh) is preserved verbatim.
+    Same exact rule as every other export path — see
+    :func:`d3tool.model.pack_weights_joints` (byte-verified against all
+    292 569 skinned vertices of the reference corpus): stored lanes are
+    copied verbatim, the float32 complement of the double-precision sum is
+    merged into a duplicate-bone lane or appended, and joints with an
+    exactly-zero weight are masked to 0.
     """
-    def _f32(x):
-        return struct.unpack("<f", struct.pack("<f", x))[0]
-
-    stored = [float(x) for x in vertex.stored_weights]
-    while stored and stored[-1] == 0.0:
-        stored.pop()
-    total = sum(stored)
-    implied = 1.0 - total
-    if vertex.bones and vertex.bones[0] == 0:
-        lanes = stored
-        # single-precision running sum, mirroring the exporter
-        s32 = 0.0
-        for x in stored:
-            s32 = _f32(s32 + x)
-        impl = 0.0 if s32 == 1.0 or implied <= 0.0 else implied
-    elif implied > 0.0 or total == 0.0:
-        lanes = stored
-        impl = implied
-    else:
-        lanes = [_f32(_f32(x) / _f32(total)) for x in stored]
-        impl = 0.0
-    w = [_f32(x) for x in (lanes + [impl])]
-    while len(w) < 4:
-        w.append(0.0)
-    j = [int(x) & 0xFF for x in vertex.bones]
-    while len(j) < 4:
-        j.append(0)
-    j = [b if wt != 0.0 else 0 for b, wt in zip(j, w)]
-    return w[:4], j[:4]
+    w, j = pack_weights_joints(vertex.stored_weights, vertex.bones)
+    return list(w), list(j)
 
 
 def _write_compound_gltf(mesh: SkinnedMesh, anim: Optional[AnimFile],

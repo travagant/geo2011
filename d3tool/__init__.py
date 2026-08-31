@@ -9,7 +9,8 @@ work.
 """
 
 from .model import (
-    DEFAULT_DIFFUSE, Bone, GltfModel, MeshPart, MorphTrack, SkinnedMesh, Vertex,
+    DEFAULT_DIFFUSE, Bone, GltfModel, MeshPart, MorphTrack, SkinnedMesh,
+    Vertex, pack_weights_joints,
 )
 from .gfile import (
     parse_attributes, parse_geometry_file, vertex_stride, write_geometry_file,
@@ -43,7 +44,7 @@ __all__ = [
     "__version__",
     # model
     "DEFAULT_DIFFUSE", "Bone", "GltfModel", "MeshPart", "MorphTrack",
-    "SkinnedMesh", "Vertex",
+    "SkinnedMesh", "Vertex", "pack_weights_joints",
     # .g geometry
     "parse_attributes", "parse_geometry_file", "vertex_stride",
     "write_geometry_file",
