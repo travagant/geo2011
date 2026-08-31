@@ -318,21 +318,46 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
         ui.section("Reverse export  glTF → Disciples 3")
 
     m = gltfmod.load_gltf(gltf_path, weights_on_vertex=weights_on_vertex)
-    sm = gltfmod.mesh_to_skinned(m, weights_on_vertex=weights_on_vertex)
     # Derive the unit base with splitext, not by chopping a fixed 5 chars:
     # `d3tool export unit.glb` used to produce "unit.g" AND fail to locate the
     # sibling unit.scene/unit.ac (the lookups key off this base), silently
     # dropping every particle emitter and every event2 entry.
     base = os.path.splitext(os.path.basename(gltf_path))[0]
+    # Donate the original `.g` sitting next to the source glTF (same reuse
+    # rule as the `.scene`/`.ac`): it carries the authoring data a glTF
+    # cannot express -- per-vertex diffuse, container header/prelude/vertex
+    # magic, light-map UVs, the per-part attribute blocks and scaffolding,
+    # and the original weight/bone split (adopted only when it re-packs
+    # bit-exactly to the glTF lanes, so user edits always win).
+    donor = None
+    donor_path = os.path.join(os.path.dirname(gltf_path), base + ".g")
+    if os.path.isfile(donor_path):
+        try:
+            candidate = gfile.parse_geometry_file(
+                open(donor_path, "rb").read())
+            donor = None if candidate.parse_error else candidate
+        except Exception:  # noqa: BLE001 - a broken donor must not stop us
+            donor = None
+    sm = gltfmod.mesh_to_skinned(m, weights_on_vertex=weights_on_vertex,
+                                 donor=donor)
+    if not (donor is not None and donor.geometry_file):
+        # the donated name2 (the `.g` header's geometry-file string) is the
+        # original asset's own label and may differ from the file base
+        sm.geometry_file = base
     os.makedirs(out_dir, exist_ok=True)
     res = _resource_root(gltf_path, base)
-    attrs = _default_attrs(sm, base, res)
-    sm.geometry_file = base
-
+    if donor is not None and donor.attrs:
+        # donated attribute block: keeps the historical `.tga` material
+        # name, dwNode/dwParent, tech/vdshader and any extra keys
+        attrs = dict(donor.attrs)
+    else:
+        attrs = _default_attrs(sm, base, res)
     # textures (glTF .dds -> native .t), and point the .g at the emitted file
     emitted = _export_textures(gltf_path, out_dir, base, quiet)
-    if emitted:
+    if emitted and "material0_diffuse" not in attrs:
         attrs["material0_diffuse"] = emitted
+    elif emitted and attrs.get("material0_diffuse", "").endswith(".tga"):
+        pass  # the donated `.tga` name is the convention the engine expects
     else:
         # No texture was emitted; fall back to the unit base if a .t/.dds
         # happened to be written next to the output (or keep the .tga name).

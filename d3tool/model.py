@@ -163,6 +163,8 @@ class MeshPart:
     bones: List[Bone] = field(default_factory=list)
     weights_on_vertex: int = 0
     morph: bool = False
+    # the donated attribute block verbatim (ordered pairs, duplicates kept)
+    attr_items: List[Tuple[str, str]] = field(default_factory=list)
     material_diffuse: str = ""
     vertex_magic: bytes = b""
     # lightmap UV block (vc * vec2 float32), exported as TEXCOORD_1
@@ -172,6 +174,13 @@ class MeshPart:
     attrs: Dict[str, str] = field(default_factory=dict)
     # verbatim sub-block bytes (header + scene + attrs + arrays + bones)
     raw: bytes = b""
+    # sub-block scaffolding kept so a *rebuilt* part (reverse export) can
+    # reproduce the container layout: the bytes between the block start and
+    # the attribute block (28-byte header + 56-byte scene block, or the rare
+    # attribute-first prefix), and the bytes that follow the geometry arrays
+    # (baked morph-frame positions).  Both empty for a synthesized part.
+    part_prefix: bytes = b""
+    part_tail: bytes = b""
 
 
 @dataclass
@@ -224,6 +233,10 @@ class SkinnedMesh:
     # additional sub-meshes of a compound container (mesh 2..N); the first
     # mesh is described by this SkinnedMesh's own fields.
     parts: List[MeshPart] = field(default_factory=list)
+    # the main mesh's attribute block, as parsed (donated on reverse export)
+    attrs: Dict[str, str] = field(default_factory=dict)
+    # the donated main attribute block verbatim (ordered pairs, dupes kept)
+    attr_items: List[Tuple[str, str]] = field(default_factory=list)
 
 
 @dataclass
@@ -246,3 +259,21 @@ class GltfModel:
     # number of influence slots carried by the source glTF (2/3/4); used for
     # fidelity when reverse-exporting (0 == auto-detect).
     weights_on_vertex: int = 0
+    # True when the glTF carries no skin and no WEIGHTS_0/JOINTS_0 at all
+    # (a rigid dis3tool export): the GM influence data simply is not in the
+    # document, only in the (donated) original `.g`.
+    rigid: bool = False
+    # sub-mesh material names (the historical `.tga` spelling) and light-map
+    # payload, restored on reverse export
+    material_diffuse: str = ""
+    lightmap: str = ""
+    lm_uv: bytes = b""
+    # the mesh carries morph targets (a morph-deformer sub-mesh)
+    morph: bool = False
+    # per-vertex raw WEIGHTS_0/JOINTS_0 accessor lanes of the source glTF
+    # (empty for a rigid export) -- the ground truth a donated original is
+    # verified against on reverse export
+    accessor_wj: List[tuple] = field(default_factory=list)
+    # sub-meshes 2..N of a compound export (meshes[1:]); the first mesh is
+    # described by this model's own fields.
+    submodels: List["GltfModel"] = field(default_factory=list)
