@@ -74,7 +74,7 @@ def build() -> str:
             "  'Python library not found' / libpython, your Python install\n"
             "  lacks the shared library: use the python.org installer, or\n"
             "  fall back to the portable zipapp:  bash release/build.sh\n" % exc.returncode)
-        raise SystemExit(exc.returncode)
+        raise SystemExit(exc.returncode) from exc
     finally:
         shutil.rmtree(stage, ignore_errors=True)
 

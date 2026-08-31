@@ -2,28 +2,58 @@
 
 Study / conversion tools for the Disciples 3 `GM` geometry format (`.g`) and
 the glTF export produced by the *dis3tool* plugin (``geo2011.dle``).
+
+Every public reader/writer of the submodules is re-exported here, so both
+``from d3tool import parse_anim`` and ``from d3tool.anim import parse_anim``
+work.
 """
 
-__version__ = "0.1.0"
-
-from .model import Bone, GltfModel, SkinnedMesh, Vertex
-from .gfile import parse_attributes, parse_geometry_file, write_geometry_file
-from .gltf import load_gltf, mesh_to_skinned
-from .ac import default_ac, detect_anim_files, parse_ac, write_ac
-from .gltf_out import write_gltf, write_gltf_to
+from .model import (
+    DEFAULT_DIFFUSE, Bone, GltfModel, MeshPart, MorphTrack, SkinnedMesh, Vertex,
+)
+from .gfile import (
+    parse_attributes, parse_geometry_file, vertex_stride, write_geometry_file,
+)
+from .gltf import (
+    animation_from_gltf, detect_weights_on_vertex, load_gltf, mesh_to_skinned,
+)
+from .ac import (
+    AnimConfig, State, default_ac, detect_anim_files, parse_ac, write_ac,
+)
+from .anim import (
+    AnimFile, BoneAnim, build_anim, parse_anim, write_anim,
+)
+from .scene import write_scene
+from .gltf_out import node_hierarchy, validate_gltf, write_gltf, write_gltf_to
 from .texture import (
-    TextureInfo, convert_file, dds_to_t, find_diffuse_texture, parse_dds,
-    parse_t, t_to_dds, write_dds, write_t,
+    TextureInfo, build_dds_header, convert_file, dds_to_t, find_diffuse_texture,
+    parse_dds, parse_t, t_to_dds, write_dds, write_t,
 )
 
 __version__ = "0.1.0"
 
 __all__ = [
-    "Bone", "GltfModel", "SkinnedMesh", "Vertex",
-    "parse_attributes", "parse_geometry_file", "write_geometry_file",
-    "load_gltf", "mesh_to_skinned",
-    "default_ac", "detect_anim_files", "parse_ac", "write_ac",
-    "write_gltf", "write_gltf_to", "__version__",
-    "TextureInfo", "convert_file", "dds_to_t", "t_to_dds", "parse_dds",
-    "parse_t", "find_diffuse_texture", "write_dds", "write_t",
+    "__version__",
+    # model
+    "DEFAULT_DIFFUSE", "Bone", "GltfModel", "MeshPart", "MorphTrack",
+    "SkinnedMesh", "Vertex",
+    # .g geometry
+    "parse_attributes", "parse_geometry_file", "vertex_stride",
+    "write_geometry_file",
+    # glTF -> GM
+    "animation_from_gltf", "detect_weights_on_vertex", "load_gltf",
+    "mesh_to_skinned",
+    # .ac animation config
+    "AnimConfig", "State", "default_ac", "detect_anim_files", "parse_ac",
+    "write_ac",
+    # .a animation
+    "AnimFile", "BoneAnim", "build_anim", "parse_anim", "write_anim",
+    # .scene
+    "write_scene",
+    # GM -> glTF
+    "node_hierarchy", "validate_gltf", "write_gltf", "write_gltf_to",
+    # .t / .dds textures
+    "TextureInfo", "build_dds_header", "convert_file", "dds_to_t",
+    "find_diffuse_texture", "parse_dds", "parse_t", "t_to_dds", "write_dds",
+    "write_t",
 ]

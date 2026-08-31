@@ -111,9 +111,10 @@ def table(rows: Iterable[tuple], headers: Optional[Iterable[str]] = None) -> Non
             bold(h.ljust(widths[i])) for i, h in enumerate(hdr)))
         print("  " + "  ".join(
             grey("─" * widths[i]) for i in range(len(widths))))
-    for r in rows:
-        r = [str(c) for c in r]
-        print("  " + "  ".join(c.ljust(widths[i]) for i, c in enumerate(r)))
+    for row in rows:
+        cells = [str(c) for c in row]
+        print("  " + "  ".join(
+            c.ljust(widths[i]) for i, c in enumerate(cells)))
 
 
 def banner() -> None:

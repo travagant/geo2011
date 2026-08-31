@@ -63,9 +63,17 @@ class AnimFile:
     header: bytes = b""          # verbatim global header (first 36 bytes)
     bones: List[BoneAnim] = field(default_factory=list)
     trailing: bytes = b""
+    # set when the stream could not be parsed completely: write_anim emits
+    # these bytes verbatim so a corrupt `.a` still round-trips losslessly
+    raw: bytes = b""
     # vertex-morph streams parsed out of the trailing block (byte ranges stay
     # inside `trailing`, so round-tripping remains verbatim).
     morphs: List[MorphTrack] = field(default_factory=list)
+    # how many leading entries of `bones` came from the *first* stream when
+    # this file was built by concat_anims; 0 means "all of them".  Bones only
+    # present in later streams are appended after it, and the glTF writer must
+    # keep them appended rather than weaving them into the skeleton tree.
+    n_primary: int = 0
 
 
 def _scan_morph_tracks(trailing: bytes) -> List[MorphTrack]:
@@ -121,13 +129,21 @@ def _u32(data, o):
     return struct.unpack_from("<I", data, o)[0]
 
 
+class _Truncated(ValueError):
+    """Raised when a record stream ends before its NUL-terminated names."""
+
+
 def _cstr(data, o):
-    e = data.index(b"\x00", o)
+    e = data.find(b"\x00", o)
+    if e < 0:
+        raise _Truncated("bone name is not NUL-terminated (file truncated?)")
     return data[o:e].decode("latin1"), e + 1
 
 
 def _cstr_bytes(data, o):
-    e = data.index(b"\x00", o)
+    e = data.find(b"\x00", o)
+    if e < 0:
+        raise _Truncated("bone name is not NUL-terminated (file truncated?)")
     return data[o:e + 1], e + 1
 
 
@@ -138,39 +154,119 @@ def _header_fields(data: bytes) -> Optional[List]:
 
 
 def parse_anim(data: bytes) -> AnimFile:
-    """Parse an `.a` file into an :class:`AnimFile` (byte-faithful)."""
+    """Parse an `.a` file into an :class:`AnimFile` (byte-faithful).
+
+    Like :func:`d3tool.gfile.parse_geometry_file`, a truncated or corrupt
+    stream degrades instead of raising: whatever records did parse stay
+    readable, and the original bytes are kept in :attr:`AnimFile.raw` so
+    :func:`write_anim` still reproduces the file exactly.
+    """
     hf = _header_fields(data)
     anim = AnimFile()
     if hf is None:
+        anim.raw = data
         return anim
     anim.bone_count = hf[2]
     anim.frame_count = hf[3]
     anim.header = data[:20]
 
     o = 20
-    for _ in range(anim.bone_count):
-        if o + _PREAMBLE > len(data):
-            break
-        nf = _u32(data, o + 8)
-        pream = data[o:o + _PREAMBLE]
-        o += _PREAMBLE
-        name, o = _cstr(data, o)
-        parent, o = _cstr(data, o)
-        frames = []
-        for _ in range(nf):
-            if o + _SAMPLE_BYTES > len(data):
+    try:
+        for _ in range(anim.bone_count):
+            if o + _PREAMBLE > len(data):
                 break
-            frames.append(struct.unpack_from("<7f", data, o))
-            o += _SAMPLE_BYTES
-        anim.bones.append(BoneAnim(name, parent, nf, frames, pream))
+            nf = _u32(data, o + 8)
+            pream = data[o:o + _PREAMBLE]
+            o += _PREAMBLE
+            name, o = _cstr(data, o)
+            parent, o = _cstr(data, o)
+            frames = []
+            for _ in range(nf):
+                if o + _SAMPLE_BYTES > len(data):
+                    break
+                frames.append(struct.unpack_from("<7f", data, o))
+                o += _SAMPLE_BYTES
+            anim.bones.append(BoneAnim(name, parent, nf, frames, pream))
+    except (_Truncated, struct.error):
+        # A truncated record stream: keep the records that did parse and the
+        # verbatim bytes, so nothing is silently lost on re-serialisation.
+        anim.trailing = b""
+        anim.raw = data
+        return anim
 
     anim.trailing = data[o:]
     anim.morphs = _scan_morph_tracks(anim.trailing)
     return anim
 
 
+def concat_anims(anims: List[AnimFile]) -> AnimFile:
+    """Concatenate several `.a` streams the way dis3tool does.
+
+    A unit whose `.ac` names more than one `.a` (Angel names five:
+    idle/attack/run/damage/death) is exported by dis3tool as **one** animation
+    spanning every stream — verified on all 24 such bundled units, where the
+    reference glTF frame count equals the sum exactly.  Bone frames are
+    appended in `.ac` order; a bone absent from one stream holds its rest pose
+    for that stretch.  Morph tracks are taken from the **last** stream
+    (verified on all 8 morph-bearing units: Cleric's 25 targets come from
+    `_run.a`, not the 356 in `_iadd.a`).
+
+    A single stream is returned unchanged, so units with one `.a` are untouched.
+    """
+    anims = [a for a in anims if a is not None]
+    if not anims:
+        return AnimFile()
+    if len(anims) == 1:
+        return anims[0]
+
+    total = sum(a.frame_count for a in anims)
+    by_name = [{b.name: b for b in stream.bones} for stream in anims]
+    order: List[str] = []
+    seen: set = set()
+    for stream in anims:
+        for b in stream.bones:
+            if b.name not in seen:
+                seen.add(b.name)
+                order.append(b.name)
+
+    out_bones: List[BoneAnim] = []
+    for name in order:
+        # rest pose = first sample of the first stream that carries this bone
+        rest = None
+        parent = ""
+        pream = b""
+        for i, _stream in enumerate(anims):
+            src: Optional[BoneAnim] = by_name[i].get(name)
+            if src is not None and src.frames:
+                rest = src.frames[0]
+                parent = parent or src.parent
+                pream = pream or src.preamble
+                break
+        if rest is None:
+            rest = (0.0,) * _SAMPLE
+        frames: List[Tuple[float, ...]] = []
+        for i, stream in enumerate(anims):
+            src = by_name[i].get(name)
+            if src is not None and src.frames:
+                frames.extend(src.frames)
+                if len(src.frames) < stream.frame_count:
+                    frames.extend([src.frames[-1]] *
+                                  (stream.frame_count - len(src.frames)))
+            else:
+                frames.extend([rest] * stream.frame_count)
+        out_bones.append(BoneAnim(name, parent, total, frames, pream))
+
+    out = AnimFile(bone_count=len(out_bones), frame_count=total,
+                   header=anims[0].header, bones=out_bones, trailing=b"")
+    out.morphs = list(anims[-1].morphs)
+    out.n_primary = len(anims[0].bones)
+    return out
+
+
 def write_anim(anim: AnimFile) -> bytes:
     """Re-emit an :class:`AnimFile` byte-for-byte (round-trip safe)."""
+    if anim.raw:
+        return anim.raw
     out = bytearray(anim.header)
     for b in anim.bones:
         out += b.preamble

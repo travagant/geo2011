@@ -9,3 +9,7 @@ release/d3tool-dist/
 build_stage/
 build_stage_exe/
 release/d3tool-dist-exe/
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/

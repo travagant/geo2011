@@ -1,6 +1,9 @@
 """Self-contained tests for the d3tool package (run with `python3 tests/`)."""
 import json
+import glob
 import os
+import shutil
+import tempfile
 import struct
 import sys
 
@@ -70,7 +73,6 @@ def test_gltf_to_g_matches_original():
     assert back.tri_count == orig.tri_count
     assert back.indices == orig.indices
     assert [b.name for b in back.bones] == [b.name for b in orig.bones]
-    ab = [x[0] for x in zip(back.bones, orig.bones)]
     # skeleton matrices (inverse bind) must match
     for x, y in zip(back.bones, orig.bones):
         assert all(abs(u - v) < 1e-5 for u, v in zip(x.matrix, y.matrix)), x.name
@@ -143,7 +145,6 @@ def test_ac_bundled_roundtrip_semantic():
 
 
 def test_version():
-    import d3tool
     assert isinstance(d3tool.__version__, str) and d3tool.__version__
 
 
@@ -156,7 +157,7 @@ def test_cli_export_and_roundtrip():
         r = subprocess.run(
             [sys.executable, "-m", "d3tool", "export", base + ".gltf",
              "-o", os.path.join(d, "re")],
-            capture_output=True, text=True, cwd=REPO)
+            capture_output=True, text=True, cwd=REPO, check=False)
         assert r.returncode == 0, r.stderr
         re_dir = os.path.join(d, "re")
         assert os.path.exists(os.path.join(re_dir, "character_neutrals_airelemental.g"))
@@ -169,7 +170,8 @@ def test_cli_export_and_roundtrip():
             [sys.executable, "-m", "d3tool", "export-gl",
              os.path.join(re_dir, "character_neutrals_airelemental.g"),
              "-a", os.path.join(re_dir, "character_neutrals_airelemental_iadd.a"),
-             "-o", fwd], capture_output=True, text=True, cwd=REPO)
+             "-o", fwd], capture_output=True, text=True, cwd=REPO,
+            check=False)
         assert r2.returncode == 0, r2.stderr
         errors, warnings, info = gltf_out.validate_gltf(fwd)
         assert errors == 0, f"roundtrip glTF must be valid, got {errors}"
@@ -516,41 +518,630 @@ def test_morph_only_animation_has_frames_input():
         assert errors == 0
 
 
-def test_stub_g_gives_raw_passthrough_and_clean_export_error():
-    """The two bundled loader stubs (602-byte placeholder .g files) fall back
-    to raw passthrough: .g serialization stays lossless, and glTF export
-    must refuse with a readable error, not crash inside `min()`."""
+def test_stub_g_is_a_headerless_node_helper():
+    """The two bundled 602-byte Leader `.g` files are *header-less node
+    helpers* (prelude first, no 120-byte header, no name strings) — valid
+    files, not corruption.  They must parse as `form="stub"`, keep a
+    lossless `.g` round-trip, and be refused by the glTF writer with an
+    accurate "no triangles" message (a skin with zero joints is invalid)."""
     import tempfile
-    p = os.path.join(REPO, "Empire", "Leader-Ranger",
-                     "character_empire_leader-ranger.g")
-    data = open(p, "rb").read()
-    mesh = gfile.parse_geometry_file(data)
-    assert mesh.raw, "leader stub must fall back to raw passthrough"
-    # .g serialization stays lossless for the stub
-    assert gfile.write_geometry_file(mesh, {}) == data
-    # glTF export refuses with a readable error
-    with tempfile.TemporaryDirectory() as d:
-        out = os.path.join(d, "u.gltf")
-        try:
-            gltf_out.write_gltf_to(out, mesh, None)
-        except ValueError as exc:
-            assert "empty mesh" in str(exc)
-        else:
-            raise AssertionError("expected ValueError for a stub mesh")
+    for folder in ("Leader-Ranger", "Leader-Thief"):
+        p = os.path.join(REPO, "Empire", folder,
+                         f"character_empire_{folder.lower()}.g")
+        data = open(p, "rb").read()
+        mesh = gfile.parse_geometry_file(data)
+        assert mesh.form == "stub", f"{folder}: expected the stub container form"
+        assert mesh.name == "BaseMesh", f"{folder}: name from the `name` attr"
+        assert len(mesh.vertices) == 4, f"{folder}: 4 helper vertices"
+        # .g serialization stays lossless for the stub
+        assert gfile.write_geometry_file(mesh, {}) == data
+        with tempfile.TemporaryDirectory() as d:
+            out = os.path.join(d, "u.gltf")
+            try:
+                gltf_out.write_gltf_to(out, mesh, None)
+            except ValueError as exc:
+                assert "no triangles" in str(exc), str(exc)
+            else:
+                raise AssertionError(f"{folder}: expected ValueError for a stub")
+
+
+def test_parse_attributes_reads_headerless_stub():
+    """`parse_attributes` must read the stub's attribute block (it used to
+    assume the 120-byte header + two name strings and report a valid file as
+    corrupt)."""
+    data = open(os.path.join(REPO, "Empire", "Leader-Ranger",
+                             "character_empire_leader-ranger.g"),
+                "rb").read()
+    attrs, _ = gfile.parse_attributes(data)
+    assert attrs["name"] == "BaseMesh"
+    assert attrs["vertexs_weights_num"] == "4"
+    assert attrs["materials_num"] == "0"
 
 
 def test_parse_attributes_corrupt_bytes_raise_valueerror():
     """`parse_attributes` on garbage must raise a readable ValueError, not a
     struct.error with nonsense offsets."""
-    data = open(os.path.join(REPO, "Empire", "Leader-Ranger",
-                             "character_empire_leader-ranger.g"),
+    for junk in (b"", b"\x00" * 16, os.urandom(256), b"\x03" + b"\xff" * 400):
+        try:
+            gfile.parse_attributes(junk)
+        except ValueError as exc:
+            assert "attribute block" in str(exc), str(exc)
+        else:
+            raise AssertionError("expected ValueError for a corrupt .g")
+
+
+def test_reverse_export_preserves_ac_event_entries():
+    """Regenerating the `.ac` from the template silently dropped every
+    `event2` entry — the attack/damage/death sound aliases and the
+    FxStrike/fxcast cues.  When the source `.ac` ships next to the glTF it
+    must be reused verbatim, exactly like the `.scene`."""
+    import tempfile
+    from d3tool import cli
+    src = os.path.join(REPO, "Neutrals", "AirElemental",
+                       "character_neutrals_airelemental.ac")
+    n_events = sum(1 for ln in open(src, encoding="utf-8")
+                   if ln.strip().startswith("event2"))
+    assert n_events > 0, "the reference .ac must carry event2 entries"
+    with tempfile.TemporaryDirectory() as d:
+        cli._export(os.path.join(REPO, "Neutrals", "AirElemental",
+                                 "character_neutrals_airelemental.gltf"),
+                    d, 0, anim=False, quiet=True)
+        out = os.path.join(d, "character_neutrals_airelemental.ac")
+        assert open(out, "rb").read() == open(src, "rb").read(), \
+            "the source .ac must be reused byte-for-byte"
+        kept = sum(1 for ln in open(out, encoding="utf-8")
+                   if ln.strip().startswith("event2"))
+        assert kept == n_events, f"{kept} of {n_events} event2 entries kept"
+
+
+def test_validate_gltf_reports_errors_instead_of_raising():
+    """`d3tool validate` inspects *untrusted* documents: a bad index or an
+    unknown enum must be counted as an error, not escape as a traceback."""
+    import json
+    import tempfile
+    bad_docs = [
+        {"bufferView_out_of_range": {
+            "asset": {"version": "2.0"},
+            "buffers": [{"uri": "x.bin", "byteLength": 4}], "bufferViews": [],
+            "accessors": [{"bufferView": 9, "count": 1, "type": "VEC3",
+                           "componentType": 5126}]}},
+        {"unknown_type": {
+            "asset": {"version": "2.0"},
+            "buffers": [{"uri": "x.bin", "byteLength": 4}],
+            "bufferViews": [{"buffer": 0, "byteOffset": 0, "byteLength": 4}],
+            "accessors": [{"bufferView": 0, "count": 1, "type": "QUAT",
+                           "componentType": 5126}]}},
+        {"unknown_component_type": {
+            "asset": {"version": "2.0"},
+            "buffers": [{"uri": "x.bin", "byteLength": 4}],
+            "bufferViews": [{"buffer": 0, "byteOffset": 0, "byteLength": 4}],
+            "accessors": [{"bufferView": 0, "count": 1, "type": "VEC3",
+                           "componentType": 9999}]}},
+        {"skin_without_joints": {
+            "asset": {"version": "2.0"},
+            "buffers": [{"uri": "x.bin", "byteLength": 4}], "bufferViews": [],
+            "accessors": [], "skins": [{"inverseBindMatrices": 0}],
+            "nodes": []}},
+        {"sampler_index_out_of_range": {
+            "asset": {"version": "2.0"},
+            "buffers": [{"uri": "x.bin", "byteLength": 4}], "bufferViews": [],
+            "accessors": [],
+            "animations": [{"channels": [{"sampler": 0, "target": {
+                "node": 0, "path": "rotation"}}],
+                "samplers": [{"input": 5, "output": 6}]}], "nodes": []}},
+        {"negative_mesh_index": {
+            "asset": {"version": "2.0"},
+            "buffers": [{"uri": "x.bin", "byteLength": 4}], "bufferViews": [],
+            "accessors": [], "meshes": [], "nodes": [{"mesh": -1}]}},
+        {"no_asset_version": {"buffers": []}},
+    ]
+    for case in bad_docs:
+        label, doc = next(iter(case.items()))
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "t.gltf")
+            with open(p, "w", encoding="utf-8") as fh:
+                json.dump(doc, fh)
+            with open(os.path.join(d, "x.bin"), "wb") as fh:
+                fh.write(b"\0" * 64)
+            errors, _w, _i = gltf_out.validate_gltf(p)
+            assert errors > 0, f"{label}: malformed glTF reported 0 errors"
+
+
+def test_validate_gltf_reads_joints_with_their_real_component_type():
+    """JOINTS_0 is componentType 5121 (unsigned byte) inside the interleaved
+    view; decoding it as float32 turned real joint bytes [0,0,0,0] into
+    [0,0,2,0] and defeated the dedup-by-joint weight rule."""
+    import json
+    import struct
+    import tempfile
+    from d3tool import cli
+    base = os.path.join(REPO, "Neutrals", "AirElemental",
+                        "character_neutrals_airelemental")
+    with tempfile.TemporaryDirectory() as d:
+        gt, bt = cli._export_gl(base + ".g", base + "_iadd.a",
+                                os.path.join(d, "u.gltf"),
+                                texture=None, quiet=True)
+        doc = json.load(open(gt))
+        buf = open(bt, "rb").read()
+        prim = doc["meshes"][0]["primitives"][0]
+        acc = doc["accessors"][prim["attributes"]["JOINTS_0"]]
+        assert acc["componentType"] == 5121, "JOINTS_0 must stay UNSIGNED_BYTE"
+        view = doc["bufferViews"][acc["bufferView"]]
+        off = view.get("byteOffset", 0) + acc.get("byteOffset", 0)
+        raw = list(buf[off:off + 4])
+        assert raw == [int(x) for x in raw], "joint bytes must be integral"
+        # the same offset decoded as float32 (the old behaviour) differs
+        as_f32 = [int(x) for x in struct.unpack_from("<4f", buf, off)]
+        assert as_f32 != raw, "expected the float32 misread to be visible"
+        assert gltf_out.validate_gltf(gt)[0] == 0
+
+
+def test_forward_export_names_its_skin():
+    """dis3tool names every skin (`skin0`, `skin1`, ...) in all 98 bundled
+    references, and the compound writer already did; the single-mesh path
+    omitted the key."""
+    import json
+    import tempfile
+    from d3tool import cli
+    base = os.path.join(REPO, "Neutrals", "AirElemental",
+                        "character_neutrals_airelemental")
+    with tempfile.TemporaryDirectory() as d:
+        gt, _ = cli._export_gl(base + ".g", base + "_iadd.a",
+                               os.path.join(d, "u.gltf"),
+                               texture=None, quiet=True)
+        assert json.load(open(gt))["skins"][0].get("name") == "skin0"
+
+
+def test_public_api_is_re_exported():
+    """`from d3tool import parse_anim` must work for every documented
+    reader/writer, not just the geometry ones."""
+    for name in ("parse_geometry_file", "write_geometry_file", "parse_attributes",
+                 "load_gltf", "mesh_to_skinned", "animation_from_gltf",
+                 "parse_anim", "write_anim", "build_anim",
+                 "parse_ac", "write_ac", "default_ac", "detect_anim_files",
+                 "write_scene", "write_gltf", "write_gltf_to", "validate_gltf",
+                 "parse_t", "parse_dds", "t_to_dds", "dds_to_t", "convert_file",
+                 "Bone", "Vertex", "SkinnedMesh", "MeshPart", "MorphTrack",
+                 "AnimFile", "BoneAnim", "AnimConfig", "State", "TextureInfo"):
+        assert hasattr(d3tool, name), f"d3tool.{name} is not re-exported"
+        assert name in d3tool.__all__, f"{name} missing from __all__"
+
+
+def test_cubemap_t_produces_a_valid_cubemap_dds():
+    """`build_dds_header` used to ignore `TextureInfo.faces`, so a cubemap
+    `.t` became a 2D DDS header over six faces of payload — internally
+    inconsistent, and no loader could reconcile it."""
+    import struct
+    p = os.path.join(REPO, "Empire", "Apprentice", "cubemap_default.t")
+    data = open(p, "rb").read()
+    info = texmod.parse_t(data, p)
+    assert info.faces == 6, "the bundled cubemap must be detected as 6 faces"
+    dds = texmod.t_to_dds(data, p)
+    caps2 = struct.unpack_from("<I", dds, 112)[0]
+    assert caps2 & 0x200, "dwCaps2 must carry DDSCAPS2_CUBEMAP"
+    assert caps2 & 0xFC00 == 0xFC00, "all six face flags must be set"
+    back = texmod.parse_dds(dds, p)
+    assert back.faces == 6, "parse_dds must read the cubemap flag back"
+    assert back.payload_size() == len(back.payload)
+    assert texmod.dds_to_t(dds, info.t_header, p) == data, \
+        "the cubemap round-trip must stay byte-identical"
+
+
+def test_format_label_is_printable_for_every_gm_code():
+    """An uncompressed DDS carries four NUL bytes in the fourCC slot, and
+    `bool(b'\x00\x00\x00\x00')` is True — so testing fourCC for truthiness
+    leaked NUL characters into the CLI output."""
+    from d3tool import cli
+    for code, label in ((3, "16-bit A1R5G5B5"), (1, "16-bit uncompressed"),
+                        (2, "16-bit uncompressed"), (4, "32-bit A8R8G8B8"),
+                        (5, "32-bit A8R8G8B8")):
+        info = texmod.TextureInfo(width=4, height=4, mip_count=1,
+                                  gm_format=code,
+                                  fourcc=b"\x00\x00\x00\x00",
+                                  r5g5b5=(code == 3))
+        got = cli._format_label(info)
+        assert got == label, f"code {code}: {got!r} != {label!r}"
+        assert got.isprintable()
+
+
+def test_weights_on_vertex_is_validated():
+    """The GM vertex record only exists for 2/3/4 slots.  `--weights-on-vertex
+    1` used to write a 40-byte-stride file that the reader re-interprets as the
+    46-byte w=2 stride when bones_num > 1 — Wildboar came back with 0 vertices,
+    and the CLI still exited 0."""
+    import argparse
+    from d3tool import cli  # noqa: F811 - local import keeps the test standalone
+    for good in (0, 2, 3, 4):
+        assert cli._weights_on_vertex(str(good)) == good
+    for bad in ("1", "5", "99", "-1", "abc", ""):
+        try:
+            cli._weights_on_vertex(bad)
+        except argparse.ArgumentTypeError:
+            pass
+        else:
+            raise AssertionError(f"{bad!r} must be rejected")
+
+
+def test_parse_anim_degrades_on_truncated_data():
+    """`parse_anim` was the one reader with no defence against a truncated
+    file: `str.index` escaped as a bare `ValueError: subsection not found`.
+    It must degrade like `parse_geometry_file` and stay lossless."""
+    data = open(os.path.join(REPO, "Neutrals", "AirElemental",
+                             "character_neutrals_airelemental_iadd.a"),
                 "rb").read()
-    try:
-        gfile.parse_attributes(data)
-    except ValueError as exc:
-        assert "attribute block" in str(exc)
-    else:
-        raise AssertionError("expected ValueError for a corrupt .g stub")
+    for cut in (b"", data[:4], data[:20], data[:len(data) // 2],
+                data[:len(data) // 100], b"\xff" * 4096):
+        anim = animmod.parse_anim(cut)
+        assert animmod.write_anim(anim) == cut, \
+            f"a {len(cut)}-byte input must round-trip verbatim"
+
+
+def _copy_unit(unit: str, dst: str, gltf_ext: str = ".gltf") -> str:
+    """Copy one corpus unit into *dst*, renaming the glTF to *gltf_ext*."""
+    src = os.path.join(REPO, *unit.split("/"))
+    os.makedirs(dst, exist_ok=True)
+    for fn in os.listdir(src):
+        p = os.path.join(src, fn)
+        if os.path.isdir(p):
+            shutil.copytree(p, os.path.join(dst, fn), dirs_exist_ok=True)
+        else:
+            shutil.copy(p, os.path.join(dst, fn))
+    base = None
+    for fn in os.listdir(dst):
+        if fn.endswith(".gltf"):
+            base = fn[: -len(".gltf")]
+            if gltf_ext != ".gltf":
+                os.replace(os.path.join(dst, fn),
+                           os.path.join(dst, base + gltf_ext))
+    return os.path.join(dst, base + gltf_ext)
+
+
+def test_export_base_name_survives_a_non_gltf_extension():
+    """`_export` used to chop a fixed 5 characters off the basename.  For
+    `unit.glb` that produced `unit.g` AND made the sibling `.scene`/`.ac`
+    lookups miss, silently dropping every particle emitter and every event2
+    entry while still exiting 0."""
+    from d3tool import cli
+    with tempfile.TemporaryDirectory() as td:
+        glb = _copy_unit("Empire/Rod-1", td, ".glb")
+        assert glb.endswith(".glb")
+        out = os.path.join(td, "out")
+        cli._export(glb, out, 0, quiet=True)
+        expect = "character_empire_rod-1"
+        assert os.path.exists(os.path.join(out, expect + ".g")), \
+            "the .g must keep the full unit base, not lose a character"
+        assert not os.path.exists(os.path.join(out, "character_empire_rod.g")), \
+            "a truncated name must not be written instead"
+        scene = open(os.path.join(out, expect + ".scene"),
+                     encoding="utf-8", errors="replace").read()
+        assert scene.count("child particles") == 1, \
+            "the source .scene must be reused, so particles survive"
+        ac_txt = open(os.path.join(out, expect + ".ac"),
+                      encoding="utf-8-sig", errors="replace").read()
+        assert ac_txt.count("event2") == 6, "the source .ac must be reused"
+
+
+def test_reverse_export_carries_the_alias_folder():
+    """The reused `.ac` references `Aliases\\*.alias` by resource path, but
+    nothing copied that folder, so exported units shipped with dangling
+    event2 references (2065 across the 80 bundled `.ac` files that have any)."""
+    from d3tool import cli
+    src_dir = os.path.join(REPO, "Empire", "LivingArmor")
+    want = sorted(os.listdir(os.path.join(src_dir, "Aliases")))
+    assert len(want) == 9
+    with tempfile.TemporaryDirectory() as td:
+        gltf = _copy_unit("Empire/LivingArmor", td, ".gltf")
+        out = os.path.join(td, "out")
+        cli._export(gltf, out, 0, quiet=True)
+        dst = os.path.join(out, "Aliases")
+        assert os.path.isdir(dst), "the Aliases folder must be carried over"
+        assert sorted(os.listdir(dst)) == want, \
+            "alias file names must be preserved exactly"
+
+
+def test_analyze_flags_an_unparsable_g_as_an_error():
+    """`analyze` printed `(compound)` for *any* file whose parse fell back to
+    the raw passthrough — including pure garbage — and exited 0.  `raw` is set
+    by compound containers too, so it is not evidence of one; only `parts` is."""
+    from d3tool import cli, gfile
+    junk = b"\x01\x02\x03\x04" * 200
+    m = gfile.parse_geometry_file(junk)
+    assert m.parse_error, "a garbage .g must record why it did not parse"
+    assert not m.parts, "and it must not look compound"
+    with tempfile.TemporaryDirectory() as td:
+        open(os.path.join(td, "garbage.g"), "wb").write(junk)
+        shutil.copy(os.path.join(REPO, "Neutrals", "AirElemental",
+                                 "character_neutrals_airelemental.g"),
+                    os.path.join(td, "good.g"))
+        assert cli._analyze_unit(td) == 1, "analyze must fail on corrupt input"
+
+
+def test_bundle_continues_past_a_failing_unit():
+    """One corrupt glTF used to abort the whole `_bundle` run: the units after
+    it were never processed and no per-unit failure was reported."""
+    from d3tool import cli
+    with tempfile.TemporaryDirectory() as td:
+        for unit in ("Neutrals/Wolf", "Neutrals/Troll"):
+            _copy_unit(unit, td, ".gltf")
+        names = sorted(f for f in os.listdir(td) if f.endswith(".gltf"))
+        assert len(names) == 2
+        bad = names[0]
+        good = names[1][: -len(".gltf")]
+        with open(os.path.join(td, bad), "w") as fh:
+            fh.write('{"this is not": valid gltf')
+        out = os.path.join(td, "out")
+        assert cli._bundle(td, out, 0) == 1, \
+            "a failing unit must still make the bundle fail"
+        assert os.path.exists(os.path.join(out, good, good + ".g")), \
+            f"{good} sorts after the broken unit and must still be processed"
+        assert not os.path.exists(os.path.join(
+            out, bad[: -len(".gltf")], bad[: -len(".gltf")] + ".g")), \
+            "the broken unit must not emit a .g"
+
+
+def test_validate_gltf_accepts_the_bundled_reference_files():
+    """`validate_gltf` required morph-weight `output.count ==
+    input.count * len(targets)`, but dis3tool writes `input.count ** 2` — and
+    `_write_compound_gltf` replicates that for byte parity.  The validator
+    therefore rejected 8 of the 98 bundled reference glTFs, i.e. ground truth."""
+    from d3tool import gltf_out
+    bad = []
+    for p in sorted(glob.glob(os.path.join(REPO, "*", "*", "*.gltf"))):
+        errs, _w, _i = gltf_out.validate_gltf(p)
+        if errs:
+            bad.append((os.path.relpath(p, REPO), errs))
+    # The three genuine defects in shipped references, all of them
+    # out-of-range indices that d3tool must not reproduce:
+    #   Rod-1      sampler 14 declares output=33 with 33 accessors (0..32)
+    #   WaterSnake 4 animation channels target nodes 47-50 with 47 nodes (x2
+    #              paths = 8 errors)
+    #   Wildboar   1 animation channel targets node 37 with 37 nodes (x2 = 2)
+    assert bad == [("Empire/Rod-1/character_empire_rod-1.gltf", 1),
+                   ("Neutrals/WaterSnake/character_neutrals_watersnake.gltf", 8),
+                   ("Neutrals/Wildboar/character_neutrals_wildboar.gltf", 2)], bad
+
+
+def test_validate_gltf_rejects_channels_targeting_missing_nodes():
+    """Two bundled references animate nodes that do not exist, which the
+    validator used to skip silently."""
+    doc = {
+        "asset": {"version": "2.0"}, "scene": 0, "scenes": [{"nodes": [0]}],
+        "nodes": [{"name": "n"}], "meshes": [], "accessors": [],
+        "bufferViews": [], "buffers": [],
+        "animations": [{"channels": [{"sampler": 0,
+                                      "target": {"node": 3, "path": "rotation"}}],
+                        "samplers": []}],
+    }
+    with tempfile.TemporaryDirectory() as td:
+        p = os.path.join(td, "t.gltf")
+        open(p, "w").write(json.dumps(doc))
+        assert gltf_out.validate_gltf(p)[0] >= 1, \
+            "a channel aimed at a missing node must be an error"
+        doc["nodes"].append({"name": "n1"})
+        doc["nodes"].append({"name": "n2"})
+        doc["nodes"].append({"name": "n3"})
+        open(p, "w").write(json.dumps(doc))
+        assert gltf_out.validate_gltf(p)[0] == 0, "node 3 must exist now"
+
+
+def test_detect_anim_files_returns_every_ac_state():
+    """`detect_anim_files` read all of the `.ac` states and then collapsed
+    them to a hardcoded `{"Idle", "Run"}` pair, silently discarding the
+    Attack/Damage/Death streams (Angel's `.ac` names five `.a` files)."""
+    from d3tool import ac
+    got = ac.detect_anim_files(os.path.join(REPO, "Empire", "Angel"),
+                               "character_empire_angel")
+    assert set(got) == {"Idle", "Attack", "Run", "Damage", "Death"}, got
+    assert got["Idle"] == "character_empire_angel_idle.a"
+    assert got["Attack"] == "character_empire_angel_attack.a"
+    assert got["Death"] == "character_empire_angel_death.a"
+    # a single-stream unit still resolves, and Idle/Run stay present
+    one = ac.detect_anim_files(os.path.join(REPO, "Neutrals", "Wildboar"),
+                               "character_neutrals_wildboar")
+    assert "Idle" in one and "Run" in one
+
+
+def test_forward_export_warns_when_the_animation_is_truncated():
+    """dis3tool concatenates every `.a` the `.ac` references (Angel:
+    64+84+28+32+55 = 263 frames, matching its reference glTF).  d3tool exports
+    one stream, so the shortfall must be reported, not silently written."""
+    import io
+    import contextlib
+    from d3tool import cli, anim as _anim
+    total = sum(_anim.parse_anim(open(os.path.join(
+        REPO, "Empire", "Angel", n), "rb").read()).frame_count
+        for n in ("character_empire_angel_idle.a",
+                  "character_empire_angel_attack.a",
+                  "character_empire_angel_run.a",
+                  "character_empire_angel_damage.a",
+                  "character_empire_angel_death.a"))
+    assert total == 263, "the bundled Angel streams must total 263 frames"
+    a = _anim.parse_anim(open(os.path.join(
+        REPO, "Empire", "Angel", "character_empire_angel_idle.a"), "rb").read())
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        cli._warn_if_animation_truncated(
+            os.path.join(REPO, "Empire", "Angel", "character_empire_angel.g"),
+            a, "character_empire_angel_idle.a")
+    msg = buf.getvalue()
+    assert "64 of 263" in msg, msg
+    assert "5 animation files" in msg, msg
+
+
+def test_import_refuses_an_unparsable_g():
+    """`d3tool import` printed a zeroed JSON document with exit 0 for a file
+    it could not parse at all, so a script could not tell a corrupt `.g` from
+    a legitimately empty mesh.  Same rule as `analyze`."""
+    import subprocess
+    junk = b"\x01\x02\x03\x04" * 200
+    with tempfile.TemporaryDirectory() as td:
+        p = os.path.join(td, "garbage.g")
+        open(p, "wb").write(junk)
+        r = subprocess.run([sys.executable, "-m", "d3tool", "import", p],
+                           capture_output=True, text=True, cwd=REPO,
+                           check=False)
+        assert r.returncode == 1, r.stdout
+        assert "unparsed" in r.stdout + r.stderr
+        good = os.path.join(REPO, "Neutrals", "Wildboar",
+                            "character_neutrals_wildboar.g")
+        r2 = subprocess.run([sys.executable, "-m", "d3tool", "import", good],
+                            capture_output=True, text=True, cwd=REPO,
+                            check=False)
+        assert r2.returncode == 0, r2.stderr
+        assert json.loads(r2.stdout)["vertex_count"] > 0
+
+
+def test_validate_gltf_checks_bufferview_fits_the_buffer():
+    """The validator compared each accessor against its bufferView but never
+    checked the view against the buffer, so a writer that accumulates
+    byteOffsets by hand could point a view past the end of the .bin."""
+    doc = {
+        "asset": {"version": "2.0"}, "scene": 0, "scenes": [{"nodes": [0]}],
+        "nodes": [{"name": "n", "mesh": 0}],
+        "meshes": [{"primitives": [{"attributes": {"POSITION": 0}}]}],
+        "accessors": [{"bufferView": 0, "byteOffset": 0, "componentType": 5126,
+                       "count": 3, "type": "VEC3"}],
+        "bufferViews": [{"buffer": 0, "byteOffset": 0, "byteLength": 1000}],
+        "buffers": [{"uri": "b.bin", "byteLength": 1000}],
+    }
+    with tempfile.TemporaryDirectory() as td:
+        p = os.path.join(td, "t.gltf")
+        b = os.path.join(td, "b.bin")
+        open(b, "wb").write(b"\0" * 1000)
+
+        def check():
+            open(p, "w").write(json.dumps(doc))
+            return gltf_out.validate_gltf(p)[0]
+
+        assert check() == 0, "a consistent document must pass"
+        doc["bufferViews"][0]["byteOffset"] = 500
+        assert check() == 1, "a view running past the buffer must be an error"
+        doc["buffers"][0]["byteLength"] = 2000
+        open(b, "wb").write(b"\0" * 2000)
+        assert check() == 0, "a genuinely larger buffer must pass again"
+
+
+def _load_a(unit: str, name: str):
+    return animmod.parse_anim(open(os.path.join(REPO, *unit.split("/"), name),
+                                   "rb").read())
+
+
+def test_concat_anims_joins_every_ac_referenced_stream():
+    """dis3tool exports a unit whose `.ac` names several `.a` as ONE animation
+    spanning all of them.  Verified on all 24 such bundled units: the reference
+    frame count equals the sum (Angel 64+84+28+32+55 = 263)."""
+    streams = [_load_a("Empire/Angel", f"character_empire_angel_{k}.a")
+               for k in ("idle", "attack", "run", "damage", "death")]
+    assert [a.frame_count for a in streams] == [64, 84, 28, 32, 55]
+    cat = animmod.concat_anims(streams)
+    assert cat.frame_count == 263
+    assert len(cat.bones) == len(streams[0].bones)
+    # every bone must be stretched to the total, or the writer would emit
+    # ragged rotation/translation arrays
+    assert set(len(b.frames) for b in cat.bones) == {263}
+    # a lone stream must pass through untouched
+    assert animmod.concat_anims([streams[0]]) is streams[0]
+    assert animmod.concat_anims([]).frame_count == 0
+
+
+def test_concat_anims_takes_morph_tracks_from_the_last_stream():
+    """Cleric's reference has 25 morph targets — from `_run.a` (25 frames),
+    not the 356 in `_iadd.a`.  Target #0 matches `_run.a` frame 0 bit-for-bit.
+    Holds on all 8 morph-bearing bundled units."""
+    cat = animmod.concat_anims([
+        _load_a("Empire/Cleric", "character_empire_cleric_iadd.a"),
+        _load_a("Empire/Cleric", "character_empire_cleric_run.a"),
+    ])
+    assert cat.frame_count == 381
+    assert [t.frame_count for t in cat.morphs] == [25]
+    assert cat.morphs[0].vertex_count == 264
+
+
+def test_morph_weights_matrix_is_sized_by_total_frames():
+    """The reference morph_weights bufferView for Cleric is 580644 bytes =
+    381*381*4, and all 145161 cells match a 381x381 identity exactly, while the
+    mesh carries only 25 morph targets."""
+    from d3tool import cli
+    with tempfile.TemporaryDirectory() as td:
+        g = os.path.join(REPO, "Empire", "Cleric", "character_empire_cleric.g")
+        out = os.path.join(td, "cleric.gltf")
+        cli._export_gl(g, cli._find_animation_for_geometry(g), out,
+                       texture=None, quiet=True)
+        doc = json.load(open(out))
+        acc = doc["accessors"]
+        anim = doc["animations"][0]
+        po = {c["sampler"]: c["target"]["path"] for c in anim["channels"]}
+        wa = [acc[s["output"]] for i, s in enumerate(anim["samplers"])
+              if po.get(i) == "weights"]
+        assert wa, "the export must carry a weights sampler"
+        assert wa[0]["count"] == 381 * 381, wa[0]["count"]
+        n_tg = [len(m["primitives"][0].get("targets", []))
+                for m in doc["meshes"]]
+        assert 25 in n_tg, n_tg
+        # and the bytes really are an identity matrix of that size
+        buf = open(out[:-5] + ".bin", "rb").read()
+        bv = doc["bufferViews"][wa[0]["bufferView"]]
+        off = bv.get("byteOffset", 0) + wa[0].get("byteOffset", 0)
+        vals = struct.unpack_from(f"<{381 * 381}f", buf, off)
+        assert all(abs(vals[r * 381 + c] - (1.0 if r == c else 0.0)) < 1e-6
+                   for r in range(0, 381, 37) for c in range(0, 381, 37))
+
+
+def test_concat_anims_marks_the_primary_skeleton():
+    """concat_anims records how many bones the *first* stream contributed.
+    That boundary is what separates bones the reference animates from bones
+    it only emits as nodes (AirElemental's LeftLeftHand/Tail02 come from the
+    second, `_run.a`, stream)."""
+    from d3tool import anim
+    def bone(n, p=""):
+        return anim.BoneAnim(n, p, 2)
+    a = anim.AnimFile(); a.bones = [bone("Root"), bone("A", "Root")]
+    b = anim.AnimFile()
+    b.bones = [bone("Root"), bone("A", "Root"), bone("Late", "A")]
+    j = anim.concat_anims([a, b])
+    assert j.n_primary == 2, j.n_primary
+    assert [x.name for x in j.bones] == ["Root", "A", "Late"]
+
+
+def test_node_hierarchy_is_a_dfs_over_the_primary_skeleton():
+    """The reference node order is a depth-first walk of the skeleton with
+    children in .a record order. Verified against all 83 bundled reference
+    exports: DFS matches 79, and the 4 misses are the two units with a
+    later-stream bone, rigid Blacknaga, and duplicate-name WaterSnake."""
+    from d3tool import gltf_out
+    def b(n, p=""):
+        x = anim_bone_stub(n, p)
+        return x
+    bones = [b("Root"), b("A", "Root"), b("A1", "A"), b("B", "Root")]
+    children, parent, order, roots = gltf_out.node_hierarchy(bones, len(bones))
+    assert order == ["Root", "A", "A1", "B"], order
+    assert roots == ["Root"]
+    assert children["Root"] == ["A", "B"]
+
+
+def test_node_hierarchy_trails_bones_only_a_later_stream_carries():
+    """Such a bone keeps its parent edge but is emitted as a trailing node.
+    The AirElemental reference lists LeftLeftHand under LeftForeArm
+    (children [7, 43]) yet places it at node 43 of 45, after the whole DFS
+    tree, and targets it with no animation channel."""
+    from d3tool import gltf_out
+    primary = [anim_bone_stub("Root"), anim_bone_stub("Fore", "Root"),
+               anim_bone_stub("Hand", "Fore")]
+    late = anim_bone_stub("LateHand", "Fore")
+    bones = primary + [late]
+    children, parent, order, roots = gltf_out.node_hierarchy(bones, 3)
+    assert order == ["Root", "Fore", "Hand", "LateHand"], order
+    assert children["Fore"] == ["Hand", "LateHand"], children["Fore"]
+
+
+def anim_bone_stub(name, parent=""):
+    class _B:
+        pass
+    x = _B()
+    x.name = name
+    x.parent = parent
+    return x
+
 
 
 def main():
