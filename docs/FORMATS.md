@@ -223,13 +223,31 @@ re-creating them.
 The `.a` holds, for each bone, a descriptor plus a per-frame stream:
 
 ```
-global header (16 bytes, e.g. 9 / 408508 / 42 / 346 ...)
+global header (20 bytes)
+  [u32] magic 9
+  [u32] body length  (everything the writer emits except the trailing
+                      block, minus these 8 bytes — verified on all 152
+                      corpus files)
+  [u32] bone count
+  [u32] frame count
+  [u32] record-type word (15; also 16 / 30 observed — same values as the
+                      trailing morph-stream tags; donated on rebuild)
 repeat per bone:
   [1 byte marker '<']
+  [16-byte preamble: u32 len(name)+1, u32 len(parent)+1,
+                     u32 nframes, float32 time step]
+      -- the pair counts the NUL-terminated strings (verified on all
+      6764 corpus records); the time step varies per stream (0.01 is the
+      corpus mode, dis3tool reference exports use 0.02)
   [cstr] bone name
   [cstr] parent name
-  [7 float32] bind/rest TRS   (translation 3 + quaternion 4)
-  [7 float32] * frame_count   (per-frame TRS, 28 bytes each)
+  [7 float32] * nframes  (per-frame TRS: quat xyzw + translation xyz)
+optional trailing block:
+  vertex-morph streams [u32 14][u32 len-8][u32 tag][u32 frames]
+  [u32 vertex_count][u32 name_len][name + NUL] then frames *
+  vertex_count * float32 absolute positions (frame-major).  The tag
+  follows the header record-type word; some files carry foreign units'
+  streams (DarkServant: 7 tracks of other units).
 ```
 
 The per-frame TRS is exactly what dis3tool exports into the glTF animation
@@ -239,6 +257,27 @@ records (names, parents, per-frame TRS) and `write_anim` re-emits them
 byte-for-byte.  The `.a` record set is exactly the set of nodes animated by the
 glTF (Root + every bone), in hierarchy order, so `d3tool/gltf.py::animation_from_gltf`
 rebuilds a `.a` from the glTF animation channels with matching per-frame values.
+
+Reverse rebuild details (byte-parity with the originals, see
+`tests/reverse_parity.py`):
+
+* a node animated through a morph-target `weights` channel only (a
+  morph-deformer mesh) is **not** a bone: its animation lands in the
+  trailing block as vertex-morph streams; dis3tool stores each baked
+  frame verbatim as a glTF morph-target POSITION accessor, with the
+  stream name in the `morph_<stream>_<k>` bufferView names;
+* a unit whose `.ac` names several `.a` files is exported as ONE
+  concatenated glTF animation (`concat_anims`); the reverse rebuild
+  slices the named stream back out at the donor frame-count boundaries
+  (primary slots read the same record index per stream, appended bones
+  keep the donor records);
+* records the reference animates through nodes outside the node array
+  (Wildboar targets node 37 of 0..36) are recovered positionally from
+  the channel order, verified against the donor `.a`;
+* the original `.a` next to the source glTF donates the record-type
+  word and magic, the record order/parents/preambles and the trailing
+  block (tags + foreign streams), adopted when the rebuilt data
+  verifies against it.
 
 ---
 

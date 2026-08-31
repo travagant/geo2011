@@ -143,7 +143,8 @@ For `character_neutrals_airelemental.gltf` the exporter writes:
   `FxStrike`/`fxcast` cues — the AirElemental carries seven of them);
   otherwise a faithful five-state config is generated.
 * `character_neutrals_airelemental_iadd.a` — the animation binary rebuilt from
-  the glTF animation channels; per-frame values match the original.
+  the glTF animation channels; byte-identical to the original (bone order,
+  record preambles, header and trailing morph streams included).
 * `character_neutrals_airelemental.t` — the native GM texture, converted from
   the `.dds` the glTF references.  The `.g`'s `material0_diffuse` is pointed at
   it.
@@ -157,11 +158,16 @@ For a whole asset tree, `export-all <folder> -o <output>` recursively finds all
 selects each model's `.a` animation from its `.ac` file or conventional filename
 and exports textures automatically. Pass `--no-anim` for geometry-only output.
 
-For the AirElemental unit the generated `.g` matches the original in positions,
-normals, UVs, triangle indices, bone names/matrices and material.  The only
-known divergence is the first bone index of 21 vertices that have a zero-weight
-first influence slot (dis3tool fills an extra joint there; irrelevant to the
-pose because the weight is 0).
+**Reverse parity.** `tests/reverse_parity.py` runs the CLI's own reverse
+export over every bundled dis3tool reference unit and compares each produced
+file against the shipped original: **85/85 EXACT** — the rebuilt `.g`, the
+rebuilt `.a` (bone order, record preambles, header, trailing morph streams,
+concat-slice and out-of-array channel recovery), the reused `.scene`/`.ac`,
+the converted `.t` textures and the copied `Aliases/` are all byte-identical
+to the originals.  The original files next to the source glTF act as donors
+for the authoring data a glTF cannot carry (diffuse colours, container
+scaffolding, attribute blocks, weight splits, record preambles, morph-stream
+tags), always gated on the rebuilt data verifying against them.
 
 **Round-trip coverage** (measured by `tests/test_corpus.py` over the whole
 `Empire/` + `Neutrals/` tree):

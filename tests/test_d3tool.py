@@ -1606,3 +1606,79 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+
+
+# --------------------------------------------------------------------------- #
+#  reverse .a parity (donor-assisted rebuild)
+# --------------------------------------------------------------------------- #
+def _original_a_streams(folder: str):
+    """Parse every structurally-valid `.a` of a unit folder."""
+    out = {}
+    for p in sorted(glob.glob(os.path.join(folder, "*.a"))):
+        a = animmod.parse_anim(open(p, "rb").read())
+        if not a.raw:
+            out[os.path.basename(p)] = a
+    return out
+
+
+def test_anim_record_preamble_is_name_length_pair():
+    """Every original `.a` record preamble starts with the NUL-terminated
+    string lengths [len(name)+1][len(parent)+1] and the per-record frame
+    count; the header length field covers everything except the trailing
+    block.  (The trailing time-step float varies per stream — 0.01 is the
+    corpus mode, 0.02 matches the dis3tool reference exports a rebuild
+    writes; adopted donor records keep their own value either way.)"""
+    checked = 0
+    for p in sorted(glob.glob(os.path.join(REPO, "*", "*", "*.a"))):
+        a = animmod.parse_anim(open(p, "rb").read())
+        if a.raw or not a.bones:
+            continue
+        for b in a.bones:
+            a_len, p_len, nf = struct.unpack_from("<III", b.preamble)
+            assert (a_len, p_len) == (len(b.name) + 1, len(b.parent) + 1), \
+                f"{os.path.basename(p)}:{b.name} preamble {b.preamble!r}"
+            assert nf == len(b.frames), \
+                f"{os.path.basename(p)}:{b.name} preamble nf {nf}"
+        header_len = struct.unpack_from("<I", a.header, 4)[0]
+        body = len(animmod.write_anim(a)) - 8 - len(a.trailing)
+        assert header_len == body, \
+            f"{os.path.basename(p)} header len {header_len} != {body}"
+        checked += len(a.bones)
+    assert checked > 6000, f"corpus shrank: {checked} records"
+
+
+def test_animation_from_gltf_matches_original_a():
+    """The donor-assisted rebuild reproduces several original `.a` files
+    byte-for-byte: a single-stream skeleton (rod-1), a morph-trailing
+    reconstruction (orc) and a positional out-of-array recovery
+    (wildboar)."""
+    cases = (
+        ("Empire", "Rod-1", "character_empire_rod-1_baseanims.a"),
+        ("Neutrals", "Orc", "character_neutrals_orc_baseanims.a"),
+        ("Neutrals", "Wildboar", "character_neutrals_wildboar.a"),
+    )
+    for group, unit, a_name in cases:
+        folder = os.path.join(REPO, group, unit)
+        stem = a_name[:-2].replace("_baseanims", "")
+        m = gltf.load_gltf(os.path.join(folder, stem + ".gltf"))
+        donor = animmod.parse_anim(open(os.path.join(folder, a_name),
+                                        "rb").read())
+        assert not donor.raw, f"{a_name} must parse structurally"
+        rebuilt = gltf.animation_from_gltf(m, donor=donor)
+        got = animmod.write_anim(rebuilt)
+        want = open(os.path.join(folder, a_name), "rb").read()
+        assert got == want, f"{a_name}: rebuilt {len(got)}B != {len(want)}B"
+
+
+def test_reverse_export_splits_concatenated_angel_streams():
+    """Angel's `.ac` names five `.a` files; dis3tool exported them as ONE
+    concatenated glTF animation.  The reverse export must slice the
+    Idle stream back out of it — byte-for-byte the original `_idle.a`."""
+    folder = os.path.join(REPO, "Empire", "Angel")
+    stem = "character_empire_angel"
+    with tempfile.TemporaryDirectory() as d:
+        climod._export(os.path.join(folder, stem + ".gltf"), d, 0,
+                       anim=True, quiet=True)
+        got = open(os.path.join(d, stem + "_idle.a"), "rb").read()
+    want = open(os.path.join(folder, stem + "_idle.a"), "rb").read()
+    assert got == want, f"angel idle: {len(got)}B != {len(want)}B"
