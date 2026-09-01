@@ -1604,6 +1604,34 @@ def main():
     return 1 if failed else 0
 
 
+def test_png_to_t_roundtrip():
+    """A Blender re-saved .png must become a loadable native .t: right
+    dimensions, uncompressed 32-bit code 4, full mip chain sized the GM
+    way (each mip w>>i * h>>i * 4, no clamping to 1px), BGRA order."""
+    import zlib
+    from d3tool import texture as texmod
+
+    def chunk(t, d):
+        c = struct.pack(">I", len(d)) + t + d
+        return c + struct.pack(">I", zlib.crc32(t + d) & 0xFFFFFFFF)
+
+    w, h = 8, 8
+    raw = b"".join(b"\x00" + b"".join(
+        bytes([(x * 32) % 256, (y * 32) % 256, 128, 255])
+        for x in range(w)) for y in range(h))
+    png = (b"\x89PNG\r\n\x1a\n"
+           + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0))
+           + chunk(b"IDAT", zlib.compress(raw))
+           + chunk(b"IEND", b""))
+    t = texmod.png_to_t(png)
+    ti = texmod.parse_t(t)
+    assert (ti.width, ti.height) == (w, h)
+    assert ti.gm_format == 4
+    assert ti.mip_count == 4                      # 8,4,2,1
+    assert len(ti.payload) == (64 + 16 + 4 + 1) * 4
+    assert ti.payload[:4] == b"\x80\x00\x00\xff"  # RGBA(0,0,128,255)->BGRA
+
+
 if __name__ == "__main__":
     sys.exit(main())
 
@@ -1797,3 +1825,5 @@ def test_import_export_route_legacy_calls_by_extension():
         assert climod._run(["export", os.path.join(unit, stem + ".g"),
                             "-o", out2]) == 0
         assert os.path.isfile(os.path.join(d, "fwd.bin"))
+
+

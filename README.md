@@ -97,6 +97,31 @@ python3 tests/reverse_parity.py        # reverse: 85/85 EXACT
 python3 tests/anim_audit.py            # 0 problems
 ```
 
+### The Blender workflow (import → paint weights → export)
+
+Editing a unit in Blender and re-saving the glTF changes its shape in
+ways the reverse exporter now handles explicitly (`tests/blender_repro.py`
+runs six such scenarios, all battle-ready):
+
+* **Textures become `.png`.**  The exporter resolves each image by stem to
+  the sibling `.dds` (byte-faithful `.t`), then the shipped `.t` (copied
+  verbatim), and only then re-encodes the PNG into an *uncompressed*
+  32-bit `.t` (pure-Python decoder; loadable, just larger).  Save the
+  glTF **into the unit folder** to get the byte-faithful path.
+* **An extra `Armature` node appears** and the four weight lanes re-sort —
+  both are absorbed; donor verification still gates every adoption, so
+  painted weights always win over the donor `.g`.
+* **A renamed file** (`angel_edit.gltf`) generates its `.ac` from the
+  folder's real animation streams (sibling `.ac` fallback in
+  `detect_anim_files`), each state's frame range inside the file it
+  names — never a `<base>_iadd.a` that was never written.
+* **Every export ends with a battle-readiness check**: each `.ac` state's
+  file present, `frame1` within that `.a`'s real frame count, meshfile
+  and `.scene` references resolvable, a `.t` behind every
+  `material0_diffuse`.  Findings print as loud warnings — the classes of
+  defect that used to surface only as an in-game crash on entering
+  battle.
+
 ### Portable release (no install needed)
 
 `release/build.sh` assembles a **self-contained zipapp** folder at

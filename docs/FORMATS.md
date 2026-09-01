@@ -458,6 +458,15 @@ sets `dwCaps2` (offset 112) to `DDSCAPS2_CUBEMAP` plus all six face flags
 out.t` perform the conversion based on the destination extension; `d3tool
 texture info a.t` prints the header fields.
 
+**PNG re-encode (Blender textures).**  Blender saves a glTF's textures as
+`.png`.  `d3tool/texture.py:png_to_t` decodes a PNG in pure Python (8-bit
+grey/RGB/palette/grey+alpha/RGBA, no interlace) and writes an
+*uncompressed* 32-bit A8R8G8B8 `.t` (code 4) with the full GM mip chain
+(each mip `w>>i * h>>i * 4`, no clamping to one pixel, 2x2 box average).
+The reverse exporter prefers the byte-faithful sources first: the sibling
+`.dds` (converted), then the shipped `.t` (copied); the re-encode is the
+last resort so a bare folder still yields a loadable texture.
+
 Forward-export (`export-gl`) auto-detects the material diffuse from the `.g`
 and emits a `.dds` (converting the `.t` if present) alongside the glTF,
 matching what dis3tool references.  Reverse-export (`export`) converts any

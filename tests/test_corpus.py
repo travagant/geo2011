@@ -27,8 +27,11 @@ import glob
 import io
 import json
 import os
+import shutil
+import struct
 import sys
 import tempfile
+import zlib
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -311,6 +314,19 @@ def test_reverse_export_picks_the_units_own_animation():
         got = acmod.detect_anim_files(folder, stem)["Idle"]
         if got in expected or got.startswith(main_stem):
             continue
+        if not expected:
+            # the base owns nothing of its own: adopting a *sibling* `.ac`'s
+            # resolvable streams is the documented fallback (a re-saved
+            # `angel_edit.gltf` inside the Angel folder, leader set
+            # variants) — require exactly that provenance
+            claimed = os.path.isfile(os.path.join(folder, got)) and any(
+                got == acmod.detect_anim_files(folder, other)["Idle"]
+                for other in
+                (os.path.splitext(os.path.basename(p))[0]
+                 for p in glob.glob(os.path.join(folder, "*.ac")))
+                if other != stem)
+            if claimed:
+                continue
         wrong.append(f"{_rel(p)}: resolved {got}, expected one of "
                      f"{sorted(expected) or [main_stem + '*']}")
     assert not wrong, "\n".join(wrong[:20])
@@ -375,16 +391,27 @@ def test_reverse_export_writes_every_ac_stream():
 def test_leader_set_animation_adopts_sibling_donor():
     """A leader set variant (set1/2/3) carries no `.ac` of its own, yet its
     glTF animation IS the folder's baseanims stream — the rebuild must come
-    out byte-identical to it (donor scaffolding over verified data)."""
+    out byte-identical to it (donor scaffolding over verified data), named
+    as the folder's `.ac` references it (baseanims.a) so the engine can
+    actually resolve the generated set config."""
     gt = os.path.join(REPO, "Empire", "Leader-Archmage",
                       "character_empire_leader-archmage_set1.gltf")
     folder = os.path.dirname(gt)
     with tempfile.TemporaryDirectory() as tmp, _quiet():
         cli._export(gt, tmp, 0, anim=True, quiet=True)
-        a = os.path.join(tmp, "character_empire_leader-archmage_set1_iadd.a")
+        a = os.path.join(tmp, "character_empire_leader-archmage_baseanims.a")
         donor = os.path.join(
             folder, "character_empire_leader-archmage_baseanims.a")
+        assert os.path.isfile(a), sorted(os.listdir(tmp))
         assert open(a, "rb").read() == open(donor, "rb").read()
+        # the generated .ac must reference a file that was actually written
+        cfg = acmod.parse_ac(open(os.path.join(
+            tmp, "character_empire_leader-archmage_set1.ac"),
+            encoding="utf-8-sig", errors="replace").read())
+        for st in cfg.states:
+            fn = os.path.basename(st.file.replace("\\", "/"))
+            assert os.path.isfile(os.path.join(tmp, fn)), \
+                f"{st.name} -> {fn} was not written"
 
 
 def test_explicit_stream_import_keeps_ac_order():
@@ -405,6 +432,144 @@ def test_explicit_stream_import_keeps_ac_order():
         assert ja == jb
         assert (open(auto[:-5] + ".bin", "rb").read()
                 == open(explicit[:-5] + ".bin", "rb").read())
+
+
+
+# --------------------------------------------------------------------------- #
+#  Blender-authored glTF (re-saved textures, renamed stem, painted weights)
+# --------------------------------------------------------------------------- #
+def _blenderize(src_gltf: str, out_gltf: str, paint: bool = False):
+    """Dis3tool reference glTF -> what Blender's exporter tends to write:
+    an extra Armature node, textures re-saved as .png, the 4 weight lanes
+    sorted descending, and (optionally) user-painted weights."""
+    bin_name = os.path.basename(os.path.splitext(out_gltf)[0]) + ".bin"
+    shutil.copy(os.path.splitext(src_gltf)[0] + ".bin",
+                os.path.join(os.path.dirname(out_gltf), bin_name))
+    j = json.load(open(src_gltf))
+    data = bytearray(open(os.path.splitext(src_gltf)[0] + ".bin", "rb").read())
+    j["asset"]["generator"] = "Khronos glTF Blender I/O 4.2"
+    arm = len(j["nodes"])
+    j["nodes"].append({"name": "Armature", "children": []})
+    keep = []
+    for n in j["scenes"][0]["nodes"]:
+        if j["nodes"][n].get("name") == "Bip01":
+            j["nodes"][arm]["children"].append(n)
+        else:
+            keep.append(n)
+    j["scenes"][0]["nodes"] = keep + [arm]
+    for img in j.get("images", []):
+        uri = img.get("uri", "")
+        if not uri:
+            continue
+        img["uri"] = os.path.splitext(uri)[0] + ".png"
+        png_path = os.path.join(os.path.dirname(out_gltf), img["uri"])
+        if not os.path.exists(png_path):
+            w = h = 4
+            raw = b"".join(b"\x00" + bytes(w * 4) for _y in range(h))
+
+            def _ck(t, d):
+                c = struct.pack(">I", len(d)) + t + d
+                return c + struct.pack(">I", zlib.crc32(t + d) & 0xffffffff)
+
+            with open(png_path, "wb") as fh:
+                fh.write(b"\x89PNG\r\n\x1a\n"
+                         + _ck(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 6,
+                                                    0, 0, 0))
+                         + _ck(b"IDAT", zlib.compress(raw))
+                         + _ck(b"IEND", b""))
+    for mesh in j["meshes"]:
+        for prim in mesh["primitives"]:
+            if "WEIGHTS_0" not in prim["attributes"]:
+                continue
+            wacc = j["accessors"][prim["attributes"]["WEIGHTS_0"]]
+            jacc = j["accessors"][prim["attributes"]["JOINTS_0"]]
+            woff = j["bufferViews"][wacc["bufferView"]].get(
+                "byteOffset", 0) + wacc.get("byteOffset", 0)
+            joff = j["bufferViews"][jacc["bufferView"]].get(
+                "byteOffset", 0) + jacc.get("byteOffset", 0)
+            for v in range(wacc["count"]):
+                ws = list(struct.unpack_from("<4f", data, woff + 16 * v))
+                js = list(struct.unpack_from("<4B", data, joff + 4 * v))
+                if paint and v % 20 == 0 and ws[1] > 0:
+                    d = ws[0] * 0.33
+                    ws[0], ws[1] = ws[0] - d, ws[1] + d
+                ws, js = zip(*sorted(zip(ws, js), key=lambda q: -q[0]))
+                struct.pack_into("<4f", data, woff + 16 * v, *ws)
+                struct.pack_into("<4B", data, joff + 4 * v, *js)
+    j["buffers"][0]["uri"] = bin_name
+    json.dump(j, open(out_gltf, "w"))
+    with open(os.path.join(os.path.dirname(out_gltf), bin_name), "wb") as fh:
+        fh.write(bytes(data))
+
+
+def test_blender_resaved_gltf_exports_battle_ready():
+    """The documented user flow - import a unit, paint weights in Blender,
+    re-save the glTF (textures become .png, an Armature node appears,
+    weight lanes re-sort) - must export a unit the battle loader can read:
+    every `.ac` state's file present with its frame range inside the
+    stream, the meshfile resolvable, and a `.t` for the diffuse material.
+    The donor animation files come out byte-identical."""
+    src = os.path.join(REPO, "Empire", "Angel",
+                       "character_empire_angel.gltf")
+    for paint in (False, True):
+        with tempfile.TemporaryDirectory() as tmp, _quiet():
+            work = os.path.join(tmp, "unit")
+            shutil.copytree(os.path.dirname(src), work)
+            gt = os.path.join(work, "character_empire_angel.gltf")
+            _blenderize(src, gt, paint=paint)
+            out = os.path.join(tmp, "out")
+            cli._export(gt, out, 0, anim=True, quiet=True)
+            cfg = acmod.parse_ac(open(
+                os.path.join(out, "character_empire_angel.ac"),
+                encoding="utf-8-sig", errors="replace").read())
+            for st in cfg.states:
+                fn = os.path.basename(st.file.replace("\\", "/"))
+                p = os.path.join(out, fn)
+                assert os.path.isfile(p), f"{st.name} -> {fn} missing"
+                if fn.endswith(".a"):
+                    fc = animmod.parse_anim(open(p, "rb").read()).frame_count
+                    assert st.frame1 <= fc, \
+                        f"{st.name}: {st.frame1} > {fn} ({fc})"
+                mf = os.path.basename(st.meshfile.replace("\\", "/"))
+                assert os.path.isfile(os.path.join(out, mf))
+            attrs, _ = gfile.parse_attributes(
+                open(os.path.join(out, "character_empire_angel.g"),
+                     "rb").read())
+            want = os.path.splitext(attrs["material0_diffuse"])[0] + ".t"
+            assert os.path.isfile(os.path.join(out, want)), want
+            # the donor .a files are the animation source of truth here
+            for fn in ("character_empire_angel_idle.a",
+                       "character_empire_angel_attack.a"):
+                assert (open(os.path.join(out, fn), "rb").read()
+                        == open(os.path.join(work, fn), "rb").read()), fn
+
+
+def test_renamed_gltf_exports_battle_ready():
+    """`angel_edit.gltf` saved inside the unit folder: no `.ac` of its own,
+    so a config must be GENERATED - referencing files that were actually
+    written (the folder's baseanims streams), with frame ranges inside
+    them, plus the textures next to the glTF."""
+    src = os.path.join(REPO, "Empire", "Angel",
+                       "character_empire_angel.gltf")
+    with tempfile.TemporaryDirectory() as tmp, _quiet():
+        work = os.path.join(tmp, "unit")
+        shutil.copytree(os.path.dirname(src), work)
+        gt = os.path.join(work, "angel_edit.gltf")
+        _blenderize(src, gt)
+        out = os.path.join(tmp, "out")
+        cli._export(gt, out, 0, anim=True, quiet=True)
+        cfg = acmod.parse_ac(open(os.path.join(out, "angel_edit.ac"),
+                                  encoding="utf-8-sig",
+                                  errors="replace").read())
+        for st in cfg.states:
+            fn = os.path.basename(st.file.replace("\\", "/"))
+            p = os.path.join(out, fn)
+            assert os.path.isfile(p), f"{st.name} -> {fn} missing"
+            fc = animmod.parse_anim(open(p, "rb").read()).frame_count
+            assert st.frame1 <= fc, f"{st.name}: {st.frame1} > {fc}"
+        assert os.path.isfile(os.path.join(out, "angel_edit.g"))
+        assert any(f.endswith(".t") for f in os.listdir(out)), \
+            "no texture written for a bare-stem export"
 
 
 # --------------------------------------------------------------------------- #
