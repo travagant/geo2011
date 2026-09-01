@@ -311,11 +311,69 @@ def _export_textures(gltf_path: str, out_dir: str, base: str,
     for img in images:
         uri = img.get("uri")
         if not uri or uri.startswith("data:"):
+            if not quiet:
+                ui.warn("texture image without a file URI "
+                        "(embedded bufferView) — no .t written for it")
             continue
         src = os.path.join(gltf_dir, os.path.basename(uri))
-        if not os.path.exists(src) or not src.lower().endswith(".dds"):
-            continue
         stem = os.path.splitext(os.path.basename(src))[0]
+        if not src.lower().endswith(".dds"):
+            # Blender re-saves textures as .png/.jpg next to the glTF.  The
+            # engine wants the native `.t`, and a re-encoded DXT of a
+            # re-saved PNG would not be byte-faithful anyway — so resolve
+            # the ORIGINAL by stem: the sibling `.dds` (convert) or the
+            # shipped `.t` (pass through verbatim).
+            alt_dds = os.path.join(gltf_dir, stem + ".dds")
+            alt_t = os.path.join(gltf_dir, stem + ".t")
+            if os.path.exists(alt_dds):
+                src = alt_dds
+                if not quiet:
+                    ui.info(f"{os.path.basename(uri)}: not a .dds — using "
+                            f"the sibling {stem}.dds")
+            elif os.path.exists(alt_t):
+                out_t = os.path.join(out_dir, stem + ".t")
+                with open(alt_t, "rb") as fh:
+                    payload = fh.read()
+                with open(out_t, "wb") as fh:
+                    fh.write(payload)
+                if not quiet:
+                    ui.wrote(out_t, "copied the shipped .t "
+                             "(the glTF image is a re-saved PNG)")
+                if first is None:
+                    first = os.path.basename(out_t)
+                continue
+            elif src.lower().endswith(".png") and os.path.exists(src):
+                # Last resort: re-encode the PNG into an uncompressed .t.
+                # Not byte-faithful to any original, but the unit ships
+                # with a loadable texture instead of a missing one.
+                try:
+                    payload = texmod.png_to_t(open(src, "rb").read())
+                except ValueError as exc:
+                    if not quiet:
+                        ui.warn(f"{os.path.basename(uri)}: PNG re-encode "
+                                f"failed ({exc}) — no .t written")
+                    continue
+                out_t = os.path.join(out_dir, stem + ".t")
+                with open(out_t, "wb") as fh:
+                    fh.write(payload)
+                if not quiet:
+                    ui.wrote(out_t, "re-encoded from PNG as uncompressed "
+                             "32-bit (place the original .dds next to the "
+                             "glTF for a byte-faithful .t)")
+                if first is None:
+                    first = os.path.basename(out_t)
+                continue
+            else:
+                if not quiet:
+                    ui.warn(f"{os.path.basename(uri)}: no {stem}.dds/.t "
+                            f"next to the glTF — no .t written; the engine "
+                            f"will miss this texture")
+                continue
+        if not os.path.exists(src):
+            if not quiet:
+                ui.warn(f"{os.path.basename(uri)}: file not found — "
+                        f"no .t written")
+            continue
         out_t = os.path.join(out_dir, stem + ".t")
         with open(src, "rb") as fh:
             data = fh.read()
@@ -464,7 +522,25 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
         if not quiet:
             ui.wrote(out_ac, "reused (event2 sound/FX entries preserved)")
     else:
-        cfg = acmod.default_ac(f'{res}\\{base}.g', f'{res}\\{base}', anim_files)
+        # Real frame counts so every generated state stays inside the file
+        # it points at (a fixed 1..345 template overruns a shorter .a and
+        # the engine reads past the stream's end in battle).
+        counts: Dict[str, int] = {}
+        for fname in set(anim_files.values()):
+            p = os.path.join(os.path.dirname(gltf_path), fname)
+            if os.path.isfile(p):
+                try:
+                    counts[os.path.basename(fname)] = animmod.parse_anim(
+                        open(p, "rb").read()).frame_count
+                except Exception:  # noqa: BLE001
+                    pass
+        idle_guess = os.path.basename(anim_files.get("Idle")
+                                      or f"{base}_iadd.a")
+        if idle_guess not in counts and getattr(m, "frames", None):
+            # the single .a this export is about to write
+            counts[idle_guess] = len(m.frames)
+        cfg = acmod.default_ac(f'{res}\\{base}.g', f'{res}\\{base}',
+                               anim_files, frame_counts=counts)
         with open(out_ac, "w", encoding="utf-8") as fh:
             fh.write(acmod.write_ac(cfg))
         if not quiet:
@@ -523,6 +599,28 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
                         stream_names.append(nm)
             except Exception:  # noqa: BLE001 - never break an export
                 stream_names = []
+            if not stream_names:
+                # Variant stems (the leader set1/2/3 exports) carry no
+                # `.ac` of their own, yet their animation came from this
+                # very folder — the sibling `.ac`'s stream is the donor
+                # candidate, adopted only when the rebuilt data verifies
+                # against it, exactly like every other donor.
+                try:
+                    for ac_path in sorted(glob.glob(
+                            os.path.join(folder_a, "*.ac"))):
+                        cfg = acmod.parse_ac(
+                            open(ac_path, "r", encoding="utf-8-sig",
+                                 errors="replace").read())
+                        for st in cfg.states:
+                            if not st.file:
+                                continue
+                            nm = os.path.basename(
+                                st.file.replace("\\", "/").rsplit("/", 1)[-1])
+                            if nm not in stream_names and os.path.isfile(
+                                    os.path.join(folder_a, nm)):
+                                stream_names.append(nm)
+                except Exception:  # noqa: BLE001
+                    stream_names = []
             idle_base = os.path.basename(idle_name)
             if idle_base not in stream_names:
                 stream_names = ([idle_base] + [n for n in stream_names
@@ -537,23 +635,119 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
                         streams.append((nm, acand))
                 except Exception:  # noqa: BLE001
                     pass
-            donor_a = next((a for n, a in streams if n == idle_base), None)
-            animfile = gltfmod.animation_from_gltf(m, donor=donor_a,
-                                                   streams=streams,
-                                                   out_name=idle_base)
-            if animfile.bones or animfile.morphs:
-                a_bytes = animmod.write_anim(animfile)
-                out_a = os.path.join(out_dir, os.path.basename(idle_name))
-                with open(out_a, "wb") as fh:
-                    fh.write(a_bytes)
-                if not quiet:
-                    ui.wrote(out_a, f"{len(a_bytes)} bytes, "
-                                    f"{len(animfile.bones)} bones")
+            if len(streams) >= 2:
+                # A multi-stream unit: dis3tool exported the `.ac`'s streams
+                # as ONE concatenated glTF animation, and the reused `.ac`
+                # still references every one of them — writing only the
+                # Idle file would leave `run.a` (and friends) as dangling
+                # engine references.  Slice each named stream back out of
+                # the concat at the donor frame-count boundaries, each with
+                # its own donor for the scaffolding a glTF cannot carry.
+                for nm, stream_donor in streams:
+                    animfile = gltfmod.animation_from_gltf(
+                        m, donor=stream_donor, streams=streams, out_name=nm)
+                    if not (animfile.bones or animfile.morphs):
+                        continue
+                    out_a = os.path.join(out_dir, nm)
+                    with open(out_a, "wb") as fh:
+                        fh.write(animmod.write_anim(animfile))
+                    if not quiet:
+                        ui.wrote(out_a, f"{os.path.getsize(out_a)} bytes, "
+                                        f"{len(animfile.bones)} bones")
+            else:
+                donor_a = next((a for n, a in streams if n == idle_base), None)
+                if donor_a is None and len(streams) == 1:
+                    # variant stems name a stream that does not exist next
+                    # to the glTF; the one verifiable sibling stream is the
+                    # donor
+                    donor_a = streams[0][1]
+                animfile = gltfmod.animation_from_gltf(m, donor=donor_a,
+                                                       streams=streams,
+                                                       out_name=idle_base)
+                if animfile.bones or animfile.morphs:
+                    a_bytes = animmod.write_anim(animfile)
+                    out_a = os.path.join(out_dir, os.path.basename(idle_name))
+                    with open(out_a, "wb") as fh:
+                        fh.write(a_bytes)
+                    if not quiet:
+                        ui.wrote(out_a, f"{len(a_bytes)} bytes, "
+                                        f"{len(animfile.bones)} bones")
         except Exception as exc:  # noqa: BLE001
             if not quiet:
                 ui.skipped(base + " <anim>", str(exc))
+    _battle_readiness_check(out_dir, base, quiet)
     if not quiet:
         print("")
+
+
+def _battle_readiness_check(out_dir: str, base: str, quiet: bool) -> None:
+    """Verify what the battle loader needs, right after writing a unit.
+
+    Catches the failure modes that only appear in game — when the unit walks
+    into battle and the engine starts reading the produced files: a `.ac`
+    state naming an `.a` that was never written, a frame range running past
+    the end of its stream, a `meshfile`/`.scene` reference that dangles, or
+    a diffuse material whose `.t` is missing.  Each finding is a loud
+    warning, not a crash: partial exports stay inspectable.
+    """
+    try:
+        findings: List[str] = []
+        out_g = os.path.join(out_dir, base + ".g")
+        if os.path.isfile(out_g):
+            attrs, _ = gfile.parse_attributes(open(out_g, "rb").read())
+            mat = attrs.get("material0_diffuse", "")
+            if mat:
+                want = os.path.splitext(mat)[0] + ".t"
+                if not os.path.isfile(os.path.join(out_dir, want)):
+                    findings.append(
+                        f"material0_diffuse '{mat}' has no {want} in the "
+                        f"output — the unit will load without its texture")
+        for ac_path in glob.glob(os.path.join(out_dir, "*.ac")):
+            cfg = acmod.parse_ac(open(ac_path, "r", encoding="utf-8-sig",
+                                      errors="replace").read())
+            for st in cfg.states:
+                if not st.file:
+                    continue
+                fn = os.path.basename(st.file.replace("\\", "/")
+                                      .rsplit("/", 1)[-1])
+                p = os.path.join(out_dir, fn)
+                if not os.path.isfile(p):
+                    findings.append(f".ac state {st.name} -> {fn}: "
+                                    f"file was not written")
+                    continue
+                if fn.endswith(".a") and st.frame1:
+                    a = animmod.parse_anim(open(p, "rb").read())
+                    if st.frame1 > a.frame_count:
+                        findings.append(
+                            f".ac state {st.name}: frames go to "
+                            f"{st.frame1} but {fn} has {a.frame_count}")
+                if st.meshfile:
+                    mf = os.path.basename(st.meshfile.replace("\\", "/")
+                                          .rsplit("/", 1)[-1])
+                    if not os.path.isfile(os.path.join(out_dir, mf)):
+                        findings.append(f".ac state {st.name}: meshfile "
+                                        f"{mf} was not written")
+        for sc in glob.glob(os.path.join(out_dir, "*.scene")):
+            try:
+                txt = open(sc, "rb").read().decode("latin-1")
+                scenemod.parse_scene(txt)
+            except Exception as exc:  # noqa: BLE001
+                findings.append(f"{os.path.basename(sc)}: does not parse "
+                                f"({exc})")
+                continue
+            import re as _re
+            for mm in _re.finditer(r'file\s+"([^"]+)"', txt):
+                fn = os.path.basename(mm.group(1).replace("\\", "/"))
+                if not os.path.isfile(os.path.join(out_dir, fn)):
+                    findings.append(f"{os.path.basename(sc)} references "
+                                    f"{fn}, which was not written")
+        if findings and not quiet:
+            ui.warn("battle-readiness check FAILED — fix before shipping:")
+            for f in findings:
+                ui.warn("  " + f)
+    except Exception as exc:  # noqa: BLE001 - diagnostics must never break
+        if not quiet:
+            ui.warn(f"battle-readiness check skipped: {exc}")
 
 
 # --------------------------------------------------------------------------- #
@@ -667,10 +861,16 @@ def _load_anim_stream(g_path: str, anim_path: str, quiet: bool):
     """
     folder = os.path.dirname(os.path.abspath(g_path))
     stem = os.path.splitext(os.path.basename(g_path))[0]
-    main_stem = stem[:-4] if stem.lower().endswith("_lod") else stem
+    # The concat set must come from the SAME `.ac` that chose the stream —
+    # the `.g`'s own stem first (`<mesh>_lod.ac` names the *lod* stream pair,
+    # e.g. cleric_lod.ac -> iadd_lod.a + run_lod.a), falling back to the
+    # de-lodded main config exactly like `_find_animation_for_geometry`.
+    # Resolving the set from the main stem alone handed a lod export the
+    # lod stream's Idle stretch and silently dropped its Run (cleric_lod:
+    # 356 of 381 frames).
     streams: List[str] = []
     try:
-        for name in acmod.detect_anim_files(folder, main_stem).values():
+        for name in acmod.detect_anim_files(folder, stem).values():
             if name and name not in streams \
                     and os.path.isfile(os.path.join(folder, name)):
                 streams.append(name)
@@ -679,8 +879,12 @@ def _load_anim_stream(g_path: str, anim_path: str, quiet: bool):
     chosen = os.path.basename(anim_path)
     if len(streams) < 2 or chosen not in streams:
         return animmod.parse_anim(open(anim_path, "rb").read())
-    # `.ac` order, starting from the requested stream, then the rest
-    ordered = [chosen] + [n for n in streams if n != chosen]
+    # Always concat in `.ac` order — dis3tool does, whichever stream the
+    # caller named (the `-a` selects the unit, not the layout).  Starting
+    # from the requested stream re-ordered the frames and moved the morph
+    # targets, which concat_anims takes from the *last* stream (Cleric's
+    # reference carries _run.a's 25, Run being the final `.ac` state).
+    ordered = list(streams)
     parsed = [animmod.parse_anim(open(os.path.join(folder, n), "rb").read())
               for n in ordered]
     anim = animmod.concat_anims(parsed)
@@ -701,9 +905,10 @@ def _warn_if_animation_truncated(g_path: str, anim, anim_path: str) -> None:
     """
     folder = os.path.dirname(os.path.abspath(g_path))
     stem = os.path.splitext(os.path.basename(g_path))[0]
-    main_stem = stem[:-4] if stem.lower().endswith("_lod") else stem
+    # Same authoritative source as `_load_anim_stream`: the `.g`'s own
+    # `.ac` first (lod configs included), then the de-lodded main one.
     try:
-        states = acmod.detect_anim_files(folder, main_stem)
+        states = acmod.detect_anim_files(folder, stem)
     except Exception:  # noqa: BLE001 - a warning must never break the export
         return
     seen: List[str] = []
@@ -732,6 +937,10 @@ def _export_gl(g_path: str, anim_path: Optional[str], out: Optional[str],
     anim = None
     if anim_path:
         anim = _load_anim_stream(g_path, anim_path, quiet)
+        # An explicitly passed `-a` can name a single stream of a multi-
+        # stream unit (or another unit's file entirely) — say so instead
+        # of writing a silently shortened animation.
+        _warn_if_animation_truncated(g_path, anim, anim_path)
     if not out:
         out = (g_path[: -len(".g")] if g_path.endswith(".g") else g_path + ".gltf")
     attrs, _ = gfile.parse_attributes(data)
@@ -802,7 +1011,34 @@ def _find_animation_for_geometry(g_path: str) -> Optional[str]:
                 return candidate
 
     animations = sorted(glob.glob(os.path.join(folder, "*.a")))
-    return animations[0] if len(animations) == 1 else None
+    if len(animations) != 1:
+        return None
+    # A folder can hold several meshes (the Cyclop and its rock projectile),
+    # and the sole `.a` belongs to exactly one of them.  Hand it to this
+    # `.g` only when a sibling `.ac` claims it for this very meshfile —
+    # Wolfsnow's config names `character_neutrals_wolf.g` — or when the
+    # folder has just the one `.g` (nothing else to mis-assign it to).
+    # Without the claim the Cyclop's animation would animate its rock.
+    meshes = sorted(glob.glob(os.path.join(folder, "*.g")))
+    if len(meshes) == 1:
+        return animations[0]
+    me = {stem.lower() + ".g", main_stem.lower() + ".g"}
+    claimed: set = set()
+    for ac_path in glob.glob(os.path.join(folder, "*.ac")):
+        try:
+            cfg = acmod.parse_ac(open(ac_path, "r", encoding="utf-8-sig",
+                                      errors="replace").read())
+        except Exception:  # noqa: BLE001 - a claim scan must never break
+            continue
+        names = {os.path.basename(s.file.replace("\\", "/").rsplit("/", 1)[-1])
+                 .lower() for s in cfg.states if s.file}
+        if os.path.basename(animations[0]).lower() not in names:
+            continue
+        for s in cfg.states:
+            if s.meshfile:
+                claimed.add(os.path.basename(
+                    s.meshfile.replace("\\", "/").rsplit("/", 1)[-1]).lower())
+    return animations[0] if claimed & me else None
 
 
 def _export_all(folder: str, out_dir: str, use_anim: bool = True) -> int:

@@ -25,6 +25,7 @@ The point is to support a future program that, like dis3tool, exports glTF but
 | `tests/test_d3tool.py` | unit tests for the individual readers/writers. |
 | `tests/test_corpus.py` | corpus-wide import/export test over **all 87 units**. |
 | `tests/corpus_parity.py` | benchmark: forward export vs the bundled dis3tool references. |
+| `tests/anim_audit.py` | animation-only audit: import/export completeness + round-trip over every unit. |
 | `gltf/`, `out_rev/` | checked-in sample output (forward and reverse export of the AirElemental); regenerable, kept for diffing. |
 
 ## Install / run
@@ -90,7 +91,36 @@ python3 -m pytest tests/ -q
 # parity benchmark against the bundled dis3tool reference exports
 python3 tests/corpus_parity.py         # forward: 85/85 EXACT
 python3 tests/reverse_parity.py        # reverse: 85/85 EXACT
+
+# animation-only audit: every .g imports with its full .ac animation, every
+# reference glTF exports every stream it names, 95/95 anim round-trips close
+python3 tests/anim_audit.py            # 0 problems
 ```
+
+### The Blender workflow (import → paint weights → export)
+
+Editing a unit in Blender and re-saving the glTF changes its shape in
+ways the reverse exporter now handles explicitly (`tests/blender_repro.py`
+runs six such scenarios, all battle-ready):
+
+* **Textures become `.png`.**  The exporter resolves each image by stem to
+  the sibling `.dds` (byte-faithful `.t`), then the shipped `.t` (copied
+  verbatim), and only then re-encodes the PNG into an *uncompressed*
+  32-bit `.t` (pure-Python decoder; loadable, just larger).  Save the
+  glTF **into the unit folder** to get the byte-faithful path.
+* **An extra `Armature` node appears** and the four weight lanes re-sort —
+  both are absorbed; donor verification still gates every adoption, so
+  painted weights always win over the donor `.g`.
+* **A renamed file** (`angel_edit.gltf`) generates its `.ac` from the
+  folder's real animation streams (sibling `.ac` fallback in
+  `detect_anim_files`), each state's frame range inside the file it
+  names — never a `<base>_iadd.a` that was never written.
+* **Every export ends with a battle-readiness check**: each `.ac` state's
+  file present, `frame1` within that `.a`'s real frame count, meshfile
+  and `.scene` references resolvable, a `.t` behind every
+  `material0_diffuse`.  Findings print as loud warnings — the classes of
+  defect that used to surface only as an in-game crash on entering
+  battle.
 
 ### Portable release (no install needed)
 
@@ -161,7 +191,11 @@ For `character_neutrals_airelemental.gltf` the exporter writes:
   otherwise a faithful five-state config is generated.
 * `character_neutrals_airelemental_iadd.a` — the animation binary rebuilt from
   the glTF animation channels; byte-identical to the original (bone order,
-  record preambles, header and trailing morph streams included).
+  record preambles, header and trailing morph streams included).  When the
+  reused `.ac` names **several** streams (Cleric: `_iadd.a` + `_run.a`), each
+  one is sliced back out of the concatenated glTF animation and written, so
+  no `.ac` reference dangles — 105 of 105 rebuilt `.a` files with an
+  original are byte-identical.
 * `character_neutrals_airelemental.t` — the native GM texture, converted from
   the `.dds` the glTF references.  The `.g`'s `material0_diffuse` is pointed at
   it.
@@ -199,6 +233,46 @@ to the originals.  The original files next to the source glTF act as donors
 for the authoring data a glTF cannot carry (diffuse colours, container
 scaffolding, attribute blocks, weight splits, record preambles, morph-stream
 tags), always gated on the rebuilt data verifying against them.
+
+**Animation completeness** (`tests/anim_audit.py`, three sweeps over the
+whole tree, **0 problems**):
+
+* *Import (GM → glTF)* — all 247 `.g` forward-export; the 152 skinned ones
+  animate with **exactly the frames their authoritative `.ac` names**
+  (own `<stem>.ac` first, lod configs included, then the de-lodded main
+  one).  LOD meshes concatenate their **own** config's stream pair
+  (`cleric_lod.ac` → `iadd_lod` 356 + `run_lod` 25 = 381; resolving the set
+  from the main `.ac` used to hand back the lod Idle stream alone).  An
+  explicit `-a` selects the *unit*, never the layout: the concatenation
+  stays in `.ac` order, which is also what picks the morph targets (they
+  come from the last stream, Cleric's `_run.a`), byte-identically to the
+  auto-detected import.
+* *Export (glTF → GM)* — all 98 references reverse-export; the 95 animated
+  ones each write an `.a`, and a unit whose `.ac` names several streams
+  gets **every** stream sliced back out of the concatenated glTF animation
+  (105 of 105 with an original byte-identical — writing only the Idle file
+  used to leave `run.a` a dangling engine reference).  The 12 leader-set
+  variants, which ship no `.ac` of their own, adopt the folder's
+  `baseanims.a` as a verified donor and come out **byte-identical** to it.
+* *Animation round-trip* — glTF → GM → glTF closes **95/95** on the
+  animation (channel structure and every sampler accessor byte), rigid
+  references aside.
+* The fallback that hands a lone `.a` to a mesh in a multi-mesh folder now
+  requires a *claim*: a sibling `.ac` naming that `.a` for this very
+  `meshfile` (Wolfsnow's config claims `character_neutrals_wolf.g`, its
+  `_lod` variant included), else the mesh stays rigid — the Cyclop's rock
+  projectile no longer borrows the Cyclop's 39-bone skeleton.
+
+Seven `.a` files are *structurally* never imported, each for a measured
+reason: `Empire/Leader-Ranger` / `Leader-Thief` base their only `.g` on a
+node-helper stub (their `baseanims.a` animate the set variants, which ship
+as reference glTFs instead), `Empire/Mage/character_empire_mage.a` is a
+legacy unreferenced cut (49 bones vs the 47 the `.ac` names),
+`Blacknaga/baseanims.a` is shadowed by its own `.ac` (which points at
+mermaid's, matching dis3tool's rigid reference), `FatImp/*_lod.a` is a
+morph-only stream (0 bones in its header) that no config names, and
+`WaterSnake_cast.a` / `Fire_Wall.a` have a `.ac` but no geometry at all —
+animation-only objects with nothing to animate.
 
 **Round-trip coverage** (measured by `tests/test_corpus.py` over the whole
 `Empire/` + `Neutrals/` tree):

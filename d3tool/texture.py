@@ -40,6 +40,7 @@ from __future__ import annotations
 
 import struct
 import os
+import zlib
 from dataclasses import dataclass
 from typing import Dict, Optional
 
@@ -412,3 +413,162 @@ def find_diffuse_texture(g_path: str, attrs: Dict[str, str]) -> Optional[str]:
             if os.path.exists(p):
                 return p
     return None
+
+
+# --------------------------------------------------------------------------- #
+#  PNG -> .t (Blender re-saved textures)
+# --------------------------------------------------------------------------- #
+def _paeth(a: int, b: int, c: int) -> int:
+    p = a + b - c
+    pa, pb, pc = abs(p - a), abs(p - b), abs(p - c)
+    if pa <= pb and pa <= pc:
+        return a
+    if pb <= pc:
+        return b
+    return c
+
+
+def decode_png(data: bytes):
+    """Minimal pure-Python PNG decoder -> ``(width, height, rgba_rows)``.
+
+    Supports what image editors actually write for game textures: 8-bit
+    depth, colour types 0 (grey), 2 (RGB), 3 (palette), 4 (grey+alpha),
+    6 (RGBA), no interlace.  Returns a list of ``width*4``-byte rows.
+    """
+    if data[:8] != b"\x89PNG\r\n\x1a\n":
+        raise ValueError("not a PNG file")
+    pos, idat, palette, trns = 8, [], b"", b""
+    width = height = bit_depth = color_type = None
+    while pos + 8 <= len(data):
+        (length,), ctype = struct.unpack_from(">I", data, pos), data[pos + 4:pos + 8]
+        chunk = data[pos + 8:pos + 8 + length]
+        pos += 12 + length
+        if ctype == b"IHDR":
+            width, height, bit_depth, color_type = (
+                struct.unpack(">IIBB", chunk[:10]))
+        elif ctype == b"PLTE":
+            palette = chunk
+        elif ctype == b"tRNS":
+            trns = chunk
+        elif ctype == b"IDAT":
+            idat.append(chunk)
+        elif ctype == b"IEND":
+            break
+    if width is None:
+        raise ValueError("PNG has no IHDR")
+    if bit_depth != 8:
+        raise ValueError(f"unsupported PNG bit depth {bit_depth}")
+    channels = {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}.get(color_type)
+    if channels is None:
+        raise ValueError(f"unsupported PNG colour type {color_type}")
+    raw = zlib.decompress(b"".join(idat))
+    stride = width * channels
+    # un-filter
+    out = bytearray(stride * height)
+    prev = bytearray(stride)
+    ptr = 0
+    for y in range(height):
+        f = raw[ptr]
+        ptr += 1
+        line = bytearray(raw[ptr:ptr + stride])
+        ptr += stride
+        if f == 1:      # Sub
+            for i in range(channels, stride):
+                line[i] = (line[i] + line[i - channels]) & 0xFF
+        elif f == 2:    # Up
+            for i in range(stride):
+                line[i] = (line[i] + prev[i]) & 0xFF
+        elif f == 3:    # Average
+            for i in range(stride):
+                a = line[i - channels] if i >= channels else 0
+                line[i] = (line[i] + ((a + prev[i]) >> 1)) & 0xFF
+        elif f == 4:    # Paeth
+            for i in range(stride):
+                a = line[i - channels] if i >= channels else 0
+                c = prev[i - channels] if i >= channels else 0
+                line[i] = (line[i] + _paeth(a, prev[i], c)) & 0xFF
+        out[y * stride:(y + 1) * stride] = line
+        prev = line
+    # to RGBA rows
+    rows = []
+    for y in range(height):
+        row = bytearray(width * 4)
+        base = y * stride
+        if color_type == 6:
+            row[:] = out[base:base + stride]
+        elif color_type == 2:
+            for x in range(width):
+                o = base + 3 * x
+                row[4 * x:4 * x + 3] = out[o:o + 3]
+                row[4 * x + 3] = 0xFF
+        elif color_type == 0:
+            for x in range(width):
+                g = out[base + x]
+                row[4 * x:4 * x + 3] = bytes((g, g, g))
+                row[4 * x + 3] = 0xFF
+        elif color_type == 4:
+            for x in range(width):
+                g = out[base + 2 * x]
+                row[4 * x:4 * x + 3] = bytes((g, g, g))
+                row[4 * x + 3] = out[base + 2 * x + 1]
+        elif color_type == 3:
+            for x in range(width):
+                idx = out[base + x] * 3
+                row[4 * x:4 * x + 3] = palette[idx:idx + 3]
+                row[4 * x + 3] = trns[out[base + x]] if len(trns) > out[base + x] \
+                    else 0xFF
+        rows.append(bytes(row))
+    return width, height, rows
+
+
+def png_to_t(data: bytes) -> bytes:
+    """Re-encode a PNG into a native GM ``.t`` (uncompressed A8R8G8B8).
+
+    Blender saves textures as PNG; the engine wants a `.t`.  A DXT
+    compressor is out of scope, but the container also has an uncompressed
+    32-bit form (code 4) every shipped build accepts, so the texture ships
+    usable — just larger than the original DXT.
+    """
+    width, height, rows = decode_png(data)
+
+    def mip_count_of(w: int, h: int) -> int:
+        n = 0
+        while w >= 1 and h >= 1:
+            n += 1
+            w, h = w >> 1, h >> 1
+        return n
+
+    def downsample(src, w: int, h: int):
+        """2x2 box average of RGBA rows -> the (w>>1, h>>1) level."""
+        half_w = max(w >> 1, 1)
+        out = []
+        for y in range(0, h, 2):
+            y1 = min(y + 1, h - 1)
+            r = bytearray(half_w * 4)
+            xo = 0
+            for x in range(0, w, 2):
+                x1 = min(x + 1, w - 1)
+                for c in range(4):
+                    v = (src[y][4 * x + c] + src[y][4 * x1 + c]
+                         + src[y1][4 * x + c] + src[y1][4 * x1 + c])
+                    r[xo + c] = (v + 2) >> 2
+                xo += 4
+            out.append(bytes(r))
+        return out
+
+    payload = bytearray()
+    cur_w, cur_h, cur = width, height, rows
+    while cur_w >= 1 and cur_h >= 1:
+        for row in cur:
+            for x in range(cur_w):
+                o = 4 * x
+                payload += bytes((row[o + 2], row[o + 1], row[o],
+                                  row[o + 3]))
+        cur = downsample(cur, cur_w, cur_h)
+        cur_w, cur_h = cur_w >> 1, cur_h >> 1
+    info = TextureInfo(
+        width=width, height=height,
+        mip_count=mip_count_of(width, height),
+        gm_format=4, payload=bytes(payload),
+    )
+    return write_t(info)

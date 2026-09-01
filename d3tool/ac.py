@@ -6,6 +6,7 @@ cross-state links/events.
 """
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
@@ -107,37 +108,78 @@ def write_ac(config: AnimConfig) -> str:
 
 
 def default_ac(meshfile: str, anim_base: str,
-               anim_files: Optional[Dict[str, str]] = None) -> AnimConfig:
+               anim_files: Optional[Dict[str, str]] = None,
+               frame_counts: Optional[Dict[str, int]] = None) -> AnimConfig:
     """Build a plausible `.ac` for a skinned character.
 
     ``anim_files`` maps a state name to an actual `.a` file (relative/absolute)
     discovered in the asset folder, e.g. ``{"Idle": "..._iadd.a",
     "Run": "..._run.a"}``.  Defaults fall back to ``{anim_base}_iadd.a`` and
     ``{anim_base}_run.a``.  The `.a` binaries are *referenced*, not re-created.
+
+    ``frame_counts`` maps an `.a` basename to its real frame count.  Giving
+    it makes every state's ``frame0``/``frame1`` stay inside the file it
+    points at (a fixed 1..345 template overruns a shorter animation and the
+    engine reads past the end of the stream when the unit walks into
+    battle), and collapses the Run state onto the idle file when no run
+    stream exists — a state naming a file that was never written is a
+    guaranteed load failure.
     """
     base = anim_base
     files = anim_files or {}
+    counts = frame_counts or {}
     # derive the resource directory from the meshfile (with backslashes)
     dirname = meshfile.rsplit("\\", 1)[0] if "\\" in meshfile else ""
-    idle_f = files.get("Idle", f"{base}_iadd.a")
+
+    def _full(name: str) -> str:
+        if "\\" not in name and dirname:
+            return f"{dirname}\\{name.split('/')[-1]}"
+        return name
+
+    def _base(name: str) -> str:
+        return name.replace("\\", "/").rsplit("/", 1)[-1]
+
+    def _fc(name: str, default: int) -> int:
+        return counts.get(_base(name), default)
+
+    idle_f = _full(files.get("Idle", f"{base}_iadd.a"))
     run_f = files.get("Run", f"{base}_run.a")
-    if "\\" not in idle_f and dirname:
-        idle_f = f"{dirname}\\{idle_f.split('/')[-1]}"
-    if "\\" not in run_f and dirname:
-        run_f = f"{dirname}\\{run_f.split('/')[-1]}"
+    if _base(run_f) not in counts and _base(idle_f) in counts:
+        run_f = idle_f  # no run stream will exist: reuse the idle file
+    run_f = _full(run_f)
+
+    def _state_file(state: str) -> str:
+        f = files.get(state)
+        return _full(f) if f else idle_f
+
+    attack_f = _state_file("Attack")
+    damage_f = _state_file("Damage")
+    death_f = _state_file("Death")
+
+    def _range(f: str, default: Tuple[int, int]) -> Tuple[int, int]:
+        # with a real frame count the state plays the whole file (in
+        # bounds by construction); without one keep the template segment
+        n = _fc(f, 0)
+        return (0, n) if n else default
+
+    n_idle = _fc(idle_f, 150)
+    a0, a1 = _range(attack_f, (150, 210))
+    d0, d1 = _range(damage_f, (210, 270))
+    t0, t1 = _range(death_f, (270, 345))
+    n_run = _fc(run_f, 16)
 
     states = [
-        State("Idle", idle_f, 1, 150, 15.0, flags=1,
+        State("Idle", idle_f, 1, n_idle, 15.0, flags=1,
               links=[("Attack", 0, 3), ("Damage", 0, 0),
                      ("Death", 0, 0), ("Run", 0, 3)],
               meshfile=meshfile),
-        State("Attack", idle_f, 150, 210, 15.0,
+        State("Attack", attack_f, a0, a1, 15.0,
               links=[("Idle", 1, 0)], meshfile=meshfile),
-        State("Damage", idle_f, 210, 270, 15.0,
+        State("Damage", damage_f, d0, d1, 15.0,
               links=[("Idle", 1, 0), ("Run", 0, 0)], gaestate="Idle",
               meshfile=meshfile),
-        State("Death", idle_f, 270, 345, 15.0, meshfile=meshfile),
-        State("Run", run_f, 1, 16, 15.0, flags=1,
+        State("Death", death_f, t0, t1, 15.0, meshfile=meshfile),
+        State("Run", run_f, 1, n_run, 15.0, flags=1,
               links=[("Idle", 0, 3)], gaestate="Idle", meshfile=meshfile),
     ]
     return AnimConfig(states=states)
@@ -199,5 +241,35 @@ def detect_anim_files(src_dir: str, base: str) -> Dict[str, str]:
     )
     run = next((n for n in candidates if "_run." in n), None)
     combined = next((n for n in candidates if n is not run), None)
+    if combined is None:
+        # No `.a` of this base exists, but a *sibling* `.ac` in the folder
+        # may name resolvable streams (a renamed/re-saved glTF such as
+        # `angel_edit.gltf` inside the Angel folder, or a leader set
+        # variant): those are the unit's real animation files, and both
+        # the generated `.ac` and the `.a` writer must agree on them —
+        # inventing `<base>_iadd.a` here ships a config whose every state
+        # points at a file that will never exist.
+        for ac_path in sorted(glob.glob(os.path.join(src_dir, "*.ac"))):
+            try:
+                with open(ac_path, "r", encoding="utf-8-sig",
+                          errors="replace") as fh:
+                    cfg = parse_ac(fh.read())
+            except (OSError, ValueError):
+                continue
+            named = [(s.name, os.path.basename(
+                s.file.replace("\\", "/").rsplit("/", 1)[-1]))
+                for s in cfg.states
+                if s.file and os.path.isfile(os.path.join(
+                    src_dir, os.path.basename(
+                        s.file.replace("\\", "/").rsplit("/", 1)[-1])))]
+            if not named:
+                continue
+            sibling: Dict[str, str] = {}
+            for nm, n in named:
+                sibling.setdefault(nm or "Idle", n)
+            sibling.setdefault("Idle", named[0][1])
+            sibling.setdefault("Run", next(
+                (n for _nm, n in named if "_run." in n), named[0][1]))
+            return sibling
     return {"Idle": combined or f"{base}_iadd.a",
             "Run": run or f"{base}_run.a"}
