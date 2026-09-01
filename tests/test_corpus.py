@@ -283,8 +283,22 @@ def test_reverse_export_every_gltf():
             acp = os.path.join(out_dir, base + ".ac")
             if os.path.exists(acp):
                 with open(acp, "r", encoding="utf-8") as fh:
-                    if not acmod.parse_ac(fh.read()).states:
-                        problems.append(f"{rel}: written .ac has no states")
+                    cfg = acmod.parse_ac(fh.read())
+                if not cfg.states:
+                    problems.append(f"{rel}: written .ac has no states")
+                # the editor lists a unit's animation records straight from
+                # the `.ac`: a reused config must carry EXACTLY the shipped
+                # record set (ships: Idle+Run, walls: no Attack, DragonRed:
+                # +Attack_2), a generated one the canonical five
+                src_ac = os.path.join(os.path.dirname(p),
+                                      os.path.basename(acp))
+                names = tuple(s.name for s in cfg.states)
+                if os.path.isfile(src_ac):
+                    if open(acp, "rb").read() != open(src_ac, "rb").read():
+                        problems.append(f"{rel}: .ac not byte-identical")
+                elif names != ("Idle", "Attack", "Damage", "Death", "Run"):
+                    problems.append(f"{rel}: generated .ac records {names}, "
+                                    f"expected the canonical five")
     assert not problems, "\n".join(problems[:20])
     # the reverse export must not silently drop animations any more
     assert with_a == len(_assets(".gltf")) - len(KNOWN["no_rebuilt_a"]), \

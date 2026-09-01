@@ -34,6 +34,7 @@ import glob
 import io
 import json
 import os
+import shutil
 import sys
 import tempfile
 
@@ -300,16 +301,19 @@ def roundtrip(tmp):
 
 def main():
     tmp = tempfile.mkdtemp(prefix="anim_audit_")
-    allp = []
-    for step in (forward, reverse, roundtrip):
-        p = step(tmp)
-        for x in p:
-            print(f"  !! {x[0]:44s} {x[1]:14s} {x[2]}")
-        allp += p
-        print()
-    print("=" * 78)
-    print(f"TOTAL PROBLEMS: {len(allp)}")
-    return 1 if allp else 0
+    try:
+        allp = []
+        for step in (forward, reverse, roundtrip):
+            p = step(tmp)
+            for x in p:
+                print(f"  !! {x[0]:44s} {x[1]:14s} {x[2]}")
+            allp += p
+            print()
+        print("=" * 78)
+        print(f"TOTAL PROBLEMS: {len(allp)}")
+        return 1 if allp else 0
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
 
 
 if __name__ == "__main__":

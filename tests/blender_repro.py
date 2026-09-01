@@ -222,6 +222,7 @@ def run(label, make_src, with_donors, name="character_empire_angel_edit"):
             if "!" in l or "warn" in l.lower() or "skip" in l.lower()]
     for w in warn[:6]:
         print("   log>", w.strip()[:130])
+    shutil.rmtree(tmp, ignore_errors=True)
     return out
 
 
