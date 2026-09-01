@@ -317,6 +317,97 @@ def test_reverse_export_picks_the_units_own_animation():
 
 
 # --------------------------------------------------------------------------- #
+#  animation completeness (import and export)
+# --------------------------------------------------------------------------- #
+def test_lod_import_concatenates_the_lod_config_streams():
+    """`<mesh>_lod.g` must animate with the streams its OWN `<mesh>_lod.ac`
+    names, all of them: dis3tool concatenates every `.ac` stream and the
+    lod configs are no exception (cleric_lod: iadd_lod 356 + run_lod 25 =
+    381 frames — resolving the set from the main `.ac` handed back the lod
+    Idle stream alone)."""
+    unit = os.path.join(REPO, "Empire", "Cleric")
+    g = os.path.join(unit, "character_empire_cleric_lod.g")
+    anim = cli._find_animation_for_geometry(g)
+    assert anim and anim.endswith("character_empire_cleric_iadd_lod.a")
+    with tempfile.TemporaryDirectory() as tmp, _quiet():
+        out = os.path.join(tmp, "lod.gltf")
+        cli._export_gl(g, anim, out, None, quiet=True)
+        j = json.load(open(out))
+        frames = max(j["accessors"][s["input"]]["count"]
+                     for a in j["animations"] for s in a["samplers"])
+    assert frames == 381, f"expected 381 (356+25), got {frames}"
+
+
+def test_sole_animation_fallback_needs_a_claim():
+    """The sole `.a` in a multi-mesh folder may animate only the `.g` that a
+    sibling `.ac` claims it for: Wolfsnow's config names `wolf.g` (animated,
+    also for its `_lod` variant), while the Cyclop's rock projectile — one
+    bone, claimed by nobody — stays rigid instead of borrowing the Cyclop's
+    39-bone skeleton."""
+    rock = os.path.join(REPO, "Neutrals", "Cyclop",
+                        "character_neutrals_cyclop_rock.g")
+    assert cli._find_animation_for_geometry(rock) is None
+    folder = os.path.join(REPO, "Neutrals", "Wolfsnow")
+    for stem in ("character_neutrals_wolf", "character_neutrals_wolf_lod"):
+        got = cli._find_animation_for_geometry(
+            os.path.join(folder, stem + ".g"))
+        assert got and got.endswith("character_neutrals_wolfsnow.a"), got
+
+
+def test_reverse_export_writes_every_ac_stream():
+    """The reused `.ac` references `iadd.a` AND `run.a`: the reverse export
+    must write each named stream — sliced back out of the concatenated glTF
+    animation at the donor frame-count boundaries — or the produced unit
+    would ship with a dangling Run reference.  Each file byte-identical."""
+    gt = os.path.join(REPO, "Empire", "Cleric",
+                      "character_empire_cleric.gltf")
+    folder = os.path.dirname(gt)
+    with tempfile.TemporaryDirectory() as tmp, _quiet():
+        cli._export(gt, tmp, 0, anim=True, quiet=True)
+        for fn in ("character_empire_cleric_iadd.a",
+                   "character_empire_cleric_run.a"):
+            mine = os.path.join(tmp, fn)
+            assert os.path.isfile(mine), f"{fn} was not written"
+            assert (open(mine, "rb").read()
+                    == open(os.path.join(folder, fn), "rb").read()), fn
+
+
+def test_leader_set_animation_adopts_sibling_donor():
+    """A leader set variant (set1/2/3) carries no `.ac` of its own, yet its
+    glTF animation IS the folder's baseanims stream — the rebuild must come
+    out byte-identical to it (donor scaffolding over verified data)."""
+    gt = os.path.join(REPO, "Empire", "Leader-Archmage",
+                      "character_empire_leader-archmage_set1.gltf")
+    folder = os.path.dirname(gt)
+    with tempfile.TemporaryDirectory() as tmp, _quiet():
+        cli._export(gt, tmp, 0, anim=True, quiet=True)
+        a = os.path.join(tmp, "character_empire_leader-archmage_set1_iadd.a")
+        donor = os.path.join(
+            folder, "character_empire_leader-archmage_baseanims.a")
+        assert open(a, "rb").read() == open(donor, "rb").read()
+
+
+def test_explicit_stream_import_keeps_ac_order():
+    """`-a run.a` selects the *unit*, not the layout: the concatenated
+    export must keep `.ac` order (the Idle stretch first, morph targets from
+    the last stream), byte-identical to the auto-detected import."""
+    g = os.path.join(REPO, "Empire", "Cleric", "character_empire_cleric.g")
+    run = os.path.join(os.path.dirname(g), "character_empire_cleric_run.a")
+    with tempfile.TemporaryDirectory() as tmp, _quiet():
+        auto = os.path.join(tmp, "auto.gltf")
+        explicit = os.path.join(tmp, "explicit.gltf")
+        cli._export_gl(g, cli._find_animation_for_geometry(g),
+                       auto, None, quiet=True)
+        cli._export_gl(g, run, explicit, None, quiet=True)
+        ja, jb = json.load(open(auto)), json.load(open(explicit))
+        for j in (ja, jb):        # the buffer uri is the output file's own
+            j["buffers"][0]["uri"] = ""
+        assert ja == jb
+        assert (open(auto[:-5] + ".bin", "rb").read()
+                == open(explicit[:-5] + ".bin", "rb").read())
+
+
+# --------------------------------------------------------------------------- #
 #  CLI surface
 # --------------------------------------------------------------------------- #
 def test_cli_commands_exit_cleanly():
