@@ -241,6 +241,10 @@ class SkinnedMesh:
     attrs: Dict[str, str] = field(default_factory=dict)
     # the donated main attribute block verbatim (ordered pairs, dupes kept)
     attr_items: List[Tuple[str, str]] = field(default_factory=list)
+    # non-fatal findings from the Blender-layout rebuild (frame conversion
+    # verification, appended part bones, slots without a glTF mesh) — the
+    # caller prints them as warnings next to the export result
+    blender_warnings: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -286,3 +290,20 @@ class GltfModel:
     # sub-meshes 2..N of a compound export (meshes[1:]); the first mesh is
     # described by this model's own fields.
     submodels: List["GltfModel"] = field(default_factory=list)
+    # ---- Blender re-save support (empty/None on a dis3tool export) ----
+    # the joint NAMES of this mesh's own skin, in skin order (a Blender
+    # re-save merges every per-mesh skin into one armature-wide skin, so
+    # JOINTS_0 then indexes the whole armature, not the `.g` part table)
+    skin_joint_names: List[str] = field(default_factory=list)
+    # per-joint inverse-bind matrices of this mesh's skin, raw glTF floats
+    skin_ibms: List[tuple] = field(default_factory=list)
+    # the mesh node's GLOBAL transform (identity on a dis3tool export, where
+    # mesh nodes are scene roots; Blender parents meshes under the armature)
+    node_matrix: Optional[list] = None
+    # node index -> {"rotation": [times], ...}: the sampler INPUT times of
+    # every animation channel (needed to resample a Blender re-saved
+    # animation, which runs on its own fps grid, back onto the 30 fps one)
+    anim_times: Dict[int, dict] = field(default_factory=dict)
+    # True when the layout needs the Blender->GM frame conversion (shared
+    # skins or non-identity mesh-node transforms)
+    blender_layout: bool = False
