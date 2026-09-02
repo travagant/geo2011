@@ -288,7 +288,7 @@ def _resource_root(gltf_path: str, base: str) -> str:
     return res.replace("/", "\\")
 
 def _export_textures(gltf_path: str, out_dir: str, base: str,
-                     quiet: bool) -> Optional[str]:
+                     quiet: bool, src_dir: Optional[str] = None) -> Optional[str]:
     """Emit the GM ``.t`` textures referenced by a glTF's images.
 
     dis3tool's glTF references its diffuse texture as a ``.dds``.  The GM
@@ -317,20 +317,33 @@ def _export_textures(gltf_path: str, out_dir: str, base: str,
             continue
         src = os.path.join(gltf_dir, os.path.basename(uri))
         stem = os.path.splitext(os.path.basename(src))[0]
+
+        def _find_orig(ext: str) -> Optional[str]:
+            # the original `.dds`/`.t` ships next to the glTF when assets
+            # were imported in place, or in the donor folder when the
+            # Blender re-save lives elsewhere (weight-paint workflow)
+            for d in (gltf_dir, src_dir):
+                if not d:
+                    continue
+                p = os.path.join(d, stem + ext)
+                if os.path.exists(p):
+                    return p
+            return None
+
         if not src.lower().endswith(".dds"):
             # Blender re-saves textures as .png/.jpg next to the glTF.  The
             # engine wants the native `.t`, and a re-encoded DXT of a
             # re-saved PNG would not be byte-faithful anyway — so resolve
             # the ORIGINAL by stem: the sibling `.dds` (convert) or the
             # shipped `.t` (pass through verbatim).
-            alt_dds = os.path.join(gltf_dir, stem + ".dds")
-            alt_t = os.path.join(gltf_dir, stem + ".t")
-            if os.path.exists(alt_dds):
+            alt_dds = _find_orig(".dds")
+            alt_t = _find_orig(".t")
+            if alt_dds is not None:
                 src = alt_dds
                 if not quiet:
                     ui.info(f"{os.path.basename(uri)}: not a .dds — using "
-                            f"the sibling {stem}.dds")
-            elif os.path.exists(alt_t):
+                            f"the original {os.path.basename(alt_dds)}")
+            elif alt_t is not None:
                 out_t = os.path.join(out_dir, stem + ".t")
                 with open(alt_t, "rb") as fh:
                     payload = fh.read()
@@ -380,9 +393,9 @@ def _export_textures(gltf_path: str, out_dir: str, base: str,
         # If the source asset ships a native .t next to the .dds, reuse its
         # header so the emitted .t round-trips byte-identically (the @24/@52
         # flags are not stored in a .dds and cannot be reconstructed).
-        src_t = os.path.join(gltf_dir, stem + ".t")
+        src_t = _find_orig(".t")
         orig_header = None
-        if os.path.exists(src_t):
+        if src_t is not None:
             with open(src_t, "rb") as fh:
                 orig_header = fh.read()[:59]
         try:
@@ -411,6 +424,98 @@ def _export_textures(gltf_path: str, out_dir: str, base: str,
     return first
 
 
+
+
+def _donor_dir(gltf_path: str, base: str) -> str:
+    """Locate the folder holding the unit's original game assets.
+
+    A weight-paint workflow keeps the Blender re-save away from the game
+    tree (``Blender/<base>.gltf`` next to ``Empire/<Unit>/<base>.g``), and
+    without the originals next to the glTF the export loses the donor
+    `.g`/`.a`/`.ac` scaffolding — the exact files whose loss crashes the
+    engine.  Walk up from the glTF folder and scan each ancestor's
+    sub-tree (bounded depth) for ``<base>.g``; fall back to the glTF's own
+    folder (the historical behaviour: assets imported in place).
+    """
+    gltf_dir = os.path.dirname(os.path.abspath(gltf_path)) or "."
+    for cand in (os.path.join(gltf_dir, base + ext)
+                 for ext in (".g", ".ac")):
+        if os.path.isfile(cand):
+            return gltf_dir
+    up = gltf_dir
+    for _ in range(4):
+        parent = os.path.dirname(up) or "/"
+        if parent == up:
+            break
+        up = parent
+        for cur, dirs, files in os.walk(up):
+            depth = os.path.relpath(cur, up).count(os.sep)
+            if depth >= 3:
+                dirs[:] = []
+            dirs[:] = [d for d in dirs if not d.startswith(".")
+                       and d not in ("__pycache__", "node_modules")]
+            if base + ".g" in files and os.path.realpath(cur) \
+                    != os.path.realpath(gltf_dir):
+                return cur
+    return gltf_dir
+
+
+def _load_stream_donors(gltf_path: str, src_dir: str, base: str,
+                        idle_name: str):
+    """Load the unit's `.a` donor streams next to the source glTF.
+
+    Returns [(file name, AnimFile)] -- the originals the `.ac` names, in
+    `.ac` order, parsed and non-raw.  They donate the bone order/parents/
+    record preambles and the trailing morph-stream scaffolding a glTF
+    animation cannot carry, and they calibrate the Blender->GM frame
+    conversion (see :mod:`d3tool.frame`); everything is adopted only when
+    the rebuilt data verifies against them.
+    """
+    folder_a = src_dir
+    stream_names: List[str] = []
+    try:
+        for nm in acmod.detect_anim_files(folder_a, base).values():
+            if nm and nm not in stream_names \
+                    and os.path.isfile(os.path.join(folder_a, nm)):
+                stream_names.append(nm)
+    except Exception:  # noqa: BLE001 - never break an export
+        stream_names = []
+    if not stream_names:
+        # Variant stems (the leader set1/2/3 exports) carry no `.ac` of
+        # their own, yet their animation came from this very folder — the
+        # sibling `.ac`'s stream is the donor candidate.
+        try:
+            for ac_path in sorted(glob.glob(os.path.join(folder_a, "*.ac"))):
+                cfg = acmod.parse_ac(
+                    open(ac_path, "r", encoding="utf-8-sig",
+                         errors="replace").read())
+                for st in cfg.states:
+                    if not st.file:
+                        continue
+                    nm = os.path.basename(
+                        st.file.replace("\\", "/").rsplit("/", 1)[-1])
+                    if nm not in stream_names and os.path.isfile(
+                            os.path.join(folder_a, nm)):
+                        stream_names.append(nm)
+        except Exception:  # noqa: BLE001
+            stream_names = []
+    idle_base = os.path.basename(idle_name)
+    if idle_base not in stream_names:
+        stream_names = ([idle_base] + [n for n in stream_names
+                                       if n != idle_base]
+                        if stream_names else [])
+    streams = []
+    for nm in stream_names:
+        try:
+            acand = animmod.parse_anim(
+                open(os.path.join(folder_a, nm), "rb").read())
+            if not acand.raw:
+                streams.append((nm, acand))
+        except Exception:  # noqa: BLE001
+            pass
+    return streams
+
+
 def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
             anim: bool = True, quiet: bool = False) -> None:
     """Reverse export: glTF -> GM geometry (.g), scene, animation config, .a."""
@@ -423,6 +528,7 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
     # sibling unit.scene/unit.ac (the lookups key off this base), silently
     # dropping every particle emitter and every event2 entry.
     base = os.path.splitext(os.path.basename(gltf_path))[0]
+    src_dir = _donor_dir(gltf_path, base)
     # Donate the original `.g` sitting next to the source glTF (same reuse
     # rule as the `.scene`/`.ac`): it carries the authoring data a glTF
     # cannot express -- per-vertex diffuse, container header/prelude/vertex
@@ -430,7 +536,7 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
     # and the original weight/bone split (adopted only when it re-packs
     # bit-exactly to the glTF lanes, so user edits always win).
     donor = None
-    donor_path = os.path.join(os.path.dirname(gltf_path), base + ".g")
+    donor_path = os.path.join(src_dir, base + ".g")
     if os.path.isfile(donor_path):
         try:
             candidate = gfile.parse_geometry_file(
@@ -438,8 +544,16 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
             donor = None if candidate.parse_error else candidate
         except Exception:  # noqa: BLE001 - a broken donor must not stop us
             donor = None
+    # the `.a` donors must be loaded before the geometry rebuild: a
+    # Blender re-save needs them to calibrate the frame conversion
+    anim_files = acmod.detect_anim_files(src_dir, base)
+    idle_name0 = anim_files.get("Idle") or (base + "_iadd.a")
+    stream_donors = _load_stream_donors(gltf_path, src_dir, base, idle_name0)
     sm = gltfmod.mesh_to_skinned(m, weights_on_vertex=weights_on_vertex,
-                                 donor=donor)
+                                 donor=donor, anim_donors=stream_donors)
+    for _w in getattr(sm, "blender_warnings", []) or []:
+        if not quiet:
+            ui.warn(_w)
     if not (donor is not None and donor.geometry_file):
         # the donated name2 (the `.g` header's geometry-file string) is the
         # original asset's own label and may differ from the file base
@@ -462,7 +576,8 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
             attrs["material0_diffuse"] = \
                 os.path.splitext(uri0)[0] + ".tga"
     # textures (glTF .dds -> native .t), and point the .g at the emitted file
-    emitted = _export_textures(gltf_path, out_dir, base, quiet)
+    emitted = _export_textures(gltf_path, out_dir, base, quiet,
+                               src_dir=src_dir)
     if emitted and "material0_diffuse" not in attrs:
         attrs["material0_diffuse"] = emitted
     elif emitted and attrs.get("material0_diffuse", "").endswith(".tga"):
@@ -485,7 +600,7 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
 
     # scene (reuse the original if present to keep particle emitters)
     out_scene = os.path.join(out_dir, base + ".scene")
-    src_scene = os.path.join(os.path.dirname(gltf_path), base + ".scene")
+    src_scene = os.path.join(src_dir, base + ".scene")
     if os.path.exists(src_scene):
         # Some shipped `.scene` files are Latin-1, not UTF-8 (the two large
         # Neutrals/Ship scenes), and `_export` must copy them verbatim.
@@ -511,9 +626,9 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
     # exactly like the `.scene`.  Regenerating it from the template would drop
     # every `event2` entry (the attack/damage/death sound aliases and the
     # FxStrike/fxcast cues): the AirElemental alone carries seven of them.
-    anim_files = acmod.detect_anim_files(os.path.dirname(gltf_path), base)
+    anim_files = acmod.detect_anim_files(src_dir, base)
     out_ac = os.path.join(out_dir, base + ".ac")
-    src_ac = os.path.join(os.path.dirname(gltf_path), base + ".ac")
+    src_ac = os.path.join(src_dir, base + ".ac")
     if os.path.exists(src_ac):
         with open(src_ac, "rb") as fh:
             ac_bytes = fh.read()
@@ -527,7 +642,7 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
         # the engine reads past the stream's end in battle).
         counts: Dict[str, int] = {}
         for fname in set(anim_files.values()):
-            p = os.path.join(os.path.dirname(gltf_path), fname)
+            p = os.path.join(src_dir, fname)
             if os.path.isfile(p):
                 try:
                     counts[os.path.basename(fname)] = animmod.parse_anim(
@@ -550,7 +665,7 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
     # path (``...\\Aliases\\Attack00.alias``) but nothing copies that folder,
     # so the exported unit would ship with dangling event2 references — 2065
     # of them across the 80 bundled `.ac` files that carry any.
-    src_alias_dir = os.path.join(os.path.dirname(gltf_path), "Aliases")
+    src_alias_dir = os.path.join(src_dir, "Aliases")
     if os.path.isdir(src_alias_dir):
         n_alias = 0
         for cur, _dirs, files in os.walk(src_alias_dir):
@@ -582,6 +697,7 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
             # resolve the path.  Typically <base>_iadd.a but some assets
             # use <base>.a or <base>_baseanims.a.
             idle_name = anim_files.get("Idle") or (base + "_iadd.a")
+            idle_base = os.path.basename(idle_name)
             # Donate the original `.a` files (same reuse rule as the `.g`
             # donor): they supply the bone order/parents/record preambles
             # and the trailing morph-stream scaffolding a glTF animation
@@ -590,51 +706,7 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
             # whose `.ac` names several `.a` files was exported as ONE
             # concatenated glTF animation — the named stream is sliced
             # back out of it at the donor frame-count boundaries.
-            folder_a = os.path.dirname(gltf_path)
-            stream_names: List[str] = []
-            try:
-                for nm in acmod.detect_anim_files(folder_a, base).values():
-                    if nm and nm not in stream_names \
-                            and os.path.isfile(os.path.join(folder_a, nm)):
-                        stream_names.append(nm)
-            except Exception:  # noqa: BLE001 - never break an export
-                stream_names = []
-            if not stream_names:
-                # Variant stems (the leader set1/2/3 exports) carry no
-                # `.ac` of their own, yet their animation came from this
-                # very folder — the sibling `.ac`'s stream is the donor
-                # candidate, adopted only when the rebuilt data verifies
-                # against it, exactly like every other donor.
-                try:
-                    for ac_path in sorted(glob.glob(
-                            os.path.join(folder_a, "*.ac"))):
-                        cfg = acmod.parse_ac(
-                            open(ac_path, "r", encoding="utf-8-sig",
-                                 errors="replace").read())
-                        for st in cfg.states:
-                            if not st.file:
-                                continue
-                            nm = os.path.basename(
-                                st.file.replace("\\", "/").rsplit("/", 1)[-1])
-                            if nm not in stream_names and os.path.isfile(
-                                    os.path.join(folder_a, nm)):
-                                stream_names.append(nm)
-                except Exception:  # noqa: BLE001
-                    stream_names = []
-            idle_base = os.path.basename(idle_name)
-            if idle_base not in stream_names:
-                stream_names = ([idle_base] + [n for n in stream_names
-                                               if n != idle_base]
-                                if stream_names else [])
-            streams = []
-            for nm in stream_names:
-                try:
-                    acand = animmod.parse_anim(
-                        open(os.path.join(folder_a, nm), "rb").read())
-                    if not acand.raw:
-                        streams.append((nm, acand))
-                except Exception:  # noqa: BLE001
-                    pass
+            streams = stream_donors
             if len(streams) >= 2:
                 # A multi-stream unit: dis3tool exported the `.ac`'s streams
                 # as ONE concatenated glTF animation, and the reused `.ac`
@@ -694,7 +766,8 @@ def _battle_readiness_check(out_dir: str, base: str, quiet: bool) -> None:
         findings: List[str] = []
         out_g = os.path.join(out_dir, base + ".g")
         if os.path.isfile(out_g):
-            attrs, _ = gfile.parse_attributes(open(out_g, "rb").read())
+            g_data = open(out_g, "rb").read()
+            attrs, _ = gfile.parse_attributes(g_data)
             mat = attrs.get("material0_diffuse", "")
             if mat:
                 want = os.path.splitext(mat)[0] + ".t"
@@ -702,6 +775,36 @@ def _battle_readiness_check(out_dir: str, base: str, quiet: bool) -> None:
                     findings.append(
                         f"material0_diffuse '{mat}' has no {want} in the "
                         f"output — the unit will load without its texture")
+            # the geometry itself must survive its own round-trip: a `.g`
+            # whose attribute block lies about its counts (or whose vertex
+            # bone indices run past the part's bone table) desynchronises
+            # the loader halfway through and the game dies on unit spawn
+            try:
+                sm_g = gfile.parse_geometry_file(g_data)
+                if sm_g.parse_error:
+                    findings.append(f"{base}.g does not re-parse cleanly: "
+                                    f"{sm_g.parse_error}")
+                blocks = [("root", sm_g.vertices, sm_g.bones)]
+                blocks += [(p.name, p.vertices, p.bones)
+                           for p in sm_g.parts]
+                for nm, verts, bones in blocks:
+                    n_b = len(bones)
+                    have_w = any(any(w for w in (v.stored_weights or ()))
+                                 for v in verts)
+                    if verts and have_w and not n_b:
+                        findings.append(
+                            f"{base}.g part {nm}: skinned vertices but an "
+                            f"empty bone table — the engine resolves them "
+                            f"to garbage")
+                    for v in verts:
+                        if any(int(b) >= max(n_b, 1)
+                               for b in (v.bones or ()) if b):
+                            findings.append(
+                                f"{base}.g part {nm}: vertex bone index "
+                                f"past the {n_b}-bone table")
+                            break
+            except Exception as exc:  # noqa: BLE001
+                findings.append(f"{base}.g failed to re-parse: {exc}")
         for ac_path in glob.glob(os.path.join(out_dir, "*.ac")):
             cfg = acmod.parse_ac(open(ac_path, "r", encoding="utf-8-sig",
                                       errors="replace").read())

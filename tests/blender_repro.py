@@ -15,6 +15,8 @@ import sys
 import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _refgl                        # noqa: E402
 from d3tool import ac as acmod        # noqa: E402
 from d3tool import cli as climod      # noqa: E402
 from d3tool import gfile              # noqa: E402
@@ -27,8 +29,10 @@ SRC = os.path.join(REPO, "Empire", "Angel")
 def blenderize(src_gltf, out_gltf, paint=False, anim_frames=None):
     """Dis3tool reference glTF -> what Blender's exporter tends to write."""
     bin_name = os.path.basename(os.path.splitext(out_gltf)[0]) + ".bin"
-    shutil.copy(os.path.splitext(src_gltf)[0] + ".bin",
-                os.path.join(os.path.dirname(out_gltf), bin_name))
+    src_bin = os.path.splitext(src_gltf)[0] + ".bin"
+    dst_bin = os.path.join(os.path.dirname(out_gltf), bin_name)
+    if os.path.abspath(src_bin) != os.path.abspath(dst_bin):
+        shutil.copy(src_bin, dst_bin)
     j = json.load(open(src_gltf))
     data = bytearray(open(os.path.splitext(src_gltf)[0] + ".bin", "rb").read())
     j["asset"]["generator"] = "Khronos glTF Blender I/O 4.2"
@@ -85,10 +89,16 @@ def blenderize(src_gltf, out_gltf, paint=False, anim_frames=None):
             jbv = j["bufferViews"][jacc["bufferView"]]
             woff = wbv.get("byteOffset", 0) + wacc.get("byteOffset", 0)
             joff = jbv.get("byteOffset", 0) + jacc.get("byteOffset", 0)
+            # the reference export interleaves vertex attributes into one
+            # buffer view (byteStride) — read/write at the accessor's own
+            # stride, never at the component size, or the paint smears
+            # across the neighbouring attributes
+            wstride = wbv.get("byteStride") or 16
+            jstride = jbv.get("byteStride") or 4
             n = wacc["count"]
             for v in range(n):
-                ws = list(struct.unpack_from("<4f", data, woff + 16 * v))
-                js = list(struct.unpack_from("<4B", data, joff + 4 * v))
+                ws = list(struct.unpack_from("<4f", data, woff + wstride * v))
+                js = list(struct.unpack_from("<4B", data, joff + jstride * v))
                 if paint and v % 20 == 0 and ws[1] > 0:
                     # move a third of lane0's weight onto lane1
                     d = ws[0] * 0.33
@@ -100,8 +110,8 @@ def blenderize(src_gltf, out_gltf, paint=False, anim_frames=None):
                 ws = tuple(struct.unpack("<4f",
                                          struct.pack("<4f", *(w / s for w in ws)))
                            ) if paint else tuple(ws)
-                struct.pack_into("<4f", data, woff + 16 * v, *ws)
-                struct.pack_into("<4B", data, joff + 4 * v, *js)
+                struct.pack_into("<4f", data, woff + wstride * v, *ws)
+                struct.pack_into("<4B", data, joff + jstride * v, *js)
 
     # -- optionally shorten the animation (user trimmed the end) --
     if anim_frames is not None:
@@ -227,7 +237,10 @@ def run(label, make_src, with_donors, name="character_empire_angel_edit"):
 
 
 if __name__ == "__main__":
-    REF = os.path.join(SRC, "character_empire_angel.gltf")
+    # the dis3tool reference glTF is a generated artifact: rebuild it
+    _refgl.ensure_angel_ref()
+    REF = os.path.join(_refgl.ensure_angel_ref(),
+                       "character_empire_angel.gltf")
 
     def copy_ref(gt):
         shutil.copy(REF, gt)

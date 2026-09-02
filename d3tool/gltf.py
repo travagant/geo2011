@@ -6,10 +6,12 @@ format (reverse export).
 from __future__ import annotations
 
 import json
+import math
 import struct
 from typing import Dict, List, Optional, Tuple, cast
 
 from . import anim as animmod
+from . import frame as framemod
 from .model import (Bone, GltfModel, MeshPart, SkinnedMesh, Vertex,
                     pack_weights_joints)
 
@@ -181,6 +183,56 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
     uri = gltf["buffers"][0]["uri"]
     buf = open(os.path.join(base_dir, uri), "rb").read()
 
+    # ---- node bookkeeping (works for both layouts) ----
+    # dis3tool puts the mesh nodes first, parentless at the scene root, each
+    # with its OWN small skin (the `.g` part's bone table).  A Blender
+    # re-save reorders the nodes (bones first), parents the mesh nodes under
+    # the armature root and merges every per-mesh skin into ONE armature-wide
+    # skin.  Everything below is driven by "the node that carries mesh i"
+    # instead of by array position, so both layouts load.
+    nodes = gltf.get("nodes", [])
+    node_parent: Dict[int, int] = {}
+    for ni, nd in enumerate(nodes):
+        for c in nd.get("children", []):
+            node_parent.setdefault(c, ni)
+
+    def _node_global(idx: int, _depth: int = 0) -> list:
+        """Global (row-major, column-vector) matrix of a node."""
+        if _depth > 64 or idx is None:
+            return [[1.0 if r == c else 0.0 for c in range(4)] for r in range(4)]
+        nd = nodes[idx] if 0 <= idx < len(nodes) else {}
+        M = framemod.trs_matrix(nd.get("rotation"), nd.get("translation"),
+                                nd.get("scale")) if "matrix" not in nd \
+            else framemod.cmaj16(nd["matrix"])
+        p = node_parent.get(idx)
+        return framemod.mm(_node_global(p, _depth + 1), M) if p is not None else M
+
+    mesh_nodes: Dict[int, Tuple[int, Optional[int]]] = {}   # mesh idx -> (node, skin)
+    for ni, nd in enumerate(nodes):
+        if "mesh" in nd and nd["mesh"] not in mesh_nodes:
+            mesh_nodes[nd["mesh"]] = (ni, nd.get("skin"))
+    skins = gltf.get("skins", [])
+    skins_by_users: Dict[int, int] = {}
+    for _ni, sk in mesh_nodes.values():
+        if sk is not None:
+            skins_by_users[sk] = skins_by_users.get(sk, 0) + 1
+    shared_skin = any(v > 1 for v in skins_by_users.values())
+    mesh_transformed = any(
+        not framemod.is_identity(_node_global(ni))
+        for ni, _sk in mesh_nodes.values())
+    blender_layout = bool(skins) and (shared_skin or mesh_transformed)
+
+    def _skin_tables(skin_i: Optional[int]):
+        """(joint names, raw IBM 16-float tuples) of a skin."""
+        if skin_i is None or skin_i >= len(skins):
+            return [], []
+        sk = skins[skin_i]
+        names = [nodes[j].get("name", f"bone{k}")
+                 for k, j in enumerate(sk["joints"])]
+        flat = _read_accessor(gltf, buf, sk["inverseBindMatrices"])
+        ibms = [tuple(x) for x in flat]
+        return names, ibms
+
     # ---- mesh / skin ----
     mesh = gltf["meshes"][0]
     prim = mesh["primitives"][0]
@@ -203,7 +255,12 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
     # animation-less export — three bundled references do this (Blacknaga,
     # CityGuard, WaterSnake_sea) and so does our own compound writer.  Such a
     # glTF is a plain static mesh: no bone descriptors to read back.
-    skin = gltf.get("skins", [None])[0] if gltf.get("skins") else None
+    # The MAIN mesh's skin is the skin of the NODE carrying meshes[0] (a
+    # Blender re-save merges everything into skins[0], but keeps the mesh
+    # nodes' `skin` pointers honest).
+    main_node, main_skin_i = mesh_nodes.get(0, (None, None))
+    skin = skins[main_skin_i] if (main_skin_i is not None
+                                  and main_skin_i < len(skins)) else None
     bone_indices: Dict[str, int] = {}
     joints = skin["joints"] if skin else []
     joint_names = [nodes[j].get("name", f"bone{i}") for i, j in enumerate(joints)]
@@ -240,10 +297,6 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
     # own skin (weapon 1 joint, body 39, hair 5, ...).  They are loaded as
     # standalone sub-models; mesh_to_skinned turns them into `.g` parts.
     submodels: List[GltfModel] = []
-    mesh_of_node = {}
-    for ni, nd in enumerate(nodes):
-        if "mesh" in nd:
-            mesh_of_node[nd["mesh"]] = (ni, nd.get("skin"))
     for mi, mesh_json in enumerate(gltf.get("meshes", [])[1:], start=1):
         spr = mesh_json["primitives"][0]
         sattrs = spr["attributes"]
@@ -263,7 +316,7 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
 
         # this sub's skin = the skin of the node carrying the mesh
         sbones: List[Bone] = []
-        skin_i = mesh_of_node.get(mi, (None, None))[1]
+        sub_node, skin_i = mesh_nodes.get(mi, (None, None))
         if skin_i is not None and gltf.get("skins"):
             skin_j = gltf["skins"][skin_i]
             sjoints = skin_j["joints"]
@@ -271,6 +324,16 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
             for k, jn_ in enumerate(sjoints):
                 sbones.append(Bone(nodes[jn_].get("name", f"bone{k}"),
                                    tuple(sinv[k])))
+        # a skin SHARED with another mesh node is the merged Blender skin:
+        # it is NOT this part's bone table (the table is re-derived from the
+        # actually-used joints / the `.g` donor on reverse export)
+        sjoint_names, sibms = _skin_tables(skin_i)
+        if skins_by_users.get(skin_i, 0) > 1:
+            sbones = []
+        snode_matrix = None
+        if sub_node is not None and not framemod.is_identity(
+                _node_global(sub_node)):
+            snode_matrix = _node_global(sub_node)
 
         smorph_name, starget_positions = _morph_targets_raw(
             gltf, buf, spr.get("targets"))
@@ -297,12 +360,22 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
                          if swts is not None and sjts is not None else []),
             morph_name=smorph_name,
             target_positions=starget_positions,
+            skin_joint_names=sjoint_names,
+            skin_ibms=sibms,
+            node_matrix=snode_matrix,
         ))
 
     main_morph_name, main_target_positions = _morph_targets_raw(
         gltf, buf, prim.get("targets"))
 
-    mesh_name = nodes[0].get("name", "") if nodes else ""
+    # the mesh node's name, not nodes[0]: a Blender re-save reorders the
+    # node array (bones first), and nodes[0] would then be a bone name
+    if main_node is not None:
+        mesh_name = nodes[main_node].get("name", "") or mesh.get("name", "")
+    elif nodes and "mesh" in nodes[0]:
+        mesh_name = nodes[0].get("name", "")
+    else:
+        mesh_name = mesh.get("name", "")
     import os
     geometry_file = os.path.basename(path)
     if geometry_file.endswith(".gltf"):
@@ -310,6 +383,7 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
     anim = None
     frames: List[float] = []
     channels: Dict[int, dict] = {}
+    chan_times: Dict[int, dict] = {}
     if gltf.get("animations"):
         anim = gltf["animations"][0]
         # frame times from the first sampler input accessor
@@ -322,8 +396,15 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
             node = ch["target"]["node"]
             path = ch["target"]["path"]
             out = _read_accessor(gltf, buf, anim["samplers"][ch["sampler"]]["output"])
+            tin = _read_accessor(gltf, buf, anim["samplers"][ch["sampler"]]["input"])
             channels.setdefault(node, {})[path] = out
+            chan_times.setdefault(node, {})[path] = [x[0] for x in tin]
 
+    main_jnames, main_ibms = _skin_tables(main_skin_i)
+    main_node_matrix = None
+    if main_node is not None and not framemod.is_identity(
+            _node_global(main_node)):
+        main_node_matrix = _node_global(main_node)
     model = GltfModel(
         mesh_name=mesh_name,
         geometry_file=geometry_file or "character",
@@ -337,6 +418,7 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
         frames=frames,
         animation=anim,
         anim_channels=channels,
+        anim_times=chan_times,
         weights_on_vertex=w_slots,
         rigid=rigid,
         morph=bool(prim.get("targets")),
@@ -345,6 +427,10 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
         morph_name=main_morph_name,
         target_positions=main_target_positions,
         submodels=submodels,
+        skin_joint_names=main_jnames,
+        skin_ibms=main_ibms,
+        node_matrix=main_node_matrix,
+        blender_layout=blender_layout,
     )
     return model
 
@@ -387,8 +473,455 @@ def _restore_from_donor(vertices, gltf_vertices, donor_vertices,
             dst.bones = src.bones
 
 
+def _blender_q_map(m: "GltfModel", anim_donors):
+    """Q frame-change map for a Blender re-save, calibrated on the donor `.a`.
+
+    Returns ({bone name: Q}, warnings)."""
+    warns: List[str] = []
+    # accept both bare AnimFiles and (name, AnimFile) stream pairs
+    donors = [d if not isinstance(d, tuple) else d[1] for d in anim_donors]
+    if not donors:
+        return {}, ["no donor .a next to the glTF — the Blender frame "
+                    "conversion cannot be calibrated"]
+    # per-bone local rest matrices: the channel at t=0 when animated (a
+    # Blender export's static TRS is the pose at the playhead, not frame 0)
+    name_to_node: Dict[str, int] = {}
+    for i, nd in enumerate(m.nodes):
+        nm = nd.get("name")
+        if nm and nm not in name_to_node:
+            name_to_node[nm] = i
+    parents: Dict[str, str] = {}
+    for donor in donors:
+        for b in donor.bones:
+            parents.setdefault(b.name, b.parent or "")
+    locals_b: Dict[str, "framemod.Mat4"] = {}
+    for nm, ni in name_to_node.items():
+        if nm not in parents:
+            continue
+        ch = m.anim_channels.get(ni, {})
+        tm = m.anim_times.get(ni, {})
+
+        def _flat(path, ncomp):
+            vals = ch.get(path) or []
+            return [x for tup in vals for x in tup[:ncomp]]
+
+        if "rotation" in ch:
+            q = framemod.sample_channel(
+                tm.get("rotation") or [0.0], _flat("rotation", 4), 4, 0.0,
+                slerp=True)
+        else:
+            q = m.nodes[ni].get("rotation")
+        if "translation" in ch:
+            t = framemod.sample_channel(
+                tm.get("translation") or [0.0], _flat("translation", 3), 3,
+                0.0)
+        else:
+            t = m.nodes[ni].get("translation")
+        sc = m.nodes[ni].get("scale")
+        try:
+            locals_b[nm] = framemod.trs_matrix(q, t, sc)
+        except Exception:  # noqa: BLE001
+            continue
+    Q = framemod.build_q_map(donors, locals_b, parents)
+    if not Q:
+        warns.append("frame calibration failed (no common bone names)")
+    return Q, warns
+
+
+def _vertex_key(v) -> tuple:
+    return (struct.pack("<3f", *v.position[:3]),
+            struct.pack("<2f", *v.uv[:2]))
+
+
+def _pair_donor_vertices(gltf_vertices, donor_vertices):
+    """Pair each glTF vertex with its donor original.
+
+    Returns (index_pairs, by_index): ``by_index`` is True when the two lists
+    are the same length and equal position/uv order (the dis3tool layout —
+    pairing is positional and bit-exact); otherwise a (pos,uv)->donor-index
+    lookup matches Blender's re-ordered / split vertices, and ``index_pairs``
+    maps glTF index -> donor index or -1.
+    """
+    if len(gltf_vertices) == len(donor_vertices) and all(
+            _vertex_key(a) == _vertex_key(b)
+            for a, b in zip(gltf_vertices, donor_vertices)):
+        return list(range(len(gltf_vertices))), True
+    table: Dict[tuple, int] = {}
+    for j, dv in enumerate(donor_vertices):
+        table.setdefault(_vertex_key(dv), j)
+    # a second, position-only table catches vertices Blender split at a
+    # UV/normal seam (same position, different uv)
+    pos_table: Dict[bytes, int] = {}
+    for j, dv in enumerate(donor_vertices):
+        pos_table.setdefault(struct.pack("<3f", *dv.position[:3]), j)
+    pairs = []
+    for i, gv in enumerate(gltf_vertices):
+        j = table.get(_vertex_key(gv))
+        if j is None:
+            j = pos_table.get(struct.pack("<3f", *gv.position[:3]), -1)
+        pairs.append(j)
+    return pairs, False
+
+
+def _lanes_by_name(weights, joint_ids, joint_names):
+    """[(weight_f32, bone_name)] for a vertex's accessor lanes.
+
+    Lanes below 1e-6 are treated as unweighted (Blender's renormalisation
+    leaves epsilon residues that must not grow a part's bone table)."""
+    out = []
+    for w, j in zip(weights, joint_ids):
+        if abs(w) > 1e-6 and 0 <= int(j) < len(joint_names):
+            out.append((w, joint_names[int(j)]))
+    return out
+
+
+def _remap_slot_vertices(sub: GltfModel, slot, Q, donor_of_bone,
+                         frame_convert: bool):
+    """Rebuild one donor slot's vertices from its matched glTF mesh.
+
+    A Blender re-save writes JOINTS_0 as indices into the merged
+    armature-wide skin; the `.g` slot needs indices into its OWN bone table,
+    so every lane is remapped by bone name (bones the slot never listed are
+    appended, their descriptor taken from another donor part when one
+    carries it).  Positions/normals are converted from the Blender frame
+    back into the slot's `.g` frame through joint space.  The donor's
+    influence bytes are adopted only where they re-pack to the glTF lanes
+    exactly — painted weights always win.
+
+    Returns (vertices, slot_bones, appended_names).
+    """
+    donor_vertices = slot.vertices
+    slot_bones: List[Bone] = list(slot.bones or [])
+    local_of = {b.name: i for i, b in enumerate(slot_bones)}
+    ibmg_of = {b.name: framemod.cmaj16(b.matrix) for b in slot_bones}
+    jnames = sub.skin_joint_names or []
+    ibmb_of = {nm: framemod.cmaj16(list(flat))
+               for nm, flat in zip(jnames, sub.skin_ibms)}
+
+    pairs, _by_index = _pair_donor_vertices(sub.vertices, donor_vertices)
+
+    K: Dict[str, "framemod.Mat4"] = {}
+    appended: List[str] = []
+
+    def k_of(nm: str):
+        """Composite map inv(IBMg_slot_j) . Q_j . IBMb_j (built lazily,
+        appending missing bones to the slot table on the way)."""
+        if nm in K:
+            return K[nm]
+        if nm not in local_of and nm:
+            bone = donor_of_bone.get(nm)
+            if bone is None and nm in ibmb_of and nm in Q:
+                # any descriptor is engine-consistent (the vertex map
+                # absorbs it); Q.IBMb makes the map the identity
+                bone = Bone(nm, tuple(framemod.flatten16(
+                    framemod.mm(Q[nm], ibmb_of[nm]))))
+            if bone is None:
+                bone = Bone(nm, tuple(framemod.flatten16(framemod.IDENTITY)))
+            slot_bones.append(bone)
+            appended.append(nm)
+            local_of[nm] = len(slot_bones) - 1
+            ibmg_of[nm] = framemod.cmaj16(bone.matrix)
+        if nm not in ibmg_of or nm not in ibmb_of or nm not in Q:
+            return None
+        K[nm] = framemod.mm(framemod.inv4(ibmg_of[nm]),
+                            framemod.mm(Q[nm], ibmb_of[nm]))
+        return K[nm]
+
+    # pre-build the map for every joint this mesh actually uses
+    used: set = set()
+    for v in sub.vertices:
+        for w, j in zip(v.gltf_weights, v.gltf_joints):
+            if abs(w) > 1e-6 and int(j) < len(jnames):
+                used.add(jnames[int(j)])
+    for nm in sorted(used):
+        k_of(nm)
+
+    out: List[Vertex] = []
+    for i, v in enumerate(sub.vertices):
+        gw = list(v.gltf_weights)
+        gj = list(v.gltf_joints)
+        lanes = _lanes_by_name(gw, gj, jnames)
+        pos = list(v.position[:3])
+        nrm = list(v.normal[:3])
+        if frame_convert and Q and lanes:
+            pos = list(framemod.convert_positions(pos, lanes, K))
+            # a normal converts through the dominant joint's rotation
+            Mk = K.get(lanes[0][1])
+            if Mk is not None:
+                rn = [sum(Mk[r][c] * nrm[c] for c in range(3)) for r in range(3)]
+                ln = math.sqrt(sum(x * x for x in rn))
+                if ln > 1e-12:
+                    nrm = [x / ln for x in rn]
+        dj = pairs[i] if i < len(pairs) else -1
+        src_v = donor_vertices[dj] if 0 <= dj < len(donor_vertices) else None
+        diffuse = src_v.diffuse if src_v is not None else v.diffuse
+        # weights: glTF lanes -> slot-local bone indices.  Only a lane
+        # above the epsilon threshold may grow the slot's bone table; a
+        # residue lane maps to joint 0 (its weight is ~0 for the engine).
+        stored = list(gw[:-1]) if len(gw) > 1 else [1.0]
+        bones_local = []
+        for k in range(len(gj)):
+            nm = jnames[int(gj[k])] if int(gj[k]) < len(jnames) else ""
+            real = nm and abs(gw[k]) > 1e-6
+            if real and nm not in local_of:
+                k_of(nm)
+            bones_local.append(local_of.get(nm, 0) if real else 0)
+        # donor adoption where the original provably re-packs to the lanes
+        if src_v is not None:
+            pw, pj = pack_weights_joints(tuple(src_v.stored_weights),
+                                         tuple(src_v.bones))
+            donor_lanes = _lanes_by_name(
+                pw, pj, [b.name for b in (slot.bones or [])])
+            if donor_lanes == lanes and len(src_v.bones) == len(bones_local):
+                stored = list(src_v.stored_weights)
+                bones_local = list(src_v.bones)
+        out.append(Vertex(tuple(pos), tuple(nrm), tuple(v.uv[:2]), diffuse,
+                          tuple(stored), tuple(bones_local)))
+    return out, slot_bones, appended
+
+
+def _mesh_to_skinned_blender(m: GltfModel, weights_on_vertex: int,
+                             donor: SkinnedMesh, anim_donors) -> SkinnedMesh:
+    """Reverse-export a Blender re-saved glTF against the original `.g`.
+
+    A Blender re-save is NOT the dis3tool layout: the per-mesh skins are
+    merged into one armature-wide skin, the mesh nodes move under the
+    armature root and the meshes reorder in the array.  The rebuild keeps
+    the DONOR's container structure (root + parts, their scaffolding and
+    bone tables) and feeds each slot the glTF mesh that matches it:
+
+    * by node/mesh name first (the gobj names survive a Blender round-trip),
+    * then by the mesh's used-joint NAME set vs the slot's bone names,
+    * leftovers pair up in order.
+
+    Vertices are converted back into the `.g` frame (see
+    :mod:`d3tool.frame`), joint indices remapped into each slot's own table,
+    and the whole result verified against the donor (a low match rate warns
+    loudly instead of shipping a silently distorted `.g`).
+    """
+    Q, qwarns = _blender_q_map(m, anim_donors)
+    frame_convert = bool(Q)
+    # bone name -> descriptor, from ANY donor part that carries it (the same
+    # bone keeps the same descriptor across a compound's tables)
+    donor_of_bone: Dict[str, Bone] = {}
+    for part in ([donor] + list(donor.parts or [])):
+        for b in (part.bones or []):
+            donor_of_bone.setdefault(b.name, b)
+
+    # -- the donor's slots, in output order -- #
+    class _Slot:
+        def __init__(self, holder, is_root):
+            self.holder = holder
+            self.is_root = is_root
+            self.name = holder.name
+            self.bone_names = {b.name for b in (holder.bones or [])}
+
+        def used_joint_names(self):
+            return {b.name for b in (self.holder.bones or [])}
+
+    slots = [_Slot(donor, True)] + [_Slot(p, False) for p in donor.parts]
+
+    # -- the glTF's meshes -- #
+    meshes: List[Tuple[str, GltfModel]] = [(m.mesh_name, m)]
+    meshes += [(s.mesh_name, s) for s in m.submodels]
+
+    def used_names(sub: GltfModel) -> set:
+        jn = sub.skin_joint_names or []
+        used = set()
+        for v in sub.vertices:
+            for w, j in zip(v.gltf_weights, v.gltf_joints):
+                if abs(w) > 1e-6 and int(j) < len(jn):
+                    used.add(jn[int(j)])
+        return used
+
+    used_cache = {id(sub): used_names(sub) for _nm, sub in meshes}
+
+    # matching: names, then joint-set equality, then leftovers in order
+    pair_of_slot: Dict[int, Tuple[str, GltfModel]] = {}
+    used_meshes = set()
+    for si, slot in enumerate(slots):
+        for mi, (nm, sub) in enumerate(meshes):
+            if mi in used_meshes:
+                continue
+            if nm == slot.name:
+                pair_of_slot[si] = (nm, sub)
+                used_meshes.add(mi)
+                break
+    for si, slot in enumerate(slots):
+        if si in pair_of_slot:
+            continue
+        for mi, (nm, sub) in enumerate(meshes):
+            if mi in used_meshes:
+                continue
+            if used_cache[id(sub)] == slot.used_joint_names() and \
+                    used_cache[id(sub)]:
+                pair_of_slot[si] = (nm, sub)
+                used_meshes.add(mi)
+                break
+    for si, slot in enumerate(slots):
+        if si in pair_of_slot:
+            continue
+        # best Jaccard overlap of the joint-name sets (a mesh the user
+        # painted extra bones onto no longer equals its slot's set)
+        best, best_j = None, -1.0
+        for mi, (nm, sub) in enumerate(meshes):
+            if mi in used_meshes:
+                continue
+            a = used_cache[id(sub)]
+            b = slot.used_joint_names()
+            if not a or not b:
+                continue
+            j = len(a & b) / len(a | b)
+            if j > best_j:
+                best, best_j = mi, j
+        if best is not None and best_j >= 0.5:
+            pair_of_slot[si] = meshes[best]
+            used_meshes.add(best)
+
+    warns = list(qwarns)
+    # -- rebuild every slot -- #
+    rebuilt: Dict[int, Tuple[List[Vertex], List[Bone], List[str]]] = {}
+    for si, slot in enumerate(slots):
+        if si not in pair_of_slot:
+            warns.append(f"`.g` slot '{slot.name}' has no mesh in the glTF "
+                         f"— keeping the original bytes")
+            continue
+        nm, sub = pair_of_slot[si]
+        verts, bones, appended = _remap_slot_vertices(
+            sub, slot.holder, Q, donor_of_bone, frame_convert)
+        rebuilt[si] = (verts, bones, appended)
+        if appended:
+            warns.append(f"'{slot.name}': bone(s) {', '.join(appended)} "
+                         f"added to the part table (painted onto it)")
+
+    # -- verification: converted positions must land on donor geometry -- #
+    if frame_convert:
+        checked = 0
+        matched = 0
+        for si, (verts, _b, _a) in rebuilt.items():
+            dv = slots[si].holder.vertices
+            grid: Dict[tuple, list] = {}
+            for p in dv:
+                key = (round(p.position[0] * 100),
+                       round(p.position[1] * 100),
+                       round(p.position[2] * 100))
+                grid.setdefault(key, []).append(p.position[:3])
+            for i in range(0, len(verts), max(1, len(verts) // 60)):
+                x, y, z = verts[i].position[:3]
+                gx, gy, gz = round(x * 100), round(y * 100), round(z * 100)
+                near = False
+                for dx in (-1, 0, 1):
+                    for dy in (-1, 0, 1):
+                        for dz in (-1, 0, 1):
+                            for q in grid.get((gx + dx, gy + dy, gz + dz), ()):
+                                if (abs(q[0] - x) < 2e-3
+                                        and abs(q[1] - y) < 2e-3
+                                        and abs(q[2] - z) < 2e-3):
+                                    near = True
+                                    break
+                            if near:
+                                break
+                        if near:
+                            break
+                    if near:
+                        break
+                checked += 1
+                if near:
+                    matched += 1
+        if checked and matched / checked < 0.5:
+            warns.append(
+                f"frame conversion verified on only {matched}/{checked} "
+                f"sampled vertices — the `.g` geometry may not match the "
+                f"original bind frame")
+
+    # -- assemble the container -- #
+    root_verts, root_bones, root_app = rebuilt.get(
+        0, (list(donor.vertices), list(donor.bones or []), []))
+    root_slot = slots[0].holder
+    w_root = root_slot.weights_on_vertex or m.weights_on_vertex or 2
+    # painted 4th influence on a w<4 slot needs the wider record
+    sub0 = pair_of_slot.get(0, (None, m))[1]
+    jn_root = sub0.skin_joint_names or []
+    max_lane = 1
+    for v in sub0.vertices:
+        max_lane = max(max_lane, len(
+            _lanes_by_name(list(v.gltf_weights), list(v.gltf_joints), jn_root)))
+    w_root = max(w_root, min(4, max_lane))
+
+    parts: List[MeshPart] = []
+    for si in range(1, len(slots)):
+        slot = slots[si].holder
+        if si in rebuilt:
+            verts, bones, _app = rebuilt[si]
+            sub = pair_of_slot[si][1]
+            sw = slot.weights_on_vertex or sub.weights_on_vertex or 2
+            jn_s = sub.skin_joint_names or []
+            ml = 1
+            for v in sub.vertices:
+                ml = max(ml, len(_lanes_by_name(list(v.gltf_weights),
+                                                list(v.gltf_joints), jn_s)))
+            sw = max(sw, min(4, ml))
+            parts.append(MeshPart(
+                name=slot.name,
+                vertex_count=len(verts),
+                tri_count=len(sub.indices) // 3,
+                vertices=verts,
+                indices=list(sub.indices),
+                bones=bones,
+                weights_on_vertex=sw,
+                morph=bool(slot.morph) or bool(sub.morph),
+                material_diffuse=(slot.material_diffuse
+                                  or sub.material_diffuse),
+                lm_uv=slot.lm_uv or sub.lm_uv,
+                lightmap=slot.lightmap or sub.lightmap,
+                vertex_magic=slot.vertex_magic or b"",
+                attrs=dict(slot.attrs),
+                attr_items=list(slot.attr_items),
+                part_prefix=slot.part_prefix,
+                part_tail=slot.part_tail,
+            ))
+        else:
+            # no glTF mesh for this slot: keep the donor part verbatim
+            parts.append(slot)
+
+    mesh = SkinnedMesh(
+        name=donor.name or m.mesh_name,
+        geometry_file=donor.geometry_file,
+        vertex_count=len(root_verts),
+        tri_count=(len(pair_of_slot[0][1].indices) // 3
+                   if 0 in pair_of_slot else donor.tri_count),
+        vertices=root_verts,
+        indices=(list(pair_of_slot[0][1].indices) if 0 in pair_of_slot
+                 else list(donor.indices)),
+        bones=root_bones,
+        weights_on_vertex=w_root,
+        parts=parts,
+        morph=bool(donor.morph),
+        material_diffuse=donor.material_diffuse or m.material_diffuse,
+        lm_uv=donor.lm_uv or m.lm_uv,
+        lightmap=donor.lightmap or m.lightmap,
+        attr_items=list(donor.attr_items),
+    )
+    # donor scaffolding for the root block
+    if donor.vertex_magic:
+        mesh.vertex_magic = donor.vertex_magic
+    if donor.header:
+        mesh.header = donor.header
+    if donor.preamble:
+        mesh.preamble = donor.preamble
+    if donor.unit_name:
+        mesh.unit_name = donor.unit_name
+    if donor.attrs:
+        mesh.attrs = dict(donor.attrs)
+    if donor.parts:
+        mesh.trailing = donor.trailing
+    mesh.blender_warnings = warns
+    return mesh
+
+
 def mesh_to_skinned(m: GltfModel, weights_on_vertex: int = 0,
-                    donor: Optional[SkinnedMesh] = None) -> SkinnedMesh:
+                    donor: Optional[SkinnedMesh] = None,
+                    anim_donors=None) -> SkinnedMesh:
     """Convert a :class:`GltfModel` into a :class:`SkinnedMesh` ready for `.g`.
 
     ``weights_on_vertex`` selects the number of influence slots written to the
@@ -402,7 +935,15 @@ def mesh_to_skinned(m: GltfModel, weights_on_vertex: int = 0,
     per-part attribute blocks and container scaffolding, and the original
     weight/bone split (gated on a bit-exact re-pack, see
     :func:`_restore_from_donor`).
+
+    ``anim_donors`` — the parsed `.a` streams of the unit (reverse export);
+    used to calibrate the Blender->GM frame conversion when the glTF is a
+    Blender re-save (merged skins / re-parented mesh nodes), see
+    :mod:`d3tool.frame`.
     """
+    if donor is not None and m.blender_layout:
+        return _mesh_to_skinned_blender(m, weights_on_vertex, donor,
+                                        anim_donors or [])
     w = weights_on_vertex or m.weights_on_vertex or 2
     if donor is not None and not weights_on_vertex \
             and len(donor.vertices) == m.vertex_count:
@@ -662,6 +1203,156 @@ def _split_concat_anim(anim: "animmod.AnimFile", m: GltfModel,
     return out
 
 
+def _resample_split_anim(m: GltfModel,
+                         streams: List[Tuple[str, "animmod.AnimFile"]],
+                         out_name: str, donor: "animmod.AnimFile",
+                         Q: Optional[Dict[str, "framemod.Mat4"]] = None,
+                         ) -> Optional["animmod.AnimFile"]:
+    """Slice one stream out of a *re-sampled* concatenated animation.
+
+    A Blender re-save lays the concatenated 30 fps animation onto its own
+    scene frame rate (default 24: the Angel's 263 keys become 210) in its
+    own bone-local frames.  The `.ac` still names every stream with 30 fps
+    frame indices, so each output frame k of stream i is the glTF animation
+    sampled at time (offset_i + k) / 30, converted back into the GM frame
+    with the calibrated Q maps, verified per record against the donor and
+    adopted byte-exact where it matches (a weights-only edit then rebuilds
+    the original `.a` files bit-for-bit).
+
+    Returns ``None`` when the stream boundaries cannot be established.
+    """
+    names = [n for n, _a in streams]
+    if out_name not in names:
+        return None
+    i = names.index(out_name)
+    fcs = [a.frame_count for a in (a for _n, a in streams)]
+    if donor.frame_count != fcs[i]:
+        return None
+    if not m.frames or len(m.frames) < 2:
+        return None
+    off = sum(fcs[:i])
+    times = m.frames
+    dt = (times[-1] - times[0]) / (len(times) - 1)
+    if dt <= 0:
+        return None
+    fps = 30.0   # the engine's (and dis3tool's) time base
+    need = (off + fcs[i] - 1) / fps
+    if times[-1] < need - 2.0 * dt:
+        return None   # the glTF animation does not cover this stream
+
+    node_of: Dict[str, int] = {}
+    for idx, nd in enumerate(m.nodes):
+        nm = nd.get("name")
+        if nm and nm not in node_of:
+            node_of[nm] = idx
+    parents = {}
+    for _n, a in streams:
+        for b in a.bones:
+            parents.setdefault(b.name, b.parent or "")
+
+    def sample_local(name: str, t: float):
+        """(rotation, translation) of the glTF channel for `name` at t, or
+        the node's static TRS, or None when the node does not exist."""
+        ni = node_of.get(name)
+        if ni is None:
+            return None
+        ch = m.anim_channels.get(ni, {})
+        tm = m.anim_times.get(ni, {})
+        nd = m.nodes[ni]
+        if "rotation" in ch:
+            flat = [x for tup in ch["rotation"] for x in tup[:4]]
+            rot = framemod.sample_channel(tm.get("rotation") or [0.0],
+                                          flat, 4, t, slerp=True, jump=True)
+        else:
+            rot = nd.get("rotation")
+        if "translation" in ch:
+            flat = [x for tup in ch["translation"] for x in tup[:3]]
+            tra = framemod.sample_channel(tm.get("translation") or [0.0],
+                                          flat, 3, t, jump=True)
+        else:
+            tra = nd.get("translation")
+        return rot, tra
+
+    tol = 2e-3
+    records: List[Tuple[str, str, list]] = []
+    for db in donor.bones:
+        nm = db.name
+        frames_out = list(db.frames)     # donor bytes by default
+        if Q and nm in Q and db.frames:
+            Qp = Q.get(parents.get(nm, ""), framemod.IDENTITY) \
+                if parents.get(nm) else framemod.IDENTITY
+            built = []
+            for k in range(min(fcs[i], len(db.frames))):
+                t = (off + k) / fps
+                st = sample_local(nm, t)
+                if st is None:
+                    built = None
+                    break
+                rot, tra = st
+                if rot is None:
+                    rot = (0.0, 0.0, 0.0, 1.0)
+                if tra is None or len(tra) < 3:
+                    tra = (0.0, 0.0, 0.0)
+                Lb = framemod.trs_matrix(rot, tra[:3])
+                try:
+                    Lo = framemod.convert_local(Lb, Q[nm], Qp)
+                except ValueError:
+                    built = None
+                    break
+                q = framemod.mat_to_quat(Lo)
+                built.append(tuple(q) + (Lo[0][3], Lo[1][3], Lo[2][3]))
+            if built is not None:
+                # per frame: the donor byte where the conversion verifies,
+                # the donor byte too on a stream boundary (the re-sampled
+                # grid folded two never-adjacent poses into the seam, and
+                # past the last key there is no data at all), the converted
+                # value elsewhere (the user's animation edits)
+                mixed = []
+                last_t = times[-1]
+                for k in range(len(built)):
+                    t = (off + k) / fps
+                    close = (framemod.quat_close(built[k][:4],
+                                                 db.frames[k][:4], tol)
+                             and all(abs(built[k][4 + c]
+                                         - db.frames[k][4 + c]) <= tol
+                                     for c in range(3)))
+                    seam = (k == 0 or k == len(built) - 1
+                            or t > last_t - dt)
+                    mixed.append(db.frames[k] if (close or seam)
+                                 else built[k])
+                # a 24 fps re-sample carries a real interpolation error on
+                # fast motion (an arm strike lands a few degrees off the
+                # 30 fps original).  When the stream as a whole still
+                # matches the donor (median deviation over every frame and
+                # record), the animation was not edited: take the donor's
+                # bytes wholesale and the `.a` round-trips bit-for-bit.
+                devs = sorted(
+                    max(abs(built[k][c] - db.frames[k][c])
+                        for c in range(7))
+                    for k in range(len(built)))
+                median_dev = devs[len(devs) // 2]
+                frames_out = (list(db.frames) if median_dev <= 0.004
+                              else mixed)
+        records.append((nm, db.parent, frames_out))
+
+    out = animmod.build_anim(records, fcs[i])
+    # donor scaffolding: preambles, trailing morph streams, header
+    for pos, rb in enumerate(out.bones):
+        if pos < len(donor.bones):
+            rb.preamble = donor.bones[pos].preamble
+    out.trailing = donor.trailing
+    out.morphs = list(donor.morphs)
+    magic, unk = 9, 15
+    if len(donor.header) >= 20:
+        magic = struct.unpack_from("<I", donor.header, 0)[0]
+        unk = struct.unpack_from("<I", donor.header, 16)[0]
+    out.header = b"\x00" * 20
+    total_len = len(animmod.write_anim(out))
+    out.header = struct.pack("<5I", magic, total_len - 8 - len(out.trailing),
+                             len(out.bones), out.frame_count, unk)
+    return out
+
+
 def animation_from_gltf(m: GltfModel, donor: Optional["animmod.AnimFile"] = None,
                         streams: Optional[List[Tuple[str, "animmod.AnimFile"]]] = None,
                         out_name: str = "") -> "animmod.AnimFile":
@@ -742,6 +1433,14 @@ def animation_from_gltf(m: GltfModel, donor: Optional["animmod.AnimFile"] = None
 
     # ---- a multi-stream unit: slice the concat back into the named stream ----
     if streams and len(streams) >= 2 and donor is not None and not donor.raw:
+        if m.blender_layout:
+            # a Blender re-save re-frames every channel (and usually re-
+            # samples onto its own fps grid): rebuild through the calibrated
+            # Q maps, adopting the donor bytes wherever they verify
+            Qb, _qw = _blender_q_map(m, [a for _n, a in streams])
+            res = _resample_split_anim(m, streams, out_name, donor, Qb)
+            if res is not None:
+                return res
         split = _split_concat_anim(anim, m, streams, out_name, donor)
         if split is not None:
             return split

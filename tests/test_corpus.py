@@ -42,6 +42,8 @@ from d3tool import gfile                  # noqa: E402
 from d3tool import gltf as gltfmod        # noqa: E402
 from d3tool import texture as texmod      # noqa: E402
 
+import _refgl                             # noqa: E402
+
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GROUPS = ("Empire", "Neutrals")
 
@@ -457,8 +459,10 @@ def _blenderize(src_gltf: str, out_gltf: str, paint: bool = False):
     an extra Armature node, textures re-saved as .png, the 4 weight lanes
     sorted descending, and (optionally) user-painted weights."""
     bin_name = os.path.basename(os.path.splitext(out_gltf)[0]) + ".bin"
-    shutil.copy(os.path.splitext(src_gltf)[0] + ".bin",
-                os.path.join(os.path.dirname(out_gltf), bin_name))
+    src_bin = os.path.splitext(src_gltf)[0] + ".bin"
+    dst_bin = os.path.join(os.path.dirname(out_gltf), bin_name)
+    if os.path.abspath(src_bin) != os.path.abspath(dst_bin):
+        shutil.copy(src_bin, dst_bin)
     j = json.load(open(src_gltf))
     data = bytearray(open(os.path.splitext(src_gltf)[0] + ".bin", "rb").read())
     j["asset"]["generator"] = "Khronos glTF Blender I/O 4.2"
@@ -497,19 +501,24 @@ def _blenderize(src_gltf: str, out_gltf: str, paint: bool = False):
                 continue
             wacc = j["accessors"][prim["attributes"]["WEIGHTS_0"]]
             jacc = j["accessors"][prim["attributes"]["JOINTS_0"]]
-            woff = j["bufferViews"][wacc["bufferView"]].get(
-                "byteOffset", 0) + wacc.get("byteOffset", 0)
-            joff = j["bufferViews"][jacc["bufferView"]].get(
-                "byteOffset", 0) + jacc.get("byteOffset", 0)
+            wbv = j["bufferViews"][wacc["bufferView"]]
+            jbv = j["bufferViews"][jacc["bufferView"]]
+            woff = wbv.get("byteOffset", 0) + wacc.get("byteOffset", 0)
+            joff = jbv.get("byteOffset", 0) + jacc.get("byteOffset", 0)
+            # interleaved vertex buffers (byteStride) must be touched at
+            # the accessor's own stride, or the paint smears across the
+            # neighbouring attributes
+            wstride = wbv.get("byteStride") or 16
+            jstride = jbv.get("byteStride") or 4
             for v in range(wacc["count"]):
-                ws = list(struct.unpack_from("<4f", data, woff + 16 * v))
-                js = list(struct.unpack_from("<4B", data, joff + 4 * v))
+                ws = list(struct.unpack_from("<4f", data, woff + wstride * v))
+                js = list(struct.unpack_from("<4B", data, joff + jstride * v))
                 if paint and v % 20 == 0 and ws[1] > 0:
                     d = ws[0] * 0.33
                     ws[0], ws[1] = ws[0] - d, ws[1] + d
                 ws, js = zip(*sorted(zip(ws, js), key=lambda q: -q[0]))
-                struct.pack_into("<4f", data, woff + 16 * v, *ws)
-                struct.pack_into("<4B", data, joff + 4 * v, *js)
+                struct.pack_into("<4f", data, woff + wstride * v, *ws)
+                struct.pack_into("<4B", data, joff + jstride * v, *js)
     j["buffers"][0]["uri"] = bin_name
     json.dump(j, open(out_gltf, "w"))
     with open(os.path.join(os.path.dirname(out_gltf), bin_name), "wb") as fh:
@@ -523,12 +532,11 @@ def test_blender_resaved_gltf_exports_battle_ready():
     every `.ac` state's file present with its frame range inside the
     stream, the meshfile resolvable, and a `.t` for the diffuse material.
     The donor animation files come out byte-identical."""
-    src = os.path.join(REPO, "Empire", "Angel",
-                       "character_empire_angel.gltf")
     for paint in (False, True):
         with tempfile.TemporaryDirectory() as tmp, _quiet():
             work = os.path.join(tmp, "unit")
-            shutil.copytree(os.path.dirname(src), work)
+            shutil.copytree(_refgl.SRC, work)
+            src = _refgl.copy_ref_into(work)
             gt = os.path.join(work, "character_empire_angel.gltf")
             _blenderize(src, gt, paint=paint)
             out = os.path.join(tmp, "out")
@@ -563,11 +571,10 @@ def test_renamed_gltf_exports_battle_ready():
     so a config must be GENERATED - referencing files that were actually
     written (the folder's baseanims streams), with frame ranges inside
     them, plus the textures next to the glTF."""
-    src = os.path.join(REPO, "Empire", "Angel",
-                       "character_empire_angel.gltf")
     with tempfile.TemporaryDirectory() as tmp, _quiet():
         work = os.path.join(tmp, "unit")
-        shutil.copytree(os.path.dirname(src), work)
+        shutil.copytree(_refgl.SRC, work)
+        src = _refgl.copy_ref_into(work)
         gt = os.path.join(work, "angel_edit.gltf")
         _blenderize(src, gt)
         out = os.path.join(tmp, "out")

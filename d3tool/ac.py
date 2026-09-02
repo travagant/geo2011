@@ -109,7 +109,8 @@ def write_ac(config: AnimConfig) -> str:
 
 def default_ac(meshfile: str, anim_base: str,
                anim_files: Optional[Dict[str, str]] = None,
-               frame_counts: Optional[Dict[str, int]] = None) -> AnimConfig:
+               frame_counts: Optional[Dict[str, int]] = None,
+               fps: float = 30.0) -> AnimConfig:
     """Build a plausible `.ac` for a skinned character.
 
     ``anim_files`` maps a state name to an actual `.a` file (relative/absolute)
@@ -124,6 +125,11 @@ def default_ac(meshfile: str, anim_base: str,
     battle), and collapses the Run state onto the idle file when no run
     stream exists — a state naming a file that was never written is a
     guaranteed load failure.
+
+    ``fps`` is the time base written into every state (default 30 — the
+    engine's own base: the rebuilt `.a` lays one keyframe per frame on it,
+    and a state whose fps disagrees with its stream plays the unit at the
+    wrong speed).
     """
     base = anim_base
     files = anim_files or {}
@@ -169,17 +175,17 @@ def default_ac(meshfile: str, anim_base: str,
     n_run = _fc(run_f, 16)
 
     states = [
-        State("Idle", idle_f, 1, n_idle, 15.0, flags=1,
+        State("Idle", idle_f, 1, n_idle, fps, flags=1,
               links=[("Attack", 0, 3), ("Damage", 0, 0),
                      ("Death", 0, 0), ("Run", 0, 3)],
               meshfile=meshfile),
-        State("Attack", attack_f, a0, a1, 15.0,
+        State("Attack", attack_f, a0, a1, fps,
               links=[("Idle", 1, 0)], meshfile=meshfile),
-        State("Damage", damage_f, d0, d1, 15.0,
+        State("Damage", damage_f, d0, d1, fps,
               links=[("Idle", 1, 0), ("Run", 0, 0)], gaestate="Idle",
               meshfile=meshfile),
-        State("Death", death_f, t0, t1, 15.0, meshfile=meshfile),
-        State("Run", run_f, 1, n_run, 15.0, flags=1,
+        State("Death", death_f, t0, t1, fps, meshfile=meshfile),
+        State("Run", run_f, 1, n_run, fps, flags=1,
               links=[("Idle", 0, 3)], gaestate="Idle", meshfile=meshfile),
     ]
     return AnimConfig(states=states)

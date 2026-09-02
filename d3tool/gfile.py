@@ -478,8 +478,35 @@ def _scene_matrix() -> bytes:
 def _attr_block(attrs: Dict[str, str], items=None) -> bytes:
     out = bytearray()
     if items is not None:
+        # The donated block keeps its order (and duplicate keys) verbatim;
+        # only the counts a rebuild genuinely changed may replace them.  A
+        # block that still announces the donor's vertex/bone counts over a
+        # longer list desynchronises the parser — and the engine — halfway
+        # through the file, while rewriting values that did not change
+        # byte-diffs a pure round-trip.
+        orig: Dict[str, str] = {}
+        for k, v in items:
+            orig[k] = v  # the parser's dict keeps the LAST of a duplicate
+        # `vertexs_weights_num` and `bones_num` drive the loader directly
+        # and always follow the rebuilt data.  `material0_triangles_num`
+        # may be only ONE slice of a multi-material block (the total lives
+        # in the header counts), so sync it only in a single-material
+        # block where it IS the total.
+        patchable = {"vertexs_weights_num", "bones_num"}
+        if not any(k.startswith("material") and k.endswith("_triangles_num")
+                   and k != "material0_triangles_num" for k in orig):
+            patchable.add("material0_triangles_num")
         out += struct.pack("<I", len(items))
         for k, v in items:
+            if (attrs and k in patchable and k in attrs
+                    and attrs[k] != orig.get(k)):
+                # an emptied bone table keeps the block's own `bones_num`
+                # (dis3tool stubs announce bones they do not carry, and
+                # rewriting it to 0 byte-diffs the corpus round-trip)
+                if k == "bones_num" and attrs[k] == "0":
+                    pass
+                else:
+                    v = attrs[k]
             kb = k.encode("latin1") + b"\x00"
             vb = v.encode("latin1") + b"\x00"
             out += struct.pack("<I", len(kb)) + kb
