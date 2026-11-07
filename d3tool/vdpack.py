@@ -310,10 +310,20 @@ class ReferenceReport:
     references that point outside the packed tree — retail content does this
     all the time (a cloned unit's `.ac` still names its template's animation
     in another folder), and the game resolves those from the normal mount.
+
+    ``warnings`` are the awkward middle: the reference names a file the pack
+    *does* carry, but in a folder the pack does not have.  Nothing resolves it
+    — retail never does this, since an out-of-tree reference points at a file
+    the pack does not ship at all — and it is the exact signature of a
+    generated `.ac`/`.scene` written with the wrong resource root
+    (``resources\\\\characters\\\\<object name>\\\\…`` instead of the unit's own
+    folder).  The pack loads in a viewer and fails in the game, so it is worth
+    a loud line even though the toolkit cannot prove the case is fatal.
     """
 
     problems: List[str] = field(default_factory=list)
     notes: List[str] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)
 
     def __bool__(self) -> bool:
         return bool(self.problems)
@@ -372,7 +382,8 @@ def manifest(files, source: str = "") -> dict:
                    "sha256": hashlib.sha256(index[1]).hexdigest()}
                   if index else None),
         "entries": entries,
-        "references": {"problems": report.problems, "notes": report.notes},
+        "references": {"problems": report.problems, "notes": report.notes,
+                       "warnings": report.warnings},
     }
 
 
@@ -417,6 +428,47 @@ def reference_findings(files: Dict[str, bytes]) -> ReferenceReport:
         folder = path.rsplit("/", 1)[0].lower() if "/" in path else ""
         return bool(folder) and folder not in dirs
 
+    home: Dict[str, str] = {}
+    for name in files:
+        path = name.replace("\\", "/")
+        folder = path.rsplit("/", 1)[0] if "/" in path else ""
+        home.setdefault(os.path.basename(path).lower(), folder)
+
+    def wrong_folder(name: str) -> str:
+        """The pack folder holding ``name`` when the reference got it wrong.
+
+        Empty when the reference is bare, points at a folder the pack has, or
+        names a file the pack does not carry at all (the legitimate
+        out-of-tree case).
+        """
+        path = name.replace("\\", "/")
+        folder = path.rsplit("/", 1)[0].lower() if "/" in path else ""
+        holder = home.get(os.path.basename(path).lower())
+        if holder is None or not folder or folder == holder.lower():
+            return ""
+        # a file the pack holds at its own root says nothing: a folder-shaped
+        # bundle (`vdpack pack MyUnit/`) mounts at the unit folder, and retail
+        # `.ac`/`.scene` files name their files by full path there
+        return holder
+
+    def out_of_tree(head: str, ref: str) -> None:
+        """Record a reference into a folder the pack does not have.
+
+        Three cases: the pack does not carry that file at all (an ordinary
+        out-of-tree reference, a note), it carries it at its own root (a
+        folder-shaped bundle, which mounts at the unit folder and may name its
+        files by full path — silent), or it carries it somewhere deeper (a path
+        built on the wrong resource root — a warning).
+        """
+        path = ref.replace("\\", "/")
+        holder = home.get(os.path.basename(path).lower())
+        if holder is None:
+            report.notes.append(head + " is outside the packed tree")
+        elif holder:
+            report.warnings.append(
+                f"{head}: the reference's folder is not in the pack, but the "
+                f"pack holds that file in {holder} — the path is wrong")
+
     for name, blob in sorted(files.items()):
         base = os.path.basename(name.replace("\\", "/"))
         low = base.lower()
@@ -428,13 +480,17 @@ def reference_findings(files: Dict[str, bytes]) -> ReferenceReport:
                 continue
             for st in cfg.states:
                 for ref, what in ((st.file, "file"), (st.meshfile, "meshfile")):
-                    if not ref or present(ref):
+                    if not ref:
                         continue
                     line = (f"{base}: state {st.name} -> {what} "
                             f"{os.path.basename(ref.replace(chr(92), '/'))}")
                     if outside(ref):
-                        report.notes.append(line + " is outside the packed tree")
-                    else:
+                        # a path into a folder the pack does not have: ordinary
+                        # out-of-tree content, or a path built on the wrong
+                        # resource root — which is what a generated `.ac` with
+                        # the object name as its folder looks like
+                        out_of_tree(line, ref)
+                    elif not present(ref):
                         findings.append(line + " is not in the pack")
         elif low.endswith(".scene"):
             txt = blob.decode("latin-1")
@@ -453,12 +509,9 @@ def reference_findings(files: Dict[str, bytes]) -> ReferenceReport:
                 if os.path.splitext(ref)[1].lower() not in (
                         ".g", ".a", ".ac", ".alias", ".scene", ".char"):
                     continue
-                if not ref or present(ref):
-                    continue
                 if outside(mm.group(1)):
-                    report.notes.append(f"{base}: references {ref} outside "
-                                        f"the packed tree")
-                else:
+                    out_of_tree(f"{base}: references {ref}", mm.group(1))
+                elif not present(ref):
                     findings.append(f"{base}: references {ref}, which is not "
                                     f"in the pack")
         elif low.endswith(".char"):
@@ -469,13 +522,11 @@ def reference_findings(files: Dict[str, bytes]) -> ReferenceReport:
             # its own; the scenes, icons and fx it names may live elsewhere
             for ref in prof.includes:
                 want = os.path.basename(ref.replace("\\", "/"))
-                if not present(want):
-                    if outside(ref):
-                        report.notes.append(f"{base}: includes {want} outside "
-                                            f"the packed tree")
-                    else:
-                        findings.append(f"{base}: includes {want}, which is "
-                                        f"not in the pack")
+                if outside(ref):
+                    out_of_tree(f"{base}: includes {want}", ref)
+                elif not present(want):
+                    findings.append(f"{base}: includes {want}, which is "
+                                    f"not in the pack")
             for key, ref in prof.resources():
                 if key == "#include" or ref.startswith("$("):
                     continue
@@ -485,11 +536,11 @@ def reference_findings(files: Dict[str, bytes]) -> ReferenceReport:
                 if not norm.startswith("characters" + chr(92)):
                     continue          # fx/… and other engine-global trees
                 want = os.path.basename(norm.replace("\\", "/"))
+                if outside(ref):
+                    out_of_tree(f"{base}: {key} -> {want}", ref)
+                    continue
                 if present(want):
                     continue
-                if outside(ref):
-                    report.notes.append(f"{base}: {key} -> {want} is outside "
-                                        f"the packed tree")
                 else:
                     findings.append(f"{base}: {key} -> {want} is not in the "
                                     f"pack")
@@ -524,4 +575,5 @@ def reference_findings(files: Dict[str, bytes]) -> ReferenceReport:
     # times must not bury the other findings
     report.problems = list(dict.fromkeys(report.problems))
     report.notes = list(dict.fromkeys(report.notes))
+    report.warnings = list(dict.fromkeys(report.warnings))
     return report

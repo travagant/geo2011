@@ -2105,6 +2105,103 @@ def test_vdpack_validate_cli_reports_and_exits():
         assert climod._run(["vdpack", "validate", damaged]) == 1
 
 
+def test_vdpack_warns_about_a_reference_in_the_wrong_folder():
+    """A `.ac` written with the wrong resource root names a folder the pack
+    does not have, while the model it wants sits in another one.  Nothing can
+    resolve that — and it is how a generated `_lod.ac` shipped: the pack
+    validated clean (`every reference resolves inside`) and the game asked for
+    a file that was never there, so the two kinds of out-of-tree reference
+    have to be told apart."""
+    from d3tool import vdpack
+    folder = os.path.join(REPO, "Neutrals", "AirElemental")
+    root = "resources\\Characters\\Neutrals\\AirElemental\\"
+
+    def as_pack():
+        return {(root + name.replace("/", "\\")): data
+                for name, data in vdpack.pack_folder(folder)}
+
+    wrong = acmod.default_ac(
+        "resources\\characters\\character_neutrals_airelemental_lod\\"
+        "character_neutrals_airelemental.g",
+        "resources\\characters\\character_neutrals_airelemental_lod\\"
+        "character_neutrals_airelemental")
+    files = as_pack()
+    files[root + "character_neutrals_airelemental_lod.ac"] = \
+        acmod.write_ac(wrong).encode()
+    report = vdpack.reference_findings(files)
+    assert not report.problems, report.problems
+    assert report.warnings, "a wrong resource root was accepted"
+    assert any("character_neutrals_airelemental.g" in w
+               and "AirElemental" in w for w in report.warnings), \
+        report.warnings
+
+    # the same states pointing at the folder the pack really has are clean
+    right = acmod.default_ac(
+        "resources\\characters\\neutrals\\airelemental\\"
+        "character_neutrals_airelemental.g",
+        "resources\\characters\\neutrals\\airelemental\\"
+        "character_neutrals_airelemental")
+    files[root + "character_neutrals_airelemental_lod.ac"] = \
+        acmod.write_ac(right).encode()
+    report = vdpack.reference_findings(files)
+    assert not report.warnings and not report.problems, \
+        (report.warnings, report.problems)
+
+    # a reference to a folder this pack does not carry at all stays a note:
+    # retail units name their template's animation, which the game mounts
+    other = acmod.default_ac("resources\\characters\\other\\x.g",
+                             "resources\\characters\\other\\x")
+    files[root + "character_neutrals_airelemental_lod.ac"] = \
+        acmod.write_ac(other).encode()
+    report = vdpack.reference_findings(files)
+    assert not report.warnings, report.warnings
+    assert any("x.g" in n for n in report.notes), report.notes
+
+
+def test_vdpack_validate_is_strict_about_wrong_folders():
+    """`--strict` turns the warning into a non-zero exit, so a build script can
+    refuse to ship a pack whose paths were written with the wrong root."""
+    import contextlib
+    import io
+    import shutil as shmod
+    folder = os.path.join(REPO, "Neutrals", "AirElemental")
+    wrong = acmod.default_ac(
+        "resources\\characters\\character_neutrals_airelemental_lod\\"
+        "character_neutrals_airelemental.g",
+        "resources\\characters\\character_neutrals_airelemental_lod\\"
+        "character_neutrals_airelemental")
+    with tempfile.TemporaryDirectory() as d:
+        # the bundle has to be namespaced for the folder to be judgeable: one
+        # rooted at the unit folder mounts there and names its files by path
+        bundle = os.path.join(d, "AirElemental")
+        tree = os.path.join(bundle, "resources", "Characters", "Neutrals",
+                            "AirElemental")
+        shutil.copytree(folder, tree)
+        open(os.path.join(tree, "character_neutrals_airelemental_lod.ac"), "w",
+             encoding="utf-8").write(acmod.write_ac(wrong))
+        with contextlib.redirect_stdout(io.StringIO()) as buf:
+            assert climod._run(["vdpack", "validate", bundle]) == 0
+            out = buf.getvalue()
+            assert "wrong folder" in out, out[-600:]
+            assert climod._run(["vdpack", "validate", bundle,
+                                "--strict"]) == 1
+
+
+def test_vdpack_stored_names_carry_one_separator():
+    """An archive name is one backslash per level; a doubled separator makes a
+    path the engine cannot match against its own resource table."""
+    from d3tool import vdpack
+    blob = vdpack.build_vdpack([("resources/Characters/Empire/Angel/x.g",
+                                 b"payload")])
+    pack = vdpack.parse_vdpack(blob)
+    assert not pack.parse_error, pack.parse_error
+    assert [e.name for e in pack.entries] == \
+        ["resources\\Characters\\Empire\\Angel\\x.g"], \
+        [e.name for e in pack.entries]
+    assert pack.files()["resources\\Characters\\Empire\\Angel\\x.g"] == \
+        b"payload"
+
+
 def test_vdpack_manifest_of_folder_and_archive_match():
     """A pack has to carry exactly what the folder has; the manifest is the
     proof (the Heroes-VII port kept one `manifest.json` per pack)."""

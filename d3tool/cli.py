@@ -1440,6 +1440,14 @@ def _vdpack(args) -> int:
         report = vdmod.reference_findings(files)
         for line in report.notes:
             ui.info("outside the pack: " + line)
+        for line in report.warnings:
+            ui.warn("  " + line)
+        if report.warnings and not report:
+            ui.warn(f"{len(files)} file(s): every reference resolves, but "
+                    f"{len(report.warnings)} reference path(s) point at the "
+                    f"wrong folder — the pack can load in a viewer and fail "
+                    f"in the game")
+            return 1 if args.strict else 0
         if not report:
             ui.ok(f"{len(files)} file(s), every reference resolves inside")
             return 0
@@ -1494,6 +1502,15 @@ def _vdpack(args) -> int:
     if len(files) > 20:
         ui.info(f"... and {len(files) - 20} more")
     ui.wrote(out, f"{len(files)} file(s), {len(blob)} bytes")
+    # the same reference audit `vdpack validate` runs, on what was just written:
+    # a pack whose `.ac` names a folder it does not carry loads in a viewer and
+    # fails in the game, so say it here rather than after the crash
+    audit = vdmod.reference_findings(dict(files))
+    for line in audit.warnings:
+        ui.warn("  " + line)
+    if audit.problems:
+        ui.warn(f"{len(audit.problems)} reference(s) would not resolve inside "
+                f"the pack (see `vdpack validate`)")
     return 0
 
 
@@ -1676,6 +1693,10 @@ def _build_parser() -> argparse.ArgumentParser:
     p_vv = p_vd_sub.add_parser(
         "validate", help="check that every internal reference is inside")
     p_vv.add_argument("target", help="a .vdpack file or a unit folder")
+    p_vv.add_argument("--strict", action="store_true",
+                      help="exit 1 on warnings as well (a reference whose "
+                           "folder is not in the pack while the file it names "
+                           "is)")
     p_vm = p_vd_sub.add_parser(
         "manifest", help="sha256 inventory of a folder or an archive")
     p_vm.add_argument("target", help="a .vdpack file or a unit folder")

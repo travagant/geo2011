@@ -85,6 +85,7 @@ python3 -m d3tool vdpack pack Empire/Hierophant -o hierophant.vdpack
 python3 -m d3tool vdpack list hierophant.vdpack
 python3 -m d3tool vdpack extract hierophant.vdpack -o hierophant/
 python3 -m d3tool vdpack validate hierophant.vdpack   # every internal reference inside?
+python3 -m d3tool vdpack validate hierophant.vdpack --strict   # ... and no wrong folder
 python3 -m d3tool vdpack manifest hierophant/ -o manifest.json  # sha256 per file
 # build on the only game-confirmed pack shape: keep the opaque `index`
 python3 -m d3tool vdpack pack hierophant/ -o my.vdpack --keep-index NewUnit.vdpack
@@ -259,6 +260,13 @@ it, in this order:
      has to be rebuilt into that pack (`vdpack pack … --keep-index`, the only
      pack shape confirmed to load), a loose file next to it may simply be
      ignored;
+   * a pack whose own `.ac`/`.scene` names the right file in the wrong folder
+     is the crash that looks like a missing file: `vdpack validate` prints
+     those as warnings (and `--strict` exits 1).  A generated `_lod.ac` used
+     to be written with the model's *object name* as its resource root, so
+     `resources\characters\character_x_lod\…` was asked for while the pack
+     held `resources\characters\<faction>\<unit>\…`; drop such a file or
+     re-export it with a current add-on;
    * leaders draw several `.g` parts through `set 1|2|3` equipment scenes — a
      weight change in the body shows only if that body is the part on screen;
    * weights show up while the unit animates (idle/attack), and an id from a
