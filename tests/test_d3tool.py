@@ -1632,6 +1632,60 @@ def test_png_to_t_roundtrip():
     assert ti.payload[:4] == b"\x80\x00\x00\xff"  # RGBA(0,0,128,255)->BGRA
 
 
+def test_anim_track_without_parent_uses_zero_length():
+    """The geo2011 writer stores a track's parent as ``[u32 len][name + NUL]``
+    and writes no bytes at all when the parent is empty; a rebuilt stream must
+    follow that grammar (and still parse back)."""
+    frames = [(0.0, 0.0, 0.0, 1.0, 0.1, 0.2, 0.3)] * 3
+    anim = animmod.build_anim([("Root", "", frames), ("Bip01", "Root", frames)], 3)
+    raw = animmod.write_anim(anim)
+    # first record: name_len == 5 ("Root\0"), parent_len == 0, frames == 3
+    nl, pl, nf = struct.unpack_from("<3I", raw, 20)
+    assert (nl, pl, nf) == (5, 0, 3), (nl, pl, nf)
+    # the second record's header follows 16 + 5 + 3*28 bytes later
+    o = 20 + 16 + 5 + 3 * 28
+    assert struct.unpack_from("<3I", raw, o) == (6, 5, 3)
+    back = animmod.parse_anim(raw)
+    assert [(b.name, b.parent) for b in back.bones] == [("Root", ""), ("Bip01", "Root")]
+    assert animmod.write_anim(back) == raw
+
+
+def test_anim_build_takes_fps_and_track_scale():
+    frames = [(0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0)] * 2
+    anim = animmod.build_anim([("Root", "Scene Root", frames)], 2, fps=30, scale=0.0075)
+    raw = animmod.write_anim(anim)
+    assert struct.unpack_from("<5I", raw, 0)[4] == 30
+    assert struct.unpack_from("<f", raw, 20 + 12)[0] == struct.unpack("<f", struct.pack("<f", 0.0075))[0]
+
+
+def test_compound_part_keeps_tangent_stream():
+    """A Max-exported part with the `tangent` property keeps an
+    ``8 + vertex_count * 24`` byte stream after its bone table."""
+    p = os.path.join(REPO, "Empire", "Hierophant",
+                     "character_empire_hierophant.g")
+    data = open(p, "rb").read()
+    mesh = gfile.parse_geometry_file(data)
+    part = mesh.parts[4]
+    tangent = b"TANGENT!" + bytes(range(24)) * len(part.vertices)
+    patched = dict(part.attrs)
+    patched["tangent"] = "1"
+    block = gfile._part_block(gfile.MeshPart(
+        name=part.name, vertex_count=part.vertex_count,
+        tri_count=part.tri_count, vertices=part.vertices,
+        indices=part.indices, bones=part.bones,
+        weights_on_vertex=part.weights_on_vertex, morph=part.morph,
+        material_diffuse=part.material_diffuse, lm_uv=part.lm_uv,
+        lightmap=part.lightmap, vertex_magic=part.vertex_magic,
+        attrs=patched,
+        attr_items=[(k, patched[k]) for k, _v in part.attr_items]
+        + [("tangent", "1")],
+        part_prefix=part.part_prefix, part_tail=tangent))
+    parts, consumed = gfile._parse_compound_parts(block)
+    assert len(parts) == 1 and consumed == len(block)
+    assert parts[0].part_tail == tangent, len(parts[0].part_tail)
+    assert gfile._part_block(parts[0]) == block
+
+
 if __name__ == "__main__":
     sys.exit(main())
 
@@ -1825,5 +1879,3 @@ def test_import_export_route_legacy_calls_by_extension():
         assert climod._run(["export", os.path.join(unit, stem + ".g"),
                             "-o", out2]) == 0
         assert os.path.isfile(os.path.join(d, "fwd.bin"))
-
-

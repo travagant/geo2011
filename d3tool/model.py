@@ -300,6 +300,10 @@ class GltfModel:
     # the mesh node's GLOBAL transform (identity on a dis3tool export, where
     # mesh nodes are scene roots; Blender parents meshes under the armature)
     node_matrix: Optional[list] = None
+    # index of the glTF node carrying this mesh (None for a hand-built
+    # model): the reverse export uses it to find the bone a rigid,
+    # bone-parented mesh hangs from
+    node_index: Optional[int] = None
     # node index -> {"rotation": [times], ...}: the sampler INPUT times of
     # every animation channel (needed to resample a Blender re-saved
     # animation, which runs on its own fps grid, back onto the 30 fps one)

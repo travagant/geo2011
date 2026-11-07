@@ -181,8 +181,27 @@ Record size `= 40 + 4*(w-1) + w`:
 | 3  | 51 |
 | 4  | 56 |
 
+A declared `w = 1` on a mesh that references **several** bones actually stores
+the full two-influence record (46 bytes) — the attribute keeps `1`, readers
+derive the width from `w` + `bones_num` (independently confirmed on the
+Heroes VII port corpus, see `docs/PORT_ANALYSIS_COMPARE_RU.md`).
+
 The leading 4-byte magic is constant *within* a file but differs between files;
 it must be preserved for round-trips.
+
+Two invariants make a rebuilt file readable by the engine, and both were the
+cause of corrupted reverse exports until they were enforced:
+
+* whatever `weights_on_vertex` announces must resolve to the width actually
+  written (`gfile._eff_width`); a donor may say 3 while the rebuilt mesh only
+  carries one influence;
+* the light-map block (`lmuvdata`) is **exactly `vertex_count * 8`** bytes —
+  the reader takes its length from the vertex count, so a donor-sized block on
+  a vertex-split rebuild shifts every following section (`gfile._fit_lm`).
+
+A part exported with tangents enabled additionally carries a tangent stream
+right after its bone table: 8 opaque bytes then `vertex_count * 24` bytes
+(`gfile._parse_compound_parts` keeps it in `part_tail`).
 
 ### Bone descriptor
 `[u32 str_len] name + NUL, 4x4 row-major matrix (16 x f32)` repeated `bones_num`
@@ -230,17 +249,20 @@ global header (20 bytes)
                       corpus files)
   [u32] bone count
   [u32] frame count
-  [u32] record-type word (15; also 16 / 30 observed — same values as the
-                      trailing morph-stream tags; donated on rebuild)
+  [u32] frame rate word as spelled by the official writer (15 in 139 of
+                      the 153 corpus files, 30 in 12, 16 in 2) — the
+                      per-state `fps` in `.ac` is what the engine plays;
+                      `build_anim(fps=...)` exposes it
 repeat per bone:
-  [1 byte marker '<']
   [16-byte preamble: u32 len(name)+1, u32 len(parent)+1,
-                     u32 nframes, float32 time step]
+                     u32 nframes, float32 track scale]
       -- the pair counts the NUL-terminated strings (verified on all
-      6764 corpus records); the time step varies per stream (0.01 is the
-      corpus mode, dis3tool reference exports use 0.02)
-  [cstr] bone name
-  [cstr] parent name
+      6764 corpus records); a parent length of 0 means the track has no
+      parent at all and *no bytes follow*; the scale varies per stream
+      (0.01 is the corpus mode over 15 observed values, dis3tool
+      reference exports use 0.02, Heroes VII ports 0.0075)
+  [name + NUL]      -- len(name)+1 bytes
+  [parent + NUL]    -- len(parent)+1 bytes, or nothing at all
   [7 float32] * nframes  (per-frame TRS: quat xyzw + translation xyz)
 optional trailing block:
   vertex-morph streams [u32 14][u32 len-8][u32 tag][u32 frames]
@@ -249,6 +271,13 @@ optional trailing block:
   follows the header record-type word; some files carry foreign units'
   streams (DarkServant: 7 tracks of other units).
 ```
+
+The grammar above is not a reconstruction: it is what the official Max
+exporter `geo2011.dle` writes (disassembly of VA `100077c0` / `10007610` /
+`10020d20`, cross-checked against all 153 corpus files — see
+`docs/PORT_ANALYSIS_COMPARE_RU.md`).  An earlier "36-byte header + 16-byte
+per-track quaternion prefix + one-frame position shift" reading of the same
+bytes is wrong: those 16 bytes are simply the next track's preamble.
 
 The per-frame TRS is exactly what dis3tool exports into the glTF animation
 `bones_rotate` (`VEC4` quat) and `bones_translate` (`VEC3` trans) buffers, so a

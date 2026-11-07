@@ -517,8 +517,16 @@ def _load_stream_donors(gltf_path: str, src_dir: str, base: str,
 
 
 def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
-            anim: bool = True, quiet: bool = False) -> None:
-    """Reverse export: glTF -> GM geometry (.g), scene, animation config, .a."""
+            anim: bool = True, quiet: bool = False,
+            donor_dir: Optional[str] = None) -> None:
+    """Reverse export: glTF -> GM geometry (.g), scene, animation config, .a.
+
+    ``donor_dir`` names the folder holding the unit's ORIGINAL game assets
+    when the exported glTF lives elsewhere (a Blender scene saved into a
+    scratch folder, a `.blend` next to nothing).  The Blender add-on passes
+    it explicitly instead of relying on the ancestor walk in
+    :func:`_donor_dir`, which cannot see an unrelated scratch path.
+    """
     if not quiet:
         ui.section("Reverse export  glTF → Disciples 3")
 
@@ -528,7 +536,12 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
     # sibling unit.scene/unit.ac (the lookups key off this base), silently
     # dropping every particle emitter and every event2 entry.
     base = os.path.splitext(os.path.basename(gltf_path))[0]
-    src_dir = _donor_dir(gltf_path, base)
+    src_dir = donor_dir or _donor_dir(gltf_path, base)
+    if donor_dir and not os.path.isdir(donor_dir):
+        if not quiet:
+            ui.warn(f"donor folder '{donor_dir}' does not exist — falling "
+                    f"back to the folders around the glTF")
+        src_dir = _donor_dir(gltf_path, base)
     # Donate the original `.g` sitting next to the source glTF (same reuse
     # rule as the `.scene`/`.ac`): it carries the authoring data a glTF
     # cannot express -- per-vertex diffuse, container header/prelude/vertex
@@ -803,6 +816,25 @@ def _battle_readiness_check(out_dir: str, base: str, quiet: bool) -> None:
                                 f"{base}.g part {nm}: vertex bone index "
                                 f"past the {n_b}-bone table")
                             break
+                # a compound part carries its own material: a part whose
+                # atlas never made it into the output renders untextured (or
+                # crashes the loader on some engines) even when the body's
+                # texture is present
+                for prt in [sm_g] + list(sm_g.parts):
+                    pmat = (prt.attrs or {}).get("material0_diffuse", "")
+                    if not pmat:
+                        continue
+                    pwant = os.path.splitext(pmat)[0] + ".t"
+                    if not os.path.isfile(os.path.join(out_dir, pwant)):
+                        findings.append(
+                            f"{base}.g part {prt.name}: material0_diffuse "
+                            f"'{pmat}' has no {pwant} in the output")
+                names = [p.name for p in sm_g.parts]
+                if len(set(names)) != len(names):
+                    dupes = sorted({n for n in names if names.count(n) > 1})
+                    findings.append(
+                        f"{base}.g has duplicate part names "
+                        f"({', '.join(dupes)}) — the engine keeps only one")
             except Exception as exc:  # noqa: BLE001
                 findings.append(f"{base}.g failed to re-parse: {exc}")
         for ac_path in glob.glob(os.path.join(out_dir, "*.ac")):

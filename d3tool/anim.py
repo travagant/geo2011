@@ -33,6 +33,7 @@ import struct
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 
+from .gfile import latin1
 from .model import MorphTrack
 
 _SAMPLE = 7  # floats per TRS sample: quat(4) + trans(3)
@@ -143,6 +144,24 @@ def _cstr(data, o):
     return data[o:e].decode("latin1"), e + 1
 
 
+def _read_lp_name(data: bytes, o: int, ln: int) -> Tuple[str, int]:
+    """Read one length-prefixed, NUL-terminated name.
+
+    The ``geo2011.dle`` writer stores ``[u32 len][name + NUL]`` where ``len``
+    *includes* the NUL, and a zero length means "no bytes at all" (a track
+    whose parent is the empty name).  Reading by length is what the engine
+    does, and it is the only way to survive an empty parent.  A length that
+    does not end on a NUL (or that overruns the buffer) falls back to the
+    historical NUL scan so hand-edited files still parse.
+    """
+    if ln == 0:
+        return "", o
+    if (o + ln <= len(data) and data[o + ln - 1] == 0
+            and b"\x00" not in data[o:o + ln - 1]):
+        return data[o:o + ln - 1].decode("latin1"), o + ln
+    return _cstr(data, o)
+
+
 def _cstr_bytes(data, o):
     e = data.find(b"\x00", o)
     if e < 0:
@@ -178,11 +197,11 @@ def parse_anim(data: bytes) -> AnimFile:
         for _ in range(anim.bone_count):
             if o + _PREAMBLE > len(data):
                 break
-            nf = _u32(data, o + 8)
+            nl, pl, nf = _u32(data, o), _u32(data, o + 4), _u32(data, o + 8)
             pream = data[o:o + _PREAMBLE]
             o += _PREAMBLE
-            name, o = _cstr(data, o)
-            parent, o = _cstr(data, o)
+            name, o = _read_lp_name(data, o, nl)
+            parent, o = _read_lp_name(data, o, pl)
             frames = []
             for _ in range(nf):
                 if o + _SAMPLE_BYTES > len(data):
@@ -294,22 +313,33 @@ def write_anim(anim: AnimFile) -> bytes:
     out = bytearray(anim.header)
     for b in anim.bones:
         out += b.preamble
-        out += b.name.encode("latin1") + b"\x00"
-        out += b.parent.encode("latin1") + b"\x00"
+        out += latin1(b.name) + b"\x00"
+        if b.parent:
+            out += latin1(b.parent) + b"\x00"
         for fr in b.frames:
             out += struct.pack("<7f", *fr[:7])
     out += anim.trailing
     return bytes(out)
 
 
-def _preamble_for(nframes: int, a: int = 5, b: int = 5) -> bytes:
-    """Build a record preamble (``[a][b][frame_count][0.02]``)."""
-    return struct.pack("<IIIf", a, b, nframes, 0.02)
+def _preamble_for(nframes: int, a: int = 5, b: int = 5,
+                  scale: float = 0.02) -> bytes:
+    """Build a record preamble ``[name_len][parent_len][frames][scale]``.
+
+    ``a``/``b`` count the NUL-terminated strings (``b == 0`` for a track with
+    no parent — the engine writes no bytes at all then).  The trailing float
+    is the per-track unit scale; it varies per stream across the corpus
+    (0.01 is the mode over the 6764 shipped records, 0.0075 in the Heroes VII
+    ports), so it is a parameter rather than a constant.
+    """
+    return struct.pack("<IIIf", a, b, nframes, scale)
 
 
 def build_anim(
     bones: List[Tuple[str, str, List[Tuple[float, ...]]]],
     frame_count: int,
+    fps: int = 15,
+    scale: float = 0.02,
 ) -> AnimFile:
     """Build an :class:`AnimFile` from ``(name, parent, frames)`` tuples.
 
@@ -319,19 +349,20 @@ def build_anim(
     the NUL-terminated strings, matching the C-struct writing code).
     """
     # 20-byte header: [magic][len-8 (padded later)][bones][frames][unk=15]
-    hdr = bytearray(struct.pack("<5I", 9, 0, len(bones), frame_count, 15))
+    hdr = bytearray(struct.pack("<5I", 9, 0, len(bones), frame_count, fps))
 
     anim = AnimFile(bone_count=len(bones), frame_count=frame_count)
     for name, parent, frames in bones:
         nf = len(frames) or frame_count
         anim.bones.append(BoneAnim(
             name, parent, nf, frames,
-            _preamble_for(nf, len(name) + 1, len(parent) + 1)))
+            _preamble_for(nf, len(name) + 1,
+                          len(parent) + 1 if parent else 0, scale)))
     anim.header = bytes(hdr)
     # recompute the header length field (offset 4): it covers everything the
     # writer emits except the trailing block, minus the 8-byte magic/len pair
     # itself (verified against all 152 corpus `.a` files)
     total = len(write_anim(anim))
     anim.header = struct.pack("<5I", 9, total - 8 - len(anim.trailing),
-                              len(bones), frame_count, 15)
+                              len(bones), frame_count, fps)
     return anim

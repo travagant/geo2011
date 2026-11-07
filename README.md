@@ -21,6 +21,9 @@ The point is to support a future program that, like dis3tool, exports glTF but
 | `geo2011.dle` | the original 3ds Max plugin (binary). Strings reveal it is the `GM (R) File Exporter` / `GM MAX (R) File Format Exporter`. |
 | `Neutrals/*` | bundled units: `character_*.g` (geometry), `*.gltf`/`*.bin` (dis3tool export), `*.scene`, `*.ac`, `Aliases/*`, textures. |
 | `docs/FORMATS.md` | reverse-engineering notes for `.g`, `.gltf`, `.ac`, `.scene`. |
+| `docs/PORT_ANALYSIS_COMPARE_RU.md` | cross-check of the Heroes-VII `Port` archive against this toolkit (the `.a` grammar taken from the official Max exporter, `.g` bind conventions, what was adopted). |
+| `blender/io_scene_d3unit/` | the Blender add-on (import `.g`/`.a`/`.scene` → armature + animation, export back). |
+| `tests/blender_addon_test.py` | headless Blender suite (19 scenarios, operator-driven). |
 | `d3tool/` | the Python toolkit (bidirectional: glTF↔original format). |
 | `tests/test_d3tool.py` | unit tests for the individual readers/writers. |
 | `tests/test_corpus.py` | corpus-wide import/export test over **all 87 units**. |
@@ -115,6 +118,18 @@ runs six such scenarios, all battle-ready):
   folder's real animation streams (sibling `.ac` fallback in
   `detect_anim_files`), each state's frame range inside the file it
   names — never a `<base>_iadd.a` that was never written.
+* **Meshes the unit owns but nothing skins** (a morph base such as the
+  Hierophant robe, a rigid CPU-side part) are exported too: a `.g` compound
+  is rebuilt slot-by-slot against the donor, so a mesh missing from the glTF
+  shifts every remaining slot.  Import tags them (`d3unit_part` +
+  `d3unit_owner`), and an export only takes its own unit's meshes — a second
+  unit left in the scene is never swallowed.
+* **A foreign mesh bound to the armature** (a new weapon, a prop parented to
+  a bone, a part split off with "Separate by Material") becomes an extra `.g`
+  part: skinned meshes get their own bone table, rigid ones follow the bone in
+  `extras.d3unit_bone` (else the nearest joint above them).  Bone-parented
+  props are re-parented to the armature for the glTF write and re-bound via
+  that custom property, because glTF cannot express Blender's bone parenting.
 * **Every export ends with a battle-readiness check**: each `.ac` state's
   file present, `frame1` within that `.a`'s real frame count, meshfile
   and `.scene` references resolvable, a `.t` behind every
