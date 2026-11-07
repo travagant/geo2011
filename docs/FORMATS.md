@@ -379,7 +379,20 @@ them.  `d3tool/scene.py` therefore does two things:
 * if the source unit folder already has a `<base>.scene`, the exporter reuses
   it verbatim (preserving every particle emitter and the camera);
 * otherwise it generates a faithful, particle-free scene (correct
-  `bones`/`gobj` node names, full `globalsettings`, attribute block).
+  `bones`/`gobj` node names, full `globalsettings`, attribute block);
+* in both cases it then calls `ensure_part_gobjs`: the engine draws a part only
+  when some `gobj` names it (`attr "name"`, **not** the slot number after the
+  `.g` path — a scene may name gobjs the `.g` does not carry, e.g.
+  `empire_angel_hairs`), so every part of the `.g` the scene does not name
+  gets a `gobj` cloned from the largest opaque sibling — same `tech`, shaders,
+  `.g` path and `bonesuid`, with the name, `material0_diffuse`,
+  `material0_triangles_num`, `vertexs_weights_num`, `weights_on_vertex` and
+  `bones_num` of that part, a fresh `uid`/`dwNode` and the next free mesh slot.
+  Ten shipped units are affected (Zombie's `weapon_zombie`, the Angel's
+  `empire_knight_sword`, the Archer's `empire_archer01`, …): their geometry
+  already carries the part, the shipped scene just never names it.  The
+  function is idempotent and returns the text unchanged when nothing is
+  missing, so a scene that already names every part is copied byte for byte.
 
 ### Parsing `.scene`
 

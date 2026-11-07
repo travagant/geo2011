@@ -9,7 +9,10 @@ with the same relative name:
 * `.g`        — geometry (donor-assisted rebuild);
 * `.a`        — the animation stream the unit's `.ac` names (donated
                 scaffolding, concat-slice, positional recovery);
-* `.scene` / `.ac` — reused verbatim, so they must match;
+* `.scene` / `.ac` — reused verbatim, so they must match — except that the
+  `.scene` gains a `gobj` for every part of the `.g` it never named (ten
+  shipped units carry a weapon like that, and an unnamed part is never
+  drawn).  Those are reported as `EXACT+GOBJ`;
 * `.t`        — textures converted from the reference `.dds`;
 * `Aliases/`  — sound/FX alias files copied through.
 
@@ -21,10 +24,13 @@ from __future__ import annotations
 import glob
 import os
 import sys
+from typing import List
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from d3tool import cli as climod       # noqa: E402
+from d3tool import gfile as gmod       # noqa: E402
+from d3tool import scene as scenemod   # noqa: E402
 
 
 def _diff_bytes(a: bytes, b: bytes):
@@ -53,6 +59,7 @@ def run(root: str, tmp_root: str):
                 results.append((unit, "ERROR", f"{type(exc).__name__}: {exc}"))
                 continue
             bad = []
+            added_gobjs: List[str] = []
             for current, _dirs, files in os.walk(out_dir):
                 rel = os.path.relpath(current, out_dir)
                 for fn in files:
@@ -61,14 +68,28 @@ def run(root: str, tmp_root: str):
                     if not os.path.isfile(orig):
                         bad.append((os.path.join(rel, fn), "no original"))
                         continue
-                    d = _diff_bytes(open(mine, "rb").read(),
-                                    open(orig, "rb").read())
+                    mine_bytes = open(mine, "rb").read()
+                    orig_bytes = open(orig, "rb").read()
+                    if mine_bytes != orig_bytes and fn.endswith(".scene"):
+                        # the only licensed change: a `gobj` for a part the
+                        # shipped scene never named
+                        units = os.path.join(folder, stem + ".g")
+                        parts = gmod.parse_geometry_file(
+                            open(units, "rb").read()).parts
+                        expect, added = scenemod.ensure_part_gobjs(
+                            orig_bytes.decode("latin-1"), parts)
+                        if expect.encode("latin-1") == mine_bytes:
+                            added_gobjs.extend(added)
+                            continue
+                    d = _diff_bytes(mine_bytes, orig_bytes)
                     if d:
                         name = os.path.relpath(mine, out_dir)
                         bad.append((name, "len-diff" if d == -1
                                     else f"{d}B"))
             if not bad:
-                results.append((unit, "EXACT", ""))
+                results.append((unit, "EXACT+GOBJ" if added_gobjs else "EXACT",
+                                ("+" + ", ".join(added_gobjs))
+                                if added_gobjs else ""))
             else:
                 results.append((unit, "DIFF",
                                 "; ".join(f"{n} {det}" for n, det
@@ -88,10 +109,14 @@ def main():
     from collections import Counter
     tally = Counter(st for _, st, _ in results)
     for unit, st, detail in results:
-        mark = {"EXACT": "✔", "DIFF": "!", "ERROR": "✘"}.get(st, "?")
+        mark = {"EXACT": "✔", "EXACT+GOBJ": "✔", "DIFF": "!",
+                "ERROR": "✘"}.get(st, "?")
         print(f"{mark} {st:9s} {unit:42s} {detail}")
     print()
     print("== summary:", dict(tally), f"total {len(results)}")
+    if tally.get("EXACT+GOBJ"):
+        print("  (EXACT+GOBJ: the .scene gained a gobj for a part it never "
+              "named — geometry, .a, .ac and every other file stayed exact)")
     return 0 if not (tally.get("DIFF") or tally.get("ERROR")) else 1
 
 

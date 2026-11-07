@@ -2039,6 +2039,68 @@ def test_vdpack_cli_pack_list_extract():
         assert climod._run(["vdpack", "list", damaged]) == 1
 
 
+def test_scene_gains_a_gobj_for_a_part_it_does_not_name():
+    """The engine instantiates what a `.scene` `gobj` names.  A part added to
+    the `.g` — the Angel's sword, 136 verts / 124 triangles — is in the
+    geometry and invisible until the scene has a block for it, and the export
+    reuses the shipped scene verbatim, so it never gets one."""
+    from d3tool import gfile as gmod
+    from d3tool import scene as scenemod
+    unit = os.path.join(REPO, "Neutrals", "Zombie", "character_neutrals_zombie")
+    text = open(unit + ".scene", encoding="latin-1").read()
+    parts = gmod.parse_geometry_file(open(unit + ".g", "rb").read()).parts
+    named = {(scenemod.node_attr(n, "name") or n.name).lower()
+             for n in scenemod.parse_scene(text).find_all("gobj")}
+    missing = [p.name for p in parts if p.name.lower() not in named]
+    assert missing, "the fixture unit no longer has an unnamed part"
+
+    patched, added = scenemod.ensure_part_gobjs(text, parts)
+    assert added == missing, (added, missing)
+    doc = scenemod.parse_scene(patched)
+    want = [p for p in parts if p.name == missing[0]][0]
+    block = [n for n in doc.find_all("gobj")
+             if (scenemod.node_attr(n, "name") or n.name) == missing[0]][0]
+    assert scenemod.node_attr(block, "material0_diffuse") == \
+        want.material_diffuse
+    assert scenemod.node_attr(block, "material0_triangles_num") == \
+        str(want.tri_count)
+    assert scenemod.node_attr(block, "vertexs_weights_num") == \
+        str(want.vertex_count)
+    assert scenemod.node_attr(block, "weights_on_vertex") == \
+        str(want.weights_on_vertex)
+    assert scenemod.node_attr(block, "bones_num") == str(len(want.bones))
+    # the block points at the unit's own .g and hangs on the same bones node
+    assert block.props.get("bonesuid") == \
+        [n for n in doc.find_all("gobj") if n is not block][0].props.get(
+            "bonesuid")
+    # fresh identifiers: two nodes must not share a uid, dwNode or slot
+    for key, values in (("uid", [n.props.get("uid") for n in doc.find_all("gobj")]),
+                        ("dwNode", [scenemod.node_attr(n, "dwNode")
+                                    for n in doc.find_all("gobj")]),
+                        ("slot", [scenemod.node_mesh_index(n)
+                                  for n in doc.find_all("gobj")])):
+        assert len(set(values)) == len(values), (key, values)
+    # and it is stable: a second pass changes nothing
+    again, added2 = scenemod.ensure_part_gobjs(patched, parts)
+    assert again == patched and added2 == []
+
+
+def test_scene_is_untouched_when_it_names_every_part():
+    """Where every part is already named the file has to come back byte for
+    byte — the particle emitters and the GUI camera ride on that."""
+    from d3tool import gfile as gmod
+    from d3tool import scene as scenemod
+    for unit in ("Empire/Angel/character_empire_angel",
+                 "Empire/Hierophant/character_empire_hierophant",
+                 "Neutrals/AirElemental/character_neutrals_airelemental"):
+        path = os.path.join(REPO, unit)
+        text = open(path + ".scene", encoding="latin-1").read()
+        parts = gmod.parse_geometry_file(open(path + ".g", "rb").read()).parts
+        patched, added = scenemod.ensure_part_gobjs(text, parts)
+        assert patched == text, f"{unit}: the scene was rewritten"
+        assert added == [], (unit, added)
+
+
 def test_vdpack_validate_finds_dangling_references():
     """A pack is mounted instead of the loose folders, so everything a unit
     names must be inside it — except what the engine keeps globally."""

@@ -370,3 +370,176 @@ def write_scene(
         "",
     ]
     return "\n".join(lines)
+
+
+# --------------------------------------------------------------------------- #
+#  parts the scene does not name
+# --------------------------------------------------------------------------- #
+
+_ATTR_LINE_RE = re.compile(r'^(\s*)attr\s+"([^"]+)"\s+"([^"]*)"\s*$')
+_MESH_LINE_RE = re.compile(r'^(\s*)"([^"]*)"\s+(\d+)\s+([0-9.]+)\s*$')
+_UID_LINE_RE = re.compile(r'^(\s*)uid\s+(\d+)\s+(\d+)\s*$')
+
+
+def node_attr(node: SceneNode, key: str) -> Optional[str]:
+    """The value of an ``attr "<key>" "<value>"`` line inside ``node``.
+
+    ``SceneNode.props`` keeps only the first line per key, so the repeated
+    attribute block a `gobj` carries cannot be read through it.
+    """
+    for line in node.items:
+        if not isinstance(line, str):
+            continue
+        m = _ATTR_LINE_RE.match(line)
+        if m and m.group(2) == key:
+            return m.group(3)
+    return None
+
+
+def node_mesh_index(node: SceneNode) -> Optional[int]:
+    """The number a `gobj` writes after its `.g` path (its slot in the file)."""
+    for line in node.items:
+        if not isinstance(line, str):
+            continue
+        m = _MESH_LINE_RE.match(line)
+        if m:
+            return int(m.group(3))
+    return None
+
+
+def _set_attr(items: List[str], key: str, value: str) -> bool:
+    """Rewrite ``attr "<key>" "…"`` in place; ``False`` when there is none."""
+    for i, line in enumerate(items):
+        m = _ATTR_LINE_RE.match(line)
+        if m and m.group(2) == key:
+            items[i] = f'{m.group(1)}attr "{key}" "{value}"'
+            return True
+    return False
+
+
+def _parents(doc: SceneDoc) -> Dict[int, SceneNode]:
+    out: Dict[int, SceneNode] = {}
+
+    def walk(node: SceneNode) -> None:
+        for child in node.children:
+            out[id(child)] = node
+            walk(child)
+
+    for block in doc.blocks:
+        walk(block)
+    return out
+
+
+def ensure_part_gobjs(text: str, parts) -> Tuple[str, List[str]]:
+    """Give every part in the `.g` a `gobj` the engine will instantiate.
+
+    A `.g` can carry more parts than the unit's shipped `.scene` names.  The
+    export reuses that scene verbatim (it holds the particle emitters and the
+    GUI camera, which no glTF can express), so a part the user added — the
+    Angel's sword, 136 verts and 124 triangles — sits inside the geometry and
+    is never drawn: the scene simply has no `child gobj` for it.
+
+    Missing parts get a clone of the unit's largest *opaque* `gobj`: same
+    tech, shaders, flags and `.g` path, a fresh `uid`/`dwNode`, the next free
+    mesh slot number, and the attribute block re-stated for that part (name,
+    diffuse, triangle/vertex/weight/bone counts).  Geometry is matched by
+    ``attr "name"``, not by slot number, so appending is safe — the corpus
+    proves it, since a scene may name gobjs the `.g` does not carry (the
+    Angel's `empire_angel_hairs`) and the game still draws the rest.
+
+    ``parts`` are objects (or mappings) with ``name``, ``material_diffuse``,
+    ``tri_count``, ``vertex_count``, ``weights_on_vertex`` and ``bones``.
+    Returns the new text and the names of the blocks that were added; the text
+    comes back unchanged, byte for byte, when there is nothing to add.
+    """
+    doc = parse_scene(text)
+    gobjs = doc.find_all("gobj")
+    if not gobjs:
+        return text, []
+
+    def field(part, key: str):
+        return part.get(key) if isinstance(part, dict) else getattr(part, key)
+
+    have = {(node_attr(n, "name") or n.name).lower() for n in gobjs}
+    missing = [p for p in parts if str(field(p, "name")).lower() not in have]
+    if not missing:
+        return text, []
+
+    opaque = [n for n in gobjs if "alpha" not in (n.props.get("tech") or "")]
+    template = max(opaque or gobjs,
+                   key=lambda n: int(node_attr(n, "material0_triangles_num")
+                                     or 0))
+    parent = _parents(doc).get(id(template))
+    if parent is None:
+        return text, []
+    indent = template.header[:len(template.header)
+                             - len(template.header.lstrip())]
+
+    used_uid = []
+    used_dw = []
+    for n in doc.find_all("gobj") + doc.find_all("bones"):
+        m = re.match(r"^(\d+)\s+(\d+)$", n.props.get("uid") or "")
+        if m:
+            used_uid.append((int(m.group(1)), int(m.group(2))))
+        dw = node_attr(n, "dwNode")
+        if dw and dw.isdigit():
+            used_dw.append(int(dw))
+    next_uid = (max([u for u, _ in used_uid] or [0]),
+                max([u for _, u in used_uid] or [0]))
+    next_dw = max(used_dw or [0])
+    slots = [node_mesh_index(n) for n in gobjs]
+    slot = max([s for s in slots if s is not None] or [len(gobjs) - 1]) + 1
+
+    added: List[str] = []
+    for i, part in enumerate(missing):
+        name = str(field(part, "name"))
+        items: List[str] = []
+        for item in template.items:
+            if not isinstance(item, str):
+                continue            # a clone must not duplicate FX/children
+            m = _UID_LINE_RE.match(item)
+            if m:
+                next_uid = (next_uid[0] + 1, next_uid[1] + 1_048_576)
+                items.append(f"{m.group(1)}uid {next_uid[0]} {next_uid[1]}")
+                continue
+            m = _MESH_LINE_RE.match(item)
+            if m:
+                items.append(f'{m.group(1)}"{m.group(2)}" {slot} {m.group(4)}')
+                continue
+            items.append(item)
+        for key, value in (("name", name),
+                           ("material0_diffuse",
+                            str(field(part, "material_diffuse") or "")),
+                           ("material0_triangles_num",
+                            str(field(part, "tri_count"))),
+                           ("vertexs_weights_num",
+                            str(field(part, "vertex_count"))),
+                           ("weights_on_vertex",
+                            str(field(part, "weights_on_vertex"))),
+                           ("bones_num", str(len(field(part, "bones") or ()))),
+                           ("materials_num", "1")):
+            if not _set_attr(items, key, value):
+                items.append(f'{indent}\tattr "{key}" "{value}"')
+        next_dw += 8_000_000 + i
+        if not _set_attr(items, "dwNode", str(next_dw)):
+            items.append(f'{indent}\tattr "dwNode" "{next_dw}"')
+        node = SceneNode(kind="gobj", name=name,
+                         header=f'{indent}child gobj "{name}" ',
+                         open_line=template.open_line,
+                         close_line=template.close_line, items=items)
+        node.props = {}
+        for line in items:
+            prop = _parse_prop(line)
+            if prop is not None and prop[0] not in node.props:
+                node.props[prop[0]] = prop[1]
+        slots_used = [i for i, it in enumerate(parent.items)
+                      if isinstance(it, SceneNode) and it.kind == "gobj"]
+        at = (slots_used[-1] + 1) if slots_used else len(parent.items)
+        if at and isinstance(parent.items[at - 1], SceneNode):
+            parent.items.insert(at, "")
+            at += 1
+        parent.items.insert(at, node)
+        parent.children.append(node)
+        added.append(name)
+        slot += 1
+    return render_scene(doc), added

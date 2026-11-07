@@ -352,7 +352,12 @@ For `character_neutrals_airelemental.gltf` the exporter writes:
 * `character_neutrals_airelemental.scene` — scene tree referencing the `.g` and
   `.ac`.  When the source unit folder already has a `.scene`, the exporter
   reuses it verbatim (so its particle emitters and GUI camera are preserved);
-  otherwise a faithful, particle-free scene is generated.
+  otherwise a faithful, particle-free scene is generated.  Either way, a part
+  of the `.g` that the scene has no `gobj` for is **invisible in game** (the
+  engine instantiates only what the scene names), so the exporter appends one
+  block per such part and warns.  Ten shipped units need this — they carry an
+  unnamed weapon in the `.g` (`weapon_zombie`, the Angel's
+  `empire_knight_sword`, …); adding a sword to a unit the same way now draws.
 * `character_neutrals_airelemental.ac` — animation config.  When the source
   unit folder already has an `.ac`, the exporter reuses it verbatim so its
   `event2` entries survive (the attack/damage/death sound aliases and the

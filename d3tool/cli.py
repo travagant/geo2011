@@ -663,12 +663,13 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
         fh.write(g_bytes)
     if not quiet:
         ui.wrote(out_g, f"{len(g_bytes)} bytes")
+    written = None
     try:
         written = gfile.parse_geometry_file(g_bytes)
         for line in gfile.count_mismatches(written):
             ui.warn(f"{base}.g: {line} — the engine will crash loading it")
     except Exception:  # noqa: BLE001 - the re-read is a diagnostic only
-        pass
+        written = None
 
     # scene (reuse the original if present to keep particle emitters)
     out_scene = os.path.join(out_dir, base + ".scene")
@@ -678,21 +679,37 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
         # Neutrals/Ship scenes), and `_export` must copy them verbatim.
         with open(src_scene, "rb") as fh:
             scene_bytes = fh.read()
-        with open(out_scene, "wb") as fh:
-            fh.write(scene_bytes)
-        if not quiet:
-            ui.wrote(out_scene, "reused (particle emitters preserved)")
+        note = "reused (particle emitters preserved)"
         try:
             scenemod.parse_scene(scene_bytes.decode("latin-1"))
         except Exception as exc:  # noqa: BLE001
             ui.warn(f"{base}.scene copied but does not parse: {exc}")
     else:
-        scene_text = scenemod.write_scene(sm.name, base, res, attrs,
-                                          gobj_name=sm.name)
-        with open(out_scene, "w", encoding="utf-8") as fh:
-            fh.write(scene_text)
-        if not quiet:
-            ui.wrote(out_scene, "generated (no particles)")
+        scene_bytes = scenemod.write_scene(sm.name, base, res, attrs,
+                                           gobj_name=sm.name).encode("latin-1")
+        note = "generated (no particles)"
+    # A `.g` can carry parts the scene never names — anything the donor's
+    # scene had no `gobj` for, e.g. a weapon added in Blender.  The engine
+    # instantiates what a `gobj` names, so such a part sits in the geometry
+    # and is never drawn; give it a block, cloned from an opaque sibling.
+    if written is not None:
+        try:
+            patched, added = scenemod.ensure_part_gobjs(
+                scene_bytes.decode("latin-1"), written.parts)
+        except Exception as exc:  # noqa: BLE001 - a scene we cannot patch
+            patched, added = None, []
+            ui.warn(f"{base}.scene: could not add the parts it does not name "
+                    f"({exc}) — they are in the .g and will not be drawn")
+        if added and patched is not None:
+            scene_bytes = patched.encode("latin-1")
+            note += f"; +{len(added)} gobj ({', '.join(added)})"
+            ui.warn(f"{base}.scene did not name {', '.join(added)}: added a "
+                    f"`gobj` for each, without which the engine never draws "
+                    f"that part")
+    with open(out_scene, "wb") as fh:
+        fh.write(scene_bytes)
+    if not quiet:
+        ui.wrote(out_scene, note)
 
     # animation config — reuse the original when it ships next to the glTF,
     # exactly like the `.scene`.  Regenerating it from the template would drop
