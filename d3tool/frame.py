@@ -266,6 +266,37 @@ def convert_positions(pos: Sequence[float],
     return (acc[0] / total, acc[1] / total, acc[2] / total)
 
 
+def convert_normal(nrm: Sequence[float],
+                   lanes: Sequence[Tuple[float, str]],
+                   K: Dict[str, Mat4],
+                   fallback: Optional[Mat4] = None
+                   ) -> Tuple[float, float, float]:
+    """Direction version of :func:`convert_positions` (blended, no offset).
+
+    A normal has to turn with *every* influence, not just the dominant one:
+    the per-joint maps ``K_j`` are only equal up to each joint's own rest
+    correction, so picking one joint rotates a multi-bone vertex slightly
+    wrong.  Blending the three rotation columns by weight and re-normalising
+    keeps smooth shading smooth.
+    """
+    acc = [0.0, 0.0, 0.0]
+    total = 0.0
+    for w, nm in lanes:
+        M = K.get(nm, fallback)
+        if M is None:
+            continue
+        r = [M[i][0] * nrm[0] + M[i][1] * nrm[1] + M[i][2] * nrm[2]
+             for i in range(3)]
+        acc = [a + w * b for a, b in zip(acc, r)]
+        total += w
+    if total <= 0.0:
+        return (float(nrm[0]), float(nrm[1]), float(nrm[2]))
+    ln = math.sqrt(sum(x * x for x in acc))
+    if ln <= 1e-12:
+        return (float(nrm[0]), float(nrm[1]), float(nrm[2]))
+    return (acc[0] / ln, acc[1] / ln, acc[2] / ln)
+
+
 def convert_local(Lb: Mat4, Qj: Mat4, Qp: Mat4) -> Mat4:
     """L_o = Q_parent . L_b . inv(Q_j)."""
     return mm(Qp, mm(Lb, inv4(Qj)))

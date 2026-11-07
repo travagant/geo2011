@@ -37,6 +37,21 @@ from .model import Bone, MeshPart, SkinnedMesh, Vertex
 VERTEX_MAGIC = bytes.fromhex("5ce6ac0b")
 
 
+def latin1(text: str) -> bytes:
+    """Encode a name for the binary formats without ever raising.
+
+    Bone/part/material names are stored as ASCII/Cp1251-ish C strings.  A
+    Blender user may rename an object or bone with any Unicode text (a
+    Cyrillic object name is the common case for this game's modding
+    community); an unencodable name must degrade to '?' instead of aborting
+    the whole export.
+    """
+    try:
+        return text.encode("latin1")
+    except UnicodeEncodeError:
+        return text.encode("latin1", "replace")
+
+
 def _u32(data, o):
     return struct.unpack_from("<I", data, o)[0]
 
@@ -406,6 +421,15 @@ def _parse_compound_parts(buf: bytes) -> Tuple[List[MeshPart], int]:
         if not morph:
             bones, o = _parse_bone_descriptors(buf, o, bones_num)
 
+        # a part exported by the 3ds Max plugin with tangents enabled keeps
+        # a tangent stream right after the bone table: 8 opaque bytes then
+        # vertex_count * 24 bytes of float data (POSITION_STRIDE * 24).
+        tail = b""
+        if "tangent" in attrs:
+            tsize = 8 + vc * 24
+            if o + tsize <= n:
+                tail = buf[o:o + tsize]
+                o += tsize
         # a morph sub-mesh may carry a baked position track of its own (the
         # `morph_frames` attribute): frames * vc * 12 raw float positions
         # following the (empty) bone list — hair in the HolyAvenger .g.
@@ -433,7 +457,7 @@ def _parse_compound_parts(buf: bytes) -> Tuple[List[MeshPart], int]:
             attr_items=pitems,
             raw=buf[block_start:o],
             part_prefix=buf[block_start:attr_o],
-            part_tail=buf[baked_off:o] if baked else b"",
+            part_tail=tail + (buf[baked_off:o] if baked else b""),
         ))
     return parts, o
 
@@ -471,6 +495,23 @@ _SCENE_MATRIX_FLOATS = (
 )
 
 
+def _eff_width(declared: int, bone_count: int) -> int:
+    """Record width a reader derives from a declared influence count."""
+    return 2 if declared == 1 and bone_count > 1 else declared
+
+
+def _fit_lm(lm: bytes, n: int) -> bytes:
+    """Clamp a light-map UV block to exactly ``n`` bytes (one pair per vertex).
+
+    Both the reader and the engine take the block's length from the vertex
+    count, so a donor-sized block on a rebuilt (vertex-split) part shifts
+    every following byte — the bone table included — by the difference.
+    """
+    if len(lm) == n:
+        return lm
+    return lm[:n].ljust(n, b"\x00")
+
+
 def _scene_matrix() -> bytes:
     return struct.pack("<14f", *_SCENE_MATRIX_FLOATS)
 
@@ -492,10 +533,33 @@ def _attr_block(attrs: Dict[str, str], items=None) -> bytes:
         # may be only ONE slice of a multi-material block (the total lives
         # in the header counts), so sync it only in a single-material
         # block where it IS the total.
-        patchable = {"vertexs_weights_num", "bones_num"}
-        if not any(k.startswith("material") and k.endswith("_triangles_num")
-                   and k != "material0_triangles_num" for k in orig):
+        patchable = {"vertexs_weights_num", "bones_num", "weights_on_vertex"}
+        tri_keys = [k for k in orig if k.startswith("material")
+                    and k.endswith("_triangles_num")]
+        if len(tri_keys) <= 1:
             patchable.add("material0_triangles_num")
+        else:
+            # A multi-material block splits one index buffer into ranges, so
+            # the per-material counts must add up to the triangles actually
+            # written.  A rebuilt mesh can carry one triangle less than the
+            # donor (the glTF form holds one triangle per vertex set, so a
+            # reversed-winding twin cannot survive the trip); the announced
+            # total then disagrees with the data and every reader desyncs
+            # halfway through the file.  Absorb the difference in
+            # `material0`, the first range, which keeps the ranges that
+            # follow it aligned.
+            try:
+                real_total = int(attrs["material0_triangles_num"])
+                others = sum(int(orig[k]) for k in tri_keys
+                             if k != "material0_triangles_num")
+                first = real_total - others
+                if first >= 0 and first != int(
+                        orig.get("material0_triangles_num", first)):
+                    attrs = dict(attrs)
+                    attrs["material0_triangles_num"] = str(first)
+                    patchable.add("material0_triangles_num")
+            except (KeyError, ValueError):
+                pass
         out += struct.pack("<I", len(items))
         for k, v in items:
             if (attrs and k in patchable and k in attrs
@@ -507,15 +571,15 @@ def _attr_block(attrs: Dict[str, str], items=None) -> bytes:
                     pass
                 else:
                     v = attrs[k]
-            kb = k.encode("latin1") + b"\x00"
-            vb = v.encode("latin1") + b"\x00"
+            kb = latin1(k) + b"\x00"
+            vb = latin1(v) + b"\x00"
             out += struct.pack("<I", len(kb)) + kb
             out += struct.pack("<I", len(vb)) + vb
         return bytes(out)
     out += struct.pack("<I", len(attrs))
     for k, v in attrs.items():
-        kb = k.encode("latin1") + b"\x00"
-        vb = v.encode("latin1") + b"\x00"
+        kb = latin1(k) + b"\x00"
+        vb = latin1(v) + b"\x00"
         out += struct.pack("<I", len(kb)) + kb
         out += struct.pack("<I", len(vb)) + vb
     return bytes(out)
@@ -558,6 +622,11 @@ def _part_block(part: MeshPart) -> bytes:
     """
     vc, tc = len(part.vertices), len(part.indices) // 3
     magic = part.vertex_magic or VERTEX_MAGIC
+    # one declared bone but several referenced: the corpus stores the full
+    # two-influence record (see the same rule in `write_geometry_file`)
+    w_rec = part.weights_on_vertex
+    if w_rec == 1 and len(part.bones) > 1:
+        w_rec = 2
 
     prefix = part.part_prefix
     if len(prefix) == 28 and struct.unpack_from("<I", prefix, 0)[0] == 2:
@@ -585,6 +654,10 @@ def _part_block(part: MeshPart) -> bytes:
     set_count("vertexs_weights_num", str(vc))
     set_count("material0_triangles_num", str(tc))
     set_count("bones_num", str(len(part.bones)))
+    declared = attrs.get("weights_on_vertex")
+    if declared is not None and \
+            _eff_width(int(declared), len(part.bones)) != w_rec:
+        set_count("weights_on_vertex", str(part.weights_on_vertex))
 
     out = bytearray(prefix)
     if part.attr_items:
@@ -595,12 +668,14 @@ def _part_block(part: MeshPart) -> bytes:
     else:
         out += _attr_block(attrs)
     for v in part.vertices:
-        out += _vertex_record(magic, v, part.weights_on_vertex, part.morph)
+        out += _vertex_record(magic, v, w_rec, part.morph)
     out += struct.pack(f"<{len(part.indices)}I", *part.indices)
-    if "lmuvdata" in attrs and part.lm_uv:
-        out += part.lm_uv
+    if "lmuvdata" in attrs:
+        # exactly one pair per vertex; the reader derives the length from the
+        # vertex count, so a stale donor-sized block would desync the file
+        out += _fit_lm(part.lm_uv, vc * 8)
     for b in part.bones:
-        nb = b.name.encode("latin1") + b"\x00"
+        nb = latin1(b.name) + b"\x00"
         out += struct.pack("<I", len(nb)) + nb
         out += struct.pack("<16f", *b.matrix)
     out += part.part_tail
@@ -632,7 +707,17 @@ def write_geometry_file(mesh: SkinnedMesh, attrs: Dict[str, str]) -> bytes:
         attrs["material0_triangles_num"] = str(tc)
         attrs["bones_num"] = str(len(mesh.bones))
         attrs.setdefault("new_vertex_weights_format", "1")
-        attrs.setdefault("weights_on_vertex", str(w))
+        # the DECLARED influence count must be the one a reader derives the
+        # record stride from: keep a donated value that already resolves to
+        # the width we write (`w == 1` with several bones stores the
+        # two-influence record), otherwise announce what is really there — a
+        # donor may say 3 while the rebuilt mesh only carries one
+        declared = attrs.get("weights_on_vertex")
+        if declared is None:
+            attrs["weights_on_vertex"] = str(w)
+        elif _eff_width(int(declared), len(mesh.bones)) != \
+                (2 if w == 1 and len(mesh.bones) > 1 else w):
+            attrs["weights_on_vertex"] = str(w)
     set_attr("material0_triangles_num", str(tc))
     attrs.setdefault("name", mesh.name)
     attrs.setdefault("groupname", "Scene Root")
@@ -642,7 +727,7 @@ def write_geometry_file(mesh: SkinnedMesh, attrs: Dict[str, str]) -> bytes:
         set_attr("morph_track", "1")
 
     def cstr(s: str) -> bytes:
-        b = s.encode("latin1") + b"\x00"
+        b = latin1(s) + b"\x00"
         return struct.pack("<I", len(b)) + b
 
     if mesh.form == "stub":
@@ -670,6 +755,11 @@ def write_geometry_file(mesh: SkinnedMesh, attrs: Dict[str, str]) -> bytes:
         chunks.append(_attr_block(attrs))
 
     magic = mesh.vertex_magic or VERTEX_MAGIC
+    # The DECLARED influence count stays in `weights_on_vertex`, but a mesh
+    # bound to a single bone while referencing several stores the full
+    # two-influence record (verified on the corpus: lod_empire_golem is w=1
+    # with 18 bones) — every reader derives the stride the same way.
+    w_rec = 2 if w == 1 and len(mesh.bones) > 1 else w
     if mesh.morph:
         # a morph base mesh carries no influence slots: 40-byte records of
         # magic + pos + normal + diffuse + uv (the shapes live in the
@@ -677,18 +767,22 @@ def write_geometry_file(mesh: SkinnedMesh, attrs: Dict[str, str]) -> bytes:
         for v in mesh.vertices:
             chunks.append(_vertex_record(magic, v, w, True))
     else:
-        n_stored, n_bones, _ = vertex_stride(w)
+        n_stored, n_bones, _ = vertex_stride(w_rec)
         for v in mesh.vertices:
-            chunks.append(_vertex_record(magic, v, w, False))
+            chunks.append(_vertex_record(magic, v, w_rec, False))
 
     chunks.append(struct.pack(f"<{len(mesh.indices)}I", *mesh.indices))
 
-    # lightmap UV block (TEXCOORD_1), between indices and the bone descriptors
-    if mesh.lm_uv:
-        chunks.append(mesh.lm_uv)
+    # lightmap UV block (TEXCOORD_1), between indices and the bone
+    # descriptors: present iff the attribute block says so, and always
+    # exactly one 8-byte pair per vertex (see `_fit_lm`)
+    if "lmuvdata" in attrs or (mesh.lm_uv and not attrs):
+        if not attrs:
+            attrs["lmuvdata"] = str(vc)
+        chunks.append(_fit_lm(mesh.lm_uv, vc * 8))
 
     for b in mesh.bones:
-        nb = b.name.encode("latin1") + b"\x00"
+        nb = latin1(b.name) + b"\x00"
         chunks.append(struct.pack("<I", len(nb)) + nb)
         chunks.append(struct.pack("<16f", *b.matrix))
 

@@ -1,4 +1,5 @@
 """Self-contained tests for the d3tool package (run with `python3 tests/`)."""
+import hashlib
 import json
 import glob
 import os
@@ -108,7 +109,10 @@ def test_ac_roundtrip():
     cfg2 = acmod.parse_ac(text)
     assert [s.name for s in cfg2.states] == ["Idle", "Attack", "Damage",
                                              "Death", "Run"]
-    assert cfg2.states[0].frame1 == 150
+    # frames are written 0-based inclusive (see `ac.default_ac`): a
+    # 150-frame template is frames 0..149, never 0..150
+    assert cfg2.states[0].frame0 == 0
+    assert cfg2.states[0].frame1 == 149
 
 
 def test_ac_bundled_roundtrip_semantic():
@@ -1632,8 +1636,58 @@ def test_png_to_t_roundtrip():
     assert ti.payload[:4] == b"\x80\x00\x00\xff"  # RGBA(0,0,128,255)->BGRA
 
 
-if __name__ == "__main__":
-    sys.exit(main())
+def test_anim_track_without_parent_uses_zero_length():
+    """The geo2011 writer stores a track's parent as ``[u32 len][name + NUL]``
+    and writes no bytes at all when the parent is empty; a rebuilt stream must
+    follow that grammar (and still parse back)."""
+    frames = [(0.0, 0.0, 0.0, 1.0, 0.1, 0.2, 0.3)] * 3
+    anim = animmod.build_anim([("Root", "", frames), ("Bip01", "Root", frames)], 3)
+    raw = animmod.write_anim(anim)
+    # first record: name_len == 5 ("Root\0"), parent_len == 0, frames == 3
+    nl, pl, nf = struct.unpack_from("<3I", raw, 20)
+    assert (nl, pl, nf) == (5, 0, 3), (nl, pl, nf)
+    # the second record's header follows 16 + 5 + 3*28 bytes later
+    o = 20 + 16 + 5 + 3 * 28
+    assert struct.unpack_from("<3I", raw, o) == (6, 5, 3)
+    back = animmod.parse_anim(raw)
+    assert [(b.name, b.parent) for b in back.bones] == [("Root", ""), ("Bip01", "Root")]
+    assert animmod.write_anim(back) == raw
+
+
+def test_anim_build_takes_fps_and_track_scale():
+    frames = [(0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0)] * 2
+    anim = animmod.build_anim([("Root", "Scene Root", frames)], 2, fps=30, scale=0.0075)
+    raw = animmod.write_anim(anim)
+    assert struct.unpack_from("<5I", raw, 0)[4] == 30
+    assert struct.unpack_from("<f", raw, 20 + 12)[0] == struct.unpack("<f", struct.pack("<f", 0.0075))[0]
+
+
+def test_compound_part_keeps_tangent_stream():
+    """A Max-exported part with the `tangent` property keeps an
+    ``8 + vertex_count * 24`` byte stream after its bone table."""
+    p = os.path.join(REPO, "Empire", "Hierophant",
+                     "character_empire_hierophant.g")
+    data = open(p, "rb").read()
+    mesh = gfile.parse_geometry_file(data)
+    part = mesh.parts[4]
+    tangent = b"TANGENT!" + bytes(range(24)) * len(part.vertices)
+    patched = dict(part.attrs)
+    patched["tangent"] = "1"
+    block = gfile._part_block(gfile.MeshPart(
+        name=part.name, vertex_count=part.vertex_count,
+        tri_count=part.tri_count, vertices=part.vertices,
+        indices=part.indices, bones=part.bones,
+        weights_on_vertex=part.weights_on_vertex, morph=part.morph,
+        material_diffuse=part.material_diffuse, lm_uv=part.lm_uv,
+        lightmap=part.lightmap, vertex_magic=part.vertex_magic,
+        attrs=patched,
+        attr_items=[(k, patched[k]) for k, _v in part.attr_items]
+        + [("tangent", "1")],
+        part_prefix=part.part_prefix, part_tail=tangent))
+    parts, consumed = gfile._parse_compound_parts(block)
+    assert len(parts) == 1 and consumed == len(block)
+    assert parts[0].part_tail == tangent, len(parts[0].part_tail)
+    assert gfile._part_block(parts[0]) == block
 
 
 # --------------------------------------------------------------------------- #
@@ -1705,9 +1759,20 @@ def test_reverse_export_splits_concatenated_angel_streams():
     folder = os.path.join(REPO, "Empire", "Angel")
     stem = "character_empire_angel"
     with tempfile.TemporaryDirectory() as d:
-        climod._export(os.path.join(folder, stem + ".gltf"), d, 0,
-                       anim=True, quiet=True)
-        got = open(os.path.join(d, stem + "_idle.a"), "rb").read()
+        gltf = os.path.join(folder, stem + ".gltf")
+        if not os.path.isfile(gltf):
+            # The Angel folder ships no dis3tool reference; build the same
+            # concatenated animation the reference holds (every stream the
+            # `.ac` names, in one glTF animation) and slice it back out.
+            gltf = os.path.join(d, stem + ".gltf")
+            assert climod._run(["import", os.path.join(folder, stem + ".g"),
+                                "-o", gltf]) == 0, "import must succeed"
+            assert os.path.isfile(os.path.join(d, stem + ".bin"))
+        rev = os.path.join(d, "rev")
+        # the donor folder is named explicitly: discovering it by walking up
+        # from the temp dir depends on what else happens to live in /tmp
+        climod._export(gltf, rev, 0, anim=True, quiet=True, donor_dir=folder)
+        got = open(os.path.join(rev, stem + "_idle.a"), "rb").read()
     want = open(os.path.join(folder, stem + "_idle.a"), "rb").read()
     assert got == want, f"angel idle: {len(got)}B != {len(want)}B"
 
@@ -1783,8 +1848,27 @@ def test_import_auto_detects_animation_without_minus_a():
         r = climod._run(["import", os.path.join(unit, stem + ".g"),
                          "-o", out])
         assert r == 0, "import must succeed without -a"
+        ref_bin = os.path.join(unit, stem + ".bin")
+        ref_gltf = os.path.join(unit, stem + ".gltf")
+        if not (os.path.isfile(ref_bin) and os.path.isfile(ref_gltf)):
+            # This folder ships no dis3tool reference glTF.  The invariant
+            # that matters is still checkable: auto-detection must find the
+            # `.ac` streams and the reverse export must hand every stream
+            # back byte-identically.
+            assert os.path.getsize(os.path.join(d, stem + ".bin")) > 0
+            rev = os.path.join(d, "rev")
+            # explicit donor: guessing it by walking up from the temp dir
+            # depends on unrelated contents of /tmp
+            climod._export(out, rev, 0, anim=True, quiet=True, donor_dir=unit)
+            for name in sorted(os.listdir(unit)):
+                if not name.endswith(".a"):
+                    continue
+                got = open(os.path.join(rev, name), "rb").read()
+                want = open(os.path.join(unit, name), "rb").read()
+                assert got == want, f"{name}: {len(got)}B != {len(want)}B"
+            return
         bin_ok = open(os.path.join(d, stem + ".bin"), "rb").read() == \
-            open(os.path.join(unit, stem + ".bin"), "rb").read()
+            open(ref_bin, "rb").read()
         assert bin_ok, "auto-animation export .bin must match the reference"
 
         def f32walk(r_, g_, path=""):
@@ -1804,7 +1888,7 @@ def test_import_auto_detects_animation_without_minus_a():
                 bad.append(path)
             return bad
 
-        ref = json.load(open(os.path.join(unit, stem + ".gltf")))
+        ref = json.load(open(ref_gltf))
         mine = json.load(open(out))
         assert not f32walk(ref, mine), "JSON must be f32-equal to the reference"
 
@@ -1826,4 +1910,559 @@ def test_import_export_route_legacy_calls_by_extension():
                             "-o", out2]) == 0
         assert os.path.isfile(os.path.join(d, "fwd.bin"))
 
+# --------------------------------------------------------------------------- #
+#  .vdpack (the one-file form of a unit bundle)
+# --------------------------------------------------------------------------- #
 
+def test_vdpack_layout_is_the_documented_one():
+    """The archive must be the byte layout the port's writer produced."""
+    from d3tool import vdpack
+    files = [("Empire\\Hierophant\\character_empire_hierophant.g", b"GEO"),
+             ("Empire\\Hierophant\\t.t", b"XY")]
+    blob = vdpack.build_vdpack(files)
+    name0 = files[0][0].encode() + b"\0"
+    name1 = files[1][0].encode() + b"\0"
+    index_size = 4 + (4 + len(name0) + 12) + (4 + len(name1) + 12)
+    want = struct.pack("<I", 2)
+    want += struct.pack("<I", len(name0)) + name0
+    want += struct.pack("<III", 3, index_size, 0)
+    want += struct.pack("<I", len(name1)) + name1
+    want += struct.pack("<III", 2, index_size + 3, 0)
+    want += b"GEO" + b"XY"
+    assert blob == want, "vdpack header/payload layout changed"
+    pack = vdpack.parse_vdpack(blob)
+    assert not pack.parse_error
+    assert pack.names() == [n for n, _ in files]
+    assert pack.index_size == index_size
+    assert pack.payload(0) == b"GEO" and pack.payload("Empire/Hierophant/t.t") == b"XY"
+    # rebuilding from what was parsed reproduces the archive exactly
+    again = vdpack.build_vdpack([(e.name, pack.payload(e)) for e in pack.entries])
+    assert again == blob
+
+
+def test_vdpack_roundtrip_of_a_real_unit_folder():
+    from d3tool import vdpack
+    folder = os.path.join(REPO, "Neutrals", "AirElemental")
+    files = vdpack.pack_folder(folder)
+    assert len(files) >= 10, "the sample unit folder should be complete"
+    blob = vdpack.build_vdpack(files)
+    pack = vdpack.parse_vdpack(blob)
+    assert not pack.parse_error, pack.parse_error
+    assert len(pack) == len(files)
+    assert pack.summary()["payload_bytes"] == sum(len(d) for _, d in files)
+    with tempfile.TemporaryDirectory() as d:
+        written = vdpack.extract_vdpack(pack, d)
+        assert len(written) == len(files)
+        for name, data in files:
+            back = open(os.path.join(d, *name.split("/")), "rb").read()
+            assert back == data, f"{name} changed in the pack round trip"
+
+
+def test_vdpack_rejects_damaged_archives():
+    from d3tool import vdpack
+    good = vdpack.build_vdpack([("a.g", b"1234"), ("b/c.t", b"56")])
+    assert not vdpack.parse_vdpack(good).parse_error
+    # 1) too short, 2) entry count that cannot fit, 3) truncated index
+    assert vdpack.parse_vdpack(b"\x01").parse_error
+    assert vdpack.parse_vdpack(struct.pack("<I", 10 ** 6)).parse_error
+    assert vdpack.parse_vdpack(good[:10]).parse_error
+    # 4) a name that is not NUL terminated
+    bad = bytearray(good)
+    bad[4 + 4 + len("a.g")] = ord("a")     # overwrite the NUL of the first name
+    assert "not NUL" in vdpack.parse_vdpack(bytes(bad)).parse_error
+    # 5) a payload that runs past the end of the file
+    bad = bytearray(good)
+    struct.pack_into("<I", bad, 12, 999)   # first entry's size field
+    assert vdpack.parse_vdpack(bytes(bad)).parse_error
+    # 6) two entries pointing at the same bytes
+    overlap = struct.pack("<I", 2)
+    for name in ("a", "b"):
+        raw = name.encode() + b"\0"
+        overlap += struct.pack("<I", len(raw)) + raw
+        overlap += struct.pack("<III", 2, 40, 0)   # both point at the same bytes
+    overlap += b"\0" * 4
+    err = vdpack.parse_vdpack(overlap).parse_error
+    assert "overlap" in err, err
+
+
+def test_vdpack_refuses_paths_that_escape_the_root():
+    from d3tool import vdpack
+    for name in ("..\\evil.g", "../evil.g", "\\abs.g", "/abs.g", "c:\\x.g", ""):
+        try:
+            vdpack.build_vdpack([(name, b"x")])
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"{name!r} was accepted as an archive path")
+    # an archive is untrusted input too: extracting must not write outside
+    raw_name = b"..\\evil.g\x00"
+    index_size = 4 + 4 + len(raw_name) + 12
+    blob = struct.pack("<I", 1) + struct.pack("<I", len(raw_name)) + raw_name
+    blob += struct.pack("<III", 4, index_size, 0) + b"evil"
+    pack = vdpack.parse_vdpack(blob)
+    with tempfile.TemporaryDirectory() as d:
+        try:
+            vdpack.extract_vdpack(pack, os.path.join(d, "out"))
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("extraction followed a .. path")
+        assert not os.path.exists(os.path.join(d, "evil.g"))
+
+
+def test_vdpack_cli_pack_list_extract():
+    import contextlib
+    import io
+    folder = os.path.join(REPO, "Neutrals", "AirElemental")
+    stem = "character_neutrals_airelemental"
+    with tempfile.TemporaryDirectory() as d, \
+            contextlib.redirect_stdout(io.StringIO()):
+        archive = os.path.join(d, "air.vdpack")
+        assert climod._run(["vdpack", "pack", folder, "-o", archive]) == 0
+        assert os.path.isfile(archive)
+        assert climod._run(["vdpack", "list", archive]) == 0
+        out = os.path.join(d, "unpacked")
+        assert climod._run(["vdpack", "extract", archive, "-o", out]) == 0
+        for name in (stem + ".g", stem + ".ac"):
+            a = open(os.path.join(folder, name), "rb").read()
+            b = open(os.path.join(out, name), "rb").read()
+            assert a == b, f"{name} changed through the CLI pack/extract cycle"
+        # extracting twice is refused unless forced
+        assert climod._run(["vdpack", "extract", archive, "-o", out]) == 1
+        assert climod._run(["vdpack", "extract", archive, "-o", out,
+                            "--force"]) == 0
+        # a damaged archive is reported, not half-extracted
+        damaged = os.path.join(d, "damaged.vdpack")
+        blob = bytearray(open(archive, "rb").read())
+        blob[4:8] = struct.pack("<I", 1)      # name length of 1 -> not NUL'd
+        open(damaged, "wb").write(bytes(blob))
+        assert climod._run(["vdpack", "list", damaged]) == 1
+
+
+def test_vdpack_validate_finds_dangling_references():
+    """A pack is mounted instead of the loose folders, so everything a unit
+    names must be inside it — except what the engine keeps globally."""
+    from d3tool import vdpack
+    folder = os.path.join(REPO, "Neutrals", "AirElemental")
+    files = dict(vdpack.pack_folder(folder))
+    report = vdpack.reference_findings(files)
+    assert not report, report.problems
+    assert not report.notes, report.notes
+
+    # dropping the unit texture must be caught through the `.g` material
+    no_tex = {n: d for n, d in files.items() if not n.endswith(".t")}
+    report = vdpack.reference_findings(no_tex)
+    assert report.problems, "a pack without its textures was accepted"
+    assert any("material0_diffuse" in p for p in report.problems), report.problems
+
+    # a bare `.a` reference that is missing is a problem ...
+    ac = ("file = 0\n"
+          "meshfile = character_neutrals_airelemental.g\n"
+          'state "Idle" { file "character_neutrals_airelemental_run.a" '
+          "frame0 0 frame1 10 fps 30 }\n"
+          'state "Run" { file "missing_stream.a" frame0 0 frame1 10 fps 30 }\n')
+    bad = dict(files)
+    bad["test.ac"] = ac.encode()
+    report = vdpack.reference_findings(bad)
+    assert any("missing_stream.a" in p for p in report.problems), report.problems
+    # ... while a reference into another folder is a note: retail units name
+    # their template's animation, which the game mounts separately
+    bad["test.ac"] = ac.replace('"missing_stream.a"',
+                                '"resources/characters/other/x.a"').encode()
+    report = vdpack.reference_findings(bad)
+    assert not report.problems, report.problems
+    assert any("x.a" in n for n in report.notes), report.notes
+
+
+def test_vdpack_validate_cli_reports_and_exits():
+    import contextlib
+    import io
+    folder = os.path.join(REPO, "Neutrals", "AirElemental")
+    stem = "character_neutrals_airelemental"
+    with tempfile.TemporaryDirectory() as d, \
+            contextlib.redirect_stdout(io.StringIO()) as buf:
+        good = os.path.join(d, "good.vdpack")
+        assert climod._run(["vdpack", "pack", folder, "-o", good]) == 0
+        assert climod._run(["vdpack", "validate", good]) == 0
+        # a folder works as a target too
+        assert climod._run(["vdpack", "validate", folder]) == 0
+        # packing an incomplete folder produces a pack that must be rejected
+        partial = os.path.join(d, "partial")
+        os.makedirs(partial)
+        for name in ("character_neutrals_airelemental.g",):
+            open(os.path.join(partial, name), "wb").write(
+                open(os.path.join(folder, name), "rb").read())
+        broken = os.path.join(d, "broken.vdpack")
+        assert climod._run(["vdpack", "pack", partial, "-o", broken]) == 0
+        assert climod._run(["vdpack", "validate", broken]) == 1
+        out = buf.getvalue()
+        assert "material0_diffuse" in out, out[-800:]
+        # a damaged archive is refused before validation
+        damaged = os.path.join(d, "damaged.vdpack")
+        raw = bytearray(open(good, "rb").read())
+        raw[4:8] = struct.pack("<I", 1)
+        open(damaged, "wb").write(bytes(raw))
+        assert climod._run(["vdpack", "validate", damaged]) == 1
+
+
+def test_vdpack_manifest_of_folder_and_archive_match():
+    """A pack has to carry exactly what the folder has; the manifest is the
+    proof (the Heroes-VII port kept one `manifest.json` per pack)."""
+    from d3tool import vdpack
+    folder = os.path.join(REPO, "Neutrals", "AirElemental")
+    files = vdpack.pack_folder(folder)
+    doc = vdpack.manifest(files, "AirElemental")
+    assert doc["index"] is None, "a loose corpus folder carries no `index`"
+    assert doc["files"] == len(files) >= 10
+    assert doc["bytes"] == sum(len(d) for _, d in files)
+    assert doc["source"] == "AirElemental"
+    first = doc["entries"][0]
+    assert set(first) == {"path", "bytes", "sha256"}
+    # archive naming (backslashes) and a stable, case-insensitive order
+    assert all("\\" in e["path"] or "/" not in e["path"] for e in doc["entries"])
+    order = [e["path"].lower() for e in doc["entries"]]
+    assert order == sorted(order)
+    # every digest is the file's own
+    for entry in doc["entries"]:
+        data = dict((n.replace("/", "\\"), d) for n, d in files)[entry["path"]]
+        assert entry["bytes"] == len(data)
+        assert entry["sha256"] == hashlib.sha256(data).hexdigest()
+    # the same document for the archive built from the folder
+    pack = vdpack.parse_vdpack(vdpack.build_vdpack(files))
+    assert not pack.parse_error
+    back = vdpack.manifest(pack.files(), "AirElemental.vdpack")
+    assert back["entries"] == doc["entries"]
+    assert back["bytes"] == doc["bytes"]
+    # ... and a manifest reports a bundle that would not load on its own
+    no_tex = [(n, d) for n, d in files if not n.endswith(".t")]
+    assert vdpack.manifest(no_tex)["references"]["problems"]
+
+
+def test_vdpack_pack_can_keep_the_opaque_index():
+    """Only in-place replacement inside a pack that keeps its opaque `index`
+    is confirmed to load in game, so building on that shape must be possible
+    (and a pack without one has to say so)."""
+    import contextlib
+    import io
+    from d3tool import vdpack
+    folder = os.path.join(REPO, "Neutrals", "AirElemental")
+    with tempfile.TemporaryDirectory() as d, \
+            contextlib.redirect_stdout(io.StringIO()) as buf:
+        # a stock pack has no `index` and warns about it
+        plain = os.path.join(d, "plain.vdpack")
+        assert climod._run(["vdpack", "pack", folder, "-o", plain]) == 0
+        assert "no opaque `index` entry" in buf.getvalue()
+        # the reference archive: a folder copy plus the opaque resource
+        shared = os.path.join(d, "shared")
+        for name, data in vdpack.pack_folder(folder):
+            os.makedirs(os.path.dirname(os.path.join(shared, *name.split("/"))),
+                        exist_ok=True)
+            open(os.path.join(shared, *name.split("/")), "wb").write(data)
+        reference = os.path.join(d, "reference.vdpack")
+        assert climod._run(["vdpack", "pack", shared, "-o", reference]) == 0
+        # a pack that already carries the resource keeps it through a repack
+        blob = vdpack.parse_vdpack(open(reference, "rb").read())
+        assert len(blob) == len(vdpack.pack_folder(shared))
+        # ... now hand the `index` to a pack built from a plain folder
+        with_index = os.path.join(d, "indexed.vdpack")
+        buf.seek(0)
+        buf.truncate()
+        assert climod._run(["vdpack", "pack", folder, "-o", with_index,
+                            "--keep-index", reference]) == 1, \
+            "the reference carries no `index`, so there is nothing to keep"
+        assert "no `index` entry" in buf.getvalue()
+        # build a real one: rebuild the reference with an `index` resource
+        raw = bytearray(open(reference, "rb").read())
+        pack = vdpack.parse_vdpack(bytes(raw))
+        entries = [(e.name, pack.payload(e)) for e in pack.entries]
+        entries.append(("index", b"opaque-index-payload"))
+        archive = os.path.join(d, "withindex.vdpack")
+        open(archive, "wb").write(vdpack.build_vdpack(entries))
+        assert vdpack.index_entry(
+            list(vdpack.read_vdpack(archive).files().items())) is not None
+        # keep it in a pack built from a folder that has none
+        out = os.path.join(d, "kept.vdpack")
+        buf.seek(0)
+        buf.truncate()
+        assert climod._run(["vdpack", "pack", folder, "-o", out,
+                            "--keep-index", archive]) == 0
+        assert "no opaque `index` entry" not in buf.getvalue()
+        kept = vdpack.read_vdpack(out)
+        assert not kept.parse_error, kept.parse_error
+        index = vdpack.index_entry(list(kept.files().items()))
+        assert index is not None and index[1] == b"opaque-index-payload"
+        # the manifest of that pack records the resource
+        assert vdpack.manifest(
+            list(kept.files().items()))["index"]["bytes"] == len(
+                b"opaque-index-payload")
+        # a folder that already has an `index` file is refused (`pack` would
+        # silently end up with two)
+        dupe = os.path.join(d, "dupe")
+        shutil.copytree(folder, dupe)
+        open(os.path.join(dupe, "index"), "wb").write(b"ours")
+        assert climod._run(["vdpack", "pack", dupe, "-o",
+                            os.path.join(d, "dupe.vdpack"),
+                            "--keep-index", archive]) == 1
+
+
+def test_vdpack_manifest_cli_writes_json():
+    import contextlib
+    import io
+    import json
+    folder = os.path.join(REPO, "Neutrals", "AirElemental")
+    with tempfile.TemporaryDirectory() as d, \
+            contextlib.redirect_stdout(io.StringIO()) as buf:
+        # stdout form
+        assert climod._run(["vdpack", "manifest", folder]) == 0
+        doc = json.loads(buf.getvalue())
+        assert doc["files"] >= 10 and doc["entries"]
+        assert not doc["references"]["problems"]
+        # file form, from the archive this time
+        archive = os.path.join(d, "air.vdpack")
+        assert climod._run(["vdpack", "pack", folder, "-o", archive]) == 0
+        out = os.path.join(d, "manifest.json")
+        assert climod._run(["vdpack", "manifest", archive, "-o", out]) == 0
+        written = json.load(open(out, encoding="utf-8"))
+        assert written["entries"] == doc["entries"]
+        assert written["source"] == "air.vdpack"
+        # a damaged archive is refused, not half-reported
+        damaged = os.path.join(d, "damaged.vdpack")
+        raw = bytearray(open(archive, "rb").read())
+        raw[4:8] = struct.pack("<I", 1)
+        open(damaged, "wb").write(bytes(raw))
+        assert climod._run(["vdpack", "manifest", damaged]) == 1
+        # a bundle whose references dangle exits 1 but still writes the JSON
+        partial = os.path.join(d, "partial")
+        os.makedirs(partial)
+        open(os.path.join(partial, "character_neutrals_airelemental.g"),
+             "wb").write(open(os.path.join(
+                 folder, "character_neutrals_airelemental.g"), "rb").read())
+        broken = os.path.join(d, "broken.json")
+        assert climod._run(["vdpack", "manifest", partial, "-o", broken]) == 1
+        assert json.load(open(broken, encoding="utf-8"))["files"] == 1
+
+
+# --------------------------------------------------------------------------- #
+#  .char unit profiles
+# --------------------------------------------------------------------------- #
+_CHAR_SAMPLE = """// Unit Profile
+//
+id\t\t"test_leader";
+unit_scene \t"Resources\\\\Characters\\\\test\\\\leader\\\\character_test_leader.scene"
+unit_scene_lod "resources\\characters\\test\\leader\\character_test_leader_lod.scene",10;
+icon "resources\\characters\\test\\leader\\icon_leader.t";
+leader_icon "resources\\characters\\test\\\\leader\\\\icon_leader_ring.t"
+/*
+atck_zone 10 10 {
+    0 0 0 0
+}
+*/
+set 1 {
+    weapon "resources\\Characters\\test\\leader\\weapon\\leader_set1_weapon.scene";
+    hands  "resources\\Characters\\test\\leader\\hands\\leader_set1_hands.scene";
+}
+#include "desc\\test_leader_desc.char";
+#include "stats\\test_leader_stats.char";
+"""
+
+
+def test_char_parses_the_corpus_quirks():
+    """Indented block slots, statements that lost their `;`, a `/* … */`
+    region that must stay dead, a flag with no value and a draw distance
+    trailing the lod path — all of them are in the shipped Profiles."""
+    from d3tool import char
+    prof = char.parse_char(_CHAR_SAMPLE.encode("utf-8"))
+    assert prof.id == "test_leader"
+    assert char.scene_basename(prof.unit_scene) == "character_test_leader.scene"
+    # the draw distance after the lod path is a value, not a second path
+    assert prof.statement("unit_scene_lod").values[1] == "10"
+    assert dict(prof.resources())["unit_scene_lod"].endswith("_lod.scene")
+    # a key that lost its `;` still yields its value
+    assert char.normalize_reference(prof.get("leader_icon")).endswith(
+        "icon_leader_ring.t")
+    # the commented-out attack zone produced nothing
+    assert prof.statement("atck_zone") is None
+    # blocks keep their slots, indentation notwithstanding
+    assert len(prof.blocks) == 1
+    assert prof.slots(0) == {
+        "weapon": "resources\\Characters\\test\\leader\\weapon\\leader_set1_weapon.scene",
+        "hands": "resources\\Characters\\test\\leader\\hands\\leader_set1_hands.scene",
+    }
+    assert [char.scene_basename(p) for p in prof.includes] == [
+        "test_leader_desc.char", "test_leader_stats.char"]
+
+
+def test_char_round_trips_bytes_with_cp1251_and_bom():
+    from d3tool import char
+    for raw in (_CHAR_SAMPLE.encode("utf-8"),
+                _CHAR_SAMPLE.replace("\n", "\r\n").encode("utf-8"),
+                "\ufeff".encode("utf-8") + _CHAR_SAMPLE.encode("utf-8"),
+                "// \u041e\u043f\u0438\u0441\u0430\u043d\u0438\u0435\n"
+                "id \"x\";\n".encode("cp1251")):
+        prof = char.parse_char(raw)
+        assert char.encode_char(prof) == raw
+
+
+def test_char_set_id_or_scene_rewrites_one_line_only():
+    from d3tool import char
+    prof = char.parse_char(_CHAR_SAMPLE.encode("utf-8"))
+    before = char.write_char(prof).splitlines()
+    assert prof.set_id("test_leader_v2")
+    assert prof.set_value("unit_scene",
+                          "resources\\characters\\test\\leader\\other.scene")
+    after = char.write_char(prof).splitlines()
+    changed = [(a, b) for a, b in zip(before, after) if a != b]
+    assert len(changed) == 2, changed
+    # the key, its tabs and the terminator survive the patch
+    assert changed[0][1] == 'id\t\t"test_leader_v2";'
+    assert changed[1][1].startswith('unit_scene \t"resources\\characters')
+
+
+def test_char_reference_index_maps_resources_onto_the_corpus():
+    """`resources\\characters\\empire\\angel\\…` is `Empire/Angel/…` here, and
+    the same file is written with one, two or four separators."""
+    from d3tool import char
+    profile = os.path.join(REPO, "Profiles", "empire_angel.char")
+    assert os.path.exists(profile), "the shipped Profiles/ tree is missing"
+    prof = char.parse_char(open(profile, "rb").read())
+    index = char.ReferenceIndex(REPO)
+    scene = index.resolve(prof.unit_scene)
+    assert scene and scene.endswith(
+        os.path.join("Empire", "Angel", "character_empire_angel.scene"))
+    for spelling in (prof.unit_scene,
+                     prof.unit_scene.replace("\\\\", "\\"),
+                     prof.unit_scene.replace("\\", "/")):
+        assert index.resolve(spelling) == scene
+    report = char.check_profile(prof, index)
+    # the fx/ scenes are not part of the donor corpus
+    assert all("fx" in line for line in report.problems), report.problems
+
+
+def test_char_profile_for_scene_finds_the_profile_of_a_unit_folder():
+    from d3tool import char
+    folder = os.path.join(REPO, "Profiles")
+    hit = char.profile_for_scene(char.find_profiles(folder),
+                                 os.path.join(REPO, "Empire", "Angel"))
+    assert hit is not None
+    path, prof = hit
+    assert os.path.basename(path) == "empire_angel.char"
+    assert prof.id == "empire_angel"
+
+
+def test_char_cli_show_list_find_and_validate():
+    import contextlib
+    import io
+    from d3tool import char
+    folder = os.path.join(REPO, "Profiles")
+    with tempfile.TemporaryDirectory() as d, \
+            contextlib.redirect_stdout(io.StringIO()) as buf:
+        # show
+        assert climod._run(["char", "show",
+                            os.path.join(folder, "empire_angel.char"),
+                            "--json"]) == 0
+        doc = json.loads(buf.getvalue())
+        assert doc["id"] == "empire_angel"
+        assert doc["scene_file"] == "character_empire_angel.scene"
+        assert doc["blocks"] == []
+        # list, with the repo as the resolution root
+        buf.seek(0)
+        buf.truncate()
+        assert climod._run(["char", "list", "--profiles", folder,
+                            "--root", REPO, "--json"]) == 0
+        listed = json.loads(buf.getvalue())
+        assert len(listed) == 214
+        angel = [e for e in listed if e["id"] == "empire_angel"][0]
+        assert angel["resolved"] == "ok"
+        assert any(e["resolved"] == "-" for e in listed)   # absent factions
+        # find, by unit folder
+        buf.seek(0)
+        buf.truncate()
+        assert climod._run(["char", "find",
+                            os.path.join(REPO, "Empire", "Angel"),
+                            "--profiles", folder]) == 0
+        assert "empire_angel" in buf.getvalue()
+        # set-id writes a new file and leaves the original alone
+        original = open(os.path.join(folder, "empire_angel.char"),
+                        "rb").read()
+        out = os.path.join(d, "renamed.char")
+        buf.seek(0)
+        buf.truncate()
+        assert climod._run(["char", "set-id",
+                            os.path.join(folder, "empire_angel.char"),
+                            "empire_angel_mod", "-o", out]) == 0
+        patched = open(out, "rb").read()
+        assert open(os.path.join(folder, "empire_angel.char"),
+                    "rb").read() == original
+        assert patched != original
+        assert char.parse_char(patched).id == "empire_angel_mod"
+        assert char.parse_char(patched).unit_scene == \
+            char.parse_char(original).unit_scene
+
+
+def test_char_shipped_corpus_round_trips_and_ids_match():
+    """Every one of the 874 shipped profiles must come back byte for byte,
+    and the 214 that carry an `id` must be exactly the top-level ones."""
+    from d3tool import char
+    folder = os.path.join(REPO, "Profiles")
+    if not os.path.isdir(folder):
+        return
+    files = char.find_profiles(folder)
+    assert len(files) == 874
+    top, mismatched = 0, []
+    for path in files:
+        raw = open(path, "rb").read()
+        prof = char.parse_char(raw)
+        assert char.encode_char(prof) == raw, path
+        if not prof.id:
+            continue
+        top += 1
+        if prof.id != os.path.splitext(os.path.basename(path))[0]:
+            mismatched.append(os.path.basename(path))
+    assert top == 214
+    # the engine resolves a profile by its `id`, not by the file name, and
+    # three shipped files prove it (one of them even has a space in its name)
+    assert sorted(mismatched) == ["story_berthrezen.char",
+                                  "story_myzrael_undead.char",
+                                  "undead_templar .char"]
+
+
+def test_vdpack_validates_a_packed_char_profile():
+    """A `.char` names its includes, its scene and its icons: inside a pack
+    those are unit-local, so a missing one is a finding, while the engine's
+    global `fx/` tree is only a note."""
+    from d3tool import char, vdpack
+    prof = open(os.path.join(REPO, "Profiles", "elves_rod-1.char"),
+                "rb").read()
+    parsed = char.parse_char(prof)
+    # a Profiles-only pack: the scenes and includes sit elsewhere -> notes
+    report = vdpack.reference_findings({"Profiles/elves_rod-1.char": prof})
+    assert report.problems == []
+    assert len([n for n in report.notes if " includes " in n]) == 3
+    # 8 unit-local paths: the scene, its lod, and the six icons
+    assert len([n for n in report.notes if "->" in n]) == 8
+    assert all("outside the packed tree" in n for n in report.notes)
+    # with the includes and the scene inside, only the icons are left over
+    files = {"Profiles/elves_rod-1.char": prof,
+             "Profiles/characters/elves/rod-1/character_elves_rod-1.scene":
+                 b'node "root" {}\n'}
+    for inc in parsed.includes:
+        files["Profiles/" + inc.replace("\\", "/")] = b'id "";\n'
+    report = vdpack.reference_findings(files)
+    assert report.problems == []
+    assert not any(" includes " in n for n in report.notes)
+    assert not any("-> character_elves_rod-1.scene" in n
+                   for n in report.notes)
+    assert len([n for n in report.notes if "icon" in n]) == 6
+    # one icon inside the pack is one icon less to complain about
+    files["Profiles/characters/elves/rod-1/icon_rod-1.t"] = b""
+    report = vdpack.reference_findings(files)
+    left = [n for n in report.notes if "icon" in n]
+    assert len(left) == 5
+    assert not any("-> icon_rod-1.t " in n for n in left)
+
+
+if __name__ == "__main__":
+    # Keep this at the very end: `main()` collects every module-level
+    # `test_*` function, so tests defined below an earlier guard would never
+    # run.
+    sys.exit(main())

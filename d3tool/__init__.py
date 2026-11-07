@@ -32,13 +32,18 @@ from .alias import (
     AliasDoc, SoundRef, parse_alias, parse_alias_bytes, write_alias,
     write_alias_bytes,
 )
+from .char import (
+    CharBlock, CharProfile, CharStatement, ReferenceIndex, check_profile,
+    encode_char, find_profiles, normalize_reference, parse_char,
+    profile_for_scene, resource_path, scene_basename, write_char,
+)
 from .gltf_out import node_hierarchy, validate_gltf, write_gltf, write_gltf_to
 from .texture import (
     TextureInfo, build_dds_header, convert_file, dds_to_t, find_diffuse_texture,
     parse_dds, parse_t, t_to_dds, write_dds, write_t,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "__version__",
@@ -62,6 +67,11 @@ __all__ = [
     # .alias
     "AliasDoc", "SoundRef", "parse_alias", "parse_alias_bytes",
     "write_alias", "write_alias_bytes",
+    # .char unit profile
+    "CharBlock", "CharProfile", "CharStatement", "ReferenceIndex",
+    "check_profile", "encode_char", "find_profiles", "normalize_reference",
+    "parse_char", "profile_for_scene", "resource_path", "scene_basename",
+    "write_char",
     # GM -> glTF
     "node_hierarchy", "validate_gltf", "write_gltf", "write_gltf_to",
     # .t / .dds textures

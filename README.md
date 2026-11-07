@@ -21,6 +21,13 @@ The point is to support a future program that, like dis3tool, exports glTF but
 | `geo2011.dle` | the original 3ds Max plugin (binary). Strings reveal it is the `GM (R) File Exporter` / `GM MAX (R) File Format Exporter`. |
 | `Neutrals/*` | bundled units: `character_*.g` (geometry), `*.gltf`/`*.bin` (dis3tool export), `*.scene`, `*.ac`, `Aliases/*`, textures. |
 | `docs/FORMATS.md` | reverse-engineering notes for `.g`, `.gltf`, `.ac`, `.scene`. |
+| `d3tool/vdpack.py` | the `.vdpack` mod archive (one file = a whole unit folder): `vdpack list/extract/validate/manifest/pack`. |
+| `d3tool/char.py` | the `.char` unit profile: `char show/list/find/validate/set-id`. |
+| `Profiles/` | the retail unit profiles (874 `.char`: 214 units + their `desc`/`stats`/`sound` fragments). |
+| `docs/PORT_ANALYSIS_COMPARE_RU.md` | cross-check of the Heroes-VII `Port` archive against this toolkit (the `.a` grammar taken from the official Max exporter, `.g` bind conventions, what was adopted). |
+| `blender/io_scene_d3unit/` | the Blender add-on (import `.g`/`.a`/`.scene` → armature + animation, export back). |
+| `tests/blender_addon_test.py` | headless Blender suite (19 scenarios, operator-driven). |
+| `tests/blender_corpus_test.py` | every shipped unit through import → export in Blender, re-parsed and compared with its donor (~5 s per unit). |
 | `d3tool/` | the Python toolkit (bidirectional: glTF↔original format). |
 | `tests/test_d3tool.py` | unit tests for the individual readers/writers. |
 | `tests/test_corpus.py` | corpus-wide import/export test over **all 87 units**. |
@@ -72,6 +79,24 @@ python3 -m d3tool validate out/unit.gltf
 # dump a parsed .g as JSON
 python3 -m d3tool dump Neutrals/AirElemental/character_neutrals_airelemental.g
 
+# pack a finished unit folder into a single .vdpack mod archive (or unpack one)
+python3 -m d3tool vdpack pack Empire/Hierophant -o hierophant.vdpack
+python3 -m d3tool vdpack list hierophant.vdpack
+python3 -m d3tool vdpack extract hierophant.vdpack -o hierophant/
+python3 -m d3tool vdpack validate hierophant.vdpack   # every internal reference inside?
+python3 -m d3tool vdpack manifest hierophant/ -o manifest.json  # sha256 per file
+# build on the only game-confirmed pack shape: keep the opaque `index`
+python3 -m d3tool vdpack pack hierophant/ -o my.vdpack --keep-index NewUnit.vdpack
+
+# the .char unit profile: what a unit declares, and which profile is whose
+python3 -m d3tool char show Profiles/empire_angel.char
+python3 -m d3tool char list --root .                 # 214 units, scene? column
+python3 -m d3tool char find Empire/Angel             # folder -> profile
+python3 -m d3tool char validate Profiles --root .    # every reference present?
+# rename the browser entry (the port's way of adding a unit; keeps every byte)
+python3 -m d3tool char set-id Profiles/empire_angel.char empire_angel_v2 \
+  --scene "resources\characters\empire\angel\character_empire_angel_v2.scene" -o new.char
+
 # convert the native .t texture to a .dds (or back)
 python3 -m d3tool texture convert Neutrals/AirElemental/character_neutrals_airelemental.t \
   -o out/character_neutrals_airelemental.dds
@@ -89,12 +114,16 @@ python3 tests/test_corpus.py
 python3 -m pytest tests/ -q
 
 # parity benchmark against the bundled dis3tool reference exports
-python3 tests/corpus_parity.py         # forward: 85/85 EXACT
-python3 tests/reverse_parity.py        # reverse: 85/85 EXACT
+python3 tests/corpus_parity.py         # forward: 84/84 EXACT
+python3 tests/reverse_parity.py        # reverse: 84/84 EXACT
 
 # animation-only audit: every .g imports with its full .ac animation, every
-# reference glTF exports every stream it names, 95/95 anim round-trips close
+# reference glTF exports every stream it names, 94/94 anim round-trips close
 python3 tests/anim_audit.py            # 0 problems
+
+# every shipped unit through Blender: import -> export -> re-parse, compared
+# with its donor (needs Blender or `pip install bpy`; ~5 s per unit)
+blender --background --python tests/blender_corpus_test.py
 ```
 
 ### The Blender workflow (import → paint weights → export)
@@ -111,16 +140,65 @@ runs six such scenarios, all battle-ready):
 * **An extra `Armature` node appears** and the four weight lanes re-sort —
   both are absorbed; donor verification still gates every adoption, so
   painted weights always win over the donor `.g`.
+* **A compound unit imports as several armatures.**  Every part of a `.g`
+  compound carries its own skin, so Blender builds one armature per skin
+  (Rod-1: the body's `Reference` and the alpha part's
+  `Head`/`Neck`/`Spine1`, with the second armature hanging under an empty
+  that follows the first's bone).  The export gathers **all** of them, plus
+  the empties on the way down — leaving one behind used to re-hang its
+  meshes under a bone with no parent bone recorded, which crashed Blender's
+  own glTF exporter.
 * **A renamed file** (`angel_edit.gltf`) generates its `.ac` from the
   folder's real animation streams (sibling `.ac` fallback in
   `detect_anim_files`), each state's frame range inside the file it
   names — never a `<base>_iadd.a` that was never written.
+* **Meshes the unit owns but nothing skins** (a morph base such as the
+  Hierophant robe, a rigid CPU-side part) are exported too: a `.g` compound
+  is rebuilt slot-by-slot against the donor, so a mesh missing from the glTF
+  shifts every remaining slot.  Import tags them (`d3unit_part` +
+  `d3unit_owner`), and an export only takes its own unit's meshes — a second
+  unit left in the scene is never swallowed.
+* **The vertex list is preserved exactly.**  Blender's glTF importer welds
+  vertices that share position/normal/UV by default, which loses the exact
+  correspondence with the original `.g`; the add-on imports with
+  `merge_vertices=False`, so a unit that was not edited re-exports with the
+  donor's own vertex counts.
+* **A `.g` bone the animation never names** (the WitchHunter's
+  `Marksman_eyelid_up`) is written into the glTF as the skeleton's root joint
+  — that is the dis3tool convention, and every reference export does it.  The
+  reverse export puts the donor name back instead of adding a 22nd bone to
+  the table, so the parts keep animating.
+* **A multi-material part** splits one index buffer into ranges; the
+  per-material triangle counts have to add up to what was actually written,
+  so a rebuild absorbs a lost triangle in the first range instead of
+  announcing a total the reader then runs past.
+* **A foreign mesh bound to the armature** (a new weapon, a prop parented to
+  a bone, a part split off with "Separate by Material") becomes an extra `.g`
+  part: skinned meshes get their own bone table, rigid ones follow the bone in
+  `extras.d3unit_bone` (else the nearest joint above them).  Bone-parented
+  props are re-parented to the armature for the glTF write and re-bound via
+  that custom property, because glTF cannot express Blender's bone parenting.
 * **Every export ends with a battle-readiness check**: each `.ac` state's
   file present, `frame1` within that `.a`'s real frame count, meshfile
   and `.scene` references resolvable, a `.t` behind every
   `material0_diffuse`.  Findings print as loud warnings — the classes of
   defect that used to surface only as an in-game crash on entering
   battle.
+
+### The add-on zip (what you install in Blender)
+
+```bash
+python3 release/build_addon.py     # -> release/d3unit-addon/io_scene_d3unit.zip
+```
+
+The zip carries the six add-on modules **and** a vendored copy of `d3tool`
+(`<add-on>/vendor/d3tool`), so `Edit > Preferences > Add-ons > Install…`
+gives a working importer/exporter on a machine that has nothing but Blender —
+no checkout, no `pip install`.  The preference *d3tool path* still wins when
+set, and *Check d3tool* reports which copy is live (the vendored one, the
+checkout, or a pip-installed package).  `tests/addon_zip_test.py` builds the
+zip, unpacks it outside the tree, and does a full import→export round trip in
+a Blender process that cannot see the checkout.
 
 ### Portable release (no install needed)
 

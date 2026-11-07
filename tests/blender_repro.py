@@ -171,7 +171,7 @@ def battle_check(out_dir, label):
             if fn.endswith(".a"):
                 from d3tool import anim as animmod
                 a = animmod.parse_anim(open(p, "rb").read())
-                if st.frame1 > a.frame_count:
+                if st.frame1 >= a.frame_count:
                     bad.append(f"{label}: {st.name} frames {st.frame0}.."
                                f"{st.frame1} exceed {fn} "
                                f"({a.frame_count} frames)")

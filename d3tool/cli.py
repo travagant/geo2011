@@ -11,6 +11,11 @@ writers:
 * ``bundle <folder>``   — run the full pipeline over a unit folder (both ways).
 * ``validate <gltf>``   — structural self-check of a glTF.
 * ``import <g>``        — dump the parsed `.g` as JSON.
+* ``texture convert|info`` — native `.t` <-> `.dds`.
+* ``vdpack list|extract|validate|manifest|pack`` — the one-file form of a unit bundle
+  (what a mod ships; see ``d3tool/vdpack.py``).
+* ``char show|list|find|validate|set-id`` — the ``.char`` unit profile that
+  names a unit's scene, icons and sounds (see ``d3tool/char.py``).
 """
 from __future__ import annotations
 
@@ -22,11 +27,12 @@ import struct
 import sys
 import textwrap
 import traceback
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from . import __version__
 from . import ac as acmod
 from . import alias as aliasmod
+from . import char as charmod
 from . import anim as animmod
 from . import gfile
 from . import gltf as gltfmod
@@ -34,6 +40,7 @@ from . import gltf_out as gltfout
 from . import scene as scenemod
 from . import texture as texmod
 from . import ui as ui
+from . import vdpack as vdmod
 
 
 # --------------------------------------------------------------------------- #
@@ -175,6 +182,17 @@ def _analyze_unit(path: str) -> int:
     if gltf_rows:
         ui.table(gltf_rows, headers=[".gltf export", "verts", "tris", "bones",
                                      "frames"])
+    # the retail unit profile that points at this folder, when one is around
+    for folder in ("Profiles", "profiles"):
+        if not os.path.isdir(folder):
+            continue
+        hit = charmod.profile_for_scene(charmod.find_profiles(folder), path)
+        if hit:
+            profile_path, profile = hit
+            ui.info(f"profile: {profile.id}  ({profile_path})")
+            ui.info("  unit_scene: "
+                    + charmod.normalize_reference(profile.unit_scene or ""))
+        break
     return had_error
 
 
@@ -517,8 +535,16 @@ def _load_stream_donors(gltf_path: str, src_dir: str, base: str,
 
 
 def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
-            anim: bool = True, quiet: bool = False) -> None:
-    """Reverse export: glTF -> GM geometry (.g), scene, animation config, .a."""
+            anim: bool = True, quiet: bool = False,
+            donor_dir: Optional[str] = None) -> None:
+    """Reverse export: glTF -> GM geometry (.g), scene, animation config, .a.
+
+    ``donor_dir`` names the folder holding the unit's ORIGINAL game assets
+    when the exported glTF lives elsewhere (a Blender scene saved into a
+    scratch folder, a `.blend` next to nothing).  The Blender add-on passes
+    it explicitly instead of relying on the ancestor walk in
+    :func:`_donor_dir`, which cannot see an unrelated scratch path.
+    """
     if not quiet:
         ui.section("Reverse export  glTF → Disciples 3")
 
@@ -528,7 +554,12 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
     # sibling unit.scene/unit.ac (the lookups key off this base), silently
     # dropping every particle emitter and every event2 entry.
     base = os.path.splitext(os.path.basename(gltf_path))[0]
-    src_dir = _donor_dir(gltf_path, base)
+    src_dir = donor_dir or _donor_dir(gltf_path, base)
+    if donor_dir and not os.path.isdir(donor_dir):
+        if not quiet:
+            ui.warn(f"donor folder '{donor_dir}' does not exist — falling "
+                    f"back to the folders around the glTF")
+        src_dir = _donor_dir(gltf_path, base)
     # Donate the original `.g` sitting next to the source glTF (same reuse
     # rule as the `.scene`/`.ac`): it carries the authoring data a glTF
     # cannot express -- per-vertex diffuse, container header/prelude/vertex
@@ -803,6 +834,25 @@ def _battle_readiness_check(out_dir: str, base: str, quiet: bool) -> None:
                                 f"{base}.g part {nm}: vertex bone index "
                                 f"past the {n_b}-bone table")
                             break
+                # a compound part carries its own material: a part whose
+                # atlas never made it into the output renders untextured (or
+                # crashes the loader on some engines) even when the body's
+                # texture is present
+                for prt in [sm_g] + list(sm_g.parts):
+                    pmat = (prt.attrs or {}).get("material0_diffuse", "")
+                    if not pmat:
+                        continue
+                    pwant = os.path.splitext(pmat)[0] + ".t"
+                    if not os.path.isfile(os.path.join(out_dir, pwant)):
+                        findings.append(
+                            f"{base}.g part {prt.name}: material0_diffuse "
+                            f"'{pmat}' has no {pwant} in the output")
+                names = [p.name for p in sm_g.parts]
+                if len(set(names)) != len(names):
+                    dupes = sorted({n for n in names if names.count(n) > 1})
+                    findings.append(
+                        f"{base}.g has duplicate part names "
+                        f"({', '.join(dupes)}) — the engine keeps only one")
             except Exception as exc:  # noqa: BLE001
                 findings.append(f"{base}.g failed to re-parse: {exc}")
         for ac_path in glob.glob(os.path.join(out_dir, "*.ac")):
@@ -820,10 +870,14 @@ def _battle_readiness_check(out_dir: str, base: str, quiet: bool) -> None:
                     continue
                 if fn.endswith(".a") and st.frame1:
                     a = animmod.parse_anim(open(p, "rb").read())
-                    if st.frame1 > a.frame_count:
+                    # frames are 0-based inclusive indices, so the last one a
+                    # stream has is `frame_count - 1` (no bundled state asks
+                    # for more; see `ac.default_ac`)
+                    if st.frame1 >= a.frame_count:
                         findings.append(
                             f".ac state {st.name}: frames go to "
-                            f"{st.frame1} but {fn} has {a.frame_count}")
+                            f"{st.frame1} but {fn} has {a.frame_count} "
+                            f"(last index {a.frame_count - 1})")
                 if st.meshfile:
                     mf = os.path.basename(st.meshfile.replace("\\", "/")
                                           .rsplit("/", 1)[-1])
@@ -1269,6 +1323,139 @@ def _format_label(info) -> str:
     return f"GM code {info.gm_format}"
 
 
+def _vdpack(args) -> int:
+    """`vdpack list|extract|pack` — the one-file form of a unit bundle."""
+    if args.vd_cmd == "list":
+        pack = vdmod.read_vdpack(args.archive)
+        ui.section(f"vdpack {os.path.basename(args.archive)}")
+        if pack.parse_error:
+            ui.fail(pack.parse_error)
+            return 1
+        ui.table([(e.name, f"{e.size}", f"{e.flags}") for e in pack.entries],
+                 headers=("file", "bytes", "flags"))
+        summary = pack.summary()
+        ui.info(f"{summary['entries']} file(s), "
+                f"{summary['bytes']} bytes, index {summary['index_bytes']}, "
+                f"types {summary['types']}")
+        return 0
+
+    if args.vd_cmd == "extract":
+        pack = vdmod.read_vdpack(args.archive)
+        ui.section(f"vdpack {os.path.basename(args.archive)}")
+        if pack.parse_error:
+            ui.fail(pack.parse_error)
+            return 1
+        dest = args.out or os.path.splitext(os.path.basename(args.archive))[0]
+        try:
+            written = vdmod.extract_vdpack(pack, dest, overwrite=args.force)
+        except FileExistsError as exc:
+            ui.fail(f"refusing to overwrite {exc}; pass -f to replace it")
+            return 1
+        for path in written:
+            ui.wrote(os.path.relpath(path, dest))
+        return 0
+
+    if args.vd_cmd == "manifest":
+        if os.path.isdir(args.target):
+            files = vdmod.pack_folder(args.target)
+            label = os.path.basename(os.path.normpath(args.target))
+        else:
+            pack = vdmod.read_vdpack(args.target)
+            if pack.parse_error:
+                ui.section("vdpack manifest")
+                ui.fail(f"{pack.parse_error}")
+                return 1
+            files = list(pack.files().items())
+            label = os.path.basename(args.target)
+        doc = vdmod.manifest(files, label)
+        text = json.dumps(doc, ensure_ascii=False, indent=2) + "\n"
+        if args.out:
+            with open(args.out, "w", encoding="utf-8", newline="\n") as fh:
+                fh.write(text)
+            ui.section(f"vdpack manifest {label}")
+            ui.wrote(args.out, f"{doc['files']} file(s), {doc['bytes']} bytes")
+        else:
+            sys.stdout.write(text)
+        problems = doc["references"]["problems"]
+        if problems:
+            ui.warn(f"{len(problems)} reference(s) would not resolve inside "
+                    f"the bundle (see `vdpack validate`)")
+            return 1
+        return 0
+
+    if args.vd_cmd == "validate":
+        if os.path.isdir(args.target):
+            files = dict(vdmod.pack_folder(args.target))
+            label = os.path.basename(os.path.normpath(args.target))
+        else:
+            pack = vdmod.read_vdpack(args.target)
+            if pack.parse_error:
+                ui.section("vdpack validate")
+                ui.fail(f"{pack.parse_error}")
+                return 1
+            files = pack.files()
+            label = os.path.basename(args.target)
+        ui.section(f"vdpack validate {label}")
+        report = vdmod.reference_findings(files)
+        for line in report.notes:
+            ui.info("outside the pack: " + line)
+        if not report:
+            ui.ok(f"{len(files)} file(s), every reference resolves inside")
+            return 0
+        ui.warn("the pack would not load on its own:")
+        for line in report.problems:
+            ui.warn("  " + line)
+        return 1
+
+    # pack
+    if not os.path.isdir(args.folder):
+        ui.fail(f"not a folder: {args.folder}")
+        return 1
+    files = vdmod.pack_folder(args.folder)
+    if not files:
+        ui.fail(f"{args.folder} has no files to pack")
+        return 1
+    if args.keep_index:
+        source = vdmod.read_vdpack(args.keep_index)
+        if source.parse_error:
+            ui.fail(f"{args.keep_index}: {source.parse_error}")
+            return 1
+        taken = vdmod.index_entry(list(source.files().items()))
+        if taken is None:
+            ui.fail(f"{args.keep_index} has no `index` entry to keep")
+            return 1
+        if vdmod.index_entry(files) is not None:
+            ui.fail(f"{args.folder} already carries an `index` entry")
+            return 1
+        files = files + [taken]
+    out = args.out or (os.path.basename(os.path.normpath(args.folder)) +
+                       ".vdpack")
+    blob = vdmod.build_vdpack(files)
+    # Every pack the Heroes-VII port examined carries one opaque `index`
+    # resource; same-path replacement inside such a pack is game-confirmed,
+    # a pack that added paths is not.  Say so instead of implying that any
+    # archive this tool writes will be mounted.
+    if vdmod.index_entry(files) is None:
+        ui.warn("no opaque `index` entry: retail and ported packs carry one, "
+                "and only in-place replacement inside such a pack has been "
+                "confirmed to load — pass `--keep-index <existing.vdpack>` "
+                "to build on that proven shape")
+    # never ship an archive this toolkit cannot read back
+    check = vdmod.parse_vdpack(blob)
+    if check.parse_error or len(check) != len(files):
+        ui.fail(f"the archive would not read back: {check.parse_error}")
+        return 1
+    with open(out, "wb") as fh:
+        fh.write(blob)
+    ui.section(f"vdpack {os.path.basename(out)}")
+    ui.table([(name, f"{len(data)}") for name, data in files[:20]],
+             headers=("file", "bytes"))
+    if len(files) > 20:
+        ui.info(f"... and {len(files) - 20} more")
+    ui.wrote(out, f"{len(files)} file(s), {len(blob)} bytes")
+    return 0
+
+
 def _texture_convert(src: str, dst: str, quiet: bool = False) -> None:
     """``d3tool texture convert <in> -o <out>`` — .t <-> .dds."""
     if not quiet:
@@ -1418,6 +1605,63 @@ def _build_parser() -> argparse.ArgumentParser:
         "info", help="describe a .t / .dds texture")
     p_ti.add_argument("file")
 
+    p_vd = sub.add_parser(
+        "vdpack", help="list / extract / pack a .vdpack mod archive")
+    p_vd_sub = p_vd.add_subparsers(dest="vd_cmd", required=True)
+    p_vl = p_vd_sub.add_parser("list", help="list the files in an archive")
+    p_vl.add_argument("archive")
+    p_ve = p_vd_sub.add_parser(
+        "extract", help="write every entry under a folder")
+    p_ve.add_argument("archive")
+    p_ve.add_argument("-o", "--out",
+                      help="output folder (default: the archive name)")
+    p_ve.add_argument("-f", "--force", action="store_true",
+                      help="overwrite existing files")
+    p_vv = p_vd_sub.add_parser(
+        "validate", help="check that every internal reference is inside")
+    p_vv.add_argument("target", help="a .vdpack file or a unit folder")
+    p_vm = p_vd_sub.add_parser(
+        "manifest", help="sha256 inventory of a folder or an archive")
+    p_vm.add_argument("target", help="a .vdpack file or a unit folder")
+    p_vm.add_argument("-o", "--out", help="write JSON here instead of stdout")
+    p_ch = sub.add_parser(
+        "char", help="read / relink a .char unit profile")
+    p_ch_sub = p_ch.add_subparsers(dest="char_cmd", required=True)
+    p_cs = p_ch_sub.add_parser("show", help="print what a profile declares")
+    p_cs.add_argument("file")
+    p_cs.add_argument("--json", action="store_true", help="machine output")
+    p_cl = p_ch_sub.add_parser("list", help="every profile and its scene")
+    p_cl.add_argument("--profiles", help="folder of .char files "
+                                         "(default: ./Profiles)")
+    p_cl.add_argument("--root", help="resolve unit_scene under this folder")
+    p_cl.add_argument("--json", action="store_true", help="machine output")
+    p_cf = p_ch_sub.add_parser(
+        "find", help="find the profile of a scene, a unit folder or an id")
+    p_cf.add_argument("target", help=".scene path, unit folder, or profile id")
+    p_cf.add_argument("--profiles", help="folder of .char files "
+                                         "(default: ./Profiles)")
+    p_cv = p_ch_sub.add_parser(
+        "validate", help="check that every reference a profile makes exists")
+    p_cv.add_argument("target", help="a .char file or a folder of them")
+    p_cv.add_argument("--root", help="folder to resolve references against "
+                                     "(default: the repository root)")
+    p_cv.add_argument("--json", action="store_true", help="machine output")
+    p_ci = p_ch_sub.add_parser(
+        "set-id", help="rename a profile's `id` (how the port adds a unit)")
+    p_ci.add_argument("file")
+    p_ci.add_argument("new_id")
+    p_ci.add_argument("--scene", help="also point unit_scene at this scene")
+    p_ci.add_argument("-o", "--out", help="write here instead of in place")
+
+    p_vp = p_vd_sub.add_parser("pack", help="pack a folder into an archive")
+    p_vp.add_argument("folder")
+    p_vp.add_argument("-o", "--out",
+                      help="output .vdpack (default: <folder>.vdpack)")
+    p_vp.add_argument(
+        "--keep-index", metavar="ARCHIVE",
+        help="copy the opaque `index` resource of an existing pack into the "
+             "new one (the only game-confirmed pack shape)")
+
     return parser
 
 
@@ -1501,7 +1745,211 @@ def main(argv=None) -> int:
             _texture_convert(args.src, args.out)
         elif args.tex_cmd == "info":
             _texture_info(args.file)
+    elif args.cmd == "vdpack":
+        return _vdpack(args)
+    elif args.cmd == "char":
+        return _char(args)
     return 0
+
+
+def _profiles_dir(given: Optional[str]) -> str:
+    """The folder of `.char` profiles: what was asked for, else ``Profiles``."""
+    if given:
+        return given
+    for candidate in ("Profiles", "profiles"):
+        if os.path.isdir(candidate):
+            return candidate
+    raise ValueError("no --profiles folder given and no ./Profiles here")
+
+
+def _char_json(prof: "charmod.CharProfile", path: str) -> dict:
+    return {
+        "file": path,
+        "id": prof.id,
+        "encoding": prof.encoding,
+        "unit_scene": prof.unit_scene,
+        "unit_scene_lod": prof.get("unit_scene_lod"),
+        "scene_file": (charmod.scene_basename(prof.unit_scene)
+                       if prof.unit_scene else None),
+        "includes": prof.includes,
+        "blocks": [{"name": b.name, "index": b.argument,
+                    "slots": prof.slots(i)}
+                   for i, b in enumerate(prof.blocks)],
+        "keys": prof.keys(),
+        "resources": [{"key": k, "path": v} for k, v in prof.resources()],
+    }
+
+
+def _char(args) -> int:
+    """`char show|list|find|validate|set-id` — the `.char` unit profile."""
+    if args.char_cmd == "show":
+        path = args.file
+        if not os.path.exists(path):
+            ui.section("char show")
+            ui.fail(f"no such file: {path}")
+            return 1
+        prof = charmod.parse_char(open(path, "rb").read())
+        prof.path = path
+        if args.json:
+            print(json.dumps(_char_json(prof, path), ensure_ascii=False,
+                             indent=2))
+            return 0
+        ui.section(f"char {os.path.basename(path)}")
+        rows = [("id", prof.id or "-"),
+                ("encoding", prof.encoding + (" + BOM" if prof.bom else "")),
+                ("unit_scene", charmod.normalize_reference(prof.unit_scene)
+                 if prof.unit_scene else "-"),
+                ("unit_scene_lod",
+                 charmod.normalize_reference(prof.get("unit_scene_lod"))
+                 if prof.get("unit_scene_lod") else "-"),
+                ("statements", str(len(prof.statements))),
+                ("keys", str(len(prof.keys())))]
+        for index, block in enumerate(prof.blocks):
+            slots = prof.slots(index)
+            rows.append((f"set {block.argument}",
+                         ", ".join(f"{k}={os.path.basename(v)}"
+                                   for k, v in slots.items())))
+        for key, ref in prof.resources():
+            if key in charmod.RESOURCE_KEYS and key not in (
+                    "unit_scene", "unit_scene_lod"):
+                rows.append((key, charmod.normalize_reference(ref)))
+        ui.table(rows, headers=("key", "value"))
+        if prof.includes:
+            ui.info("includes: " + ", ".join(prof.includes))
+        if prof.parse_error:
+            ui.warn(prof.parse_error)
+        return 0
+
+    if args.char_cmd == "list":
+        folder = _profiles_dir(args.profiles)
+        files = charmod.find_profiles(folder)
+        index = charmod.ReferenceIndex(args.root) if args.root else None
+        rows = []
+        doc = []
+        for path in files:
+            prof = charmod.parse_char(open(path, "rb").read())
+            if not prof.id:
+                continue                     # a desc/stats/sound fragment
+            scene = charmod.scene_basename(prof.unit_scene or "")
+            state = ""
+            if index is not None:
+                state = "ok" if index.resolve(prof.unit_scene or "") else "-"
+            rows.append((prof.id, scene, prof.encoding, state,
+                         os.path.basename(path)))
+            doc.append({"id": prof.id, "scene": scene, "file": path,
+                        "resolved": state})
+        if args.json:
+            print(json.dumps(doc, ensure_ascii=False, indent=2))
+            return 0
+        ui.section(f"char list {folder}")
+        ui.table(rows, headers=("id", "scene", "encoding", "scene?", "file"))
+        ui.info(f"{len(rows)} profile(s) with an id")
+        if index is not None:
+            missing = sum(1 for r in rows if r[3] == "-")
+            if missing:
+                ui.warn(f"{missing} profile(s) name a scene that is not "
+                        f"under {args.root}")
+        return 0
+
+    if args.char_cmd == "find":
+        folder = _profiles_dir(args.profiles)
+        target = args.target
+        if os.path.isdir(target):
+            scenes = [os.path.join(target, n) for n in sorted(os.listdir(target))
+                      if n.lower().endswith(".scene")]
+            scenes.sort(key=lambda p: ("_lod" in os.path.basename(p).lower(),
+                                       len(p)))
+            if not scenes:
+                ui.section("char find")
+                ui.fail(f"no .scene in {target}")
+                return 1
+            target = scenes[0]
+        files = charmod.find_profiles(folder)
+        hit = charmod.profile_for_scene(files, target)
+        ui.section(f"char find {os.path.basename(target)}")
+        if hit is None:
+            # fall back to an id match, which is what the browser uses
+            want = target.lower()
+            for path in files:
+                prof = charmod.parse_char(open(path, "rb").read())
+                if prof.id and prof.id.lower() in (want,
+                                                   os.path.basename(want)):
+                    hit = (path, prof)
+                    break
+        if hit is None:
+            ui.fail(f"no profile in {folder} points at {target}")
+            return 1
+        path, prof = hit
+        ui.ok(f"{prof.id}  ({path})")
+        ui.info(f"unit_scene: {prof.unit_scene}")
+        return 0
+
+    if args.char_cmd == "validate":
+        if os.path.isdir(args.target):
+            files = charmod.find_profiles(args.target)
+            label = os.path.basename(os.path.normpath(args.target))
+        else:
+            files = [args.target]
+            label = os.path.basename(args.target)
+        root = args.root or os.getcwd()
+        index = charmod.ReferenceIndex(root)
+        ui.section(f"char validate {label}")
+        problems: List[str] = []
+        notes: List[str] = []
+        checked = 0
+        for path in files:
+            prof = charmod.parse_char(open(path, "rb").read())
+            prof.path = path
+            if not prof.id:
+                continue                     # an include fragment
+            checked += 1
+            report = charmod.check_profile(prof, index)
+            problems.extend(report.problems)
+            notes.extend(report.notes)
+        if args.json:
+            print(json.dumps({"profiles": checked, "problems": problems,
+                              "notes": notes}, ensure_ascii=False, indent=2))
+            return 1 if problems else 0
+        for line in notes[:20]:
+            ui.info(line)
+        if len(notes) > 20:
+            ui.info(f"… {len(notes) - 20} more note(s)")
+        if not problems:
+            ui.ok(f"{checked} profile(s), every reference resolves under "
+                  f"{os.path.abspath(root)}")
+            return 0
+        for line in problems[:40]:
+            ui.warn(line)
+        if len(problems) > 40:
+            ui.warn(f"… {len(problems) - 40} more")
+        ui.fail(f"{len(problems)} unresolved reference(s) in {checked} "
+                f"profile(s)")
+        return 1
+
+    if args.char_cmd == "set-id":
+        path = args.file
+        if not os.path.exists(path):
+            ui.section("char set-id")
+            ui.fail(f"no such file: {path}")
+            return 1
+        prof = charmod.parse_char(open(path, "rb").read())
+        prof.path = path
+        old = prof.id
+        ui.section(f"char set-id {os.path.basename(path)}")
+        if not prof.set_id(args.new_id):
+            ui.fail("this profile has no `id` statement")
+            return 1
+        if args.scene and not prof.set_value("unit_scene", args.scene):
+            ui.fail("this profile has no `unit_scene` statement to relink")
+            return 1
+        out = args.out or path
+        with open(out, "wb") as fh:
+            fh.write(charmod.encode_char(prof))
+        ui.wrote(out, f"id {old!r} -> {args.new_id!r}")
+        if args.scene:
+            ui.info(f"unit_scene -> {args.scene}")
+        return 0
+    return 1
 
 
 def _run(argv=None) -> int:

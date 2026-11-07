@@ -7,11 +7,13 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import struct
 from typing import Dict, List, Optional, Tuple, cast
 
 from . import anim as animmod
 from . import frame as framemod
+from .gfile import latin1
 from .model import (Bone, GltfModel, MeshPart, SkinnedMesh, Vertex,
                     pack_weights_joints)
 
@@ -220,7 +222,28 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
     mesh_transformed = any(
         not framemod.is_identity(_node_global(ni))
         for ni, _sk in mesh_nodes.values())
-    blender_layout = bool(skins) and (shared_skin or mesh_transformed)
+    # A Blender re-save can be told apart from a dis3tool export three ways:
+    # the meshes share one armature-wide skin, a mesh node carries its own
+    # transform, or a mesh hangs under a node that is not a joint (the
+    # armature object).  dis3tool writes every mesh node as a parentless
+    # scene root with its own small skin, so the last test is what catches a
+    # unit with a single skinned mesh (the Matriarch LOD) that Blender
+    # re-saved with its rigid parts left unparented.
+    joint_nodes = set()
+    for sk in skins:
+        joint_nodes.update(sk.get("joints") or ())
+    nested_under_object = False
+    for ni, _sk in mesh_nodes.values():
+        parent = node_parent.get(ni)
+        while parent is not None:
+            if parent not in joint_nodes:
+                nested_under_object = True
+                break
+            parent = node_parent.get(parent)
+        if nested_under_object:
+            break
+    blender_layout = bool(skins) and (shared_skin or mesh_transformed
+                                      or nested_under_object)
 
     def _skin_tables(skin_i: Optional[int]):
         """(joint names, raw IBM 16-float tuples) of a skin."""
@@ -342,8 +365,15 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
         sw_slots = 1 if srigid else _detect_sub_weights(swts, sjts)
         svertices = _build_vertices(svtf, snrm, suv, swts, sjts,
                                     srigid, sw_slots)
+        # the NODE name is the Blender object name, which is what survives
+        # an edit session ("Sword", "Cape"); the mesh datablock name picks
+        # up ".001" suffixes as soon as the user duplicates anything.  For a
+        # dis3tool export both are the same, so this changes nothing there.
+        sub_name = ""
+        if sub_node is not None and 0 <= sub_node < len(nodes):
+            sub_name = nodes[sub_node].get("name", "") or ""
         submodels.append(GltfModel(
-            mesh_name=mesh_json.get("name", ""),
+            mesh_name=sub_name or mesh_json.get("name", ""),
             vertex_count=len(svtf),
             tri_count=len(sindices) // 3,
             vertices=svertices,
@@ -363,6 +393,7 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
             skin_joint_names=sjoint_names,
             skin_ibms=sibms,
             node_matrix=snode_matrix,
+            node_index=sub_node,
         ))
 
     main_morph_name, main_target_positions = _morph_targets_raw(
@@ -400,6 +431,7 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
             channels.setdefault(node, {})[path] = out
             chan_times.setdefault(node, {})[path] = [x[0] for x in tin]
 
+    main_diffuse, main_lightmap = _mesh_material_maps(gltf, mesh)
     main_jnames, main_ibms = _skin_tables(main_skin_i)
     main_node_matrix = None
     if main_node is not None and not framemod.is_identity(
@@ -415,6 +447,8 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
         nodes=nodes,
         bones=bones,
         bone_indices=bone_indices,
+        material_diffuse=main_diffuse,
+        lightmap=main_lightmap,
         frames=frames,
         animation=anim,
         anim_channels=channels,
@@ -430,6 +464,7 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
         skin_joint_names=main_jnames,
         skin_ibms=main_ibms,
         node_matrix=main_node_matrix,
+        node_index=main_node,
         blender_layout=blender_layout,
     )
     return model
@@ -603,13 +638,88 @@ def _remap_slot_vertices(sub: GltfModel, slot, Q, donor_of_bone,
     K: Dict[str, "framemod.Mat4"] = {}
     appended: List[str] = []
 
+    def _mat_key(flat):
+        return tuple(round(float(x), 5) for x in flat)
+
+    # a joint the donor slot does not know may be a RENAME of one of its
+    # bones rather than a new bone: dis3tool calls a unit's skeleton root
+    # `Reference` whatever the `.g` calls it (the WitchHunter's root is
+    # `Marksman_eyelid_up`), and Blender appends `.001` to duplicated bone
+    # names.  Matching on the inverse-bind matrix reattaches the joint to the
+    # donor's own entry, so the bone table keeps the donor's names — which is
+    # what the `.a` animation streams address — instead of growing a
+    # duplicate.  A bone the glTF also names is never used as a rename
+    # target (it is a real joint, not a rewrite).
+    jname_set = set(jnames)
+    n_donor_bones = len(slot_bones)
+    claimed = {i for nm2, i in local_of.items() if nm2 in jname_set}
+    slot_by_matrix = {}
+    for _i, _b in enumerate(slot_bones):
+        slot_by_matrix.setdefault(
+            _mat_key(framemod.flatten16(framemod.cmaj16(_b.matrix))), _i)
+
+    # A one-for-one rename: the glTF names a joint the slot does not know
+    # and the slot names a bone the glTF never mentions.  dis3tool calls a
+    # unit's skeleton root `Reference` whatever the `.g` calls it, so this
+    # pairing puts the donor name (the one the `.a` streams address) back on
+    # the joint instead of growing the bone table by a duplicate.
+    gltf_only = [nm for nm in jnames if nm and nm not in local_of]
+    donor_only = [nm for nm in local_of if nm not in jname_set]
+    slot_rename: Dict[str, str] = {}
+    if len(gltf_only) == 1 and len(donor_only) == 1:
+        slot_rename[gltf_only[0]] = donor_only[0]
+    for nm in list(gltf_only):          # Blender's duplicate suffix
+        base, dot, tail = nm.rpartition(".")
+        if dot and tail.isdigit() and base in local_of:
+            slot_rename.setdefault(nm, base)
+
+    def _renamed(nm: str):
+        flat = ibmb_of.get(nm)
+        if flat is None:
+            return None
+        M = framemod.mm(Q[nm], flat) if (frame_convert and Q and nm in Q) \
+            else flat
+        i = slot_by_matrix.get(_mat_key(framemod.flatten16(M)))
+        if i is None or i in claimed or i >= len(slot_bones):
+            return None
+        return slot_bones[i]
+
     def k_of(nm: str):
         """Composite map inv(IBMg_slot_j) . Q_j . IBMb_j (built lazily,
         appending missing bones to the slot table on the way)."""
         if nm in K:
             return K[nm]
         if nm not in local_of and nm:
-            bone = donor_of_bone.get(nm)
+            alias = slot_rename.get(nm)
+            if alias is None and nm in Q:
+                # The forward export binds a `.g` bone the animation does not
+                # name onto the animation's ROOT node, so it arrives here
+                # under that name (dis3tool calls every such root
+                # `Reference`).  When the slot holds exactly one bone the
+                # animation never names, that is the one the joint stands for
+                # — unambiguous, so put the donor's name back on it.
+                orphans = [b.name for b in slot_bones[:n_donor_bones]
+                           if b.name not in Q and b.name not in jname_set]
+                if len(orphans) == 1:
+                    alias = orphans[0]
+            if alias is not None:
+                local_of[nm] = local_of[alias]
+                ibmg_of[nm] = ibmg_of[alias]
+                K[nm] = framemod.mm(framemod.inv4(ibmg_of[nm]),
+                                    framemod.mm(Q[nm], ibmb_of[nm])) \
+                    if (frame_convert and Q and nm in Q and nm in ibmb_of) \
+                    else framemod.IDENTITY
+                return K[nm]
+            bone = donor_of_bone.get(nm) or _renamed(nm)
+            if bone is not None and bone.name in local_of:
+                # a renamed joint: point at the donor entry, keep its
+                # descriptor (a duplicate would make the engine animate a
+                # bone no animation stream names)
+                local_of[nm] = local_of[bone.name]
+                ibmg_of[nm] = ibmg_of[bone.name]
+                K[nm] = framemod.mm(framemod.inv4(ibmg_of[nm]),
+                                    framemod.mm(Q[nm], ibmb_of[nm]))
+                return K[nm]
             if bone is None and nm in ibmb_of and nm in Q:
                 # any descriptor is engine-consistent (the vertex map
                 # absorbs it); Q.IBMb makes the map the identity
@@ -645,13 +755,9 @@ def _remap_slot_vertices(sub: GltfModel, slot, Q, donor_of_bone,
         nrm = list(v.normal[:3])
         if frame_convert and Q and lanes:
             pos = list(framemod.convert_positions(pos, lanes, K))
-            # a normal converts through the dominant joint's rotation
-            Mk = K.get(lanes[0][1])
-            if Mk is not None:
-                rn = [sum(Mk[r][c] * nrm[c] for c in range(3)) for r in range(3)]
-                ln = math.sqrt(sum(x * x for x in rn))
-                if ln > 1e-12:
-                    nrm = [x / ln for x in rn]
+            # a normal has to turn with every influence, not just the
+            # dominant joint (see d3tool.frame.convert_normal)
+            nrm = list(framemod.convert_normal(nrm, lanes, K))
         dj = pairs[i] if i < len(pairs) else -1
         src_v = donor_vertices[dj] if 0 <= dj < len(donor_vertices) else None
         diffuse = src_v.diffuse if src_v is not None else v.diffuse
@@ -678,6 +784,243 @@ def _remap_slot_vertices(sub: GltfModel, slot, Q, donor_of_bone,
         out.append(Vertex(tuple(pos), tuple(nrm), tuple(v.uv[:2]), diffuse,
                           tuple(stored), tuple(bones_local)))
     return out, slot_bones, appended
+
+
+class _ExtraSlot:
+    """Stand-in for a `.g` slot that has no donor part.
+
+    A user working in Blender routinely binds *more* meshes to the unit's
+    armature than the original `.g` carried — a new sword, a separately
+    modelled cape, a mesh split off with "Separate by material".  Those
+    meshes have no donor slot to feed, so they become brand-new parts of the
+    compound container instead of being dropped.
+    """
+
+    def __init__(self, name: str, material_diffuse: str = "",
+                 weights_on_vertex: int = 0):
+        self.name = name
+        self.vertices: List[Vertex] = []
+        self.bones: List[Bone] = []
+        self.material_diffuse = material_diffuse
+        self.weights_on_vertex = weights_on_vertex
+        self.lm_uv = b""
+        self.lightmap = ""
+        self.vertex_magic = b""
+        self.morph = False
+        self.attrs: Dict[str, str] = {}
+        self.attr_items: List[Tuple[str, str]] = []
+        self.part_prefix = b""
+        self.part_tail = b""
+
+
+def _node_extras_bone(m: GltfModel, node_idx: Optional[int]) -> Optional[str]:
+    """``d3unit_bone`` written into a node's glTF ``extras`` by the add-on.
+
+    Blender's bone parenting is not representable in glTF: the exporter
+    hangs the object under the joint node but measures its own transform
+    from the bone's TAIL, so the node chain of a raw glTF reader lands
+    somewhere else.  The Blender add-on therefore detaches such props for
+    the duration of the export and records the bone here, which is exact.
+    """
+    if node_idx is None:
+        return None
+    nodes = m.nodes or []
+    if not (0 <= node_idx < len(nodes)):
+        return None
+    ext = nodes[node_idx].get("extras") or {}
+    try:
+        val = ext.get("d3unit_bone")
+    except AttributeError:
+        return None
+    return val if isinstance(val, str) and val else None
+
+
+def _mesh_lanes(sub: GltfModel) -> int:
+    """Widest influence count actually present on a glTF mesh (1..4)."""
+    jn = sub.skin_joint_names or []
+    lanes = 1
+    for v in sub.vertices:
+        lanes = max(lanes, len(_lanes_by_name(list(v.gltf_weights),
+                                              list(v.gltf_joints), jn)))
+    return min(4, lanes)
+
+
+def _nearest_joint_name(m: GltfModel, node_idx: Optional[int]) -> Optional[str]:
+    """The closest ancestor of ``node_idx`` that is a joint of the skeleton.
+
+    A mesh parented to a bone (Blender's "Bone" parenting, or a rigid prop
+    object) exports as a child of that joint's node; walking up finds the
+    bone the part must be bound to.
+    """
+    if node_idx is None:
+        return None
+    joints = {nm for nm in (m.skin_joint_names or []) if nm}
+    if not joints:
+        return None
+    nodes = m.nodes or []
+    parent = _node_parent_map(nodes)
+    cur: Optional[int] = node_idx
+    seen = 0
+    while cur is not None and 0 <= cur < len(nodes) and seen < 128:
+        nm = nodes[cur].get("name")
+        if nm in joints:
+            return nm
+        cur = parent.get(cur)
+        seen += 1
+    return None
+
+
+def _extra_mesh_to_part(sub: GltfModel, m: GltfModel, Q, donor_of_bone,
+                        frame_convert: bool, name: str,
+                        fallback_diffuse: str) -> Tuple[MeshPart, List[str]]:
+    """Turn a mesh with no donor slot into a new compound `.g` part.
+
+    Two shapes reach this function:
+
+    * **skinned** — the mesh carries JOINTS_0/WEIGHTS_0 pointing into the
+      armature-wide skin Blender merged everything into; its bones become the
+      part's own table (descriptors donated by name when the original `.g`
+      knows the bone) and the vertices convert through joint space exactly
+      like a donor slot's.
+    * **rigid** — the mesh has no skin at all (it is parented to the armature
+      or to a single bone without an Armature modifier).  Every vertex is
+      bound to the nearest joint ancestor with weight 1, so the engine moves
+      the prop with that bone instead of leaving it at the origin.
+    """
+    warns: List[str] = []
+    jnames = sub.skin_joint_names or []
+    has_weights = bool(sub.vertices) and any(
+        any(abs(w) > 1e-6 for w in v.gltf_weights) for v in sub.vertices) \
+        and bool(jnames)
+    if has_weights:
+        holder = _ExtraSlot(name, sub.material_diffuse,
+                            sub.weights_on_vertex or 2)
+        verts, bones, _app = _remap_slot_vertices(
+            sub, holder, Q, donor_of_bone, frame_convert)
+        w = max(2, min(4, _mesh_lanes(sub) or sub.weights_on_vertex or 2))
+        attrs = _synth_part_attrs(sub, bones)
+        if not attrs:
+            attrs = _synth_part_attrs(
+                GltfModel(mesh_name=name, material_diffuse=fallback_diffuse),
+                bones)
+        if attrs:
+            attrs["weights_on_vertex"] = str(w)
+            attrs["vertexs_weights_num"] = str(len(verts))
+            attrs["bones_num"] = str(len(bones))
+        part = MeshPart(
+            name=name,
+            vertex_count=len(verts),
+            tri_count=len(sub.indices) // 3,
+            vertices=verts,
+            indices=list(sub.indices),
+            bones=bones,
+            weights_on_vertex=w,
+            morph=False,
+            material_diffuse=(sub.material_diffuse or fallback_diffuse),
+            attrs=attrs,
+        )
+        warns.append(
+            f"added mesh '{name}' bound to the armature as a new `.g` part "
+            f"({len(verts)} vertices, {len(bones)} bones)")
+        return part, warns
+
+    # ---- rigid: bind every vertex to the bone it hangs from ----
+    node_i = _mesh_node_index(m, sub)
+    bone_name = _node_extras_bone(m, node_i) or \
+        _nearest_joint_name(m, node_i)
+    if bone_name is None and (m.skin_joint_names or []):
+        # a prop parented to the armature itself: it moves with the unit
+        # root, which is the first joint of the skeleton
+        bone_name = m.skin_joint_names[0]
+        warns.append(f"added rigid mesh '{name}': no bone above it — binding "
+                     f"to the skeleton root '{bone_name}'")
+    bone: Optional[Bone] = None
+    ibmb = None
+    if bone_name:
+        bone = donor_of_bone.get(bone_name)
+        try:
+            k = (m.skin_joint_names or []).index(bone_name)
+            flat = (m.skin_ibms or [])[k]
+            ibmb = framemod.cmaj16(list(flat))
+        except (ValueError, IndexError):
+            ibmb = None
+        if bone is None:
+            mat = framemod.IDENTITY
+            if ibmb is not None and bone_name in Q:
+                mat = framemod.mm(Q[bone_name], ibmb)
+            bone = Bone(bone_name, tuple(framemod.flatten16(mat)))
+            warns.append(f"added mesh '{name}': bone '{bone_name}' is not in "
+                         f"the original `.g` — its rest transform is taken "
+                         f"from the glTF skin")
+    if bone is None:
+        # no skeleton at all: bind to bone 0 of the part itself so the record
+        # layout stays skinnable (the engine rejects a part without a table)
+        bone = Bone("root", tuple(framemod.flatten16(framemod.IDENTITY)))
+        warns.append(f"added mesh '{name}' is not attached to any bone — "
+                     f"binding it to a synthetic 'root' bone")
+    K = framemod.IDENTITY
+    if frame_convert and bone_name and bone_name in Q and ibmb is not None:
+        try:
+            K = framemod.mm(framemod.inv4(framemod.cmaj16(bone.matrix)),
+                            framemod.mm(Q[bone_name], ibmb))
+        except ValueError:
+            K = framemod.IDENTITY
+    nm_mat = sub.node_matrix or framemod.IDENTITY
+    verts = []
+    for v in sub.vertices:
+        p = framemod.mvec(nm_mat, (v.position[0], v.position[1],
+                                   v.position[2], 1.0))
+        n = framemod.mvec(nm_mat, (v.normal[0], v.normal[1], v.normal[2],
+                                   0.0))
+        if frame_convert:
+            p = framemod.mvec(K, p)
+            n = framemod.mvec(K, n)
+        ln = math.sqrt(n[0] ** 2 + n[1] ** 2 + n[2] ** 2)
+        if ln > 1e-12:
+            n = [n[0] / ln, n[1] / ln, n[2] / ln]
+        verts.append(Vertex((p[0], p[1], p[2]), (n[0], n[1], n[2]),
+                            tuple(v.uv[:2]), v.diffuse, (1.0,), (0, 0)))
+    attrs = _synth_part_attrs(sub, [bone])
+    if not attrs:
+        attrs = _synth_part_attrs(
+            GltfModel(mesh_name=name, material_diffuse=fallback_diffuse),
+            [bone])
+    if attrs:
+        attrs["weights_on_vertex"] = "2"
+        attrs["vertexs_weights_num"] = str(len(verts))
+        attrs["bones_num"] = "1"
+    part = MeshPart(
+        name=name,
+        vertex_count=len(verts),
+        tri_count=len(sub.indices) // 3,
+        vertices=verts,
+        indices=list(sub.indices),
+        bones=[bone],
+        weights_on_vertex=2,
+        morph=False,
+        material_diffuse=(sub.material_diffuse or fallback_diffuse),
+        attrs=attrs,
+    )
+    warns.append(
+        f"added rigid mesh '{name}' as a new `.g` part, bound to bone "
+        f"'{bone.name}' ({len(verts)} vertices)")
+    return part, warns
+
+
+def _mesh_node_index(m: GltfModel, sub: GltfModel) -> Optional[int]:
+    """Node index carrying a sub-model's mesh.
+
+    ``load_gltf`` records it (``GltfModel.node_index``); the name lookup is
+    the fallback for models assembled by hand, where the mesh name and the
+    node name may differ (Blender names the node after the object and the
+    mesh datablock separately).
+    """
+    if getattr(sub, "node_index", None) is not None:
+        return sub.node_index
+    for i, nd in enumerate(m.nodes or []):
+        if "mesh" in nd and nd.get("name") == sub.mesh_name:
+            return i
+    return None
 
 
 def _mesh_to_skinned_blender(m: GltfModel, weights_on_vertex: int,
@@ -714,6 +1057,14 @@ def _mesh_to_skinned_blender(m: GltfModel, weights_on_vertex: int,
             self.holder = holder
             self.is_root = is_root
             self.name = holder.name
+            # A block also stores its own `name` attribute, and that is the
+            # name the game shows and the forward export writes into the glTF
+            # mesh — the GrandInquisitor LOD's root block is called
+            # `empire_grandinquisitor` but its attribute says
+            # `lod_empire_grandinquisitor_clothes`, so matching on the
+            # SkinnedMesh name alone left the slot "missing" and the same
+            # geometry came back as an extra part.
+            self.attr_name = ((holder.attrs or {}).get("name") or "").strip()
             self.bone_names = {b.name for b in (holder.bones or [])}
 
         def used_joint_names(self):
@@ -739,14 +1090,24 @@ def _mesh_to_skinned_blender(m: GltfModel, weights_on_vertex: int,
     # matching: names, then joint-set equality, then leftovers in order
     pair_of_slot: Dict[int, Tuple[str, GltfModel]] = {}
     used_meshes = set()
-    for si, slot in enumerate(slots):
-        for mi, (nm, sub) in enumerate(meshes):
-            if mi in used_meshes:
+    def match_pass(predicate):
+        for si, slot in enumerate(slots):
+            if si in pair_of_slot:
                 continue
-            if nm == slot.name:
-                pair_of_slot[si] = (nm, sub)
-                used_meshes.add(mi)
-                break
+            for mi, (nm, sub) in enumerate(meshes):
+                if mi in used_meshes:
+                    continue
+                if predicate(slot, nm):
+                    pair_of_slot[si] = (nm, sub)
+                    used_meshes.add(mi)
+                    break
+
+    # the block's own `name` attribute first: that is what the forward
+    # export calls the glTF mesh, and it can collide with another slot's
+    # name (the ImperialAssassin root says `empire_assassin_cloth` while a
+    # part is called `empire_assassin`)
+    match_pass(lambda slot, nm: bool(slot.attr_name) and nm == slot.attr_name)
+    match_pass(lambda slot, nm: nm == slot.name)
     for si, slot in enumerate(slots):
         if si in pair_of_slot:
             continue
@@ -777,6 +1138,15 @@ def _mesh_to_skinned_blender(m: GltfModel, weights_on_vertex: int,
         if best is not None and best_j >= 0.5:
             pair_of_slot[si] = meshes[best]
             used_meshes.add(best)
+
+    if os.environ.get("D3TOOL_DEBUG"):
+        print("[d3tool] donor slots: "
+              + ", ".join(f"{s.name!r}{('/' + repr(s.attr_name)) if s.attr_name and s.attr_name != s.name else ''}"
+                          for s in slots))
+        print("[d3tool] glTF meshes: " + ", ".join(nm for nm, _ in meshes))
+        pairs = ", ".join(f"{slots[si].name!r} <- {nm!r}"
+                          for si, (nm, _) in sorted(pair_of_slot.items()))
+        print("[d3tool] pairing: " + (pairs or "nothing matched"))
 
     warns = list(qwarns)
     # -- rebuild every slot -- #
@@ -872,7 +1242,7 @@ def _mesh_to_skinned_blender(m: GltfModel, weights_on_vertex: int,
                 morph=bool(slot.morph) or bool(sub.morph),
                 material_diffuse=(slot.material_diffuse
                                   or sub.material_diffuse),
-                lm_uv=slot.lm_uv or sub.lm_uv,
+                lm_uv=_pick_lm(slot.lm_uv, sub.lm_uv, len(verts)),
                 lightmap=slot.lightmap or sub.lightmap,
                 vertex_magic=slot.vertex_magic or b"",
                 attrs=dict(slot.attrs),
@@ -883,6 +1253,37 @@ def _mesh_to_skinned_blender(m: GltfModel, weights_on_vertex: int,
         else:
             # no glTF mesh for this slot: keep the donor part verbatim
             parts.append(slot)
+
+    # -- meshes the user bound to the armature that no donor slot claims -- #
+    # A Blender scene routinely holds more deformable objects than the
+    # original `.g` did (a new sword, a cape split off "Separate by
+    # material", a prop parented to a hand bone).  Dropping them silently
+    # loses the artist's work, so each one becomes an extra part of the
+    # compound container; a single-part unit turns compound, which the
+    # engine loads exactly like a weapon+body asset.
+    extras = [meshes[mi] for mi in range(len(meshes)) if mi not in used_meshes]
+    # uniqueness is judged on the bytes that reach the file: two Cyrillic
+    # object names both degrade to "???" and would collide there
+    taken = {latin1(p.name) for p in parts} | {latin1(slots[0].name)}
+    for nm, sub in extras:
+        base_name = nm or sub.mesh_name or "added_part"
+        base_name = base_name if isinstance(base_name, str) else "added_part"
+        cand = base_name
+        n = 2
+        while latin1(cand) in taken:
+            cand = f"{base_name}_{n}"
+            n += 1
+        taken.add(latin1(cand))
+        try:
+            part, pwarn = _extra_mesh_to_part(
+                sub, m, Q, donor_of_bone, frame_convert, cand,
+                donor.material_diffuse or m.material_diffuse)
+        except Exception as exc:  # noqa: BLE001 - never lose the whole export
+            warns.append(f"mesh '{cand}' could not be written as a `.g` "
+                         f"part and was skipped: {exc}")
+            continue
+        parts.append(part)
+        warns.extend(pwarn)
 
     mesh = SkinnedMesh(
         name=donor.name or m.mesh_name,
@@ -898,7 +1299,7 @@ def _mesh_to_skinned_blender(m: GltfModel, weights_on_vertex: int,
         parts=parts,
         morph=bool(donor.morph),
         material_diffuse=donor.material_diffuse or m.material_diffuse,
-        lm_uv=donor.lm_uv or m.lm_uv,
+        lm_uv=_pick_lm(donor.lm_uv, m.lm_uv, len(root_verts)),
         lightmap=donor.lightmap or m.lightmap,
         attr_items=list(donor.attr_items),
     )
@@ -1026,8 +1427,8 @@ def mesh_to_skinned(m: GltfModel, weights_on_vertex: int = 0,
             morph=pmorph,
             material_diffuse=(dpart.material_diffuse if dpart is not None
                               else sub.material_diffuse),
-            lm_uv=(dpart.lm_uv if dpart is not None and dpart.lm_uv
-                   else sub.lm_uv),
+            lm_uv=_pick_lm(dpart.lm_uv if dpart is not None else b"",
+                           sub.lm_uv, len(svertices)),
             lightmap=(dpart.lightmap if dpart is not None and dpart.lightmap
                       else sub.lightmap),
             vertex_magic=(dpart.vertex_magic if dpart is not None
@@ -1100,10 +1501,27 @@ def _morph_record(tag: int, name: str, frames: int, vc: int,
                   positions: bytes) -> bytes:
     """One trailing morph-stream record:
     ``[14][len-8][tag][frames][vc][name_len][name+NUL][positions]``."""
-    nb = name.encode("latin1") + b"\x00"
+    nb = latin1(name) + b"\x00"
     total = 24 + len(nb) + len(positions)
     return (struct.pack("<6I", 14, total - 8, tag, frames, vc, len(nb))
             + nb + positions)
+
+
+def _pick_lm(donor_lm: bytes, gltf_lm: bytes, vertex_count: int) -> bytes:
+    """Choose the light-map UV block that matches the rebuilt vertex count.
+
+    A donor's block is sized for the ORIGINAL vertex count; a Blender re-save
+    splits vertices at normal/UV seams, so the donor block is a few vertices
+    short and writing it desyncs every following section.  The glTF lane
+    (TEXCOORD_1) carries the rebuilt count and wins whenever the donor's
+    length disagrees; :func:`d3tool.gfile._fit_lm` clamps whatever comes out.
+    """
+    want = vertex_count * 8
+    if len(donor_lm) == want:
+        return donor_lm
+    if len(gltf_lm) == want:
+        return gltf_lm
+    return (donor_lm or gltf_lm)[:want].ljust(want, b"\x00")
 
 
 def _synth_part_attrs(sub: GltfModel, sbones: List[Bone]) -> Dict[str, str]:
@@ -1117,13 +1535,17 @@ def _synth_part_attrs(sub: GltfModel, sbones: List[Bone]) -> Dict[str, str]:
     """
     if not sub.material_diffuse:
         return {}
+    # the attribute block carries the historical `.tga` material name --
+    # dis3tool's glTF points at the same stem as `.dds`, Blender writes a
+    # re-saved `.png`; the emitted `.t` always takes the stem
+    stem = os.path.splitext(os.path.basename(sub.material_diffuse))[0]
     attrs = {
         "dwNode": "375048704",
         "dwParent": "55867360",
         "name": sub.mesh_name,
         "groupname": "Scene Root",
         "materials_num": "1",
-        "material0_diffuse": sub.material_diffuse,
+        "material0_diffuse": stem + ".tga",
         "material0_triangles_num": str(len(sub.indices) // 3),
     }
     if sub.morph:
