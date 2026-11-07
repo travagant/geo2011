@@ -247,7 +247,7 @@ def build_vdpack(files: Sequence[Tuple[str, bytes]],
     return bytes(index) + bytes(payload)
 
 
-def pack_like(source: "Vdpack", files) -> Tuple[bytes, List[str]]:
+def pack_like(source: "Vdpack", files, drop=()) -> Tuple[bytes, List[str]]:
     """Rebuild a pack with `source`'s entry order, names, flags and `index`.
 
     The only in-game-confirmed shape is *the same paths, different payloads*,
@@ -258,11 +258,19 @@ def pack_like(source: "Vdpack", files) -> Tuple[bytes, List[str]]:
     flags, and falls back to the source payload for anything the folder does
     not carry (the `index` resource itself, most of all).
 
-    Returns the archive bytes and the list of paths whose payload came from
-    the folder.  A folder path with no counterpart in the source is reported
-    through the second list only when it cannot be placed — see
-    ``silent`` — since *adding* paths is exactly the unconfirmed case.
+    ``drop`` removes entries from the result (paths as they appear in the
+    source archive, matched case-insensitively): a pack that ships a file the
+    engine will request and cannot resolve — the Angel's generated
+    ``*_lod.ac``, whose own ``meshfile`` names a folder no retail install has —
+    stops the load with a missing-file dialog, while *removing* a path is the
+    direction the port confirmed as survivable.
+
+    Returns the archive bytes and the list of folder paths that had no place
+    in the archive (paths the source does not carry), since *adding* paths is
+    exactly the unconfirmed case.
     """
+    dropped = {str(name).replace("/", "\\").strip("\\").lower()
+               for name in drop}
     pairs = list(files.items()) if isinstance(files, dict) else list(files)
     folder = {name.replace("/", "\\").strip("\\").lower(): data
               for name, data in pairs}
@@ -270,6 +278,9 @@ def pack_like(source: "Vdpack", files) -> Tuple[bytes, List[str]]:
     used = set()
     for entry in source.entries:
         key = entry.name.replace("/", "\\").strip("\\").lower()
+        if key in dropped:
+            used.add(key)
+            continue
         blob = folder.get(key)
         if blob is None:
             blob = source.payload(entry)

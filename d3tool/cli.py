@@ -1486,27 +1486,32 @@ def _vdpack(args) -> int:
         if source.parse_error:
             ui.fail(f"{args.like}: {source.parse_error}")
             return 1
-        blob, extra = vdmod.pack_like(source, files)
+        blob, extra = vdmod.pack_like(source, files, drop=args.drop)
         for name in extra:
             ui.warn(f"{name}: not in {os.path.basename(args.like)}, dropped — "
                     "a pack that adds paths is not the confirmed shape")
         out = args.out or (os.path.basename(os.path.normpath(args.folder)) +
                            ".vdpack")
         check = vdmod.parse_vdpack(blob)
-        if check.parse_error or len(check) != len(source):
+        if check.parse_error or not len(check):
             ui.fail(f"the archive would not read back: {check.parse_error}")
             return 1
         with open(out, "wb") as fh:
             fh.write(blob)
         changed = []
         for entry in source.entries:
+            landed = check.find(entry.name)
+            if landed is None:                  # dropped, reported below
+                continue
             before = source.payload(entry)
-            after = check.payload(check.find(entry.name))
+            after = check.payload(landed)
             if before != after:
                 changed.append((entry.name, len(before), len(after)))
         ui.section(f"vdpack {os.path.basename(out)}")
         ui.info(f"{len(check)} file(s) in {os.path.basename(args.like)}'s "
                 f"order, {len(blob)} bytes")
+        for name in args.drop:
+            ui.info(f"dropped: {name}")
         for name, before, after in changed:
             ui.ok(f"{name.split(chr(92))[-1]}: {before} -> {after} bytes — "
                   "everything else carried over byte for byte")
@@ -1790,6 +1795,11 @@ def _build_parser() -> argparse.ArgumentParser:
     p_vp.add_argument("folder")
     p_vp.add_argument("-o", "--out",
                       help="output .vdpack (default: <folder>.vdpack)")
+    p_vp.add_argument(
+        "--drop", action="append", default=[], metavar="PATH",
+        help="with --like: leave this entry out of the new archive (repeatable) "
+             "— for a file the engine requests and cannot resolve, which stops "
+             "the load with a missing-file dialog")
     p_vp.add_argument(
         "--like", metavar="ARCHIVE",
         help="rebuild in an existing pack's exact shape: same entry order, "
