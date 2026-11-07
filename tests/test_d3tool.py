@@ -109,7 +109,10 @@ def test_ac_roundtrip():
     cfg2 = acmod.parse_ac(text)
     assert [s.name for s in cfg2.states] == ["Idle", "Attack", "Damage",
                                              "Death", "Run"]
-    assert cfg2.states[0].frame1 == 150
+    # frames are written 0-based inclusive (see `ac.default_ac`): a
+    # 150-frame template is frames 0..149, never 0..150
+    assert cfg2.states[0].frame0 == 0
+    assert cfg2.states[0].frame1 == 149
 
 
 def test_ac_bundled_roundtrip_semantic():
@@ -2105,6 +2108,7 @@ def test_vdpack_manifest_of_folder_and_archive_match():
     folder = os.path.join(REPO, "Neutrals", "AirElemental")
     files = vdpack.pack_folder(folder)
     doc = vdpack.manifest(files, "AirElemental")
+    assert doc["index"] is None, "a loose corpus folder carries no `index`"
     assert doc["files"] == len(files) >= 10
     assert doc["bytes"] == sum(len(d) for _, d in files)
     assert doc["source"] == "AirElemental"
@@ -2128,6 +2132,73 @@ def test_vdpack_manifest_of_folder_and_archive_match():
     # ... and a manifest reports a bundle that would not load on its own
     no_tex = [(n, d) for n, d in files if not n.endswith(".t")]
     assert vdpack.manifest(no_tex)["references"]["problems"]
+
+
+def test_vdpack_pack_can_keep_the_opaque_index():
+    """Only in-place replacement inside a pack that keeps its opaque `index`
+    is confirmed to load in game, so building on that shape must be possible
+    (and a pack without one has to say so)."""
+    import contextlib
+    import io
+    from d3tool import vdpack
+    folder = os.path.join(REPO, "Neutrals", "AirElemental")
+    with tempfile.TemporaryDirectory() as d, \
+            contextlib.redirect_stdout(io.StringIO()) as buf:
+        # a stock pack has no `index` and warns about it
+        plain = os.path.join(d, "plain.vdpack")
+        assert climod._run(["vdpack", "pack", folder, "-o", plain]) == 0
+        assert "no opaque `index` entry" in buf.getvalue()
+        # the reference archive: a folder copy plus the opaque resource
+        shared = os.path.join(d, "shared")
+        for name, data in vdpack.pack_folder(folder):
+            os.makedirs(os.path.dirname(os.path.join(shared, *name.split("/"))),
+                        exist_ok=True)
+            open(os.path.join(shared, *name.split("/")), "wb").write(data)
+        reference = os.path.join(d, "reference.vdpack")
+        assert climod._run(["vdpack", "pack", shared, "-o", reference]) == 0
+        # a pack that already carries the resource keeps it through a repack
+        blob = vdpack.parse_vdpack(open(reference, "rb").read())
+        assert len(blob) == len(vdpack.pack_folder(shared))
+        # ... now hand the `index` to a pack built from a plain folder
+        with_index = os.path.join(d, "indexed.vdpack")
+        buf.seek(0)
+        buf.truncate()
+        assert climod._run(["vdpack", "pack", folder, "-o", with_index,
+                            "--keep-index", reference]) == 1, \
+            "the reference carries no `index`, so there is nothing to keep"
+        assert "no `index` entry" in buf.getvalue()
+        # build a real one: rebuild the reference with an `index` resource
+        raw = bytearray(open(reference, "rb").read())
+        pack = vdpack.parse_vdpack(bytes(raw))
+        entries = [(e.name, pack.payload(e)) for e in pack.entries]
+        entries.append(("index", b"opaque-index-payload"))
+        archive = os.path.join(d, "withindex.vdpack")
+        open(archive, "wb").write(vdpack.build_vdpack(entries))
+        assert vdpack.index_entry(
+            list(vdpack.read_vdpack(archive).files().items())) is not None
+        # keep it in a pack built from a folder that has none
+        out = os.path.join(d, "kept.vdpack")
+        buf.seek(0)
+        buf.truncate()
+        assert climod._run(["vdpack", "pack", folder, "-o", out,
+                            "--keep-index", archive]) == 0
+        assert "no opaque `index` entry" not in buf.getvalue()
+        kept = vdpack.read_vdpack(out)
+        assert not kept.parse_error, kept.parse_error
+        index = vdpack.index_entry(list(kept.files().items()))
+        assert index is not None and index[1] == b"opaque-index-payload"
+        # the manifest of that pack records the resource
+        assert vdpack.manifest(
+            list(kept.files().items()))["index"]["bytes"] == len(
+                b"opaque-index-payload")
+        # a folder that already has an `index` file is refused (`pack` would
+        # silently end up with two)
+        dupe = os.path.join(d, "dupe")
+        shutil.copytree(folder, dupe)
+        open(os.path.join(dupe, "index"), "wb").write(b"ours")
+        assert climod._run(["vdpack", "pack", dupe, "-o",
+                            os.path.join(d, "dupe.vdpack"),
+                            "--keep-index", archive]) == 1
 
 
 def test_vdpack_manifest_cli_writes_json():

@@ -550,8 +550,8 @@ def test_blender_resaved_gltf_exports_battle_ready():
                 assert os.path.isfile(p), f"{st.name} -> {fn} missing"
                 if fn.endswith(".a"):
                     fc = animmod.parse_anim(open(p, "rb").read()).frame_count
-                    assert st.frame1 <= fc, \
-                        f"{st.name}: {st.frame1} > {fn} ({fc})"
+                    assert st.frame1 < fc, \
+                        f"{st.name}: {st.frame1} >= {fn} frames ({fc})"
                 mf = os.path.basename(st.meshfile.replace("\\", "/"))
                 assert os.path.isfile(os.path.join(out, mf))
             attrs, _ = gfile.parse_attributes(
@@ -587,7 +587,7 @@ def test_renamed_gltf_exports_battle_ready():
             p = os.path.join(out, fn)
             assert os.path.isfile(p), f"{st.name} -> {fn} missing"
             fc = animmod.parse_anim(open(p, "rb").read()).frame_count
-            assert st.frame1 <= fc, f"{st.name}: {st.frame1} > {fc}"
+            assert st.frame1 < fc, f"{st.name}: {st.frame1} >= {fc}"
         assert os.path.isfile(os.path.join(out, "angel_edit.g"))
         assert any(f.endswith(".t") for f in os.listdir(out)), \
             "no texture written for a bare-stem export"

@@ -83,6 +83,8 @@ python3 -m d3tool vdpack list hierophant.vdpack
 python3 -m d3tool vdpack extract hierophant.vdpack -o hierophant/
 python3 -m d3tool vdpack validate hierophant.vdpack   # every internal reference inside?
 python3 -m d3tool vdpack manifest hierophant/ -o manifest.json  # sha256 per file
+# build on the only game-confirmed pack shape: keep the opaque `index`
+python3 -m d3tool vdpack pack hierophant/ -o my.vdpack --keep-index NewUnit.vdpack
 
 # convert the native .t texture to a .dds (or back)
 python3 -m d3tool texture convert Neutrals/AirElemental/character_neutrals_airelemental.t \

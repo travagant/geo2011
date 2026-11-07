@@ -856,10 +856,14 @@ def _battle_readiness_check(out_dir: str, base: str, quiet: bool) -> None:
                     continue
                 if fn.endswith(".a") and st.frame1:
                     a = animmod.parse_anim(open(p, "rb").read())
-                    if st.frame1 > a.frame_count:
+                    # frames are 0-based inclusive indices, so the last one a
+                    # stream has is `frame_count - 1` (no bundled state asks
+                    # for more; see `ac.default_ac`)
+                    if st.frame1 >= a.frame_count:
                         findings.append(
                             f".ac state {st.name}: frames go to "
-                            f"{st.frame1} but {fn} has {a.frame_count}")
+                            f"{st.frame1} but {fn} has {a.frame_count} "
+                            f"(last index {a.frame_count - 1})")
                 if st.meshfile:
                     mf = os.path.basename(st.meshfile.replace("\\", "/")
                                           .rsplit("/", 1)[-1])
@@ -1397,9 +1401,31 @@ def _vdpack(args) -> int:
     if not files:
         ui.fail(f"{args.folder} has no files to pack")
         return 1
+    if args.keep_index:
+        source = vdmod.read_vdpack(args.keep_index)
+        if source.parse_error:
+            ui.fail(f"{args.keep_index}: {source.parse_error}")
+            return 1
+        taken = vdmod.index_entry(list(source.files().items()))
+        if taken is None:
+            ui.fail(f"{args.keep_index} has no `index` entry to keep")
+            return 1
+        if vdmod.index_entry(files) is not None:
+            ui.fail(f"{args.folder} already carries an `index` entry")
+            return 1
+        files = files + [taken]
     out = args.out or (os.path.basename(os.path.normpath(args.folder)) +
                        ".vdpack")
     blob = vdmod.build_vdpack(files)
+    # Every pack the Heroes-VII port examined carries one opaque `index`
+    # resource; same-path replacement inside such a pack is game-confirmed,
+    # a pack that added paths is not.  Say so instead of implying that any
+    # archive this tool writes will be mounted.
+    if vdmod.index_entry(files) is None:
+        ui.warn("no opaque `index` entry: retail and ported packs carry one, "
+                "and only in-place replacement inside such a pack has been "
+                "confirmed to load — pass `--keep-index <existing.vdpack>` "
+                "to build on that proven shape")
     # never ship an archive this toolkit cannot read back
     check = vdmod.parse_vdpack(blob)
     if check.parse_error or len(check) != len(files):
@@ -1588,6 +1614,10 @@ def _build_parser() -> argparse.ArgumentParser:
     p_vp.add_argument("folder")
     p_vp.add_argument("-o", "--out",
                       help="output .vdpack (default: <folder>.vdpack)")
+    p_vp.add_argument(
+        "--keep-index", metavar="ARCHIVE",
+        help="copy the opaque `index` resource of an existing pack into the "
+             "new one (the only game-confirmed pack shape)")
 
     return parser
 

@@ -119,12 +119,18 @@ def default_ac(meshfile: str, anim_base: str,
     ``{anim_base}_run.a``.  The `.a` binaries are *referenced*, not re-created.
 
     ``frame_counts`` maps an `.a` basename to its real frame count.  Giving
-    it makes every state's ``frame0``/``frame1`` stay inside the file it
-    points at (a fixed 1..345 template overruns a shorter animation and the
-    engine reads past the end of the stream when the unit walks into
-    battle), and collapses the Run state onto the idle file when no run
-    stream exists — a state naming a file that was never written is a
-    guaranteed load failure.
+    it makes every state play its whole file, ``0 .. count - 1``, and
+    collapses the Run state onto the idle file when no run stream exists — a
+    state naming a file that was never written is a guaranteed load failure.
+
+    Frames are **0-based inclusive indices**, which is what retail content
+    writes: `frame0 0` appears in 23 bundled states, and no bundled state
+    ever names a frame equal to its stream's frame count (checked over all
+    575 states whose `.a` is in the folder — the largest value seen is
+    `count - 1`, in 125 of them).  A state ending on `count` would tell the
+    engine to read one frame past the end of the stream.  The one ported
+    unit pack that is confirmed working in game (Blade Dancer, 13 clips in
+    one `.a`) also writes ``start .. start + frames - 1``.
 
     ``fps`` is the time base written into every state (default 30 — the
     engine's own base: the rebuilt `.a` lays one keyframe per frame on it,
@@ -163,19 +169,20 @@ def default_ac(meshfile: str, anim_base: str,
     death_f = _state_file("Death")
 
     def _range(f: str, default: Tuple[int, int]) -> Tuple[int, int]:
-        # with a real frame count the state plays the whole file (in
-        # bounds by construction); without one keep the template segment
+        # with a real frame count the state plays the whole file, 0-based
+        # inclusive (in bounds by construction); without one keep the
+        # template segment, which is 0-based too
         n = _fc(f, 0)
-        return (0, n) if n else default
+        return (0, n - 1) if n > 0 else default
 
     n_idle = _fc(idle_f, 150)
-    a0, a1 = _range(attack_f, (150, 210))
-    d0, d1 = _range(damage_f, (210, 270))
-    t0, t1 = _range(death_f, (270, 345))
+    a0, a1 = _range(attack_f, (150, 209))
+    d0, d1 = _range(damage_f, (210, 269))
+    t0, t1 = _range(death_f, (270, 344))
     n_run = _fc(run_f, 16)
 
     states = [
-        State("Idle", idle_f, 1, n_idle, fps, flags=1,
+        State("Idle", idle_f, 0, n_idle - 1, fps, flags=1,
               links=[("Attack", 0, 3), ("Damage", 0, 0),
                      ("Death", 0, 0), ("Run", 0, 3)],
               meshfile=meshfile),
@@ -185,7 +192,7 @@ def default_ac(meshfile: str, anim_base: str,
               links=[("Idle", 1, 0), ("Run", 0, 0)], gaestate="Idle",
               meshfile=meshfile),
         State("Death", death_f, t0, t1, fps, meshfile=meshfile),
-        State("Run", run_f, 1, n_run, fps, flags=1,
+        State("Run", run_f, 0, n_run - 1, fps, flags=1,
               links=[("Idle", 0, 3)], gaestate="Idle", meshfile=meshfile),
     ]
     return AnimConfig(states=states)

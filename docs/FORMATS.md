@@ -246,6 +246,16 @@ weights_on_vertex, bones_num` (plus `tech`, `vdshader`, `techname`,
 
 ## 3. The `.ac` animation config
 
+`frame0`/`frame1` in a state body are **0-based inclusive indices** into the
+`.a` stream the state names.  Measured over the 575 bundled states whose `.a`
+sits in the same folder: `frame0 0` occurs 23 times (129 states start at 1,
+the rest at 5/20/30/45…), and **no** state names a frame equal to its
+stream's frame count — the largest value ever written is `count - 1` (125
+states), then `count - 2` (26).  A 1-based reading would make `frame0 0`
+meaningless and would put `frame1 == count` past the end of the stream, which
+never happens.  The one ported pack confirmed working in game (Blade Dancer,
+13 clips sliced out of a single `.a`) also writes `start … start + frames - 1`.
+
 Text.  A header then `state "Name" { ... }` blocks:
 
 | field | meaning |
@@ -571,6 +581,17 @@ truncated index, an implausible entry count, an unterminated name, a payload
 past the end of the file, and two entries sharing bytes.  On extraction the
 stored name is re-validated, so an archive cannot write outside the target
 folder (`..`, absolute paths and drive letters are refused).
+
+**The opaque `index` entry decides whether a pack is mounted.**  Every pack
+the port examined carries one resource named exactly `index` (20 362 bytes in
+`NewUnit.vdpack`) that nobody has decoded.  What the port established at
+runtime: replacing a payload *inside* such a pack works; adding six entries to
+it (index untouched) did **not** show the new units in game.  So the writer
+here does not claim otherwise — `vdpack pack` prints a warning when the bundle
+has no `index`, and `--keep-index <existing.vdpack>` copies the resource from
+a proven pack into the new one (same paths, new payloads: the shape that is
+confirmed to load).  `vdpack manifest` records `index: {bytes, sha256}` (or
+`null`), so a manifest says which of the two you are looking at.
 
 `vdpack manifest <archive|folder>` writes the sha256 inventory of a bundle —
 one `{path, bytes, sha256}` per file, in archive naming and case-insensitive

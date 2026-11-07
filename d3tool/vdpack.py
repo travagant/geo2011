@@ -27,6 +27,14 @@ The format is documented and implemented from the Heroes-VII → Disciples III
 porting corpus (``docs/PORT_ANALYSIS_COMPARE_RU.md``); the toolkit's own
 corpus ships no ``.vdpack``, so this reader is validated against synthetic
 archives and against the *layout* the port used, not against a retail pack.
+
+One thing the port could not explain, and this module deliberately does not
+pretend to either: every pack it saw contains one resource named ``index``
+(20 362 bytes in its reference archive) that no tool has decoded.
+Same-path payload replacement inside such a pack is confirmed working in
+game; a pack that *added* resources did not show them.  :func:`index_entry`
+finds that resource so `vdpack pack --keep-index` can carry it over, and
+:func:`manifest` records whether a bundle has one.
 """
 from __future__ import annotations
 
@@ -311,6 +319,27 @@ class ReferenceReport:
         return bool(self.problems)
 
 
+INDEX_ENTRY = "index"
+
+
+def index_entry(files) -> Optional[Tuple[str, bytes]]:
+    """The opaque ``index`` entry a retail-style pack carries, if any.
+
+    Every pack the Heroes-VII port saw contains one resource named exactly
+    ``index`` (20 362 bytes in `NewUnit.vdpack`) whose format nobody has
+    decoded.  It is not a directory of the archive: same-path payload
+    replacement works with it untouched, while a pack that *added* paths
+    (and kept the old `index`) did not show its units in game.  So the only
+    game-confirmed way to ship new content is a pack that keeps the original
+    `index` — which is why `vdpack pack --keep-index` exists.
+    """
+    pairs = files.items() if isinstance(files, dict) else files
+    for name, data in pairs:
+        if name.replace("/", "\\").strip("\\").lower() == INDEX_ENTRY:
+            return name, data
+    return None
+
+
 def manifest(files, source: str = "") -> dict:
     """``files`` is either ``{name: bytes}`` or ``[(name, bytes), ...]``."""
     """A reproducible inventory of a bundle: one sha256 per file.
@@ -334,10 +363,14 @@ def manifest(files, source: str = "") -> dict:
                 "sha256": hashlib.sha256(data).hexdigest()}
                for name, data in pairs]
     report = reference_findings(dict(pairs))
+    index = index_entry(pairs)
     return {
         "source": source,
         "files": len(entries),
         "bytes": sum(entry["bytes"] for entry in entries),
+        "index": ({"bytes": len(index[1]),
+                   "sha256": hashlib.sha256(index[1]).hexdigest()}
+                  if index else None),
         "entries": entries,
         "references": {"problems": report.problems, "notes": report.notes},
     }
