@@ -722,12 +722,20 @@ spelling, same per-entry flags, same `index`, payloads taken from the folder —
 because an unchanged bundle that the game ignores anyway has to differ from
 the working one in payload bytes alone.  Any folder path the source pack does
 not carry is dropped with a warning: that is the unchecked direction.
-`--drop <path>` leaves an entry out entirely, which is what the Angel pack
-needs for its generated `character_empire_angel_lod.ac`: every `meshfile` /
+`--drop <path>` leaves an entry out entirely.  In the game it turned out to be
+the *wrong* tool: a pack whose entry set no longer matched its `index` (the
+Angel pack minus that one path) never appeared in the mods list at all, while
+the same pack with all 26 entries mounted and only complained about the bad
+references.  So **the entry set and the `index` have to stay together** — do
+not add paths, do not drop them; fix the payload.  What the Angel pack needs
+is the generated `character_empire_angel_lod.ac` repathed: every `meshfile` /
 `file` line in it points at `resources\characters\character_empire_angel_lod\`,
 a folder no install has, so a pack that ships it stops the load with a
 missing-file dialog naming `<pack>.vdpack:resources\characters\…` — exactly
-the reference the `wrong folder` warning already flags.  `vdpack manifest` records `index: {bytes, sha256}` (or
+the reference the `wrong folder` warning already flags.  Rewriting that prefix
+to `resources\characters\empire\angel\` (the folder the pack does carry)
+leaves every reference resolving, `vdpack validate --strict` clean, and the
+26-entry shape intact.  `vdpack manifest` records `index: {bytes, sha256}` (or
 `null`), so a manifest says which of the two you are looking at.
 
 Confirmed later on one real unit pack (the Empire Angel, 24 entries, the
