@@ -192,6 +192,8 @@ def import_unit(context, path: str, use_anim: bool = True,
                                quiet=quiet)
             if not use_textures:
                 _strip_images(gltf_path)
+            else:
+                _prune_missing_images(gltf_path)
 
         _set_fps(context)
         kwargs = {"filepath": gltf_path}
@@ -200,6 +202,14 @@ def import_unit(context, path: str, use_anim: bool = True,
             kwargs["bone_heuristic"] = "TEMPERANCE"
         if "import_pack_images" in props:
             kwargs["import_pack_images"] = False
+        if "merge_vertices" in props:
+            # Blender's importer welds glTF vertices that share position /
+            # normal / UV — the welded mesh no longer matches the `.g` vertex
+            # list, which costs the donor pairing on the way back (and the
+            # GrandInquisitor lost two triangles to the weld).  Keeping the
+            # glTF's own vertices means an untouched import re-exports to the
+            # donor's exact vertex counts.
+            kwargs["merge_vertices"] = False
         with contextlib.redirect_stdout(log), \
                 contextlib.redirect_stderr(log):
             result = bpy.ops.import_scene.gltf(**kwargs)
@@ -307,6 +317,87 @@ def _strip_images(gltf_path):
         mat.pop("normalTexture", None)
     with open(gltf_path, "w", encoding="utf-8") as fh:
         json.dump(doc, fh)
+
+
+_TEXINFO_KEYS = {"index", "texCoord", "extensions", "scale", "strength"}
+
+
+def _prune_missing_images(gltf_path):
+    """Drop textures whose file does not exist before handing the glTF over.
+
+    A `.g` may name a texture the unit folder does not ship — every character
+    material with a lightmap names ``cubemap_default.tga``, which the engine
+    keeps globally (Blacknaga does this too).  The forward export writes that
+    reference into the glTF, Blender then fails to read the file and leaves a
+    broken image datablock behind — one console error per import, and an
+    image the artist cannot see.  Removing the texture references *before*
+    the import keeps the material's real maps and the console quiet.
+    """
+    import json
+    import urllib.parse
+
+    try:
+        with open(gltf_path, "r", encoding="utf-8") as fh:
+            doc = json.load(fh)
+    except (OSError, ValueError):
+        return
+    images = doc.get("images") or []
+    folder = os.path.dirname(gltf_path)
+    keep_images, image_map, missing = [], {}, set()
+    for i, img in enumerate(images):
+        uri = img.get("uri") or ""
+        if uri and not uri.startswith("data:"):
+            path = os.path.join(folder, urllib.parse.unquote(uri))
+            if not os.path.isfile(path):
+                missing.add(i)
+                continue
+        image_map[i] = len(keep_images)
+        keep_images.append(img)
+    if not missing:
+        return
+    textures = doc.get("textures") or []
+    keep_textures, texture_map, dropped = [], {}, set()
+    for ti, tex in enumerate(textures):
+        if tex.get("source") in missing:
+            dropped.add(ti)
+            continue
+        tex = dict(tex)
+        if tex.get("source") in image_map:
+            tex["source"] = image_map[tex["source"]]
+        texture_map[ti] = len(keep_textures)
+        keep_textures.append(tex)
+
+    def is_texture_info(value):
+        return (isinstance(value, dict) and "index" in value
+                and set(value) <= _TEXINFO_KEYS)
+
+    def walk(node):
+        if isinstance(node, list):
+            for item in node:
+                walk(item)
+        elif isinstance(node, dict):
+            for key, value in list(node.items()):
+                if is_texture_info(value):
+                    if value["index"] in dropped:
+                        del node[key]
+                    elif value["index"] in texture_map:
+                        value["index"] = texture_map[value["index"]]
+                        walk(value.get("extensions"))
+                else:
+                    walk(value)
+
+    walk(doc.get("materials") or [])
+    for key, value in list(doc.items()):
+        if key in ("materials", "images", "textures"):
+            continue
+        walk(value)
+    doc["images"] = keep_images
+    doc["textures"] = keep_textures
+    try:
+        with open(gltf_path, "w", encoding="utf-8") as fh:
+            json.dump(doc, fh)
+    except OSError:
+        pass
 
 
 def _gltf_import_props():

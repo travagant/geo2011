@@ -534,9 +534,32 @@ def _attr_block(attrs: Dict[str, str], items=None) -> bytes:
         # in the header counts), so sync it only in a single-material
         # block where it IS the total.
         patchable = {"vertexs_weights_num", "bones_num", "weights_on_vertex"}
-        if not any(k.startswith("material") and k.endswith("_triangles_num")
-                   and k != "material0_triangles_num" for k in orig):
+        tri_keys = [k for k in orig if k.startswith("material")
+                    and k.endswith("_triangles_num")]
+        if len(tri_keys) <= 1:
             patchable.add("material0_triangles_num")
+        else:
+            # A multi-material block splits one index buffer into ranges, so
+            # the per-material counts must add up to the triangles actually
+            # written.  A rebuilt mesh can carry one triangle less than the
+            # donor (the glTF form holds one triangle per vertex set, so a
+            # reversed-winding twin cannot survive the trip); the announced
+            # total then disagrees with the data and every reader desyncs
+            # halfway through the file.  Absorb the difference in
+            # `material0`, the first range, which keeps the ranges that
+            # follow it aligned.
+            try:
+                real_total = int(attrs["material0_triangles_num"])
+                others = sum(int(orig[k]) for k in tri_keys
+                             if k != "material0_triangles_num")
+                first = real_total - others
+                if first >= 0 and first != int(
+                        orig.get("material0_triangles_num", first)):
+                    attrs = dict(attrs)
+                    attrs["material0_triangles_num"] = str(first)
+                    patchable.add("material0_triangles_num")
+            except (KeyError, ValueError):
+                pass
         out += struct.pack("<I", len(items))
         for k, v in items:
             if (attrs and k in patchable and k in attrs

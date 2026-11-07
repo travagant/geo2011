@@ -222,7 +222,28 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
     mesh_transformed = any(
         not framemod.is_identity(_node_global(ni))
         for ni, _sk in mesh_nodes.values())
-    blender_layout = bool(skins) and (shared_skin or mesh_transformed)
+    # A Blender re-save can be told apart from a dis3tool export three ways:
+    # the meshes share one armature-wide skin, a mesh node carries its own
+    # transform, or a mesh hangs under a node that is not a joint (the
+    # armature object).  dis3tool writes every mesh node as a parentless
+    # scene root with its own small skin, so the last test is what catches a
+    # unit with a single skinned mesh (the Matriarch LOD) that Blender
+    # re-saved with its rigid parts left unparented.
+    joint_nodes = set()
+    for sk in skins:
+        joint_nodes.update(sk.get("joints") or ())
+    nested_under_object = False
+    for ni, _sk in mesh_nodes.values():
+        parent = node_parent.get(ni)
+        while parent is not None:
+            if parent not in joint_nodes:
+                nested_under_object = True
+                break
+            parent = node_parent.get(parent)
+        if nested_under_object:
+            break
+    blender_layout = bool(skins) and (shared_skin or mesh_transformed
+                                      or nested_under_object)
 
     def _skin_tables(skin_i: Optional[int]):
         """(joint names, raw IBM 16-float tuples) of a skin."""
@@ -617,13 +638,88 @@ def _remap_slot_vertices(sub: GltfModel, slot, Q, donor_of_bone,
     K: Dict[str, "framemod.Mat4"] = {}
     appended: List[str] = []
 
+    def _mat_key(flat):
+        return tuple(round(float(x), 5) for x in flat)
+
+    # a joint the donor slot does not know may be a RENAME of one of its
+    # bones rather than a new bone: dis3tool calls a unit's skeleton root
+    # `Reference` whatever the `.g` calls it (the WitchHunter's root is
+    # `Marksman_eyelid_up`), and Blender appends `.001` to duplicated bone
+    # names.  Matching on the inverse-bind matrix reattaches the joint to the
+    # donor's own entry, so the bone table keeps the donor's names — which is
+    # what the `.a` animation streams address — instead of growing a
+    # duplicate.  A bone the glTF also names is never used as a rename
+    # target (it is a real joint, not a rewrite).
+    jname_set = set(jnames)
+    n_donor_bones = len(slot_bones)
+    claimed = {i for nm2, i in local_of.items() if nm2 in jname_set}
+    slot_by_matrix = {}
+    for _i, _b in enumerate(slot_bones):
+        slot_by_matrix.setdefault(
+            _mat_key(framemod.flatten16(framemod.cmaj16(_b.matrix))), _i)
+
+    # A one-for-one rename: the glTF names a joint the slot does not know
+    # and the slot names a bone the glTF never mentions.  dis3tool calls a
+    # unit's skeleton root `Reference` whatever the `.g` calls it, so this
+    # pairing puts the donor name (the one the `.a` streams address) back on
+    # the joint instead of growing the bone table by a duplicate.
+    gltf_only = [nm for nm in jnames if nm and nm not in local_of]
+    donor_only = [nm for nm in local_of if nm not in jname_set]
+    slot_rename: Dict[str, str] = {}
+    if len(gltf_only) == 1 and len(donor_only) == 1:
+        slot_rename[gltf_only[0]] = donor_only[0]
+    for nm in list(gltf_only):          # Blender's duplicate suffix
+        base, dot, tail = nm.rpartition(".")
+        if dot and tail.isdigit() and base in local_of:
+            slot_rename.setdefault(nm, base)
+
+    def _renamed(nm: str):
+        flat = ibmb_of.get(nm)
+        if flat is None:
+            return None
+        M = framemod.mm(Q[nm], flat) if (frame_convert and Q and nm in Q) \
+            else flat
+        i = slot_by_matrix.get(_mat_key(framemod.flatten16(M)))
+        if i is None or i in claimed or i >= len(slot_bones):
+            return None
+        return slot_bones[i]
+
     def k_of(nm: str):
         """Composite map inv(IBMg_slot_j) . Q_j . IBMb_j (built lazily,
         appending missing bones to the slot table on the way)."""
         if nm in K:
             return K[nm]
         if nm not in local_of and nm:
-            bone = donor_of_bone.get(nm)
+            alias = slot_rename.get(nm)
+            if alias is None and nm in Q:
+                # The forward export binds a `.g` bone the animation does not
+                # name onto the animation's ROOT node, so it arrives here
+                # under that name (dis3tool calls every such root
+                # `Reference`).  When the slot holds exactly one bone the
+                # animation never names, that is the one the joint stands for
+                # — unambiguous, so put the donor's name back on it.
+                orphans = [b.name for b in slot_bones[:n_donor_bones]
+                           if b.name not in Q and b.name not in jname_set]
+                if len(orphans) == 1:
+                    alias = orphans[0]
+            if alias is not None:
+                local_of[nm] = local_of[alias]
+                ibmg_of[nm] = ibmg_of[alias]
+                K[nm] = framemod.mm(framemod.inv4(ibmg_of[nm]),
+                                    framemod.mm(Q[nm], ibmb_of[nm])) \
+                    if (frame_convert and Q and nm in Q and nm in ibmb_of) \
+                    else framemod.IDENTITY
+                return K[nm]
+            bone = donor_of_bone.get(nm) or _renamed(nm)
+            if bone is not None and bone.name in local_of:
+                # a renamed joint: point at the donor entry, keep its
+                # descriptor (a duplicate would make the engine animate a
+                # bone no animation stream names)
+                local_of[nm] = local_of[bone.name]
+                ibmg_of[nm] = ibmg_of[bone.name]
+                K[nm] = framemod.mm(framemod.inv4(ibmg_of[nm]),
+                                    framemod.mm(Q[nm], ibmb_of[nm]))
+                return K[nm]
             if bone is None and nm in ibmb_of and nm in Q:
                 # any descriptor is engine-consistent (the vertex map
                 # absorbs it); Q.IBMb makes the map the identity
@@ -961,6 +1057,14 @@ def _mesh_to_skinned_blender(m: GltfModel, weights_on_vertex: int,
             self.holder = holder
             self.is_root = is_root
             self.name = holder.name
+            # A block also stores its own `name` attribute, and that is the
+            # name the game shows and the forward export writes into the glTF
+            # mesh — the GrandInquisitor LOD's root block is called
+            # `empire_grandinquisitor` but its attribute says
+            # `lod_empire_grandinquisitor_clothes`, so matching on the
+            # SkinnedMesh name alone left the slot "missing" and the same
+            # geometry came back as an extra part.
+            self.attr_name = ((holder.attrs or {}).get("name") or "").strip()
             self.bone_names = {b.name for b in (holder.bones or [])}
 
         def used_joint_names(self):
@@ -986,14 +1090,24 @@ def _mesh_to_skinned_blender(m: GltfModel, weights_on_vertex: int,
     # matching: names, then joint-set equality, then leftovers in order
     pair_of_slot: Dict[int, Tuple[str, GltfModel]] = {}
     used_meshes = set()
-    for si, slot in enumerate(slots):
-        for mi, (nm, sub) in enumerate(meshes):
-            if mi in used_meshes:
+    def match_pass(predicate):
+        for si, slot in enumerate(slots):
+            if si in pair_of_slot:
                 continue
-            if nm == slot.name:
-                pair_of_slot[si] = (nm, sub)
-                used_meshes.add(mi)
-                break
+            for mi, (nm, sub) in enumerate(meshes):
+                if mi in used_meshes:
+                    continue
+                if predicate(slot, nm):
+                    pair_of_slot[si] = (nm, sub)
+                    used_meshes.add(mi)
+                    break
+
+    # the block's own `name` attribute first: that is what the forward
+    # export calls the glTF mesh, and it can collide with another slot's
+    # name (the ImperialAssassin root says `empire_assassin_cloth` while a
+    # part is called `empire_assassin`)
+    match_pass(lambda slot, nm: bool(slot.attr_name) and nm == slot.attr_name)
+    match_pass(lambda slot, nm: nm == slot.name)
     for si, slot in enumerate(slots):
         if si in pair_of_slot:
             continue
@@ -1024,6 +1138,15 @@ def _mesh_to_skinned_blender(m: GltfModel, weights_on_vertex: int,
         if best is not None and best_j >= 0.5:
             pair_of_slot[si] = meshes[best]
             used_meshes.add(best)
+
+    if os.environ.get("D3TOOL_DEBUG"):
+        print("[d3tool] donor slots: "
+              + ", ".join(f"{s.name!r}{('/' + repr(s.attr_name)) if s.attr_name and s.attr_name != s.name else ''}"
+                          for s in slots))
+        print("[d3tool] glTF meshes: " + ", ".join(nm for nm, _ in meshes))
+        print("[d3tool] pairing: " + ", ".join(
+            f"{slots[si].name!r} <- {nm!r}" for si, (nm, _) in sorted(
+                pair_of_slot.items())) or "[d3tool] pairing: none")
 
     warns = list(qwarns)
     # -- rebuild every slot -- #

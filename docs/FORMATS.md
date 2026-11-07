@@ -203,6 +203,22 @@ A part exported with tangents enabled additionally carries a tangent stream
 right after its bone table: 8 opaque bytes then `vertex_count * 24` bytes
 (`gfile._parse_compound_parts` keeps it in `part_tail`).
 
+Two more invariants of the block a rebuilt file must honour, both found by
+round-tripping the whole corpus through Blender:
+
+* **the per-material triangle counts are one index buffer split into
+  ranges**, so `sum(materialN_triangles_num)` is what every reader trusts.
+  A rebuild can legitimately carry one triangle fewer than the donor (the
+  glTF form holds one triangle per vertex set, so a reversed-winding twin
+  cannot survive the trip) — the difference is absorbed in `material0`,
+  the first range, which keeps the ranges behind it aligned;
+* **the skeleton root is a joint name, not a bone name**: the forward export
+  binds a `.g` bone the `.a` never animates onto the animation's root node,
+  which dis3tool always calls `Reference` (the WitchHunter's
+  `Marksman_eyelid_up` is the corpus example).  The reverse export maps that
+  joint back onto the donor's unanimated bone so the bone table keeps its
+  size and the part stays driven by the streams.
+
 ### Bone descriptor
 `[u32 str_len] name + NUL, 4x4 row-major matrix (16 x f32)` repeated `bones_num`
 times.  The matrix equals the glTF `inverseBindMatrices`.

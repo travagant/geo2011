@@ -25,6 +25,7 @@ The point is to support a future program that, like dis3tool, exports glTF but
 | `docs/PORT_ANALYSIS_COMPARE_RU.md` | cross-check of the Heroes-VII `Port` archive against this toolkit (the `.a` grammar taken from the official Max exporter, `.g` bind conventions, what was adopted). |
 | `blender/io_scene_d3unit/` | the Blender add-on (import `.g`/`.a`/`.scene` → armature + animation, export back). |
 | `tests/blender_addon_test.py` | headless Blender suite (19 scenarios, operator-driven). |
+| `tests/blender_corpus_test.py` | every shipped unit through import → export in Blender, re-parsed and compared with its donor (~5 s per unit). |
 | `d3tool/` | the Python toolkit (bidirectional: glTF↔original format). |
 | `tests/test_d3tool.py` | unit tests for the individual readers/writers. |
 | `tests/test_corpus.py` | corpus-wide import/export test over **all 87 units**. |
@@ -99,12 +100,16 @@ python3 tests/test_corpus.py
 python3 -m pytest tests/ -q
 
 # parity benchmark against the bundled dis3tool reference exports
-python3 tests/corpus_parity.py         # forward: 85/85 EXACT
-python3 tests/reverse_parity.py        # reverse: 85/85 EXACT
+python3 tests/corpus_parity.py         # forward: 84/84 EXACT
+python3 tests/reverse_parity.py        # reverse: 84/84 EXACT
 
 # animation-only audit: every .g imports with its full .ac animation, every
-# reference glTF exports every stream it names, 95/95 anim round-trips close
+# reference glTF exports every stream it names, 94/94 anim round-trips close
 python3 tests/anim_audit.py            # 0 problems
+
+# every shipped unit through Blender: import -> export -> re-parse, compared
+# with its donor (needs Blender or `pip install bpy`; ~5 s per unit)
+blender --background --python tests/blender_corpus_test.py
 ```
 
 ### The Blender workflow (import → paint weights → export)
@@ -131,6 +136,20 @@ runs six such scenarios, all battle-ready):
   shifts every remaining slot.  Import tags them (`d3unit_part` +
   `d3unit_owner`), and an export only takes its own unit's meshes — a second
   unit left in the scene is never swallowed.
+* **The vertex list is preserved exactly.**  Blender's glTF importer welds
+  vertices that share position/normal/UV by default, which loses the exact
+  correspondence with the original `.g`; the add-on imports with
+  `merge_vertices=False`, so a unit that was not edited re-exports with the
+  donor's own vertex counts.
+* **A `.g` bone the animation never names** (the WitchHunter's
+  `Marksman_eyelid_up`) is written into the glTF as the skeleton's root joint
+  — that is the dis3tool convention, and every reference export does it.  The
+  reverse export puts the donor name back instead of adding a 22nd bone to
+  the table, so the parts keep animating.
+* **A multi-material part** splits one index buffer into ranges; the
+  per-material triangle counts have to add up to what was actually written,
+  so a rebuild absorbs a lost triangle in the first range instead of
+  announcing a total the reader then runs past.
 * **A foreign mesh bound to the armature** (a new weapon, a prop parented to
   a bone, a part split off with "Separate by Material") becomes an extra `.g`
   part: skinned meshes get their own bone table, rigid ones follow the bone in
