@@ -21,6 +21,7 @@ The point is to support a future program that, like dis3tool, exports glTF but
 | `geo2011.dle` | the original 3ds Max plugin (binary). Strings reveal it is the `GM (R) File Exporter` / `GM MAX (R) File Format Exporter`. |
 | `Neutrals/*` | bundled units: `character_*.g` (geometry), `*.gltf`/`*.bin` (dis3tool export), `*.scene`, `*.ac`, `Aliases/*`, textures. |
 | `docs/FORMATS.md` | reverse-engineering notes for `.g`, `.gltf`, `.ac`, `.scene`. |
+| `d3tool/vdpack.py` | the `.vdpack` mod archive (one file = a whole unit folder): `vdpack list/extract/pack`. |
 | `docs/PORT_ANALYSIS_COMPARE_RU.md` | cross-check of the Heroes-VII `Port` archive against this toolkit (the `.a` grammar taken from the official Max exporter, `.g` bind conventions, what was adopted). |
 | `blender/io_scene_d3unit/` | the Blender add-on (import `.g`/`.a`/`.scene` → armature + animation, export back). |
 | `tests/blender_addon_test.py` | headless Blender suite (19 scenarios, operator-driven). |
@@ -74,6 +75,12 @@ python3 -m d3tool validate out/unit.gltf
 
 # dump a parsed .g as JSON
 python3 -m d3tool dump Neutrals/AirElemental/character_neutrals_airelemental.g
+
+# pack a finished unit folder into a single .vdpack mod archive (or unpack one)
+python3 -m d3tool vdpack pack Empire/Hierophant -o hierophant.vdpack
+python3 -m d3tool vdpack list hierophant.vdpack
+python3 -m d3tool vdpack extract hierophant.vdpack -o hierophant/
+python3 -m d3tool vdpack validate hierophant.vdpack   # every internal reference inside?
 
 # convert the native .t texture to a .dds (or back)
 python3 -m d3tool texture convert Neutrals/AirElemental/character_neutrals_airelemental.t \
@@ -136,6 +143,21 @@ runs six such scenarios, all battle-ready):
   `material0_diffuse`.  Findings print as loud warnings — the classes of
   defect that used to surface only as an in-game crash on entering
   battle.
+
+### The add-on zip (what you install in Blender)
+
+```bash
+python3 release/build_addon.py     # -> release/d3unit-addon/io_scene_d3unit.zip
+```
+
+The zip carries the six add-on modules **and** a vendored copy of `d3tool`
+(`<add-on>/vendor/d3tool`), so `Edit > Preferences > Add-ons > Install…`
+gives a working importer/exporter on a machine that has nothing but Blender —
+no checkout, no `pip install`.  The preference *d3tool path* still wins when
+set, and *Check d3tool* reports which copy is live (the vendored one, the
+checkout, or a pip-installed package).  `tests/addon_zip_test.py` builds the
+zip, unpacks it outside the tree, and does a full import→export round trip in
+a Blender process that cannot see the checkout.
 
 ### Portable release (no install needed)
 

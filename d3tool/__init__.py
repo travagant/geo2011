@@ -38,7 +38,7 @@ from .texture import (
     parse_dds, parse_t, t_to_dds, write_dds, write_t,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "__version__",

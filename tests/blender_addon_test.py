@@ -557,15 +557,44 @@ def test_second_unit_in_the_scene_is_left_alone():
     import_unit(ANGEL)
     first = addon.unitprops.find_armature(bpy.context)
     import_unit(RIGID)
-    # both units live in the scene now; the active one is Blacknaga
-    second = bpy.context.view_layer.objects.active
-    second = second if second.type == "ARMATURE" else second.parent
+    # both units live in the scene now; the second one is rigid (no
+    # armature at all), so its root is a mesh
+    second = addon.unitprops.find_unit_root(bpy.context)
+    assert_(second is not None and second is not first,
+            "the second unit did not become its own root")
+    owners = {ob.name: ob.get(addon.unitprops.OWNER_PROP)
+              for ob in bpy.context.scene.objects if ob.type == "MESH"}
+    assert_(len({o for o in owners.values() if o}) == 2,
+            f"the two units must be told apart: {owners}")
     bpy.context.view_layer.objects.active = first
     first.select_set(True)
+    # ...and a foreign mesh skinned to the Angel's hand, slipped in between
+    # the two units, must land in the Angel and never in the Blacknaga
+    hand = hand_bone(first)
+    skin_to(add_cube("StolenSword"), first, hand)
     out = out_dir("two_units")
-    export_unit(os.path.join(out, "character_empire_angel.g"))
-    mesh = read_g(os.path.join(out, "character_empire_angel.g"))
-    eq(len(mesh.parts), 3, "the Angel was exported, not the Blacknaga")
+    g_path = os.path.join(out, "character_empire_angel.g")
+    export_unit(g_path)
+    mesh = read_g(g_path)
+    eq(len(mesh.parts), 4, "the Angel (3 parts) plus the extra mesh")
+    eq(part_names(mesh)[-1], "StolenSword", "the foreign mesh went to the Angel")
+
+    # now export the other unit out of the very same scene
+    for ob in bpy.context.scene.objects:
+        ob.select_set(False)
+    bpy.context.view_layer.objects.active = second
+    second.select_set(True)
+    g2 = os.path.join(out, "character_neutrals_blacknaga.g")
+    export_unit(g2)
+    other = read_g(g2)
+    eq(len(other.parts), 0, "Blacknaga is a single-block .g, not a compound")
+    eq(other.parse_error, None, "the Blacknaga file still parses")
+    assert_(other.vertex_count >= 3448,
+            f"Blacknaga lost vertices: {other.vertex_count}")
+    assert_("StolenSword" not in part_names(other),
+            "the foreign mesh leaked into the other unit")
+    eq(len(other.bones), 38,
+       "Blacknaga keeps its own 38-bone table (not the Angel's 30)")
 
 
 # --------------------------------------------------------------------------- #

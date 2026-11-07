@@ -241,9 +241,15 @@ def import_unit(context, path: str, use_anim: bool = True,
             # tag them so the exporter hands the whole mesh set to the glTF
             # and the donor's compound slots stay one-to-one with the parts
             loose = [m for m in meshes if not m.get(unitprops.PART_PROP)]
+            # Stamp the owner as well, not just "belongs to a unit": two
+            # units in one scene must stay separable, or the first export
+            # would swallow the second unit's unbound meshes.
+            owner = (info or {}).get("base") or (
+                armatures[0].name if armatures else "")
             for ob in loose:
                 try:
                     ob[unitprops.PART_PROP] = True
+                    ob[unitprops.OWNER_PROP] = owner
                 except Exception:  # noqa: BLE001
                     pass
         else:

@@ -6,6 +6,7 @@ build/
 dist/
 *.spec
 release/d3tool-dist/
+release/d3unit-addon/
 build_stage/
 build_stage_exe/
 release/d3tool-dist-exe/

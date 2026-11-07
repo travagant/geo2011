@@ -130,12 +130,27 @@ def find_unit_root(context=None):
     export must not refuse to run for the lack of a skeleton.
     """
     context = context or _context()
+    # The active object decides, and it decides *before* any armature scan:
+    # a scene may hold a rigged unit and a rigid one, and asking for "the
+    # armature that has unit metadata" would hand the export the rigged
+    # unit no matter which one the user is working on.
+    obj = getattr(context, "object", None)
+    if obj is not None:
+        arm = as_armature(obj)
+        if arm is not None:
+            return arm
+        if PROP in obj:                 # rigid unit: metadata on the mesh
+            return obj
+    try:
+        selected = list(context.selected_objects)
+    except AttributeError:
+        selected = []
+    roots = [o for o in selected if PROP in o and as_armature(o) is None]
+    if len(roots) == 1:
+        return roots[0]
     arm = find_armature(context)
     if arm is not None:
         return arm
-    obj = getattr(context, "object", None)
-    if obj is not None and PROP in obj:
-        return obj
     tagged = [o for o in getattr(context.scene, "objects", ()) or ()
               if PROP in o]
     if len(tagged) == 1:

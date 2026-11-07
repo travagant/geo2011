@@ -136,6 +136,12 @@ def validate_unit(arm, meshes, context=None):
                              f"without an Armature modifier: it will be "
                              f"exported rigid (bound to the nearest bone) "
                              f"instead of deformed")
+            elif ob.get(unitprops.PART_PROP):
+                # A part the unit itself brought in (the Hierophant robe is a
+                # morph base, the skirt is rigid in the donor `.g`) has no
+                # deformation bones by design — saying so on every clean
+                # round trip would train the user to ignore the panel.
+                pass
             else:
                 warns.append(f"'{ob.name}' is not attached to the armature: "
                              f"it is exported as a rigid part")

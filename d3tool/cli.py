@@ -11,6 +11,9 @@ writers:
 * ``bundle <folder>``   — run the full pipeline over a unit folder (both ways).
 * ``validate <gltf>``   — structural self-check of a glTF.
 * ``import <g>``        — dump the parsed `.g` as JSON.
+* ``texture convert|info`` — native `.t` <-> `.dds`.
+* ``vdpack list|extract|validate|pack`` — the one-file form of a unit bundle
+  (what a mod ships; see ``d3tool/vdpack.py``).
 """
 from __future__ import annotations
 
@@ -34,6 +37,7 @@ from . import gltf_out as gltfout
 from . import scene as scenemod
 from . import texture as texmod
 from . import ui as ui
+from . import vdpack as vdmod
 
 
 # --------------------------------------------------------------------------- #
@@ -1301,6 +1305,89 @@ def _format_label(info) -> str:
     return f"GM code {info.gm_format}"
 
 
+def _vdpack(args) -> int:
+    """`vdpack list|extract|pack` — the one-file form of a unit bundle."""
+    if args.vd_cmd == "list":
+        pack = vdmod.read_vdpack(args.archive)
+        ui.section(f"vdpack {os.path.basename(args.archive)}")
+        if pack.parse_error:
+            ui.fail(pack.parse_error)
+            return 1
+        ui.table([(e.name, f"{e.size}", f"{e.flags}") for e in pack.entries],
+                 headers=("file", "bytes", "flags"))
+        summary = pack.summary()
+        ui.info(f"{summary['entries']} file(s), "
+                f"{summary['bytes']} bytes, index {summary['index_bytes']}, "
+                f"types {summary['types']}")
+        return 0
+
+    if args.vd_cmd == "extract":
+        pack = vdmod.read_vdpack(args.archive)
+        ui.section(f"vdpack {os.path.basename(args.archive)}")
+        if pack.parse_error:
+            ui.fail(pack.parse_error)
+            return 1
+        dest = args.out or os.path.splitext(os.path.basename(args.archive))[0]
+        try:
+            written = vdmod.extract_vdpack(pack, dest, overwrite=args.force)
+        except FileExistsError as exc:
+            ui.fail(f"refusing to overwrite {exc}; pass -f to replace it")
+            return 1
+        for path in written:
+            ui.wrote(os.path.relpath(path, dest))
+        return 0
+
+    if args.vd_cmd == "validate":
+        if os.path.isdir(args.target):
+            files = dict(vdmod.pack_folder(args.target))
+            label = os.path.basename(os.path.normpath(args.target))
+        else:
+            pack = vdmod.read_vdpack(args.target)
+            if pack.parse_error:
+                ui.section("vdpack validate")
+                ui.fail(f"{pack.parse_error}")
+                return 1
+            files = pack.files()
+            label = os.path.basename(args.target)
+        ui.section(f"vdpack validate {label}")
+        report = vdmod.reference_findings(files)
+        for line in report.notes:
+            ui.info("outside the pack: " + line)
+        if not report:
+            ui.ok(f"{len(files)} file(s), every reference resolves inside")
+            return 0
+        ui.warn("the pack would not load on its own:")
+        for line in report.problems:
+            ui.warn("  " + line)
+        return 1
+
+    # pack
+    if not os.path.isdir(args.folder):
+        ui.fail(f"not a folder: {args.folder}")
+        return 1
+    files = vdmod.pack_folder(args.folder)
+    if not files:
+        ui.fail(f"{args.folder} has no files to pack")
+        return 1
+    out = args.out or (os.path.basename(os.path.normpath(args.folder)) +
+                       ".vdpack")
+    blob = vdmod.build_vdpack(files)
+    # never ship an archive this toolkit cannot read back
+    check = vdmod.parse_vdpack(blob)
+    if check.parse_error or len(check) != len(files):
+        ui.fail(f"the archive would not read back: {check.parse_error}")
+        return 1
+    with open(out, "wb") as fh:
+        fh.write(blob)
+    ui.section(f"vdpack {os.path.basename(out)}")
+    ui.table([(name, f"{len(data)}") for name, data in files[:20]],
+             headers=("file", "bytes"))
+    if len(files) > 20:
+        ui.info(f"... and {len(files) - 20} more")
+    ui.wrote(out, f"{len(files)} file(s), {len(blob)} bytes")
+    return 0
+
+
 def _texture_convert(src: str, dst: str, quiet: bool = False) -> None:
     """``d3tool texture convert <in> -o <out>`` — .t <-> .dds."""
     if not quiet:
@@ -1450,6 +1537,26 @@ def _build_parser() -> argparse.ArgumentParser:
         "info", help="describe a .t / .dds texture")
     p_ti.add_argument("file")
 
+    p_vd = sub.add_parser(
+        "vdpack", help="list / extract / pack a .vdpack mod archive")
+    p_vd_sub = p_vd.add_subparsers(dest="vd_cmd", required=True)
+    p_vl = p_vd_sub.add_parser("list", help="list the files in an archive")
+    p_vl.add_argument("archive")
+    p_ve = p_vd_sub.add_parser(
+        "extract", help="write every entry under a folder")
+    p_ve.add_argument("archive")
+    p_ve.add_argument("-o", "--out",
+                      help="output folder (default: the archive name)")
+    p_ve.add_argument("-f", "--force", action="store_true",
+                      help="overwrite existing files")
+    p_vv = p_vd_sub.add_parser(
+        "validate", help="check that every internal reference is inside")
+    p_vv.add_argument("target", help="a .vdpack file or a unit folder")
+    p_vp = p_vd_sub.add_parser("pack", help="pack a folder into an archive")
+    p_vp.add_argument("folder")
+    p_vp.add_argument("-o", "--out",
+                      help="output .vdpack (default: <folder>.vdpack)")
+
     return parser
 
 
@@ -1533,6 +1640,8 @@ def main(argv=None) -> int:
             _texture_convert(args.src, args.out)
         elif args.tex_cmd == "info":
             _texture_info(args.file)
+    elif args.cmd == "vdpack":
+        return _vdpack(args)
     return 0
 
 

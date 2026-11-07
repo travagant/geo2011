@@ -506,3 +506,56 @@ for some DXT1 diffuse textures and 1 for others at identical size/format, so it
 cannot be recovered when converting a bare `.dds`.  The payload, dimensions and
 format are always correct; only this flag may differ from a specific source
 `.t` unless the original header is preserved.
+
+---
+
+## 6. The `.vdpack` mod archive
+
+A retail install keeps a unit as a loose folder; mods ship the whole tree as
+**one file**, a `.vdpack`, which the game mounts by name.  Implemented in
+`d3tool/vdpack.py` (`vdpack list|extract|pack`), layout documented from the
+Heroes-VII → Disciples III porting corpus (see
+`docs/PORT_ANALYSIS_COMPARE_RU.md`) — the bundled corpus ships no `.vdpack`,
+so the reader is validated against synthetic archives and the port's own
+writer, not against a retail pack.
+
+```text
+u32                       entry count
+repeat count:
+    u32                   name length, INCLUDING the NUL
+    [name + NUL]          backslash separated, relative to the pack root
+    u32 size              payload length
+    u32 offset            absolute offset from byte 0
+    u32 flags             engine flags; 0 in every observed pack
+[payloads]                back to back, in index order, NO padding
+```
+
+Details that matter when writing one back:
+
+* names are stored with `\` as the separator (that is what the port wrote and
+  what the game resolves), so `release`/`pack` normalises `/` to `\`;
+* nothing is aligned — the first payload starts exactly at the end of the
+  index, and `size`/`offset` are the only way to find a file;
+* payloads are the files byte-for-byte, so `pack` → `extract` reproduces the
+  folder exactly (verified on `Neutrals/AirElemental`, 23 files);
+* `flags` is preserved on read and defaults to 0 on write.
+
+Validation on read (all reported as a parse error, never silently ignored): a
+truncated index, an implausible entry count, an unterminated name, a payload
+past the end of the file, and two entries sharing bytes.  On extraction the
+stored name is re-validated, so an archive cannot write outside the target
+folder (`..`, absolute paths and drive letters are refused).
+
+`vdpack validate <archive|folder>` re-checks what the exporter's
+battle-readiness pass checks on a folder, against the payloads themselves: a
+`.ac` state naming an `.a`/meshfile the pack does not contain, a `.g` material
+whose `.t` is missing, duplicate part names.  Two exemptions, both learned
+from retail data:
+
+* `material0_lightmap` almost always names `cubemap_default.tga`, a texture
+  the engine keeps globally (20 of 26 corpus parts) — a unit folder never
+  ships it;
+* a reference that points **outside** the packed tree (Blacknaga's `.ac`
+  still names `resources\characters\neutrals\mermaid\…baseanims.a`, the
+  template it was cloned from) is reported as a note, not a failure: the game
+  mounts those folders separately.
