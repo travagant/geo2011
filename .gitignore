@@ -6,7 +6,10 @@ build/
 dist/
 *.spec
 release/d3tool-dist/
-release/d3unit-addon/
+# the unpacked build folder is scratch; the installable zip is a release
+# artifact and stays in the repository so it can be downloaded
+release/d3unit-addon/*
+!release/d3unit-addon/io_scene_d3unit.zip
 build_stage/
 build_stage_exe/
 release/d3tool-dist-exe/
