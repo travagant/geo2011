@@ -257,9 +257,10 @@ it, in this order:
    * a `.vdpack` (or a mod archive) in the game folder can carry the same
      `character_*.g` — list the candidates with
      `python3 -m d3tool vdpack list <archive>`; a unit shipped inside a pack
-     has to be rebuilt into that pack (`vdpack pack … --keep-index`, the only
-     pack shape confirmed to load), a loose file next to it may simply be
-     ignored;
+     has to be rebuilt into that pack (`vdpack pack … --like <that pack>` — the
+     proven pack's own entry order, names, flags and `index`, only the payloads
+     swapped; `--keep-index` is the weaker form of the same idea), a loose file
+     next to it may simply be ignored;
    * a pack whose own `.ac`/`.scene` names the right file in the wrong folder
      is the crash that looks like a missing file: `vdpack validate` prints
      those as warnings (and `--strict` exits 1).  A generated `_lod.ac` used

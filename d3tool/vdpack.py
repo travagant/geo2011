@@ -247,6 +247,40 @@ def build_vdpack(files: Sequence[Tuple[str, bytes]],
     return bytes(index) + bytes(payload)
 
 
+def pack_like(source: "Vdpack", files) -> Tuple[bytes, List[str]]:
+    """Rebuild a pack with `source`'s entry order, names, flags and `index`.
+
+    The only in-game-confirmed shape is *the same paths, different payloads*,
+    and the archive is a flat list whose order the opaque `index` may well
+    depend on.  So a patch pack must not be re-sorted: this walks the source
+    archive entry by entry, takes each payload from ``files`` (matched
+    case-insensitively on the backslash path), keeps the source's spelling and
+    flags, and falls back to the source payload for anything the folder does
+    not carry (the `index` resource itself, most of all).
+
+    Returns the archive bytes and the list of paths whose payload came from
+    the folder.  A folder path with no counterpart in the source is reported
+    through the second list only when it cannot be placed — see
+    ``silent`` — since *adding* paths is exactly the unconfirmed case.
+    """
+    pairs = list(files.items()) if isinstance(files, dict) else list(files)
+    folder = {name.replace("/", "\\").strip("\\").lower(): data
+              for name, data in pairs}
+    entries: List[Tuple[str, bytes, int]] = []
+    used = set()
+    for entry in source.entries:
+        key = entry.name.replace("/", "\\").strip("\\").lower()
+        blob = folder.get(key)
+        if blob is None:
+            blob = source.payload(entry)
+        else:
+            used.add(key)
+        entries.append((entry.name, blob, entry.flags))
+    extra = sorted(k for k in folder if k not in used and k != INDEX_ENTRY)
+    return build_vdpack([(n, b) for n, b, _ in entries],
+                        flags=[f for _, _, f in entries]), extra
+
+
 def pack_folder(root: str) -> List[Tuple[str, bytes]]:
     """Every file under ``root`` as sorted ``(name, bytes)`` pairs."""
     files: List[Tuple[str, bytes]] = []

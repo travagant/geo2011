@@ -2139,6 +2139,37 @@ def test_lod_mesh_takes_the_parts_its_main_mesh_gained():
     assert scenemod.node_mesh_index(gobjs[-1]) == len(lod_parts) - 1
 
 
+def test_vdpack_pack_like_keeps_the_source_shape():
+    """The only in-game-confirmed pack is *the same paths, different
+    payloads*: entry order, name spelling, flags and the opaque `index` all
+    come from the pack being patched, so nothing but the payload can move."""
+    from d3tool import vdpack as vmod
+    index_blob = bytes(range(256)) * 4          # stands in for the opaque one
+    source = vmod.build_vdpack([
+        ("index", index_blob),
+        ("resources\\Characters\\Empire\\Angel\\b.scene", b"old scene"),
+        ("resources\\Characters\\Empire\\Angel\\a.g", b"old geometry"),
+    ])
+    patched = vmod.parse_vdpack(source)
+    rebuilt, extra = vmod.pack_like(patched, [
+        ("resources/Characters/Empire/Angel/a.g", b"new geometry!"),
+        ("russian.txt", b"x"),                  # a path the source lacks
+    ])
+    assert extra == ["russian.txt"]
+    grown = vmod.parse_vdpack(rebuilt)
+    assert grown.parse_error == ""
+    assert [e.name for e in grown.entries] == [e.name for e in patched.entries]
+    assert [e.flags for e in grown.entries] == [e.flags for e in patched.entries]
+    # the payloads the folder does not carry come from the source, `index`
+    # included, and the ones it does carry are the new bytes
+    by_name = {e.name: grown.payload(e) for e in grown.entries}
+    assert by_name["index"] == index_blob
+    assert by_name["resources\\Characters\\Empire\\Angel\\b.scene"] == \
+        b"old scene"
+    assert by_name["resources\\Characters\\Empire\\Angel\\a.g"] == \
+        b"new geometry!"
+
+
 def test_vdpack_validate_finds_dangling_references():
     """A pack is mounted instead of the loose folders, so everything a unit
     names must be inside it — except what the engine keeps globally."""

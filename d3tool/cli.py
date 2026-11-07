@@ -1481,6 +1481,37 @@ def _vdpack(args) -> int:
     if not files:
         ui.fail(f"{args.folder} has no files to pack")
         return 1
+    if args.like:
+        source = vdmod.read_vdpack(args.like)
+        if source.parse_error:
+            ui.fail(f"{args.like}: {source.parse_error}")
+            return 1
+        blob, extra = vdmod.pack_like(source, files)
+        for name in extra:
+            ui.warn(f"{name}: not in {os.path.basename(args.like)}, dropped — "
+                    "a pack that adds paths is not the confirmed shape")
+        out = args.out or (os.path.basename(os.path.normpath(args.folder)) +
+                           ".vdpack")
+        check = vdmod.parse_vdpack(blob)
+        if check.parse_error or len(check) != len(source):
+            ui.fail(f"the archive would not read back: {check.parse_error}")
+            return 1
+        with open(out, "wb") as fh:
+            fh.write(blob)
+        changed = []
+        for entry in source.entries:
+            before = source.payload(entry)
+            after = check.payload(check.find(entry.name))
+            if before != after:
+                changed.append((entry.name, len(before), len(after)))
+        ui.section(f"vdpack {os.path.basename(out)}")
+        ui.info(f"{len(check)} file(s) in {os.path.basename(args.like)}'s "
+                f"order, {len(blob)} bytes")
+        for name, before, after in changed:
+            ui.ok(f"{name.split(chr(92))[-1]}: {before} -> {after} bytes — "
+                  "everything else carried over byte for byte")
+        ui.wrote(out, f"{len(blob)} bytes")
+        return 0
     if args.keep_index:
         source = vdmod.read_vdpack(args.keep_index)
         if source.parse_error:
@@ -1759,6 +1790,11 @@ def _build_parser() -> argparse.ArgumentParser:
     p_vp.add_argument("folder")
     p_vp.add_argument("-o", "--out",
                       help="output .vdpack (default: <folder>.vdpack)")
+    p_vp.add_argument(
+        "--like", metavar="ARCHIVE",
+        help="rebuild in an existing pack's exact shape: same entry order, "
+             "names, flags and `index`, only the payloads from the folder — "
+             "the one form replacement that is confirmed to load in game")
     p_vp.add_argument(
         "--keep-index", metavar="ARCHIVE",
         help="copy the opaque `index` resource of an existing pack into the "

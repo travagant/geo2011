@@ -716,7 +716,12 @@ it (index untouched) did **not** show the new units in game.  So the writer
 here does not claim otherwise — `vdpack pack` prints a warning when the bundle
 has no `index`, and `--keep-index <existing.vdpack>` copies the resource from
 a proven pack into the new one (same paths, new payloads: the shape that is
-confirmed to load).  `vdpack manifest` records `index: {bytes, sha256}` (or
+confirmed to load).  `--like <existing.vdpack>` goes further and rebuilds the
+archive **in the proven pack's own shape** — same entry order, same name
+spelling, same per-entry flags, same `index`, payloads taken from the folder —
+because an unchanged bundle that the game ignores anyway has to differ from
+the working one in payload bytes alone.  Any folder path the source pack does
+not carry is dropped with a warning: that is the unchecked direction.  `vdpack manifest` records `index: {bytes, sha256}` (or
 `null`), so a manifest says which of the two you are looking at.
 
 Confirmed later on one real unit pack (the Empire Angel, 24 entries, the
