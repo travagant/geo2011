@@ -1,0 +1,19 @@
+// Skill profile n_skill_dmg_oncrit
+
+skill	"n_skill_dmg_oncrit"
+{
+nameid "n_skill_dmg_oncrit_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_UltraAttack.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_UltraAttack_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_dmg_oncrit";
+
+
+info_tag;
+on_crit;
+//Modifi
+}

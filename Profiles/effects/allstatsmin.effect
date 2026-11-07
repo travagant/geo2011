@@ -1,0 +1,10 @@
+// Effect profile for AllstatsMin
+
+effect "AllstatsMin"
+{
+nameid "AllstatsMin_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_attack.t";
+duration_turns	2;
+buff;
+//Modifi
+}

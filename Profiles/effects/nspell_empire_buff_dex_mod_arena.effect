@@ -1,0 +1,11 @@
+// Effect profile for nspell_empire_buff_dex_mod_arena
+
+effect "nspell_empire_buff_dex_mod_arena"
+{
+nameid "nspell_empire_buff_dex_mod_arena_nameid";
+icon "Resources\Interface\Icons\buffs\icon_buff_attack.t";
+duration_turns	-1;
+buff;
+//Modifi
+crit_per	50;
+}

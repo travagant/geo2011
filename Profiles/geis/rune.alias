@@ -1,0 +1,10 @@
+
+
+
+alias "rune" {
+
+
+   sound 100, "$(Sounds)\interface\runa.wav", 100, 3;
+
+
+}  

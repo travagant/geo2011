@@ -1,0 +1,15 @@
+// Skill profile n_skill_range
+
+skill	"n_skill_range"
+{
+nameid "n_skill_range_nameid";
+effectdescid "n_skill_range_descid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_range.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_range.t";
+
+
+
+atck_range	1;
+//Modifi
+}

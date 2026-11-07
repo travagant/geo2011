@@ -1,0 +1,16 @@
+//interactive map object for Empire_capital
+
+id	"map_Empire_capital_myzrael";
+
+nameid	"map_Empire_capitalN";
+descid	"map_Empire_capitalD";
+desc_inactid	"map_Empire_capitalD";
+ambient_sound	"$(Sounds)\\Buildings\\empire_capital.wav";
+
+//destination
+action_class	"town";
+action_class_script	"resources\\profiles\\scripts\\town_empire.s";
+default_unit	"empire_myzrael";
+arena	"Resources\\Hexagons\\Models\\Arena\\Resources\\Hexagons\\Models\\Arena\\arena_back_capital_empire\\arena_back_capital_empire_hexmap.scene.scene";
+landguardian    32.0;
+respawn	0;

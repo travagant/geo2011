@@ -1,0 +1,11 @@
+
+
+
+alias "heal" {
+
+
+   sound 100, "$(Sounds)\interface\heal.wav", 100, 3;
+
+
+
+}  

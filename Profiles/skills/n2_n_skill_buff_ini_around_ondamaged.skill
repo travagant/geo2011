@@ -1,0 +1,20 @@
+// Skill profile n_skill_buff_ini_around_ondamaged
+
+skill	"n_skill_buff_ini_around_ondamaged"
+{
+nameid "n_skill_buff_ini_around_ondamaged_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_spell_undead_buff_str_onkill.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_spell_undead_buff_str_onkill_inactive.t";
+
+skill_range	4;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_buff_ini_around_ondamaged";
+
+request_ap	1;
+battle;
+
+element	water;
+//Modifi
+}

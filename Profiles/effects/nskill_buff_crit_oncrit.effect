@@ -1,0 +1,13 @@
+// Effect profile for nskill_buff_crit_oncrit
+
+effect "nskill_buff_crit_oncrit"
+{
+nameid "nskill_buff_crit_oncrit_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_multishot_cast.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_attack.t";
+duration_turns	2;
+buff;
+//Modifi
+crit_per	30;
+stackable	1;
+}

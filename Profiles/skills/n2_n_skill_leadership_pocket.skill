@@ -1,0 +1,15 @@
+// Skill profile n_skill_leadership_pocket
+
+skill	"n_skill_leadership_pocket"
+{
+nameid "n_skill_leadership_pocket_nameid";
+effectdescid "n_skill_leadership_pocket_descid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_leadership_pocket.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_leadership_pocket_inactive.t";
+
+
+
+reserve	1;
+//Modifi
+}

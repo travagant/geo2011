@@ -1,0 +1,16 @@
+//interactive map object for Mana_empire_small
+
+id	"map_Mana_empire_small";
+
+nameid	"map_manalife_SmallN";
+msgid	"map_manalife_smallAD";
+msg_inactiveid	"";
+descid	"map_manalife_smallD";
+effectid	"map_manalife_smallEff";
+fx_start	"Resources\\FX\Arena_FX\Sign\fx_sign_mana_empire.scene";
+
+//destination
+action_class	"heap_resource";
+heap_resource	life_mana 50;
+msg_popup	"map_manalife_smallPopup";
+once;

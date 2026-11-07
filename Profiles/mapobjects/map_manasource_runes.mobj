@@ -1,0 +1,16 @@
+//interactive map object for Manasource_runes
+
+id	"map_Manasource_runes";
+
+nameid	"map_Manasource_runesN";
+msgid	"map_Manasource_runesAD";
+msg_inactiveid	"map_Manasource_runesNAD";
+descid	"map_Manasource_runesD";
+desc_inactid	"map_Manasource_runesND";
+effectid	"map_Manasource_runesEff";
+ambient_sound	"$(Sounds)\\Buildings\\manasource_runes.wav";
+
+//destination
+action_class	"resource";
+action_class_script	"resources\\profiles\\actionscript\\resource_runestonemana.acscript";
+respawn	0;

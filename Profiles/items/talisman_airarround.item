@@ -1,0 +1,18 @@
+// Equipment Profile
+
+id	"talisman_airarround";
+
+nameid "talisman_airarround_name";
+descid "talisman_airarround_desc";
+
+
+class	"talisman";
+level	3;
+
+icon "resources\Items\talisman\talisman_airarround.t";
+
+add_skill	"n_talisman_airarround";
+res_air	25;
+
+gold_cost	10000;
+//Modifi

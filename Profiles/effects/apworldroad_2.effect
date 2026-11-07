@@ -1,0 +1,13 @@
+// Effect profile for ApWorldRoad_2
+
+effect "ApWorldRoad_2"
+{
+nameid "ApWorldRoad_2_nameid";
+fx_start	"resources\fx\\Arena_FX\Sign\fx_sign_move.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_world.t";
+duration_days	1;
+buff;
+movwm	4;
+//Modifi
+stackable	1;
+}

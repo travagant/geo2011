@@ -1,0 +1,29 @@
+// Spell Profile
+
+id	"spell_empire_resist_death";
+
+nameid	"NamSp_spell_empire_resist_death";
+descid	"DesSp_spell_empire_resist_death";
+
+icon_small "Resources\items\runes\spell_empire_resist_death.t";
+icon "Resources\items\cards\spell_empire_resist_death.t";
+scene "Resources\FX\Map_Spells\Empire\Spell_Resist_Death\spell_empire_resist_death.scene";
+scene_crop "Resources\FX\Map_Spells\Empire\Spell_Resist_Death\spell_empire_resist_death_arena.scene";
+
+default_nation	"Empire";
+level	5;
+target	ally;
+
+game_effect	"nspell_empire_resist_death";
+
+cost_spell "Life mana" 150, 300;
+cost_spell "Infernal mana" 150, 300;
+cost_spell "Death mana" 150, 300;
+cost_spell "Runstone mana" 150, 300;
+
+rune	"rune_spell_empire_resist_death";
+rune_cost "Life mana", 55;
+rune_cost "Infernal mana", 55;
+rune_cost "Death mana", 55;
+rune_cost "Runstone mana", 55;
+rune_cost "Stone", 220;

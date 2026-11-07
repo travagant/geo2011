@@ -1,0 +1,8 @@
+// Effect profile for nspell_elves_summon_ent_arena
+
+effect "nspell_elves_summon_ent_arena"
+{
+nameid "nspell_elves_summon_ent_arena_nameid";
+summon	"elves_ent";
+//Modifi
+}

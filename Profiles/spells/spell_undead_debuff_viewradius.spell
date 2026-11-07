@@ -1,0 +1,23 @@
+// Spell Profile
+
+id	"spell_undead_debuff_viewradius";
+
+nameid	"NamSp_spell_undead_debuff_viewradius";
+descid	"DesSp_spell_undead_debuff_viewradius";
+
+icon_small "Resources\items\runes\spell_undead_debuff_viewradius.t";
+icon "Resources\items\cards\spell_undead_debuff_viewradius.t";
+scene "Resources\FX\Map_Spells\Undead\Spell_undead_Debuff_View\spell_undead_debuff_view.scene";
+scene_crop "Resources\FX\Map_Spells\Undead\Spell_undead_Debuff_View\spell_undead_debuff_view_arena.scene";
+
+default_nation	"Undead";
+level	1;
+target	enemy;
+
+game_effect	"nspell_undead_debuff_viewradius";
+
+cost_spell "Death mana" 150, 300;
+
+rune	"rune_spell_undead_debuff_viewradius";
+rune_cost "Death mana", 55;
+rune_cost "Stone", 55;

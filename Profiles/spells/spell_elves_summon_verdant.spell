@@ -1,0 +1,29 @@
+// Spell Profile
+
+id	"spell_elves_summon_verdant";
+
+nameid	"NamSp_spell_elves_summon_verdant";
+descid	"DesSp_spell_elves_summon_verdant";
+
+icon_small "Resources\items\runes\spell_elves_summon_verdant.t";
+icon "Resources\items\cards\spell_elves_summon_verdant.t";
+scene "Resources\FX\Map_Spells\Elves\Spell_Summon\spell_summon_verdant.scene";
+scene_crop "Resources\FX\Map_Spells\Elves\Spell_Summon\spell_summon_verdant_arena.scene";
+
+default_nation	"Elves";
+level	5;
+target	zone;
+
+game_effect	"nspell_elves_summon_verdant";
+
+cost_spell "Life mana" 390, 780;
+cost_spell "Grove mana" 390, 780;
+cost_spell "Infernal mana" 390, 780;
+cost_spell "Runstone mana" 390, 780;
+
+rune	"rune_spell_elves_summon_verdant";
+rune_cost "Life mana", 140;
+rune_cost "Grove mana", 140;
+rune_cost "Infernal mana", 140;
+rune_cost "Runstone mana", 140;
+rune_cost "Stone", 560;

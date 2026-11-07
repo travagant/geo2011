@@ -1,0 +1,17 @@
+//interactive map object for Manasource_hell
+
+id	"map_Manasource_hell";
+
+nameid	"map_Manasource_hellN";
+msgid	"map_Manasource_hellAD";
+msg_inactiveid	"map_Manasource_hellNAD";
+descid	"map_Manasource_hellD";
+desc_inactid	"map_Manasource_hellND";
+effectid	"map_Manasource_hellEff";
+ambient_sound	"$(Sounds)\\Buildings\\manasource_hell.wav";
+
+//destination
+action_class	"resource";
+action_class_script	"resources\\profiles\\actionscript\\resource_infernalmana.acscript";
+respawn	1;
+quest;

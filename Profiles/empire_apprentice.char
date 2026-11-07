@@ -1,0 +1,23 @@
+// Unit Profile
+//
+id 		"empire_apprentice";
+unit_scene 	"resources\\characters\\empire\\apprentice\\character_empire_apprentice.scene";
+unit_scene_lod		"resources\characters\empire\apprentice\character_empire_apprentice_lod.scene",10;
+icon 		"resources\\characters\\empire\\apprentice\\icon_apprentice.t";
+subicon 	"resources\\characters\\empire\\apprentice\\icon_apprentice_small.t";
+layout_icon	"resources\characters\\empire\\apprentice\\icon_apprentice_node.t";
+fxproc 		"lighting";
+fxscene 	"Resources\FX\Arena_Spells\Empire\Apprentice\fx_empire_apprentice_spell.scene";
+fxcast 		"Resources\FX\Attacks\Empire\Apprentice\fx_empire_apprentice_cast.scene";
+fxscene_ko 	"resources\\fx\\Arena_FX\\Death\\fx_die_empire.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_empires_levelup.scene";
+centerbone "Spine1";
+#include      	"desc\\empire_apprentice_desc.char";
+#include	"stats\\empire_apprentice_stats.char";
+#include      	"sound\\empire_apprentice_sound.char";
+move_speed 	3;
+nodesx 		1;
+nodesz 		1;
+capital_icon 	 "resources\characters\empire\apprentice\icon_apprentice_capital.t";
+dialog_icon 	 "resources\characters\empire\apprentice\icon_apprentice_dialog.t";
+leader_icon      "resources\characters\empire\apprentice\icon_apprentice_ring.t"

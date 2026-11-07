@@ -1,0 +1,21 @@
+// Skill profile n_debuff_resist_mind
+
+skill	"n_debuff_resist_mind"
+{
+nameid "n_debuff_resist_mind_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_map_debuff_accuracy_empire.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_map_debuff_accuracy_empire_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_debuff_resist_mind";
+
+request_ap	1;
+battle;
+
+element	mind;
+info_tag;
+//Modifi
+}

@@ -1,0 +1,16 @@
+
+
+
+alias "click" {
+
+
+   sound 100, "$(Sounds)\interface\click_01.wav", 100, 3;
+   sound 100, "$(Sounds)\interface\click_02.wav", 100, 3;
+   sound 100, "$(Sounds)\interface\click_03.wav", 100, 3;
+   sound 100, "$(Sounds)\interface\click_04.wav", 100, 3;
+   sound 100, "$(Sounds)\interface\click_05.wav", 100, 3;
+   sound 100, "$(Sounds)\interface\click_06.wav", 100, 3;
+
+
+
+}  

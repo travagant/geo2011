@@ -1,0 +1,11 @@
+// Effect profile for nskill_morph_duration
+
+effect "nskill_morph_duration"
+{
+nameid "nskill_morph_duration_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_morph.t";
+duration_turns	2;
+debuff;
+morphed;
+//Modifi
+}

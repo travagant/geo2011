@@ -1,0 +1,14 @@
+// Skill profile n_skill_str
+
+skill	"n_skill_str"
+{
+nameid "n_skill_str_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_stats_up_i.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_stats_up_I_inactive.t";
+
+
+
+str	1;
+//Modifi
+}

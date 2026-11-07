@@ -1,0 +1,20 @@
+// Skill profile n_skill_teleport_all
+
+skill	"n_skill_teleport_all"
+{
+nameid "n_skill_teleport_all_nameid";
+effectdescid "n_skill_teleport_all_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_teleport_me.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_teleport_me_inactive.t";
+
+skill_range	3;
+cast_type	single;
+cast_target	all;
+game_effect	"nskill_teleport_all";
+
+request_ap	1;
+battle;
+
+//Modifi
+}

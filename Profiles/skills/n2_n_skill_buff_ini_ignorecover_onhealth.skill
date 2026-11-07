@@ -1,0 +1,19 @@
+// Skill profile n_skill_buff_ini_ignorecover_onhealth
+
+skill	"n_skill_buff_ini_ignorecover_onhealth"
+{
+nameid "n_skill_buff_ini_ignorecover_onhealth_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_rage.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_rage_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_buff_ini_ignorecover_onhealth";
+
+
+info_tag;
+on_health	35;
+//Modifi
+}

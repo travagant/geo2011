@@ -1,0 +1,16 @@
+// Equipment Profile
+
+id	"proxy_footgears_2lvl";
+
+nameid "proxy_footgears_2lvl_name";
+descid "proxy_footgears_2lvl_desc";
+
+
+class	"footgears";
+level	2;
+
+icon "resources\Items\footgears\proxy_footgears_2lvl.t";
+
+proxy;
+
+//Modifi

@@ -1,0 +1,4 @@
+//empire_titan's description
+nameid "EmpireTitanName";
+descid "EmpireTitanDesc";
+minidesc "EmpireTitan_MD";

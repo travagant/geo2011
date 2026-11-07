@@ -1,0 +1,9 @@
+// Effect profile for nskill_defform_doppleganger
+
+effect "nskill_defform_doppleganger"
+{
+nameid "nskill_defform_doppleganger_nameid";
+icon "Resources\Interface\Icons\buffs\icon_buff_morph.t";
+doppel	"nskill_doppleganger_duration";
+//Modifi
+}

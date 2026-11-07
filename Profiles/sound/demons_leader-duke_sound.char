@@ -1,0 +1,6 @@
+// Unit Sound
+//
+sndevent_attack    "$(Sounds)\sound_attack\attack_sword_1.wav";
+sndevent_step    "$(Sounds)\sound_step\step_levitating_1.wav";
+sndevent_damage	"$(Sounds)\demons_leader_thief_damage.wav";
+sndevent_ko	"$(Sounds)\demons_demons_death.wav";

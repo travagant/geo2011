@@ -1,0 +1,19 @@
+// Skill profile n_book_voodoo
+
+skill	"n_book_voodoo"
+{
+nameid "n_book_voodoo_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_book_voodoo.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_book_voodoo_inactive.t";
+
+skill_range	5;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_book_voodoo";
+
+request_ap	1;
+battle;
+
+//Modifi
+}

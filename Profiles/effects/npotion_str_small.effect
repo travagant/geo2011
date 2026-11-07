@@ -1,0 +1,13 @@
+// Effect profile for npotion_str_small
+
+effect "npotion_str_small"
+{
+nameid "npotion_str_small_nameid";
+fx_start	"resources\fx\\Arena_FX\Potions\fx_potion_str_small.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_attack.t";
+duration_days	3;
+buff;
+str	2;
+dontdispell;
+//Modifi
+}

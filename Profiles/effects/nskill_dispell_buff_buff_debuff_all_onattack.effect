@@ -1,0 +1,17 @@
+// Effect profile for nskill_dispell_buff_buff_debuff_all_onattack
+
+effect "nskill_dispell_buff_buff_debuff_all_onattack"
+{
+nameid "nskill_dispell_buff_buff_debuff_all_onattack_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_dispell_buff_buff_debuff_all_onattack.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_attack.t";
+duration_turns	1;
+debuff;
+str	-1;
+agi	-1;
+dex	-1;
+spd	-1;
+vit	-1;
+//Modifi
+stackable	1;
+}

@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_undead_summon_skeleton";
+
+nameid "NamSp_spell_undead_summon_skeleton";
+descid "DesSp_spell_undead_summon_skeleton";
+
+level 2;
+class "runes";
+icon "Resources\items\runes\spell_undead_summon_skeleton.t";
+scene "Resources\FX\Map_Spells\Undead\Spell_Summon\spell_summon_skeleton_arena.scene";
+
+target zone;
+game_effect "nspell_undead_summon_skeleton_arena";
+
+gold_cost 460;
+usage_cost 20;
+race "Undead";

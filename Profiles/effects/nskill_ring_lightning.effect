@@ -1,0 +1,10 @@
+// Effect profile for nskill_ring_lightning
+
+effect "nskill_ring_lightning"
+{
+nameid "nskill_ring_lightning_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_ring_lightning.scene";
+attack_pow	20;
+element	"air";
+//Modifi
+}

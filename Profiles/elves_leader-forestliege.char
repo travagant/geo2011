@@ -1,0 +1,51 @@
+// Unit Profile
+//
+id 		"elves_leader-forestliege";
+unit_scene 	"resources\\characters\\elves\\leader-forestliege\\character_elves_leader-forestliege.scene"
+unit_scene_lod		"resources\characters\elves\leader-forestliege\character_elves_leader-forestliege_lod.scene",10;
+icon 		"resources\\characters\\elves\\leader-forestliege\\icon_leader-forestliege.t";
+subicon 	"resources\\characters\\elves\\leader-forestliege\\icon_leader-forestliege_small.t";
+layout_icon	"resources\\characters\\elves\\leader-forestliege\\icon_leader-forestliege_node.t";
+capital_icon 	"resources\characters\elves\leader-forestliege\icon_leader-forestliege_capital.t";
+dialog_icon 	"resources\characters\elves\leader-forestliege\icon_leader-forestliege_dialog.t";
+leader_icon 	"resources\characters\elves\Leader-forestliege\icon_leader-forestliege_ring.t";
+fxproc          "lighting";
+fxscene         "resources\\fx\\Arena_FX\\Physical_Damage\\fx_small_attack_damage.scene";
+fxscene_ko      "resources\\fx\\Arena_FX\\Death\\fx_die_elves.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_elves_levelup.scene";
+centerbone "Spine";
+#include      	"desc\\elves_leader-forestliege_desc.char";
+#include 	"stats\\elves_leader-forestliege_stats.char";
+#include      	"sound\\elves_leader-forestliege_sound.char";
+move_speed 	4.5;
+nodesx 		1;
+nodesz 		1;
+names "$(Texts)/elves_leader-forestliege.txt";
+
+set 1 {
+    weapon "resources\Characters\elves\leader-forestliege\weapon\elves_leader-forestliege_set1_weapon.scene";
+    feet "resources\Characters\elves\leader-forestliege\feet\elves_leader-forestliege_set1_feet.scene";
+    body "resources\Characters\elves\leader-forestliege\body\elves_leader-forestliege_set1_body.scene";
+    head "resources\Characters\elves\leader-forestliege\head\elves_leader-forestliege_set1_head.scene";
+    legs "resources\Characters\elves\leader-forestliege\legs\elves_leader-forestliege_set1_legs.scene";
+    arms "resources\Characters\elves\leader-forestliege\arms\elves_leader-forestliege_set1_arms.scene";
+    hands "resources\Characters\elves\leader-forestliege\hands\elves_leader-forestliege_set1_hands.scene";
+}
+set 2 {
+    weapon "resources\Characters\elves\leader-forestliege\weapon\elves_leader-forestliege_set2_weapon.scene";
+    feet "resources\Characters\elves\leader-forestliege\feet\elves_leader-forestliege_set2_feet.scene";
+    body "resources\Characters\elves\leader-forestliege\body\elves_leader-forestliege_set2_body.scene";
+    head "resources\Characters\elves\leader-forestliege\head\elves_leader-forestliege_set2_head.scene";
+    legs "resources\Characters\elves\leader-forestliege\legs\elves_leader-forestliege_set2_legs.scene";
+    arms "resources\Characters\elves\leader-forestliege\arms\elves_leader-forestliege_set2_arms.scene";
+    hands "resources\Characters\elves\leader-forestliege\hands\elves_leader-forestliege_set2_hands.scene";
+}
+set 3 {
+    weapon "resources\Characters\elves\leader-forestliege\weapon\elves_leader-forestliege_set3_weapon.scene";
+    feet "resources\Characters\elves\leader-forestliege\feet\elves_leader-forestliege_set3_feet.scene";
+    body "resources\Characters\elves\leader-forestliege\body\elves_leader-forestliege_set3_body.scene";
+    head "resources\Characters\elves\leader-forestliege\head\elves_leader-forestliege_set3_head.scene";
+    legs "resources\Characters\elves\leader-forestliege\legs\elves_leader-forestliege_set3_legs.scene";
+    arms "resources\Characters\elves\leader-forestliege\arms\elves_leader-forestliege_set3_arms.scene";
+    hands "resources\Characters\elves\leader-forestliege\hands\elves_leader-forestliege_set3_hands.scene";
+}

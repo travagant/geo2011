@@ -1,0 +1,20 @@
+// Skill profile n_skill_shield_push
+
+skill	"n_skill_shield_push"
+{
+nameid "n_skill_shield_push_nameid";
+effectdescid "n_skill_shield_push_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_full_invinsible.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_full_invinsible_inactive.t";
+
+skill_range	3;
+cast_type	single;
+cast_target	friendly;
+game_effect	"nskill_shield_push";
+
+request_ap	1;
+battle;
+
+//Modifi
+}

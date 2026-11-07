@@ -1,0 +1,19 @@
+// Skill profile n_spell_elves_buff_regen
+
+skill	"n_spell_elves_buff_regen"
+{
+nameid "n_spell_elves_buff_regen_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_spell_elves_buff_regen.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_spell_elves_buff_regen_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_spell_elves_buff_regen";
+
+
+info_tag;
+on_damaged;
+//Modifi
+}

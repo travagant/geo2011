@@ -1,0 +1,21 @@
+// Skill profile n_debuff_reduce_armor
+
+skill	"n_debuff_reduce_armor"
+{
+nameid "n_debuff_reduce_armor_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_ignore_armor.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_ignore_armor_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_reduce_armor";
+
+request_ap	1;
+
+element	earth;
+info_tag;
+on_attack;
+//Modifi
+}

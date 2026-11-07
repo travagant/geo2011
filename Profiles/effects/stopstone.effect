@@ -1,0 +1,12 @@
+// Effect profile for StopStone
+
+effect "StopStone"
+{
+nameid "StopStone_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_stop.t";
+duration_turns	3;
+debuff;
+stop;
+element	"Earth";
+//Modifi
+}

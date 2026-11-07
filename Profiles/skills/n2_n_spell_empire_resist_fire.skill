@@ -1,0 +1,19 @@
+// Skill profile n_spell_empire_resist_fire
+
+skill	"n_spell_empire_resist_fire"
+{
+nameid "n_spell_empire_resist_fire_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_spell_empire_resist_fire.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_spell_empire_resist_fire_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_spell_empire_resist_fire";
+
+
+info_tag;
+on_crited;
+//Modifi
+}

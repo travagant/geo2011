@@ -1,0 +1,21 @@
+// Skill profile n_book_hero
+
+skill	"n_book_hero"
+{
+nameid "n_book_hero_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_book_hero.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_book_hero_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_book_hero";
+
+
+info_tag;
+on_kill;
+on_crit;
+on_flee;
+//Modifi
+}

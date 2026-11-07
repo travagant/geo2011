@@ -1,0 +1,21 @@
+// Skill profile n_fireshield
+
+skill	"n_fireshield"
+{
+nameid "n_fireshield_nameid";
+effectdescid "n_fireshield_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_fire_sword.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_fire_sword_inactive.t";
+
+skill_range	1;
+cast_type	around;
+cast_target	enemy;
+game_effect	"nskill_fireshield";
+fx_scene	"Resources\FX\Map_Spells\map_ignis_potens\fx_ignis_potens.scene";
+
+
+info_tag;
+on_intercepted;
+//Modifi
+}

@@ -1,0 +1,12 @@
+// Effect profile for nskill_debuff_vit_onturn_onattack
+
+effect "nskill_debuff_vit_onturn_onattack"
+{
+nameid "nskill_debuff_vit_onturn_onattack_nameid";
+fx_start	"resources\fx\\Arena_Spells\Undead\Rod-1\fx_undead_rod-1_spell.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_curse.t";
+duration_turns	2;
+debuff;
+//Modifi
+add_skill	"n_spell_undead_debuff_vit_onturn";
+}

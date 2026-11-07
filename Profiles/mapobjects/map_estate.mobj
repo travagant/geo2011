@@ -1,0 +1,17 @@
+//interactive map object for Estate
+
+id	"map_Estate";
+
+nameid	"map_EstateN";
+msgid	"map_EstateAD";
+msg_inactiveid	"map_EstateNAD";
+descid	"map_EstateD";
+desc_inactid	"map_EstateND";
+effectid	"map_EstateEff";
+ambient_sound	"$(Sounds)\\Buildings\\estate.wav";
+fx_start	"Resources\\FX\Arena_FX\Sign\fx_sign_statsup.scene";
+
+//destination
+action_class	"object";
+game_effect	"nEstate";
+respawn	4;

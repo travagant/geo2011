@@ -1,0 +1,55 @@
+// Characters stats profile
+
+unit_class	melee;
+ship	"elves2";
+attack_type	"slash";
+level	1;
+exp_base	200;
+
+//stats
+str	3;
+spd	2;
+dex	2;
+agi	2;
+vit	3;
+
+
+up	40;
+mov	2;
+movwm	12;
+
+atck_range	1;
+Control	1;
+Cover	1;
+
+//resists
+res_blunt	-25;
+res_death	25;
+res_mind	25;
+
+raceleader;
+Leadership	3;
+leadership_cost	1;
+cost	500;
+skill_grid	"story_lemuan";
+viewradius	8;
+
+//Modifi
+dmg_str_mod	 1200;
+dmg_agi_mod	 800;
+crit_dex_mod	 400;
+crit_vit_mod	 200;
+flee_agi_mod	 400;
+flee_spd_mod	 200;
+hp_vit_mod	 5000;
+hp_str_mod	 2500;
+ini_spd_mod	 200;
+ini_dex_mod	 100;
+mov_mod	 0;
+movwm_mod	 0;
+cover_mod	 0;
+viewradius_mod	 0;
+Discount_Mod	 0;
+Bonusexp_Mod	 0;
+level_cap	30;
+levels_to_up	3;

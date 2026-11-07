@@ -1,0 +1,4 @@
+//undead_Zombie's description
+nameid "UndeadZombieName";
+descid "UndeadZombieDesc";
+minidesc "UndeadZombie_MD";

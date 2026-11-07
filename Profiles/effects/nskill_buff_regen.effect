@@ -1,0 +1,10 @@
+// Effect profile for nskill_buff_regen
+
+effect "nskill_buff_regen"
+{
+nameid "nskill_buff_regen_nameid";
+duration_turns	1;
+buff;
+regen	15;
+//Modifi
+}

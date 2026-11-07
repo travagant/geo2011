@@ -1,0 +1,19 @@
+// Skill profile n_skill_buff_param_oncursed
+
+skill	"n_skill_buff_param_oncursed"
+{
+nameid "n_skill_buff_param_oncursed_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_buff_param_oncursed.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_buff_param_oncursed_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_buff_param_oncursed";
+
+
+info_tag;
+on_cursed;
+//Modifi
+}

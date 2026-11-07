@@ -1,0 +1,11 @@
+// Effect profile for ResEarthMax
+
+effect "ResEarthMax"
+{
+nameid "ResEarthMax_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_resist.t";
+duration_turns	10;
+buff;
+res_earth	75;
+//Modifi
+}

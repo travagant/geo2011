@@ -1,0 +1,12 @@
+// Effect profile for nbanner_of_fearlessness
+
+effect "nbanner_of_fearlessness"
+{
+nameid "nbanner_of_fearlessness_nameid";
+icon "Resources\Interface\Icons\buffs\icon_buff_attack.t";
+duration_turns	-1;
+buff;
+spd	1;
+dontdispell;
+//Modifi
+}

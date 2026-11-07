@@ -1,0 +1,11 @@
+// Effect profile for MattackDecMax
+
+effect "MattackDecMax"
+{
+nameid "MattackDecMax_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_attack.t";
+duration_turns	10;
+debuff;
+spd	-5;
+//Modifi
+}

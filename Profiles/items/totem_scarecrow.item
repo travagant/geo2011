@@ -1,0 +1,26 @@
+// Equipment Profile
+
+id	"totem_scarecrow";
+
+nameid "totem_scarecrow_name";
+descid "totem_scarecrow_desc";
+effectdescid "totem_scarecrow_efdesc";
+
+
+class	"banner";
+level	3;
+
+icon "resources\Items\banner\totem_scarecrow.t";
+
+
+gold_cost	10000;
+//Modifi
+banner_profile	{
+ //сцена флага
+ banner_scene "Resources\Hexagons\Models\Flags\totem_scarecrow.scene"
+
+ //действия на очередном ходе
+ // "цель" "сцена спецэффекта"
+ turn_action "all" "ntotem_scarecrow" "Resources\FX\Arena_FX\Skills\fx_skill_tel_self_point_spell.scene"
+ fxcast "Resources\FX\Arena_FX\Totems\fx_totem_scarecrow_cast.scene"
+};;

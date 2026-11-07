@@ -1,0 +1,12 @@
+// Effect profile for nskill_book_balance_enemy
+
+effect "nskill_book_balance_enemy"
+{
+nameid "nskill_book_balance_enemy_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_book_balance.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_curse.t";
+duration_turns	3;
+debuff;
+//Modifi
+add_skill	"n_book_balance_enemy";
+}

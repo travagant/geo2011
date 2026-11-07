@@ -1,0 +1,21 @@
+// Skill profile n_dansemacabre
+
+skill	"n_dansemacabre"
+{
+nameid "n_dansemacabre_nameid";
+effectdescid "n_dansemacabre_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_battleout.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_battleout_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_dansemacabre";
+fx_scene	"Resources\FX\Arena_FX\Skills\fx_skill_double_damage_1_cast.scene";
+
+
+info_tag;
+on_kill;
+//Modifi
+}

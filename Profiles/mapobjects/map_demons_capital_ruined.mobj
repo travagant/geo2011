@@ -1,0 +1,11 @@
+//interactive map object for Demons_capital_ruined
+
+id	"map_Demons_capital_ruined";
+
+nameid	"map_Demons_capital_ruinedN";
+descid	"map_Demons_capital_ruinedD";
+desc_inactid	"map_Demons_capital_ruinedND";
+
+//destination
+action_class	"object";
+respawn	0;

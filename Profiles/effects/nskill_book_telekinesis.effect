@@ -1,0 +1,9 @@
+// Effect profile for nskill_book_telekinesis
+
+effect "nskill_book_telekinesis"
+{
+nameid "nskill_book_telekinesis_nameid";
+push;
+push_collide	"nskill_push_collide";
+//Modifi
+}

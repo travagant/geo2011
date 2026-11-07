@@ -1,0 +1,20 @@
+// Skill profile n_spell_undead_debuff_vit_onturn
+
+skill	"n_spell_undead_debuff_vit_onturn"
+{
+nameid "n_spell_undead_debuff_vit_onturn_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_spell_undead_debuff_vit_onturn.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_spell_undead_debuff_vit_onturn_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_spell_undead_debuff_vit_onturn";
+
+
+element	death;
+info_tag;
+on_turn;
+//Modifi
+}

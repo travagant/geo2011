@@ -1,0 +1,13 @@
+// Effect profile for nskill_sniping
+
+effect "nskill_sniping"
+{
+nameid "nskill_sniping_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_attack.t";
+duration_turns	1;
+buff;
+ap	1;
+//Modifi
+crit_per	100;
+remove_immediately;
+}

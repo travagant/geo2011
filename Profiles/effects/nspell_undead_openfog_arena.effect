@@ -1,0 +1,8 @@
+// Effect profile for nspell_undead_openfog_arena
+
+effect "nspell_undead_openfog_arena"
+{
+nameid "nspell_undead_openfog_arena_nameid";
+openfog	20;
+//Modifi
+}

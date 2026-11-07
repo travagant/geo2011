@@ -1,0 +1,18 @@
+// Achievement Profile
+
+achievement "damage"
+{
+	nameid  "damage_name"; 
+	descid  "damage_desc";
+	type range;
+	count_name "str_damage_CN";
+
+	level_bronze 1000;
+	icon_bronze "Resources\Interface\Icons\achievements\achieve_damage.t";
+
+	level_silver 10000;
+	icon_silver "Resources\Interface\Icons\achievements\achieve_damage.t";
+
+	level_gold 50000;
+	icon_gold "Resources\Interface\Icons\achievements\achieve_damage.t";
+};

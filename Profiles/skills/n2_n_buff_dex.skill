@@ -1,0 +1,20 @@
+// Skill profile n_buff_dex
+
+skill	"n_buff_dex"
+{
+nameid "n_buff_dex_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_sharp-eye.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_sharp-eye_inactive.t";
+
+skill_range	3;
+cast_type	single;
+cast_target	friendly;
+game_effect	"nskill_buff_dex";
+
+request_ap	1;
+battle;
+
+info_tag;
+//Modifi
+}

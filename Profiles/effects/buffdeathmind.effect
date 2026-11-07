@@ -1,0 +1,12 @@
+// Effect profile for BuffDeathMind
+
+effect "BuffDeathMind"
+{
+nameid "BuffDeathMind_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_defense.t";
+duration_turns	6;
+buff;
+res_death	25;
+res_mind	25;
+//Modifi
+}

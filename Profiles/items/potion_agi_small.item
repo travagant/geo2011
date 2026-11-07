@@ -1,0 +1,16 @@
+// Potion Profile
+
+id	"potion_agi_small";
+
+
+nameid	"ItNPotAgiS";
+descid	"ItDPotAgiS";
+
+class "potion";
+level	1;
+icon "Resources\\Items\\potion\\potion_agi_small.t";
+
+game_effect	"npotion_agi_small";
+gold_cost	300;
+usage_cost	10;
+target	"ally";

@@ -1,0 +1,8 @@
+// Effect profile for nspell_undead_openfog
+
+effect "nspell_undead_openfog"
+{
+nameid "nspell_undead_openfog_nameid";
+openfog	20;
+//Modifi
+}

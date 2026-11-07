@@ -1,0 +1,18 @@
+// Equipment Profile
+
+id	"talisman_mindarround";
+
+nameid "talisman_mindarround_name";
+descid "talisman_mindarround_desc";
+
+
+class	"talisman";
+level	3;
+
+icon "resources\Items\talisman\talisman_mindarround.t";
+
+add_skill	"n_talisman_mindarround";
+res_mind	25;
+
+gold_cost	10000;
+//Modifi

@@ -1,0 +1,11 @@
+// Effect profile for nskill_lightning_bolt
+
+effect "nskill_lightning_bolt"
+{
+nameid "nskill_lightning_bolt_nameid";
+fx_start	"Resources\FX\\Arena_FX\Skills\fx_skill_ligth_damage_2_spell.scene";
+debuff;
+attack_pow	100;
+element	"air";
+//Modifi
+}

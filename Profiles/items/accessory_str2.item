@@ -1,0 +1,20 @@
+// Equipment Profile
+
+id	"accessory_str2";
+
+nameid "accessory_str2_name";
+descid "accessory_str2_desc";
+
+
+class	"accessory";
+replace	"hands" set 2;
+replace	"arms" set 2;
+level	2;
+
+icon "resources\Items\accessory\accessory_str2.t";
+
+str	1;
+res_death	25;
+
+gold_cost	6000;
+//Modifi

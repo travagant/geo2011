@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_empire_resist_water";
+
+nameid "NamSp_spell_empire_resist_water";
+descid "DesSp_spell_empire_resist_water";
+
+level 1;
+class "runes";
+icon "Resources\items\runes\spell_empire_resist_water.t";
+scene "Resources\FX\Map_Spells\Empire\Spell_Resist_Water\spell_resist_water_arena.scene";
+
+target ally;
+game_effect "nspell_empire_resist_water_arena";
+
+gold_cost 220;
+usage_cost 20;
+race "Empire";

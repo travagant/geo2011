@@ -1,0 +1,25 @@
+// Spell Profile
+
+id	"spell_demons_heal";
+
+nameid	"NamSp_spell_demons_heal";
+descid	"DesSp_spell_demons_heal";
+
+icon_small "Resources\items\runes\spell_demons_heal.t";
+icon "Resources\items\cards\spell_demons_heal.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Demons_Heal\spell_demons_heal_4.scene";
+scene_crop "Resources\FX\Map_Spells\Demons\Spell_Demons_Heal\spell_demons_heal_4_arena.scene";
+
+default_nation	"Demons";
+level	3;
+target	ally;
+
+game_effect	"nspell_demons_heal";
+
+cost_spell "Life mana" 240, 480;
+cost_spell "Infernal mana" 240, 480;
+
+rune	"rune_spell_demons_heal";
+rune_cost "Life mana", 85;
+rune_cost "Infernal mana", 85;
+rune_cost "Stone", 170;

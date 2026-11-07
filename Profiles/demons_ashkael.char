@@ -1,0 +1,23 @@
+//Unit Profile
+//
+id                       "demons_ashkael";
+unit_scene              "resources\\characters\\demons\\ashkael\\character_demons_ashkael.scene";
+unit_scene_lod		"resources\characters\demons\ashkael\character_demons_ashkael_lod.scene",10;
+icon                     "resources\\characters\\demons\\ashkael\\icon_ashkael.t";
+subicon                  "resources\\characters\\demons\\ashkael\\icon_ashkael_small.t";
+layout_icon              "resources\\characters\\demons\\ashkael\\icon_ashkael_node.t";
+capital_icon             "resources\\characters\\demons\\ashkael\\icon_ashkael_capital.t";
+dialog_icon              "resources\\characters\\demons\\ashkael\\icon_ashkael_dialog.t";
+leader_icon              "resources\\characters\\demons\\ashkael\\icon_ashkael_ring.t";
+fxproc                   "lighting";
+fxscene                  "resources\\fx\\Arena_Spells\\demons\\ashkael\\fx_demons_ashkael_spell.scene";
+fxcast                   "resources\\fx\\Attacks\\demons\\ashkael\\fx_demons_ashkael_cast.scene";
+fxscene_ko               "resources\\fx\\Arena_FX\\Death\\fx_die_demons.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_demons_levelup.scene";
+centerbone               "Spine";
+move_speed                0;
+nodesx                   1;
+nodesz                   1;
+#include                 "desc\\demons_ashkael_desc.char";
+#include                 "sound\\demons_ashkael_sound.char";
+#include                 "stats\\demons_ashkael_stats.char";

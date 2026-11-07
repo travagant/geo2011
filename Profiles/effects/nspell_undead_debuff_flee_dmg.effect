@@ -1,0 +1,11 @@
+// Effect profile for nspell_undead_debuff_flee_dmg
+
+effect "nspell_undead_debuff_flee_dmg"
+{
+nameid "nspell_undead_debuff_flee_dmg_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_curse.t";
+duration_days	2;
+debuff;
+//Modifi
+add_skill	"n_spell_undead_debuff_flee_dmg";
+}

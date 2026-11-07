@@ -1,0 +1,13 @@
+// Effect profile for nskill_unstopabale
+
+effect "nskill_unstopabale"
+{
+nameid "nskill_unstopabale_nameid";
+fx_start	"resources\fx\\Arena_FX\Potions\fx_skill_book_folly.scene";
+duration_turns	-1;
+debuff;
+dontdispell;
+//Modifi
+c_cover	-1;
+stackable	1;
+}

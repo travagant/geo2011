@@ -1,0 +1,12 @@
+// Effect profile for nspell_undead_debuff_str_arena
+
+effect "nspell_undead_debuff_str_arena"
+{
+nameid "nspell_undead_debuff_str_arena_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_attack.t";
+duration_turns	-1;
+debuff;
+vit	-7;
+res_death	-25;
+//Modifi
+}

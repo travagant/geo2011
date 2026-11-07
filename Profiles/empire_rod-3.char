@@ -1,0 +1,23 @@
+//Unit Profile
+//
+id                       "empire_rod-3";
+unit_scene              "resources\\characters\\empire\\rod-3\\character_empire_rod-3.scene";
+unit_scene_lod		"resources\characters\empire\rod-3\character_empire_rod-3_lod.scene",30;
+icon                     "resources\\characters\\empire\\rod-3\\icon_rod-3.t";
+subicon                  "resources\\characters\\empire\\rod-3\\icon_rod-3_small.t";
+layout_icon              "resources\\characters\\empire\\rod-3\\icon_rod-3_node.t";
+capital_icon             "resources\\characters\\empire\\rod-3\\icon_rod-3_capital.t";
+dialog_icon              "resources\\characters\\empire\\rod-3\\icon_rod-3_dialog.t";
+leader_icon              "resources\\characters\\empire\\rod-3\\icon_rod-3_ring.t"
+fxproc                   "default";
+fxscene                  "resources\\fx\\Arena_Spells\\empire\\rod-3\\fx_empire_rod-3_spell.scene";
+fxcast                   "resources\\fx\\Attacks\\empire\\rod-3\\fx_empire_rod-3_cast.scene";
+fxscene_ko               "resources\\fx\\Arena_FX\\Death\\fx_die_empire.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_empires_levelup.scene";
+centerbone "Spine1";
+move_speed                2;
+nodesx                   1;
+nodesz                   1;
+#include                 "desc\\empire_rod-3_desc.char";
+#include                 "sound\\empire_rod-3_sound.char";
+#include                 "stats\\empire_rod-3_stats.char";

@@ -1,0 +1,11 @@
+// Effect profile for VitDecMax
+
+effect "VitDecMax"
+{
+nameid "VitDecMax_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_defense.t";
+duration_turns	3;
+debuff;
+vit	-3;
+//Modifi
+}

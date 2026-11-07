@@ -1,0 +1,13 @@
+// Effect profile for nspell_demons_dmg_fire
+
+effect "nspell_demons_dmg_fire"
+{
+nameid "nspell_demons_dmg_fire_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_resist.t";
+duration_days	2;
+debuff;
+damage	60;
+element	"fire";
+res_pierce	-25;
+//Modifi
+}

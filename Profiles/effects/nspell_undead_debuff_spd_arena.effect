@@ -1,0 +1,14 @@
+// Effect profile for nspell_undead_debuff_spd_arena
+
+effect "nspell_undead_debuff_spd_arena"
+{
+nameid "nspell_undead_debuff_spd_arena_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_attack.t";
+duration_turns	-1;
+debuff;
+spd	-4;
+res_mind	-25;
+dispel_buffs	1;
+banish;
+//Modifi
+}

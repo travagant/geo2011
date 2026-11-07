@@ -1,0 +1,4 @@
+//empire_matriarch's description
+nameid "EmpireMatriarchName";
+descid "EmpireMatriarchDesc";
+minidesc "EmpireMatriarch_MD";

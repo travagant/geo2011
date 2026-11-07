@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_empire_summon_golem";
+
+nameid "NamSp_spell_empire_summon_golem";
+descid "DesSp_spell_empire_summon_golem";
+
+level 4;
+class "runes";
+icon "Resources\items\runes\spell_empire_summon_golem.t";
+scene "Resources\FX\Map_Spells\Empire\Spell_Summon\spell_summon_golem_arena.scene";
+
+target zone;
+game_effect "nspell_empire_summon_golem_arena";
+
+gold_cost 1620;
+usage_cost 40;
+race "Empire";

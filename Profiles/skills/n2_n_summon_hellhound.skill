@@ -1,0 +1,21 @@
+// Skill profile n_summon_hellhound
+
+skill	"n_summon_hellhound"
+{
+nameid "n_summon_hellhound_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_summon.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_summon_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	self;
+game_effect	"spelleffect_summon_hellhound";
+fx_scene	"Resources\FX\Arena_FX\Skills\fx_skill_summon_pet_1_cast.scene";
+
+request_ap	1;
+battle;
+
+info_tag;
+//Modifi
+}

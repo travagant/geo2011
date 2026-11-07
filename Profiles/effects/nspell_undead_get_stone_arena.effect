@@ -1,0 +1,8 @@
+// Effect profile for nspell_undead_get_stone_arena
+
+effect "nspell_undead_get_stone_arena"
+{
+nameid "nspell_undead_get_stone_arena_nameid";
+resource_stone	400;
+//Modifi
+}

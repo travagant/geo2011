@@ -1,0 +1,23 @@
+// Spell Profile
+
+id	"spell_demons_dmg_mind";
+
+nameid	"NamSp_spell_demons_dmg_mind";
+descid	"DesSp_spell_demons_dmg_mind";
+
+icon_small "Resources\items\runes\spell_demons_dmg_mind.t";
+icon "Resources\items\cards\spell_demons_dmg_mind.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Mind_Small_Cast\spell_mind_small_cast.scene";
+scene_crop "Resources\FX\Map_Spells\Demons\Spell_Mind_Small_Cast\spell_mind_small_cast_arena.scene";
+
+default_nation	"Demons";
+level	2;
+target	enemy;
+
+game_effect	"nspell_demons_dmg_mind";
+
+cost_spell "Infernal mana" 300, 600;
+
+rune	"rune_spell_demons_dmg_mind";
+rune_cost "Infernal mana", 105;
+rune_cost "Stone", 105;

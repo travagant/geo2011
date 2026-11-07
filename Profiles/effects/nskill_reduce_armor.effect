@@ -1,0 +1,14 @@
+// Effect profile for nskill_reduce_armor
+
+effect "nskill_reduce_armor"
+{
+nameid "nskill_reduce_armor_nameid";
+fx_start	"Resources\FX\Map_Spells\Demons\Spell_Debuff_Def\spell_debuff_def_2_arena.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_defense.t";
+duration_turns	3;
+debuff;
+res_slash	-25;
+res_pierce	-25;
+res_blunt	-25;
+//Modifi
+}

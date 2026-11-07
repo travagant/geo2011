@@ -1,0 +1,24 @@
+// Equipment Profile
+
+id	"totem_disbelief";
+
+nameid "totem_disbelief_name";
+descid "totem_disbelief_desc";
+effectdescid "totem_disbelief_efdesc";
+
+
+class	"banner";
+level	3;
+
+icon "resources\Items\banner\totem_disbelief.t";
+
+
+gold_cost	10000;
+//Modifi
+banner_profile	{
+ //сцена флага
+ banner_scene "Resources\Hexagons\Models\Flags\totem_disbelief.scene"
+
+ //блокирует вражеский флаг
+ block_enemy_banner
+};

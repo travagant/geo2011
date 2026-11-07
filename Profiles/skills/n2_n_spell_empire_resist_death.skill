@@ -1,0 +1,19 @@
+// Skill profile n_spell_empire_resist_death
+
+skill	"n_spell_empire_resist_death"
+{
+nameid "n_spell_empire_resist_death_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_spell_empire_resist_death.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_spell_empire_resist_death_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_spell_empire_resist_death";
+
+
+info_tag;
+on_cursed;
+//Modifi
+}

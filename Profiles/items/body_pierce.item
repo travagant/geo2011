@@ -1,0 +1,19 @@
+// Equipment Profile
+
+id	"body_pierce";
+
+nameid "body_pierce_name";
+descid "body_pierce_desc";
+
+
+class	"body";
+replace	"body" set 2;
+level	2;
+
+icon "resources\Items\body\body_pierce.t";
+
+agi	1;
+res_pierce	25;
+
+gold_cost	6000;
+//Modifi

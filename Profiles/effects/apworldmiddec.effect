@@ -1,0 +1,11 @@
+// Effect profile for ApWorldMidDec
+
+effect "ApWorldMidDec"
+{
+nameid "ApWorldMidDec_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_world.t";
+duration_turns	1;
+debuff;
+c_movwm	-12;
+//Modifi
+}

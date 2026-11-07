@@ -1,0 +1,12 @@
+// Effect profile for nspell_empire_resist_air_arena
+
+effect "nspell_empire_resist_air_arena"
+{
+nameid "nspell_empire_resist_air_arena_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_bless.t";
+duration_turns	-1;
+buff;
+res_air	25;
+//Modifi
+add_skill	"n_spell_empire_resist_air";
+}

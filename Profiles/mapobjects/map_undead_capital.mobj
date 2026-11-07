@@ -1,0 +1,18 @@
+//interactive map object for Undead_Capital
+
+id	"map_Undead_Capital";
+
+nameid	"map_Undead_CapitalN";
+descid	"map_Undead_CapitalD";
+desc_inactid	"map_Undead_CapitalD";
+ambient_sound	"$(Sounds)\\Buildings\\Undead_capital.wav";
+
+//destination
+action_class	"town";
+action_class_script	"resources\\profiles\\scripts\\town_Undead.s";
+default_unit	"Undead_ashgan";
+arena	"Resources\Hexagons\Models\Arena\arena_back_capital_undead\arena_back_capital_undead_hexmap.scene";
+landguardian    32.0;
+respawn	0;
+
+

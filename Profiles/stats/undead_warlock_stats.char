@@ -1,0 +1,55 @@
+// Characters stats profile
+
+unit_class	caster;
+unit_side	"undead";
+ship	"undead1";
+attack_type	"death";
+level	7;
+side	undead;
+exp_base	136;
+
+//stats
+str	8;
+spd	1;
+dex	4;
+agi	2;
+vit	3;
+
+
+ap	1;
+up	100;
+mov	2;
+movwm	12;
+
+atck_range	3;
+zone_radius	1;
+atck_zone;
+
+//resists
+res_water	-25;
+res_earth	25;
+
+leadership_cost	1;
+cost	670;
+skill_grid	"undead_Warlock";
+viewradius	8;
+
+//Modifi
+dmg_str_mod	 700;
+dmg_agi_mod	 400;
+crit_dex_mod	 400;
+crit_vit_mod	 200;
+flee_agi_mod	 300;
+flee_spd_mod	 100;
+hp_vit_mod	 3000;
+hp_str_mod	 1500;
+ini_spd_mod	 150;
+ini_dex_mod	 100;
+mov_mod	 0;
+movwm_mod	 0;
+cover_mod	 0;
+viewradius_mod	 0;
+Discount_Mod	 0;
+Bonusexp_Mod	 0;
+level_cap	19;
+levels_to_up	3;

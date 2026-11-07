@@ -1,0 +1,17 @@
+// Potion Profile
+
+id	"potion_heal_medium";
+
+
+nameid	"ItNPotHealM";
+descid	"ItDPotHealM";
+effectdescid	"ItEDPotHealM";
+
+class "potion";
+level	2;
+icon "Resources\\Items\\potion\\potion_heal_medium.t";
+
+game_effect	"npotion_heal_medium";
+gold_cost	1000;
+usage_cost	20;
+target	"ally";

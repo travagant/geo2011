@@ -1,0 +1,22 @@
+// Skill profile n_extra_attack
+
+skill	"n_extra_attack"
+{
+nameid "n_extra_attack_nameid";
+effectdescid "n_extra_attack_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_extraattack.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_extraattack_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_extra_attack";
+
+request_ap	1;
+battle;
+
+self_effect	"nskill_extra_attack_self";
+info_tag;
+//Modifi
+}

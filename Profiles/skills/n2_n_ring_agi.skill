@@ -1,0 +1,19 @@
+// Skill profile n_ring_agi
+
+skill	"n_ring_agi"
+{
+nameid "n_ring_agi_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_ring_agi.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_ring_agi_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_ring_agi";
+
+
+info_tag;
+on_flee;
+//Modifi
+}

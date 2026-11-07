@@ -1,0 +1,11 @@
+//rogue_demons.scheme
+// Rogue/demons race unit progress scheme file.
+
+scheme "rogue_demons"
+{
+	str 10;
+	dex 10;
+	int 10;
+	agi 60;
+	vit 10;
+};

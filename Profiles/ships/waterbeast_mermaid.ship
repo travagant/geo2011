@@ -1,0 +1,5 @@
+id "waterbeast_mermaid";
+race "neutral";
+scene "resources\\characters\\neutrals\\mermaid\\character_neutrals_mermaid.scene";
+offset -0.6;
+Waterbeast;

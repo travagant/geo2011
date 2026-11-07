@@ -1,0 +1,16 @@
+// Equipment Profile
+
+id	"proxy_weapon_1lvl";
+
+nameid "proxy_weapon_1lvl_name";
+descid "proxy_weapon_1lvl_desc";
+
+
+class	"weapon";
+level	1;
+
+icon "resources\Items\weapon\proxy_weapon_1lvl.t";
+
+proxy;
+
+//Modifi

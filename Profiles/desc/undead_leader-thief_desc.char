@@ -1,0 +1,4 @@
+//undead_leader-thief's description
+nameid "UndeadLeaderThiefName";
+descid "UndeadLeaderThiefDesc";
+minidesc "UndeadLeaderThief_MD";

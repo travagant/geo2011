@@ -1,0 +1,14 @@
+//interactive map object for Merchant_Fisher_Sea
+
+id	"map_Merchant_Fisher_Sea";
+
+nameid	"map_Merchant_Fisher_SeaN";
+descid	"map_Merchant_Fisher_SeaD";
+effectdescid "map_Merchant_Fisher_SeaEff";
+ambient_sound	"$(Sounds)\\Buildings\\pub.wav";
+
+//destination
+action_class	"shop";
+action_class_script	"resources\\profiles\\scripts\\shop_weapon.s";
+respawn	0;
+allside;

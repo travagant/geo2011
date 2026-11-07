@@ -1,0 +1,24 @@
+// Unit Profile
+//
+id 		"empire_cleric";
+unit_scene 	"resources\\characters\\empire\\cleric\\character_empire_cleric.scene";
+unit_scene_lod		"resources\characters\empire\cleric\character_empire_cleric_lod.scene",10;
+icon 		"resources\\characters\\empire\\cleric\\icon_cleric.t";
+subicon 	"resources\\characters\\empire\\cleric\\icon_cleric_small.t";
+layout_icon 	"resources\\characters\\empire\\cleric\\icon_cleric_node.t";
+dialog_icon 	"resources\\characters\\empire\\cleric\\portrait_acolyte_256x512.t";
+fxproc 		"default";
+fxcast 		"Resources\FX\Attacks\Empire\Cleric\fx_empire_cleric_cast.scene";
+fxscene 	"Resources\FX\Arena_Spells\Empire\Cleric\fx_empire_cleric_spell.scene";
+fxscene_ko 	"Resources\FX\Arena_FX\Death\fx_die_empire.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_empires_levelup.scene";
+centerbone "Spine1";
+#include      	"desc\\empire_cleric_desc.char";
+#include 	"stats\\empire_cleric_stats.char";
+#include      	"sound\\empire_cleric_sound.char";
+move_speed 	3.5;
+nodesx 		1;
+nodesz 		1;
+capital_icon 	 "resources\characters\empire\cleric\icon_cleric_capital.t";
+dialog_icon 	 "resources\characters\empire\cleric\icon_cleric_dialog.t";
+leader_icon      "resources\characters\empire\cleric\icon_cleric_ring.t"

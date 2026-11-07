@@ -1,0 +1,10 @@
+// Effect profile for nskill_duel_effect
+
+effect "nskill_duel_effect"
+{
+nameid "nskill_duel_effect_nameid";
+fx_start	"Resources\FX\Arena_FX\Skills\fx_skill_map_steal_1_cast.scene";
+debuff;
+duel;
+//Modifi
+}

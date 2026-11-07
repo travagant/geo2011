@@ -1,0 +1,11 @@
+// Effect profile for AgiDecPow
+
+effect "AgiDecPow"
+{
+nameid "AgiDecPow_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_defense.t";
+duration_turns	3;
+debuff;
+agi	-7;
+//Modifi
+}

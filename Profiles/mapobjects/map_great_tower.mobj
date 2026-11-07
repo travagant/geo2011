@@ -1,0 +1,14 @@
+//interactive map object for Great_tower
+
+id	"map_Great_tower";
+
+nameid	"map_Great_towerN";
+descid	"map_Great_towerD";
+desc_inactid	"map_Great_towerND";
+msg_inactiveid	"map_Great_towerNAD";
+ambient_sound	"$(Sounds)\\Buildings\\great_tower.wav";
+
+//destination
+action_class	"dungeon";
+action_class_script	"resources\\profiles\\dungeons\\great_tower.s";
+respawn	10;

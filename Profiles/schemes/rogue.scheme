@@ -1,0 +1,11 @@
+//rogue.scheme
+// Rogue unit progress scheme file.
+
+scheme "rogue"
+{
+	str 10;
+	dex 10;
+	int 10;
+	agi 60;
+	vit 10;
+};

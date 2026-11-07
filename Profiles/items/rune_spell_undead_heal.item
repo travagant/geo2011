@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_undead_heal";
+
+nameid "NamSp_spell_undead_heal";
+descid "DesSp_spell_undead_heal";
+
+level 2;
+class "runes";
+icon "Resources\items\runes\spell_undead_heal.t";
+scene "Resources\FX\Map_Spells\Undead\Spell_Undead_Heal\spell_undead_heal_arena.scene";
+
+target ally;
+game_effect "nspell_undead_heal_arena";
+
+gold_cost 520;
+usage_cost 20;
+race "Undead";

@@ -1,0 +1,53 @@
+// Characters stats profile
+
+unit_class	rogue;
+unit_side	"legions";
+ship	"legions1";
+attack_type	"mind";
+level	13;
+side	legions;
+exp_base	124;
+
+//stats
+str	6;
+spd	2;
+dex	5;
+agi	7;
+vit	4;
+
+
+ap	1;
+up	100;
+mov	2;
+movwm	12;
+
+atck_range	1;
+
+//resists
+res_water	-25;
+res_mind	50;
+
+leadership_cost	1;
+cost	1280;
+skill_grid	"demons_doppelganger";
+viewradius	8;
+
+//Modifi
+dmg_str_mod	 900;
+dmg_agi_mod	 600;
+crit_dex_mod	 700;
+crit_vit_mod	 400;
+flee_agi_mod	 700;
+flee_spd_mod	 400;
+hp_vit_mod	 4000;
+hp_str_mod	 2000;
+ini_spd_mod	 200;
+ini_dex_mod	 150;
+mov_mod	 0;
+movwm_mod	 0;
+cover_mod	 0;
+viewradius_mod	 0;
+Discount_Mod	 0;
+Bonusexp_Mod	 0;
+level_cap	25;
+levels_to_up	3;

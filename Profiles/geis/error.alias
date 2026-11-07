@@ -1,0 +1,10 @@
+
+
+
+alias "error" {
+
+
+  sound 100, "$(Sounds)\interface\sound_error.wav", 100, 3;
+
+
+}  

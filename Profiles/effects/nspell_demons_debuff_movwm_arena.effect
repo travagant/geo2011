@@ -1,0 +1,17 @@
+// Effect profile for nspell_demons_debuff_movwm_arena
+
+effect "nspell_demons_debuff_movwm_arena"
+{
+nameid "nspell_demons_debuff_movwm_arena_nameid";
+effectdescid "nspell_demons_debuff_movwm_arena_descid";
+bubleid "nspell_demons_debuff_movwm_arena_bubleid";
+fx_start	"Resources\FX\Arena_spells\demons\Rod-1\fx_demons_rod-1_spell.scene";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_world.t";
+duration_turns	-1;
+debuff;
+res_mind	-25;
+curse	30;
+element	"fire";
+movwm	-999;
+//Modifi
+}

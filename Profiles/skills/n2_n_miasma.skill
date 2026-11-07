@@ -1,0 +1,22 @@
+// Skill profile n_miasma
+
+skill	"n_miasma"
+{
+nameid "n_miasma_nameid";
+effectdescid "n_miasma_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_miasma.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_miasma_inactive.t";
+
+skill_range	1;
+cast_type	around;
+cast_target	enemy;
+game_effect	"nskill_poison_strike";
+fx_scene	"Resources\FX\Arena_FX\skills\fx_skill_n_miasma.scene";
+
+
+element	death;
+info_tag;
+on_crited;
+//Modifi
+}

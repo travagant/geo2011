@@ -1,0 +1,20 @@
+// Skill profile n_skill_debuff_mov_onattack
+
+skill	"n_skill_debuff_mov_onattack"
+{
+nameid "n_skill_debuff_mov_onattack_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_water_arrow.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_water_arrow_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_debuff_mov_onattack";
+
+
+element	water;
+info_tag;
+on_crit;
+//Modifi
+}

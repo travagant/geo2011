@@ -1,0 +1,21 @@
+// Skill profile n_stunning_strike
+
+skill	"n_stunning_strike"
+{
+nameid "n_stunning_strike_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_debuff_stop_i.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_debuff_stop_i_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_paralyze";
+
+request_ap	1;
+
+element	mind;
+info_tag;
+on_crit;
+//Modifi
+}

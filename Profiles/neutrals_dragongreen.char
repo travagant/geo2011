@@ -1,0 +1,21 @@
+// Unit Profile
+//
+id 		"neutrals_dragongreen";
+unit_scene 	"Resources\\characters\\neutrals\\dragongreen\\character_neutrals_dragongreen.scene"
+unit_scene_lod		"resources\characters\neutrals\dragongreen\character_neutrals_dragongreen_lod.scene",30;
+icon		"resources\\characters\\neutrals\\dragongreen\\icon_dragongreen.t";
+subicon 	"resources\\characters\\neutrals\\dragongreen\\icon_dragongreen_small.t";
+layout_icon	"resources\\characters\\neutrals\\dragongreen\\icon_dragongreen_node.t";
+capital_icon 	 "resources\\characters\\neutrals\\dragongreen\\icon_dragongreen_capital.t";
+dialog_icon 	 "resources\\characters\\neutrals\\dragongreen\\icon_dragongreen_dialog.t";
+leader_icon 	 "resources\\characters\\neutrals\\dragongreen\\icon_dragongreen_ring.t";
+fxproc 		"lighting";
+fxcast  	"Resources\\FX\\Attacks\\Neutrals\\GreenDragon\\fx_neutrals_GreenDragon_cast.scene";
+fxscene_ko 	"resources\\fx\\Arena_FX\\Death\\fx_die_neutrals.scene";
+fxlevelup	"Resources\\FX\\Arena_FX\\LevelUp\\fx_neutrals_levelup.scene";
+move_speed 	0;
+nodesx 		1;
+nodesz 		1;
+#include	"desc\\neutrals_dragongreen_desc.char";
+#include	"stats\\neutrals_dragongreen_stats.char";
+#include      	"sound\\neutrals_dragongreen_sound.char";

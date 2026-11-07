@@ -1,0 +1,23 @@
+//Unit Profile
+//
+id                       "neutrals_airelemental";
+unit_scene               "resources\\characters\\neutrals\\airelemental\\character_neutrals_airelemental.scene";
+unit_scene_lod		"resources\characters\neutrals\airelemental\character_neutrals_airelemental_lod.scene",10;
+icon                     "resources\\characters\\neutrals\\airelemental\\icon_airelemental.t";
+subicon                  "resources\\characters\\neutrals\\airelemental\\icon_airelemental_small.t";
+layout_icon              "resources\\characters\\neutrals\\airelemental\\icon_airelemental_node.t";
+capital_icon             "resources\\characters\\neutrals\\airelemental\\icon_airelemental_capital.t";
+dialog_icon              "resources\\characters\\neutrals\\airelemental\\icon_airelemental_dialog.t";
+leader_icon              "resources\\characters\\neutrals\\airelemental\\icon_airelemental_ring.t";
+fxproc                   "default";
+fxscene                  "resources\\fx\\Arena_Spells\\neutrals\\airelemental\\fx_neutrals_airelemental_spell.scene";
+fxcast                   "resources\\fx\\Attacks\\neutrals\\airelemental\\fx_neutrals_airelemental_cast.scene";
+fxscene_ko               "resources\\fx\\Arena_FX\\Death\\fx_die_neutrals.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_neutrals_levelup.scene";
+centerbone               "Spine";
+move_speed               3;
+nodesx                   1;
+nodesz                   1;
+#include                 "desc\\neutrals_airelemental_desc.char";
+#include                 "sound\\neutrals_airelemental_sound.char";
+#include                 "stats\\neutrals_airelemental_stats.char";

@@ -1,0 +1,10 @@
+// Effect profile for nskill_knockback
+
+effect "nskill_knockback"
+{
+nameid "nskill_knockback_nameid";
+fx_start	"Resources\FX\Arena_FX\Skills\fx_skill_push_1_spell.scene";
+push;
+push_collide	"nskill_push_collide";
+//Modifi
+}

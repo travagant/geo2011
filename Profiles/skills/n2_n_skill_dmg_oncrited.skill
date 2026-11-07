@@ -1,0 +1,19 @@
+// Skill profile n_skill_dmg_oncrited
+
+skill	"n_skill_dmg_oncrited"
+{
+nameid "n_skill_dmg_oncrited_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_spell_elves_debuff_cover.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_spell_elves_debuff_cover_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_dmg_oncrited";
+
+
+info_tag;
+on_crited;
+//Modifi
+}

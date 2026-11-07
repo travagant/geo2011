@@ -1,0 +1,15 @@
+//interactive map object for Ruins
+
+id	"map_Ruins";
+
+nameid	"map_RuinsN";
+descid	"map_RuinsD";
+desc_inactid	"map_RuinsND";
+msg_inactiveid	"map_RuinsNAD";
+ambient_sound	"$(Sounds)\\Buildings\\ruins.wav";
+
+//destination
+action_class	"dungeon";
+action_class_script	"resources\\profiles\\dungeons\\ruins.s";
+respawn	6;
+allside;

@@ -1,0 +1,23 @@
+//Unit Profile
+//
+id                       "demons_marblegargoyle";
+unit_scene              "resources\\characters\\demons\\marblegargoyle\\character_demons_marblegargoyle.scene";
+unit_scene_lod		"resources\characters\demons\marblegargoyle\character_demons_marblegargoyle_lod.scene",10;
+icon                     "resources\\characters\\demons\\marblegargoyle\\icon_marblegargoyle.t";
+subicon                  "resources\\characters\\demons\\marblegargoyle\\icon_marblegargoyle_small.t";
+layout_icon              "resources\\characters\\demons\\marblegargoyle\\icon_marblegargoyle_node.t";
+capital_icon             "resources\\characters\\demons\\marblegargoyle\\icon_marblegargoyle_capital.t";
+dialog_icon              "resources\\characters\\demons\\marblegargoyle\\icon_marblegargoyle_dialog.t";
+leader_icon              "resources\\characters\\demons\\marblegargoyle\\icon_marblegargoyle_ring.t";
+fxproc                   "lighting";
+fxscene                  "resources\\fx\\Arena_Spells\\demons\\marblegargoyle\\fx_demons_marblegargoyle_spell.scene";
+fxcast                   "resources\\fx\\Attacks\\demons\\marblegargoyle\\fx_demons_marblegargoyle_cast.scene";
+fxscene_ko               "resources\\fx\\Arena_FX\\Death\\fx_die_demons.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_demons_levelup.scene";
+centerbone               "Neck_boneA";
+move_speed                3;
+nodesx                   1;
+nodesz                   1;
+#include                 "desc\\demons_marblegargoyle_desc.char";
+#include                 "sound\\demons_marblegargoyle_sound.char";
+#include                 "stats\\demons_marblegargoyle_stats.char";

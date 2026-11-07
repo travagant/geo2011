@@ -1,0 +1,18 @@
+//interactive map object for Fountain_Dragon
+
+id	"map_Fountain_Dragon";
+
+nameid	"map_Fountain_DragonN";
+msgid	"map_Fountain_DragonAD";
+msg_inactiveid	"map_Fountain_DragonNAD";
+descid	"map_Fountain_DragonD";
+desc_inactid	"map_Fountain_DragonND";
+effectid	"map_Fountain_DragonEff";
+ambient_sound	"$(Sounds)\\Buildings\\fountain_dragon.wav";
+fx_start	"Resources\\FX\Arena_FX\Sign\fx_sign_heal.scene";
+
+//destination
+action_class	"object";
+game_effect	"HealMid";
+respawn	4;
+allside;

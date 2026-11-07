@@ -1,0 +1,55 @@
+// Characters stats profile
+
+unit_class	range;
+unit_side	"greenskins_giant";
+ship	"neutral2";
+attack_type	"blunt";
+level	33;
+side	neutrals;
+exp_base	126;
+
+//stats
+str	12;
+spd	1;
+dex	7;
+agi	6;
+vit	18;
+
+
+ap	1;
+up	100;
+mov	1;
+movwm	12;
+
+atck_range	3;
+
+//resists
+res_slash	-25;
+res_blunt	25;
+res_earth	25;
+res_mind	25;
+
+leadership_cost	2;
+cost	8520;
+skill_grid	"neutrals_cyclop";
+viewradius	8;
+
+//Modifi
+dmg_str_mod	 1100;
+dmg_agi_mod	 700;
+crit_dex_mod	 400;
+crit_vit_mod	 200;
+flee_agi_mod	 500;
+flee_spd_mod	 300;
+hp_vit_mod	 4500;
+hp_str_mod	 2300;
+ini_spd_mod	 250;
+ini_dex_mod	 200;
+mov_mod	 0;
+movwm_mod	 0;
+cover_mod	 0;
+viewradius_mod	 0;
+Discount_Mod	 0;
+Bonusexp_Mod	 0;
+level_cap	45;
+levels_to_up	3;

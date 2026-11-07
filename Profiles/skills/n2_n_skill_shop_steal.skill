@@ -1,0 +1,15 @@
+// Skill profile n_skill_shop_steal
+
+skill	"n_skill_shop_steal"
+{
+nameid "n_skill_shop_steal_nameid";
+effectdescid "n_skill_shop_steal_descid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_shop_steal.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_shop_steal_inactive.t";
+
+
+
+//Modifi
+shop_stealing;
+}

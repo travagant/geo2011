@@ -1,0 +1,23 @@
+// Unit Profile
+//
+id 		"empire_mage";
+unit_scene 	"resources\\characters\\empire\\mage\\character_empire_mage.scene";
+unit_scene_lod		"resources\characters\empire\mage\character_empire_mage_lod.scene",10;
+icon 		"resources\\characters\\empire\\mage\\icon_mage.t";
+subicon 	"resources\\characters\\empire\\mage\\icon_mage_small.t";
+layout_icon	"resources\characters\\empire\\mage\\icon_mage_node.t";
+fxproc 		"lighting";
+fxscene 	"Resources\FX\Arena_Spells\Empire\Mage\fx_empire_mage_spell.scene";
+fxcast 		"Resources\FX\Attacks\Empire\Mage\fx_empire_mage_cast.scene";
+fxscene_ko 	"Resources\FX\Arena_FX\Death\fx_die_empire.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_empires_levelup.scene";
+centerbone "Spine1";
+#include      	"desc\\empire_mage_desc.char";
+#include	"stats\\empire_mage_stats.char";
+#include      	"sound\\empire_mage_sound.char";
+move_speed 	3;
+nodesx 		1;
+nodesz 		1;
+capital_icon 	 "resources\characters\empire\mage\icon_mage_capital.t";
+dialog_icon 	 "resources\characters\empire\mage\icon_mage_dialog.t";
+leader_icon      "resources\characters\empire\mage\icon_mage_ring.t"

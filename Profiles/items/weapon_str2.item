@@ -1,0 +1,18 @@
+// Equipment Profile
+
+id	"weapon_str2";
+
+nameid "weapon_str2_name";
+descid "weapon_str2_desc";
+
+
+class	"weapon";
+replace	"weapon" set 2;
+level	2;
+
+icon "resources\Items\weapon\weapon_str2.t";
+
+str	2;
+
+gold_cost	6000;
+//Modifi

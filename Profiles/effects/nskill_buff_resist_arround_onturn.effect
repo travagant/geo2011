@@ -1,0 +1,16 @@
+// Effect profile for nskill_buff_resist_arround_onturn
+
+effect "nskill_buff_resist_arround_onturn"
+{
+nameid "nskill_buff_resist_arround_onturn_nameid";
+fx_start	"resources\fx\\Arena_FX\Potions\fx_potion_intellect_huge.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_resist.t";
+duration_turns	1;
+buff;
+res_fire	25;
+res_water	25;
+res_air	25;
+res_earth	25;
+dontdispell;
+//Modifi
+}

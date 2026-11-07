@@ -1,0 +1,13 @@
+// Effect profile for BuffIntStrDex
+
+effect "BuffIntStrDex"
+{
+nameid "BuffIntStrDex_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_attack.t";
+duration_turns	5;
+buff;
+str	3;
+dex	3;
+spd	3;
+//Modifi
+}

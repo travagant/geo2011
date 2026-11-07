@@ -1,0 +1,24 @@
+//Unit Profile
+//
+id                       "elves_channeler";
+unit_scene              "resources\\characters\\elves\\channeler\\character_elves_channeler.scene";
+unit_scene_lod		"resources\characters\elves\channeler\character_elves_channeler_lod.scene",10;
+//unit_scene_lod          "resources\\characters\\elves\\channeler\\character_elves_channeler_lod.scene",10;
+icon                     "resources\\characters\\elves\\channeler\\icon_channeler.t";
+subicon                  "resources\\characters\\elves\\channeler\\icon_channeler_small.t";
+layout_icon              "resources\\characters\\elves\\channeler\\icon_channeler_node.t";
+capital_icon             "resources\\characters\\elves\\channeler\\icon_channeler_capital.t";
+dialog_icon              "resources\\characters\\elves\\channeler\\icon_channeler_dialog.t";
+leader_icon              "resources\\characters\\elves\\channeler\\icon_channeler_ring.t"
+fxproc                   "lighting";
+fxscene                  "resources\\fx\\Arena_Spells\\elves\\channeler\\fx_elves_channeler_spell.scene";
+fxcast                   "resources\\fx\\Attacks\\elves\\channeler\\fx_elves_channeler_cast.scene";
+fxscene_ko               "resources\\fx\\Arena_FX\\Death\\fx_die_elves.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_elves_levelup.scene";
+centerbone               "Spine1";
+move_speed                3;
+nodesx                   1;
+nodesz                   1;
+#include                 "desc\\elves_channeler_desc.char";
+#include                 "sound\\elves_channeler_sound.char";
+#include                 "stats\\elves_channeler_stats.char";

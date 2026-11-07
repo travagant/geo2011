@@ -1,0 +1,11 @@
+//caster_demons.scheme
+// Caster/demon race unit progress scheme file.
+
+scheme "caster_demons"
+{
+	str 10;
+	dex 20;
+	int 60;
+	agi 10;
+	vit 20;
+};

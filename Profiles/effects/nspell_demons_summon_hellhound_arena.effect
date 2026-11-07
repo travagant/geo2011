@@ -1,0 +1,8 @@
+// Effect profile for nspell_demons_summon_hellhound_arena
+
+effect "nspell_demons_summon_hellhound_arena"
+{
+nameid "nspell_demons_summon_hellhound_arena_nameid";
+summon	"demons_hellhound";
+//Modifi
+}

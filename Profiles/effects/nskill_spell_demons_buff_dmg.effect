@@ -1,0 +1,10 @@
+// Effect profile for nskill_spell_demons_buff_dmg
+
+effect "nskill_spell_demons_buff_dmg"
+{
+nameid "nskill_spell_demons_buff_dmg_nameid";
+fx_start	"resources\fx\\Arena_Spells\Demons\Rod-2\fx_demons_rod-2_spell.scene";
+damage	10;
+element	"fire";
+//Modifi
+}

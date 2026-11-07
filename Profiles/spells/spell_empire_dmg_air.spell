@@ -1,0 +1,23 @@
+// Spell Profile
+
+id	"spell_empire_dmg_air";
+
+nameid	"NamSp_spell_empire_dmg_air";
+descid	"DesSp_spell_empire_dmg_air";
+
+icon_small "Resources\items\runes\spell_empire_dmg_air.t";
+icon "Resources\items\cards\spell_empire_dmg_air.t";
+scene "Resources\FX\Map_Spells\Empire\Spell_Air_Cast\spell_air_cast_4.scene";
+scene_crop "Resources\FX\Map_Spells\Empire\Spell_Air_Cast\spell_air_cast_4_arena.scene";
+
+default_nation	"Empire";
+level	1;
+target	enemy;
+
+game_effect	"nspell_empire_dmg_air";
+
+cost_spell "Life mana" 120, 240;
+
+rune	"rune_spell_empire_dmg_air";
+rune_cost "Life mana", 45;
+rune_cost "Stone", 45;

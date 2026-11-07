@@ -1,0 +1,17 @@
+//interactive map object for Arbor
+
+id	"map_Arbor";
+
+nameid	"map_ArborN";
+msgid	"map_ArborAD";
+msg_inactiveid	"map_ArborNAD";
+descid	"map_ArborD";
+desc_inactid	"map_ArborND";
+effectid	"map_ArborEff";
+ambient_sound	"$(Sounds)\\Buildings\\arbor.wav";
+fx_start	"Resources\\FX\Arena_FX\Sign\fx_sign_move.scene";
+
+//destination
+action_class	"object";
+game_effect	"ApWorldMax";
+respawn	4;

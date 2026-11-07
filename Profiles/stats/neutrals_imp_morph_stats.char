@@ -1,0 +1,57 @@
+// Characters stats profile
+
+unit_class	rogue;
+unit_side	"demons_morph";
+ship	"legions1";
+attack_type	"blunt";
+level	1;
+side	neutrals;
+exp_base	150;
+
+//stats
+str	1;
+spd	3;
+dex	2;
+agi	4;
+vit	2;
+
+
+ap	1;
+up	100;
+mov	2;
+movwm	12;
+
+atck_range	1;
+
+//resists
+res_pierce	50;
+res_blunt	-25;
+res_water	-25;
+res_air	-25;
+res_earth	-25;
+res_mind	50;
+
+leadership_cost	1;
+cost	60;
+skill_grid	"neutrals_imp_morph";
+viewradius	8;
+
+//Modifi
+dmg_str_mod	 500;
+dmg_agi_mod	 300;
+crit_dex_mod	 700;
+crit_vit_mod	 400;
+flee_agi_mod	 700;
+flee_spd_mod	 400;
+hp_vit_mod	 4000;
+hp_str_mod	 2000;
+ini_spd_mod	 200;
+ini_dex_mod	 150;
+mov_mod	 0;
+movwm_mod	 0;
+cover_mod	 0;
+viewradius_mod	 0;
+Discount_Mod	 0;
+Bonusexp_Mod	 0;
+level_cap	99;
+levels_to_up	3;

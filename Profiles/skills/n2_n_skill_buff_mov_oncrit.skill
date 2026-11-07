@@ -1,0 +1,19 @@
+// Skill profile n_skill_buff_mov_oncrit
+
+skill	"n_skill_buff_mov_oncrit"
+{
+nameid "n_skill_buff_mov_oncrit_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_buff_mov_oncrit.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_buff_mov_oncrit_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_buff_mov_oncrit";
+
+
+info_tag;
+on_crit;
+//Modifi
+}

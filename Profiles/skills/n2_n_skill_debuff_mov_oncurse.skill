@@ -1,0 +1,20 @@
+// Skill profile n_skill_debuff_mov_oncurse
+
+skill	"n_skill_debuff_mov_oncurse"
+{
+nameid "n_skill_debuff_mov_oncurse_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_info_boss.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_info_boss_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_debuff_mov_oncurse";
+
+
+element	mind;
+info_tag;
+on_blessed;
+//Modifi
+}

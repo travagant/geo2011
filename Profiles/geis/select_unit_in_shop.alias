@@ -1,0 +1,10 @@
+
+
+
+alias "select_unit_in_shop" {
+
+
+   sound 100, "$(Sounds)\interface\magicbook_turn.wav", 100, 3;
+
+
+}  

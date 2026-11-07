@@ -1,0 +1,10 @@
+
+
+
+alias "TurnStart" {
+
+
+  sound 100, "$(Sounds)\Buildings\chapel.wav", 100, 3;
+
+
+}  

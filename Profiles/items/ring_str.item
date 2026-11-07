@@ -1,0 +1,17 @@
+// Equipment Profile
+
+id	"ring_str";
+
+nameid "ring_str_name";
+descid "ring_str_desc";
+
+
+class	"rings";
+level	2;
+
+icon "resources\Items\rings\ring_str.t";
+
+add_skill	"n_ring_str";
+
+gold_cost	6000;
+//Modifi

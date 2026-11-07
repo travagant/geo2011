@@ -1,0 +1,10 @@
+// Effect profile for nskill_teleport_smoke
+
+effect "nskill_teleport_smoke"
+{
+nameid "nskill_teleport_smoke_nameid";
+fx_start	"resources\fx\\Arena_FX\Death\fx_die_neutrals.scene";
+teleport_target;
+//Modifi
+fx_teleport	"resources\fx\\Arena_FX\Death\fx_die_neutrals.scene";
+}

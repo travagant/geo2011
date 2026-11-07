@@ -1,0 +1,9 @@
+// Effect profile for Stonemin
+
+effect "Stonemin"
+{
+nameid "Stonemin_nameid";
+buff;
+resource_stone	25;
+//Modifi
+}

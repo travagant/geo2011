@@ -1,0 +1,13 @@
+// Gem Profile
+
+id	"gems_sceptre";
+
+
+nameid	"ItNGeSceptr";
+descid	"ItDGeSceptr";
+
+class "gems";
+level	4;
+icon "Resources\\Items\\gems\\gems_sceptre.t";
+
+gold_cost	9200;

@@ -1,0 +1,22 @@
+// Skill profile n_weakness
+
+skill	"n_weakness"
+{
+nameid "n_weakness_nameid";
+effectdescid "n_weakness_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_stats_down.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_stats_down_inactive.t";
+
+skill_range	12;
+cast_type	all;
+cast_target	enemy;
+game_effect	"nskill_weakness";
+
+request_ap	1;
+battle;
+
+element	air;
+info_tag;
+//Modifi
+}

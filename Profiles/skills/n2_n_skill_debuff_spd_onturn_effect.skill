@@ -1,0 +1,20 @@
+// Skill profile n_skill_debuff_spd_onturn_effect
+
+skill	"n_skill_debuff_spd_onturn_effect"
+{
+nameid "n_skill_debuff_spd_onturn_effect_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_debuff_spd_onturn.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_debuff_spd_onturn_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_debuff_spd_onturn_effect";
+
+
+element	death;
+info_tag;
+on_turn;
+//Modifi
+}

@@ -1,0 +1,10 @@
+// Effect profile for spelleffect_summon_airelemental
+
+effect "spelleffect_summon_airelemental"
+{
+nameid "spelleffect_summon_airelemental_nameid";
+fx_start	"Resources\FX\\Arena_FX\Skills\fx_skills_summon_pet_empire.scene";
+buff;
+summon	"neutrals_airelemental";
+//Modifi
+}

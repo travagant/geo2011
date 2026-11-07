@@ -1,0 +1,19 @@
+// Skill profile n_spell_empire_resist_mind
+
+skill	"n_spell_empire_resist_mind"
+{
+nameid "n_spell_empire_resist_mind_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_spell_empire_resist_mind.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_spell_empire_resist_mind_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_spell_empire_resist_mind";
+
+
+info_tag;
+on_intercepted;
+//Modifi
+}

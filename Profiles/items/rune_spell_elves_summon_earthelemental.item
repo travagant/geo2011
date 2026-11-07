@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_elves_summon_earthelemental";
+
+nameid "NamSp_spell_elves_summon_earthelemental";
+descid "DesSp_spell_elves_summon_earthelemental";
+
+level 2;
+class "runes";
+icon "Resources\items\runes\spell_elves_summon_earthelemental.t";
+scene "Resources\FX\Map_Spells\Elves\Spell_Summon\spell_summon_earthelemental_arena.scene";
+
+target zone;
+game_effect "nspell_elves_summon_earthelemental_arena";
+
+gold_cost 360;
+usage_cost 20;
+race "Elves";

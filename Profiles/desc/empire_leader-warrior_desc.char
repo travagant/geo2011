@@ -1,0 +1,4 @@
+//empire_leader-warrior's description
+nameid "EmpireLeaderwarriorName";
+descid "EmpireLeaderwarriorDesc";
+minidesc "EmpireLeaderwarrior_MD";

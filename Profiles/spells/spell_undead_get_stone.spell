@@ -1,0 +1,24 @@
+// Spell Profile
+
+id	"spell_undead_get_stone";
+
+nameid	"NamSp_spell_undead_get_stone";
+descid	"DesSp_spell_undead_get_stone";
+
+icon_small "Resources\items\runes\spell_undead_get_stone.t";
+icon "Resources\items\cards\spell_undead_get_stone.t";
+scene "Resources\FX\Map_Spells\Undead\Spell_undead_Get_Stone\spell_undead_get_stone.scene";
+scene_crop "Resources\FX\Map_Spells\Undead\Spell_undead_Get_Stone\spell_undead_get_stone_arena.scene";
+
+default_nation	"Undead";
+level	3;
+target	ally;
+
+game_effect	"nspell_undead_get_stone";
+
+cost_spell "Grove mana" 150, 300;
+cost_spell "Death mana" 150, 300;
+
+rune_cost "Grove mana", 55;
+rune_cost "Death mana", 55;
+rune_cost "Stone", 110;

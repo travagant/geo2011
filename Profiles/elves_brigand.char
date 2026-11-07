@@ -1,0 +1,23 @@
+//Unit Profile
+//
+id                       "elves_brigand";
+unit_scene              "resources\\characters\\elves\\brigand\\character_elves_brigand.scene";
+unit_scene_lod		"resources\characters\elves\brigand\character_elves_brigand_lod.scene",10;
+icon                     "resources\\characters\\elves\\brigand\\icon_brigand.t";
+subicon                  "resources\\characters\\elves\\brigand\\icon_brigand_small.t";
+layout_icon              "resources\\characters\\elves\\brigand\\icon_brigand_node.t";
+capital_icon             "resources\\characters\\elves\\brigand\\icon_brigand_capital.t";
+dialog_icon              "resources\\characters\\elves\\brigand\\icon_brigand_dialog.t";
+leader_icon              "resources\\characters\\elves\\brigand\\icon_brigand_ring.t"
+fxproc                   "lighting";
+fxscene                  "resources\\fx\\Arena_FX\\Physical_Damage\\fx_small_attack_damage.scene";
+fxcast                   "Resources\FX\Attacks\Elves\Brigand\fx_elves_brigand_cast.scene"
+fxscene_ko               "resources\\fx\\Arena_FX\\Death\\fx_die_elves.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_elves_levelup.scene";
+centerbone "Spine1";
+move_speed               3.5;
+nodesx                   1;
+nodesz                   1;
+#include                 "desc\\elves_brigand_desc.char";
+#include                 "sound\\elves_brigand_sound.char";
+#include                 "stats\\elves_brigand_stats.char";

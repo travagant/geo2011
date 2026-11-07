@@ -1,0 +1,13 @@
+// Gem Profile
+
+id	"gems_dragonskin";
+
+
+nameid	"ItNGeDragSkin";
+descid	"ItDGeDragSkin";
+
+class "gems";
+level	3;
+icon "Resources\\Items\\gems\\gems_dragonskin.t";
+
+gold_cost	6400;

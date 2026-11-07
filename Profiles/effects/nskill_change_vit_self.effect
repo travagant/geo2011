@@ -1,0 +1,14 @@
+// Effect profile for nskill_change_vit_self
+
+effect "nskill_change_vit_self"
+{
+nameid "nskill_change_vit_self_nameid";
+fx_start	"resources\fx\\Arena_Spells\Neutrals\Nosferatu\fx_undeads_nosferatu_spell.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_defense.t";
+duration_turns	-1;
+debuff;
+vit	-3;
+dontdispell;
+//Modifi
+stackable	1;
+}

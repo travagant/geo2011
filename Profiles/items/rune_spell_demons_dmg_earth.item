@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_demons_dmg_earth";
+
+nameid "NamSp_spell_demons_dmg_earth";
+descid "DesSp_spell_demons_dmg_earth";
+
+level 3;
+class "runes";
+icon "Resources\items\runes\spell_demons_dmg_earth.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Earth_Cast\spell_earth_cast_4_arena.scene";
+
+target enemy;
+game_effect "nspell_demons_dmg_earth_arena";
+
+gold_cost 640;
+usage_cost 30;
+race "Demons";

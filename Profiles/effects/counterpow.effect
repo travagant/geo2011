@@ -1,0 +1,11 @@
+// Effect profile for CounterPow
+
+effect "CounterPow"
+{
+nameid "CounterPow_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_attack.t";
+duration_turns	2;
+buff;
+def	75;
+//Modifi
+}

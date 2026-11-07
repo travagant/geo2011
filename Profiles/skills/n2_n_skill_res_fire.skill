@@ -1,0 +1,15 @@
+// Skill profile n_skill_res_fire
+
+skill	"n_skill_res_fire"
+{
+nameid "n_skill_res_fire_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_res-fire.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_res-fire_inactive.t";
+
+
+
+res_fire	25;
+info_tag;
+//Modifi
+}

@@ -1,0 +1,19 @@
+// Map Object Profile
+//
+
+id 		"map_box_02";
+
+nameid	"map_treasureboxN";
+descid	"map_treasureboxD";
+desc_inactid	"map_treasureboxDN";
+
+scene 		"resources\map_objects\Box_02\map_box_02.scene";
+icon 		"resources\map_objects\Box_02\icon_map_box_02.t";
+script		"No script";
+sound		"No Sound";
+fx_start	"Resources\FX\Arena_FX\Sign\fx_sign_telega.scene";
+default_nation	"Neutral";
+action_class	"item";
+
+item_id	"rune_summon_ent";
+interact_type "take";

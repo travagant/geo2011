@@ -1,0 +1,19 @@
+// Skill profile n_spell_demons_dmg_mind
+
+skill	"n_spell_demons_dmg_mind"
+{
+nameid "n_spell_demons_dmg_mind_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_spell_demons_dmg_mind.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_spell_demons_dmg_mind_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_spell_demons_dmg_mind";
+
+
+info_tag;
+on_blessed;
+//Modifi
+}

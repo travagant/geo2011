@@ -1,0 +1,13 @@
+// Effect profile for HealMinEarth
+
+effect "HealMinEarth"
+{
+nameid "HealMinEarth_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_defense.t";
+duration_turns	6;
+buff;
+res_earth	25;
+heal	100;
+element	"divine";
+//Modifi
+}

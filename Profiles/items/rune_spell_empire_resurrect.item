@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_empire_resurrect";
+
+nameid "NamSp_spell_empire_resurrect";
+descid "DesSp_spell_empire_resurrect";
+
+level 4;
+class "runes";
+icon "Resources\items\runes\spell_empire_resurrect.t";
+scene "Resources\FX\Map_Spells\Empire\Spell_Empire_Revive\spell_empire_revive_arena.scene";
+
+target ally;
+game_effect "nspell_empire_resurrect_arena";
+
+gold_cost 1080;
+usage_cost 40;
+race "Empire";

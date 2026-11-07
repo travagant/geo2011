@@ -1,0 +1,20 @@
+// Skill profile n_skill_buff_resist_around
+
+skill	"n_skill_buff_resist_around"
+{
+nameid "n_skill_buff_resist_around_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_buff_immunemagic.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_buff_immunemagic_inactive.t";
+
+skill_range	1;
+cast_type	around;
+cast_target	friendly;
+game_effect	"nskill_buff_resist_around";
+
+request_ap	1;
+battle;
+
+self_effect	"nskill_buff_resist_around_self";
+//Modifi
+}

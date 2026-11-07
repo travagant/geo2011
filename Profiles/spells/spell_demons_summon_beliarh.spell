@@ -1,0 +1,25 @@
+// Spell Profile
+
+id	"spell_demons_summon_beliarh";
+
+nameid	"NamSp_spell_demons_summon_beliarh";
+descid	"DesSp_spell_demons_summon_beliarh";
+
+icon_small "Resources\items\runes\spell_demons_summon_beliarh.t";
+icon "Resources\items\cards\spell_demons_summon_beliarh.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Summon\spell_summon_beliarh.scene";
+scene_crop "Resources\FX\Map_Spells\Demons\Spell_Summon\spell_summon_beliarh_arena.scene";
+
+default_nation	"Demons";
+level	3;
+target	zone;
+
+game_effect	"nspell_demons_summon_beliarh";
+
+cost_spell "Infernal mana" 435, 870;
+cost_spell "Death mana" 435, 870;
+
+rune	"rune_spell_demons_summon_beliarh";
+rune_cost "Infernal mana", 155;
+rune_cost "Death mana", 155;
+rune_cost "Stone", 310;

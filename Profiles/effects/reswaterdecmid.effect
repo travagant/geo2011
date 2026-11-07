@@ -1,0 +1,11 @@
+// Effect profile for ResWaterDecMid
+
+effect "ResWaterDecMid"
+{
+nameid "ResWaterDecMid_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_resist.t";
+duration_turns	3;
+debuff;
+res_water	-25;
+//Modifi
+}

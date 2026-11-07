@@ -1,0 +1,11 @@
+// Effect profile for ResWaterDecMax
+
+effect "ResWaterDecMax"
+{
+nameid "ResWaterDecMax_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_resist.t";
+duration_turns	3;
+debuff;
+res_water	-75;
+//Modifi
+}

@@ -1,0 +1,23 @@
+// Spell Profile
+
+id	"spell_elves_buff_hp";
+
+nameid	"NamSp_spell_elves_buff_hp";
+descid	"DesSp_spell_elves_buff_hp";
+
+icon_small "Resources\items\runes\spell_elves_buff_hp.t";
+icon "Resources\items\cards\spell_elves_buff_hp.t";
+scene "Resources\FX\Map_Spells\Elves\Spell_Buff_Regen\spell_buff_regen.scene";
+scene_crop "Resources\FX\Map_Spells\Elves\Spell_Buff_Regen\spell_buff_regen_arena.scene";
+
+default_nation	"Elves";
+level	1;
+target	ally;
+
+game_effect	"nspell_elves_buff_hp";
+
+cost_spell "Grove mana" 150, 300;
+
+rune	"rune_spell_elves_buff_hp";
+rune_cost "Grove mana", 55;
+rune_cost "Stone", 55;

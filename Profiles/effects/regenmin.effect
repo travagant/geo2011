@@ -1,0 +1,11 @@
+// Effect profile for RegenMin
+
+effect "RegenMin"
+{
+nameid "RegenMin_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_regen.t";
+duration_turns	10;
+buff;
+regen	10;
+//Modifi
+}

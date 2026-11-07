@@ -1,0 +1,18 @@
+// Equipment Profile
+
+id	"book_voodoo";
+
+nameid "book_voodoo_name";
+descid "book_voodoo_desc";
+
+
+class	"book";
+level	3;
+
+icon "resources\Items\book\book_voodoo.t";
+
+add_skill	"n_book_voodoo";
+add_skill_uses	2;
+
+gold_cost	10000;
+//Modifi

@@ -1,0 +1,23 @@
+// Spell Profile
+
+id	"spell_empire_resist_water";
+
+nameid	"NamSp_spell_empire_resist_water";
+descid	"DesSp_spell_empire_resist_water";
+
+icon_small "Resources\items\runes\spell_empire_resist_water.t";
+icon "Resources\items\cards\spell_empire_resist_water.t";
+scene "Resources\FX\Map_Spells\Empire\Spell_Resist_Water\spell_resist_water.scene";
+scene_crop "Resources\FX\Map_Spells\Empire\Spell_Resist_Water\spell_resist_water_arena.scene";
+
+default_nation	"Empire";
+level	1;
+target	ally;
+
+game_effect	"nspell_empire_resist_water";
+
+cost_spell "Life mana" 150, 300;
+
+rune	"rune_spell_empire_resist_water";
+rune_cost "Life mana", 55;
+rune_cost "Stone", 55;

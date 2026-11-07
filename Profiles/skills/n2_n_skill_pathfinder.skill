@@ -1,0 +1,14 @@
+// Skill profile n_skill_pathfinder
+
+skill	"n_skill_pathfinder"
+{
+nameid "n_skill_pathfinder_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_pathfinder.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_pathfinder_inactive.t";
+
+
+
+movwm	2;
+//Modifi
+}

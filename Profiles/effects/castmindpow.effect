@@ -1,0 +1,10 @@
+// Effect profile for CastMindPow
+
+effect "CastMindPow"
+{
+nameid "CastMindPow_nameid";
+debuff;
+damage	200;
+element	"mind";
+//Modifi
+}

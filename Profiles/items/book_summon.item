@@ -1,0 +1,18 @@
+// Equipment Profile
+
+id	"book_summon";
+
+nameid "book_summon_name";
+descid "book_summon_desc";
+
+
+class	"book";
+level	2;
+
+icon "resources\Items\book\book_summon.t";
+
+add_skill	"n_book_summon";
+add_skill_uses	1;
+
+gold_cost	6000;
+//Modifi

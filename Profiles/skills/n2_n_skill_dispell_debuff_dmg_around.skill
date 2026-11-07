@@ -1,0 +1,20 @@
+// Skill profile n_skill_dispell_debuff_dmg_around
+
+skill	"n_skill_dispell_debuff_dmg_around"
+{
+nameid "n_skill_dispell_debuff_dmg_around_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_book_anger.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_book_anger_inactive.t";
+
+skill_range	1;
+cast_type	around;
+cast_target	enemy;
+game_effect	"nskill_dispell_debuff_dmg_around";
+
+request_ap	1;
+battle;
+
+self_effect	"nskill_dispell_debuff_dmg_around_self";
+//Modifi
+}

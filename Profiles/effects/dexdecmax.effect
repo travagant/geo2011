@@ -1,0 +1,11 @@
+// Effect profile for DexDecMax
+
+effect "DexDecMax"
+{
+nameid "DexDecMax_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_attack.t";
+duration_turns	3;
+debuff;
+dex	-5;
+//Modifi
+}

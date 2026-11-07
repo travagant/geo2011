@@ -1,0 +1,18 @@
+// Skill profile n_talisman_fire
+
+skill	"n_talisman_fire"
+{
+nameid "n_talisman_fire_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_res-fire.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_res-fire_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+
+
+res_fire	25;
+info_tag;
+//Modifi
+}

@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_demons_dmg_mind_huge";
+
+nameid "NamSp_spell_demons_dmg_mind_huge";
+descid "DesSp_spell_demons_dmg_mind_huge";
+
+level 5;
+class "runes";
+icon "Resources\items\runes\spell_demons_dmg_mind_huge.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Mind_Cast\spell_mind_cast_4_arena.scene";
+
+target enemy;
+game_effect "nspell_demons_dmg_mind_huge_arena";
+
+gold_cost 1280;
+usage_cost 40;
+race "Demons";

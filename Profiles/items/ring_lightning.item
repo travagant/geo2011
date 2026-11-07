@@ -1,0 +1,17 @@
+// Equipment Profile
+
+id	"ring_lightning";
+
+nameid "ring_lightning_name";
+descid "ring_lightning_desc";
+
+
+class	"rings";
+level	3;
+
+icon "resources\Items\rings\ring_lightning.t";
+
+add_skill	"n_ring_lightning";
+
+gold_cost	10000;
+//Modifi

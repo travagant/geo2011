@@ -1,0 +1,11 @@
+// Effect profile for DefDecMax
+
+effect "DefDecMax"
+{
+nameid "DefDecMax_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_defense.t";
+duration_turns	3;
+debuff;
+def	-100;
+//Modifi
+}

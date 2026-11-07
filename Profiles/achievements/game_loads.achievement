@@ -1,0 +1,18 @@
+// Achievement Profile
+
+achievement "game_loads"
+{
+	nameid  "game_loads_name"; 
+	descid  "game_loads_desc";
+	type range;
+	count_name "str_game_loads_CN";
+
+	level_bronze 5;
+	icon_bronze "Resources\Interface\Icons\achievements\achieve_game_loads.t";
+
+	level_silver 3;
+	icon_silver "Resources\Interface\Icons\achievements\achieve_game_loads.t";
+
+	level_gold 1;
+	icon_gold "Resources\Interface\Icons\achievements\achieve_game_loads.t";
+};

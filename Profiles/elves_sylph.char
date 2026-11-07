@@ -1,0 +1,23 @@
+//Unit Profile
+//
+id                       "elves_sylph";
+unit_scene              "resources\\characters\\elves\\sylph\\character_elves_sylph.scene";
+unit_scene_lod		"resources\characters\elves\sylph\character_elves_sylph_lod.scene",10;
+icon                     "resources\\characters\\elves\\sylph\\icon_sylph.t";
+subicon                  "resources\\characters\\elves\\sylph\\icon_sylph_small.t";
+layout_icon              "resources\\characters\\elves\\sylph\\icon_sylph_node.t";
+capital_icon             "resources\\characters\\elves\\sylph\\icon_sylph_capital.t";
+dialog_icon              "resources\\characters\\elves\\sylph\\icon_sylph_dialog.t";
+leader_icon              "resources\\characters\\elves\\sylph\\icon_sylph_ring.t"
+fxproc                   "lighting";
+fxscene                  "resources\\fx\\Arena_Spells\\elves\\sylph\\fx_elves_sylph_spell.scene";
+fxcast                   "resources\\fx\\Attacks\\elves\\sylph\\fx_elves_sylph_cast.scene";
+fxscene_ko               "resources\\fx\\Arena_FX\\Death\\fx_die_elves.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_elves_levelup.scene";
+centerbone               "Spine1";
+move_speed                2.5;
+nodesx                   1;
+nodesz                   1;
+#include                 "desc\\elves_sylph_desc.char";
+#include                 "sound\\elves_sylph_sound.char";
+#include                 "stats\\elves_sylph_stats.char";

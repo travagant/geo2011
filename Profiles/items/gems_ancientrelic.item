@@ -1,0 +1,13 @@
+// Gem Profile
+
+id	"gems_ancientrelic";
+
+
+nameid	"ItNGeAncient";
+descid	"ItDGeAncient";
+
+class "gems";
+level	3;
+icon "Resources\\Items\\gems\\gems_ancientrelic.t";
+
+gold_cost	6400;

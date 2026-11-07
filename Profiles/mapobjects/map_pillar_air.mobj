@@ -1,0 +1,17 @@
+//magic zone map object for Pillar_Air
+
+id 	"map_Pillar_Air";
+
+nameid	"map_Pillar_AirN";
+descid	"map_Pillar_AirD";
+effectdescid "map_Pillar_AirEff";
+
+action_class	"magiczone" 
+{
+	radius 3;
+	on 		"unit_step";
+	race 	"!owner";
+	race 	"!neutral";
+	effect	"npillar_air";
+	fx "resources\fx\\LandFX\fx_pillar_air_map.scene"
+}

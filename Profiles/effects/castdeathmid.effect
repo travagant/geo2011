@@ -1,0 +1,10 @@
+// Effect profile for CastDeathMid
+
+effect "CastDeathMid"
+{
+nameid "CastDeathMid_nameid";
+debuff;
+damage	75;
+element	"death";
+//Modifi
+}

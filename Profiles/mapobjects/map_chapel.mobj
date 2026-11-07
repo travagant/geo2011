@@ -1,0 +1,17 @@
+//interactive map object for Chapel
+
+id	"map_Chapel";
+
+nameid	"map_ChapelN";
+msgid	"map_ChapelAD";
+msg_inactiveid	"map_ChapelNAD";
+descid	"map_ChapelD";
+desc_inactid	"map_ChapelND";
+effectid	"map_ChapelEff";
+ambient_sound	"$(Sounds)\\Buildings\\chapel.wav";
+fx_start	"Resources\\FX\Arena_FX\Sign\fx_sign_chapel.scene";
+
+//destination
+action_class	"object";
+game_effect	"nChapel";
+respawn	4;

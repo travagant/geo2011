@@ -1,0 +1,16 @@
+// Skill profile n_skill_res_slash
+
+skill	"n_skill_res_slash"
+{
+nameid "n_skill_res_slash_nameid";
+effectdescid "n_skill_res_slash_descid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_res_slash.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_res_slash_inactive.t";
+
+
+
+info_tag;
+res_slash	25;
+//Modifi
+}

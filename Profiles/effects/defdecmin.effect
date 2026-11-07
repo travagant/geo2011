@@ -1,0 +1,11 @@
+// Effect profile for DefDecMin
+
+effect "DefDecMin"
+{
+nameid "DefDecMin_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_defense.t";
+duration_turns	3;
+debuff;
+def	-25;
+//Modifi
+}

@@ -1,0 +1,11 @@
+// Effect profile for ToxicSwampDamage
+
+effect "ToxicSwampDamage"
+{
+nameid "ToxicSwampDamage_nameid";
+fx_start	"Resources\FX\Arena_FX\Skills\fx_skill_poison_map_1_spell.scene";
+debuff;
+damage	5;
+element	"death";
+//Modifi
+}

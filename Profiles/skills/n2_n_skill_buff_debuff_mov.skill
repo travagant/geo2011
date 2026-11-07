@@ -1,0 +1,21 @@
+// Skill profile n_skill_buff_debuff_mov
+
+skill	"n_skill_buff_debuff_mov"
+{
+nameid "n_skill_buff_debuff_mov_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_pathfinder_old.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_pathfinder_old_inactive.t";
+
+skill_range	4;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_buff_debuff_mov";
+
+request_ap	1;
+battle;
+
+self_effect	"nskill_buff_debuff_mov_self";
+element	fire;
+//Modifi
+}

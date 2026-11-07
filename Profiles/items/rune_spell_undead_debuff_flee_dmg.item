@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_undead_debuff_flee_dmg";
+
+nameid "NamSp_spell_undead_debuff_flee_dmg";
+descid "DesSp_spell_undead_debuff_flee_dmg";
+
+level 1;
+class "runes";
+icon "Resources\items\runes\spell_undead_debuff_flee_dmg.t";
+scene "Resources\FX\Map_Spells\Undead\Spell_Undead_Debuff_Flee\spell_undead_debuff_flee_arena.scene";
+
+target enemy;
+game_effect "nspell_undead_debuff_flee_dmg_arena";
+
+gold_cost 180;
+usage_cost 10;
+race "Undead";

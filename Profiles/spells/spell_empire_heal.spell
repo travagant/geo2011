@@ -1,0 +1,23 @@
+// Spell Profile
+
+id	"spell_empire_heal";
+
+nameid	"NamSp_spell_empire_heal";
+descid	"DesSp_spell_empire_heal";
+
+icon_small "Resources\items\runes\spell_empire_heal.t";
+icon "Resources\items\cards\spell_empire_heal.t";
+scene "Resources\FX\Map_Spells\Empire\Spell_Empire_Heal\spell_empire_heal_4.scene";
+scene_crop "Resources\FX\Map_Spells\Empire\Spell_Empire_Heal\spell_empire_heal_4_arena.scene";
+
+default_nation	"Empire";
+level	1;
+target	ally;
+
+game_effect	"nspell_empire_heal";
+
+cost_spell "Life mana" 180, 360;
+
+rune	"rune_spell_empire_reswater";
+rune_cost "Life mana", 65;
+rune_cost "Stone", 65;

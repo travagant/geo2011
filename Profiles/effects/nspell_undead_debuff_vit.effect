@@ -1,0 +1,10 @@
+// Effect profile for nspell_undead_debuff_vit
+
+effect "nspell_undead_debuff_vit"
+{
+nameid "nspell_undead_debuff_vit_nameid";
+duration_days	1;
+debuff;
+vit	-7;
+//Modifi
+}

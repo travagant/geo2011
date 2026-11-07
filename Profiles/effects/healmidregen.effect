@@ -1,0 +1,12 @@
+// Effect profile for HealMidRegen
+
+effect "HealMidRegen"
+{
+nameid "HealMidRegen_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_regen.t";
+duration_turns	10;
+buff;
+regen	20;
+heal	200;
+//Modifi
+}

@@ -1,0 +1,11 @@
+// Effect profile for Arena_EndOutBattle
+
+effect "Arena_EndOutBattle"
+{
+nameid "Arena_EndOutBattle_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_attack.t";
+duration_turns	1;
+end_out_battle;
+dontdispell;
+//Modifi
+}

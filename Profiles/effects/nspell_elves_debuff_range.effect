@@ -1,0 +1,13 @@
+// Effect profile for nspell_elves_debuff_range
+
+effect "nspell_elves_debuff_range"
+{
+nameid "nspell_elves_debuff_range_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_attack.t";
+duration_days	2;
+debuff;
+crit	-25;
+atck_range	-1;
+res_pierce	-25;
+//Modifi
+}

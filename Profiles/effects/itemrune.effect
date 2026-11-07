@@ -1,0 +1,9 @@
+// Effect profile for Itemrune
+
+effect "Itemrune"
+{
+nameid "Itemrune_nameid";
+buff;
+resource_item	"proxy_rune_1lvl";
+//Modifi
+}

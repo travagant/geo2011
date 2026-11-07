@@ -1,0 +1,11 @@
+// Effect profile for nskill_sacrifice
+
+effect "nskill_sacrifice"
+{
+nameid "nskill_sacrifice_nameid";
+fx_start	"resources\fx\\Map_Spells\Map_Sinestra_Ignis\fx_sinestra_ignis.scene";
+buff;
+damage	666666;
+element	"divine";
+//Modifi
+}

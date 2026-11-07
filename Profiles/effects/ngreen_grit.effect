@@ -1,0 +1,15 @@
+// Effect profile for nGreen_grit
+
+effect "nGreen_grit"
+{
+nameid "nGreen_grit_nameid";
+fx_start	"resources\fx\\Arena_FX\Sign\fx_sign_chapel.scene";
+icon "Resources\Interface\Icons\buffs\Icon_buff_resist.t";
+duration_days	3;
+buff;
+dontdispell;
+res_slash	25;
+res_pierce	25;
+res_blunt	25;
+//Modifi
+}

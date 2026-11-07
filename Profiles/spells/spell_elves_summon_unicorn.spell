@@ -1,0 +1,27 @@
+// Spell Profile
+
+id	"spell_elves_summon_unicorn";
+
+nameid	"NamSp_spell_elves_summon_unicorn";
+descid	"DesSp_spell_elves_summon_unicorn";
+
+icon_small "Resources\items\runes\spell_elves_summon_unicorn.t";
+icon "Resources\items\cards\spell_elves_summon_unicorn.t";
+scene "Resources\FX\Map_Spells\Elves\Spell_Summon\spell_summon_unicorn.scene";
+scene_crop "Resources\FX\Map_Spells\Elves\Spell_Summon\spell_summon_unicorn_arena.scene";
+
+default_nation	"Elves";
+level	4;
+target	zone;
+
+game_effect	"nspell_elves_summon_unicorn";
+
+cost_spell "Life mana" 255, 510;
+cost_spell "Grove mana" 255, 510;
+cost_spell "Runstone mana" 255, 510;
+
+rune	"rune_spell_elves_summon_unicorn";
+rune_cost "Life mana", 90;
+rune_cost "Grove mana", 90;
+rune_cost "Runstone mana", 90;
+rune_cost "Stone", 270;

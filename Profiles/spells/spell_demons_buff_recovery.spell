@@ -1,0 +1,23 @@
+// Spell Profile
+
+id	"spell_demons_buff_recovery";
+
+nameid	"NamSp_spell_demons_buff_recovery";
+descid	"DesSp_spell_demons_buff_recovery";
+
+icon_small "Resources\items\runes\spell_demons_buff_recovery.t";
+icon "Resources\items\cards\spell_demons_buff_recovery.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Buff_Vit\spell_buff_vit_2.scene";
+scene_crop "Resources\FX\Map_Spells\Demons\Spell_Buff_Vit\spell_buff_vit_2_arena.scene";
+
+default_nation	"Demons";
+level	1;
+target	ally;
+
+game_effect	"nspell_demons_buff_recovery";
+
+cost_spell "Infernal mana" 180, 360;
+
+rune	"rune_spell_demons_buff_recovery";
+rune_cost "Infernal mana", 65;
+rune_cost "Stone", 65;

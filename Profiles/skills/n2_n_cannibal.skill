@@ -1,0 +1,21 @@
+// Skill profile n_cannibal
+
+skill	"n_cannibal"
+{
+nameid "n_cannibal_nameid";
+effectdescid "n_cannibal_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_cannibal.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_cannibal_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_cannibal_heal_self";
+
+request_ap	1;
+
+info_tag;
+on_kill;
+//Modifi
+}

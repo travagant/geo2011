@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_undead_debuff_vit_onturn";
+
+nameid "NamSp_spell_undead_debuff_vit_onturn";
+descid "DesSp_spell_undead_debuff_vit_onturn";
+
+level 4;
+class "runes";
+icon "Resources\items\runes\spell_undead_debuff_vit_onturn.t";
+scene "Resources\FX\Map_Spells\Undead\Spell_Undead_Weapon_Vulnerability\Spell_Undead_Weapon_Vulnerability_arena.scene";
+
+target enemy;
+game_effect "nspell_undead_debuff_vit_onturn_arena";
+
+gold_cost 840;
+usage_cost 30;
+race "Undead";

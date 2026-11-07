@@ -1,0 +1,11 @@
+// Effect profile for potion_effect_ini
+
+effect "potion_effect_ini"
+{
+nameid "potion_effect_ini_nameid";
+icon "Resources\Interface\Icons\buffs\icon_buff_attack.t";
+duration_turns	10;
+buff;
+ini	20;
+//Modifi
+}

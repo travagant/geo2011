@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_demons_buff_recovery";
+
+nameid "NamSp_spell_demons_buff_recovery";
+descid "DesSp_spell_demons_buff_recovery";
+
+level 1;
+class "runes";
+icon "Resources\items\runes\spell_demons_buff_recovery.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Buff_Vit\spell_buff_vit_2_arena.scene";
+
+target ally;
+game_effect "nspell_demons_buff_recovery_arena";
+
+gold_cost 260;
+usage_cost 10;
+race "Demons";

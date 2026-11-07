@@ -1,0 +1,21 @@
+// Skill profile n_skill_push_onattack
+
+skill	"n_skill_push_onattack"
+{
+nameid "n_skill_push_onattack_nameid";
+effectdescid "n_skill_push_onattack_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_knockback.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_knockback_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_push_onattack";
+
+
+element	blunt;
+info_tag;
+on_attack;
+//Modifi
+}

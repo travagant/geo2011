@@ -1,0 +1,4 @@
+//undead_Wight's description
+nameid "UndeadWightName";
+descid "UndeadWightDesc";
+minidesc "UndeadWight_MD";

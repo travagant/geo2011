@@ -1,0 +1,11 @@
+// Effect profile for nspell_demons_dispell_magic_resist
+
+effect "nspell_demons_dispell_magic_resist"
+{
+nameid "nspell_demons_dispell_magic_resist_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_resist.t";
+duration_days	2;
+debuff;
+//Modifi
+ignore_ref;
+}

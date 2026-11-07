@@ -1,0 +1,19 @@
+// Skill profile n_talisman_water_earth
+
+skill	"n_talisman_water_earth"
+{
+nameid "n_talisman_water_earth_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_talisman_water_earth.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_talisman_water_earth_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+
+
+res_water	25;
+res_earth	25;
+info_tag;
+//Modifi
+}

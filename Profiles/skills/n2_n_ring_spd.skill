@@ -1,0 +1,19 @@
+// Skill profile n_ring_spd
+
+skill	"n_ring_spd"
+{
+nameid "n_ring_spd_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_ring_spd.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_ring_spd_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_ring_spd";
+
+
+info_tag;
+on_turn;
+//Modifi
+}

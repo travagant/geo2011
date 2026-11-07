@@ -1,0 +1,24 @@
+// Equipment Profile
+
+id	"totem_scales";
+
+nameid "totem_scales_name";
+descid "totem_scales_desc";
+effectdescid "totem_scales_efdesc";
+
+
+class	"banner";
+level	3;
+
+icon "resources\Items\banner\totem_scales.t";
+
+
+gold_cost	10000;
+//Modifi
+banner_profile	{
+ //сцена флага
+ banner_scene "Resources\Hexagons\Models\Flags\totem_scales.scene"
+
+ //блокирует использование инвентаря для обоих игроков
+ block_inventory
+};

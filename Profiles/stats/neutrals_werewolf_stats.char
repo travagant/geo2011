@@ -1,0 +1,57 @@
+// Characters stats profile
+
+unit_class	rogue;
+unit_side	"beasts";
+ship	"undead2";
+attack_type	"slash";
+level	24;
+side	neutrals;
+exp_base	102;
+
+//stats
+str	8;
+spd	3;
+dex	10;
+agi	7;
+vit	7;
+
+
+ap	1;
+up	100;
+mov	2;
+movwm	12;
+
+atck_range	1;
+Control	1;
+Cover	1;
+
+//resists
+res_fire	-50;
+res_water	-50;
+res_death	-50;
+res_mind	-50;
+
+leadership_cost	1;
+cost	4680;
+skill_grid	"neutrals_werewolf";
+viewradius	8;
+
+//Modifi
+dmg_str_mod	 900;
+dmg_agi_mod	 600;
+crit_dex_mod	 700;
+crit_vit_mod	 400;
+flee_agi_mod	 700;
+flee_spd_mod	 400;
+hp_vit_mod	 4000;
+hp_str_mod	 2000;
+ini_spd_mod	 200;
+ini_dex_mod	 150;
+mov_mod	 0;
+movwm_mod	 0;
+cover_mod	 0;
+viewradius_mod	 0;
+Discount_Mod	 0;
+Bonusexp_Mod	 0;
+level_cap	36;
+levels_to_up	3;

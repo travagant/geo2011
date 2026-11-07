@@ -1,0 +1,16 @@
+// Skill profile n_skill_warrior_of_light
+
+skill	"n_skill_warrior_of_light"
+{
+nameid "n_skill_warrior_of_light_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_warrior_of_light.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_warrior_of_light_inactive.t";
+
+
+
+str	3;
+info_tag;
+activity_cycle	"noon";
+//Modifi
+}

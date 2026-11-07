@@ -1,0 +1,12 @@
+// Effect profile for nskill_skill_earth_onattack
+
+effect "nskill_skill_earth_onattack"
+{
+nameid "nskill_skill_earth_onattack_nameid";
+fx_start	"resources\fx\\Arena_FX\Physical_Damage\fx_small_attack_earth.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_curse.t";
+duration_turns	2;
+debuff;
+//Modifi
+add_skill	"n_spell_demons_dmg_earth";
+}

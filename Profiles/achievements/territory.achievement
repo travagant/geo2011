@@ -1,0 +1,18 @@
+// Achievement Profile
+
+achievement "territory"
+{
+	nameid  "territory_name"; 
+	descid  "territory_desc";
+	type percentage;
+	count_name "str_territory_CN";
+
+	level_bronze 50;
+	icon_bronze "Resources\Interface\Icons\achievements\achieve_territory.t";
+
+	level_silver 70;
+	icon_silver "Resources\Interface\Icons\achievements\achieve_territory.t";
+
+	level_gold 90;
+	icon_gold "Resources\Interface\Icons\achievements\achieve_territory.t";
+};

@@ -1,0 +1,13 @@
+// Effect profile for npotion_resist_fire
+
+effect "npotion_resist_fire"
+{
+nameid "npotion_resist_fire_nameid";
+fx_start	"resources\fx\\Arena_FX\Potions\fx_potion_resist_fire.scene";
+icon "Resources\Interface\Icons\buffs\Icon_buff_resist.t";
+duration_days	5;
+buff;
+res_fire	25;
+dontdispell;
+//Modifi
+}

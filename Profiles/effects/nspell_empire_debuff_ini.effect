@@ -1,0 +1,12 @@
+// Effect profile for nspell_empire_debuff_ini
+
+effect "nspell_empire_debuff_ini"
+{
+nameid "nspell_empire_debuff_ini_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_curse.t";
+duration_days	2;
+debuff;
+res_air	-25;
+//Modifi
+add_skill	"n_spell_empire_debuff_ini";
+}

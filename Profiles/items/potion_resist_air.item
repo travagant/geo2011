@@ -1,0 +1,16 @@
+// Potion Profile
+
+id	"potion_resist_air";
+
+
+nameid	"ItNPotResAir";
+descid	"ItDPotResAir";
+
+class "potion";
+level	2;
+icon "Resources\\Items\\potion\\potion_resist_air.t";
+
+game_effect	"npotion_resist_air";
+gold_cost	1000;
+usage_cost	10;
+target	"ally";

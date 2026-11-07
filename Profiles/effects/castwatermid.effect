@@ -1,0 +1,10 @@
+// Effect profile for CastWaterMid
+
+effect "CastWaterMid"
+{
+nameid "CastWaterMid_nameid";
+debuff;
+damage	70;
+element	"Water";
+//Modifi
+}

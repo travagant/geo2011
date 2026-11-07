@@ -1,0 +1,9 @@
+// Effect profile for ntotem_roaster
+
+effect "ntotem_roaster"
+{
+nameid "ntotem_roaster_nameid";
+damage	100;
+element	"fire";
+//Modifi
+}

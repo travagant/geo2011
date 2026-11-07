@@ -1,0 +1,11 @@
+// Effect profile for nskill_doppleganger_duration
+
+effect "nskill_doppleganger_duration"
+{
+nameid "nskill_doppleganger_duration_nameid";
+icon "Resources\Interface\Icons\buffs\icon_buff_morph.t";
+duration_turns	3;
+buff;
+morphed;
+//Modifi
+}

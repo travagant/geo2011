@@ -1,0 +1,13 @@
+//interactive map object for Undead_capital_ruined
+
+id	"map_Undead_capital_ruined";
+
+nameid	"map_Undead_capital_ruinedN";
+msgid	"map_Undead_capital_ruinedAD";
+msg_inactiveid	"map_Undead_capital_ruinedAD";
+descid	"map_Undead_capital_ruinedD";
+desc_inactid	"map_Undead_capital_ruinedD";
+
+//destination
+action_class	"object";
+respawn	0;

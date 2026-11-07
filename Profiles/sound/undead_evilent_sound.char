@@ -1,0 +1,6 @@
+// Unit Sound
+//
+sndevent_attack "$(Sounds)\demons_beliarh_attack.wav";
+sndevent_step	"$(Sounds)\demons_beliarh_step.wav";
+sndevent_damage	"$(Sounds)\demons_beliarh_damage.wav";
+sndevent_ko	"$(Sounds)\demons_beliarh_death.wav";

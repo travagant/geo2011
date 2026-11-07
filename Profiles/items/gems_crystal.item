@@ -1,0 +1,13 @@
+// Gem Profile
+
+id	"gems_crystal";
+
+
+nameid	"ItNGeCrystal";
+descid	"ItDGeCrystal";
+
+class "gems";
+level	4;
+icon "Resources\\Items\\gems\\gems_crystal.t";
+
+gold_cost	9200;

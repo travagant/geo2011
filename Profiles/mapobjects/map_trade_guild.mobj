@@ -1,0 +1,17 @@
+//magic zone map object for trade_guild
+
+id 	"map_trade_guild";
+
+nameid	"map_trade_guildN";
+descid	"map_trade_guildD";
+effectdescid "map_trade_guildEff";
+
+action_class	"magiczone" 
+{
+	radius 9999;
+	on 		"side_bgn";
+	race 	"owner";
+	race 	"!neutral";
+	effect	"nTrade_guild";
+}
+

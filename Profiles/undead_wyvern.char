@@ -1,0 +1,23 @@
+// Unit Profile
+//
+id 		"undead_wyvern";
+unit_scene 			"Resources\\characters\\undead\\wyvern\\character_undead_wyvern.scene"
+unit_scene_lod		"Resources\\characters\\undead\\wyvern\\character_undead_wyvern_lod.scene",10;
+icon		"resources\\characters\\undead\\wyvern\\icon_wyvern.t";
+subicon 		"resources\\characters\\undead\\wyvern\\icon_wyvern_small.t";
+layout_icon	"resources\\characters\\undead\\wyvern\\icon_wyvern_node.t";
+fxproc 		"lighting";
+fxcast 		 "resources\fx\attacks\undead\wyvern\fx_undead_wyvern_cast.scene";
+fxscene 	 "resources\fx\arena_spells\undead\wyvern\fx_undead_wyvern_spell.scene";
+fxscene_ko 	"Resources\FX\Arena_FX\Death\fx_die_undeads.scene";
+fxlevelup	"Resources\\FX\\Arena_FX\\LevelUp\\fx_undead_levelup.scene";
+centerbone "Spine1";
+#include	"desc\\undead_wyvern_desc.char";
+#include	"stats\\undead_wyvern_stats.char";
+#include    "sound\\undead_wyvern_sound.char";
+move_speed 	1.5;
+nodesx 		1;
+nodesz 		1;
+capital_icon 	 "resources\characters\undead\wyvern\icon_wyvern_capital.t";
+dialog_icon 	 "resources\characters\undead\wyvern\icon_wyvern_dialog.t";
+leader_icon 	 "resources\characters\undead\wyvern\icon_wyvern_ring.t";

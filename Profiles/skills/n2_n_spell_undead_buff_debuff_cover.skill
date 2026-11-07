@@ -1,0 +1,19 @@
+// Skill profile n_spell_undead_buff_debuff_cover
+
+skill	"n_spell_undead_buff_debuff_cover"
+{
+nameid "n_spell_undead_buff_debuff_cover_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_spell_undead_buff_debuff_cover.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_spell_undead_buff_debuff_cover_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_spell_undead_buff_debuff_cover";
+
+
+info_tag;
+on_intercepted;
+//Modifi
+}

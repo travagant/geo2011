@@ -1,0 +1,9 @@
+// Effect profile for potion_effect_huge_vit
+
+effect "potion_effect_huge_vit"
+{
+nameid "potion_effect_huge_vit_nameid";
+buff;
+vit	1;
+//Modifi
+}

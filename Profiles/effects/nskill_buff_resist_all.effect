@@ -1,0 +1,17 @@
+// Effect profile for nskill_buff_resist_all
+
+effect "nskill_buff_resist_all"
+{
+nameid "nskill_buff_resist_all_nameid";
+fx_start	"Resources\FX\Map_Spells\Map_Wrath_Of_The_Glades\fx_wrath_of_the_glades.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_resist.t";
+duration_turns	1;
+buff;
+res_fire	25;
+res_water	25;
+res_air	25;
+res_earth	25;
+res_death	25;
+res_mind	25;
+//Modifi
+}

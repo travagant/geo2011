@@ -1,0 +1,13 @@
+// Effect profile for nTavern_1
+
+effect "nTavern_1"
+{
+nameid "nTavern_1_nameid";
+fx_start	"resources\fx\\Arena_FX\Sign\fx_sign_statsup.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_attack.t";
+duration_days	3;
+buff;
+dontdispell;
+//Modifi
+crit_per	20;
+}

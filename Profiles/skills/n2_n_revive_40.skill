@@ -1,0 +1,21 @@
+// Skill profile n_revive_40
+
+skill	"n_revive_40"
+{
+nameid "n_revive_40_nameid";
+effectdescid "n_revive_40_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_revive_i.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_revive_i_inactive.t";
+
+skill_range	4;
+cast_type	single;
+cast_target	friendly;
+game_effect	"nskill_resurrect_40";
+
+request_ap	1;
+battle;
+
+info_tag;
+//Modifi
+}

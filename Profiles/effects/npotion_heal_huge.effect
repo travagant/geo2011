@@ -1,0 +1,10 @@
+// Effect profile for npotion_heal_huge
+
+effect "npotion_heal_huge"
+{
+nameid "npotion_heal_huge_nameid";
+fx_start	"resources\fx\\Arena_FX\Potions\fx_potion_heal_huge.scene";
+buff;
+heal	500;
+//Modifi
+}

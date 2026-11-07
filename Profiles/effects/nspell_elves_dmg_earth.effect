@@ -1,0 +1,13 @@
+// Effect profile for nspell_elves_dmg_earth
+
+effect "nspell_elves_dmg_earth"
+{
+nameid "nspell_elves_dmg_earth_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_resist.t";
+duration_days	2;
+debuff;
+damage	120;
+element	"earth";
+res_blunt	-25;
+//Modifi
+}

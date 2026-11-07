@@ -1,0 +1,12 @@
+// Effect profile for BuffDefVit
+
+effect "BuffDefVit"
+{
+nameid "BuffDefVit_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_defense.t";
+duration_turns	5;
+buff;
+vit	3;
+def	25;
+//Modifi
+}

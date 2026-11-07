@@ -1,0 +1,13 @@
+// Effect profile for npotion_cover
+
+effect "npotion_cover"
+{
+nameid "npotion_cover_nameid";
+fx_start	"resources\fx\\Arena_FX\Potions\fx_potion_cover.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_defense.t";
+duration_days	3;
+buff;
+cover	2;
+dontdispell;
+//Modifi
+}

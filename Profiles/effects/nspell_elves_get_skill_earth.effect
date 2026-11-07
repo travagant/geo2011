@@ -1,0 +1,13 @@
+// Effect profile for nspell_elves_get_skill_earth
+
+effect "nspell_elves_get_skill_earth"
+{
+nameid "nspell_elves_get_skill_earth_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_bless.t";
+duration_days	2;
+buff;
+dmg	15;
+//Modifi
+add_skill	"n_wall_Empire";
+add_skill_uses	1;
+}

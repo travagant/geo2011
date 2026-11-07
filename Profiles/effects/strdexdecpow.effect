@@ -1,0 +1,12 @@
+// Effect profile for StrDexDecPow
+
+effect "StrDexDecPow"
+{
+nameid "StrDexDecPow_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_attack.t";
+duration_turns	10;
+debuff;
+str	-2;
+dex	-2;
+//Modifi
+}

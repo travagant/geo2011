@@ -1,0 +1,13 @@
+// Effect profile for nspell_demons_debuff_viewradius_crit_mod
+
+effect "nspell_demons_debuff_viewradius_crit_mod"
+{
+nameid "nspell_demons_debuff_viewradius_crit_mod_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_world.t";
+duration_days	2;
+debuff;
+dex	-3;
+res_fire	-25;
+viewradius	-7;
+//Modifi
+}

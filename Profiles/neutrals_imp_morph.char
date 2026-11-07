@@ -1,0 +1,22 @@
+// Unit Profile
+//
+id 		"neutrals_imp_morph";
+unit_scene 	"Resources\\characters\\neutrals\\imp\\character_neutrals_imp.scene"
+unit_scene_lod		"resources\characters\neutrals\imp\character_neutrals_imp_lod.scene",10;
+icon		"resources\\characters\\neutrals\\imp\\icon_imp.t";
+subicon 	"resources\\characters\\neutrals\\imp\\icon_imp_small.t";
+layout_icon	"resources\\characters\\neutrals\\imp\\icon_imp_node.t";
+fxproc 		"lighting";
+fxscene 	"Resources\FX\Arena_FX\Physical_Damage\fx_small_attack_damage.scene";
+fxscene_ko 	"Resources\FX\Arena_FX\Death\fx_die_neutrals.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_neutrals_levelup.scene";
+centerbone "Bip01 Spine1";
+#include	"desc\\neutrals_imp_morph_desc.char";
+#include	"stats\\neutrals_imp_morph_stats.char";
+#include      	"sound\\neutrals_imp_sound.char";
+move_speed 	2.6;
+nodesx 		1;
+nodesz 		1;
+capital_icon 	 "resources\characters\neutrals\imp\icon_imp_capital.t";
+dialog_icon 	 "resources\characters\neutrals\imp\icon_imp_dialog.t";
+leader_icon 	 "resources\characters\neutrals\imp\icon_imp_ring.t";

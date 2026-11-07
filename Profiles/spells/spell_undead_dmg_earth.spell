@@ -1,0 +1,29 @@
+// Spell Profile
+
+id	"spell_undead_dmg_earth";
+
+nameid	"NamSp_spell_undead_dmg_earth";
+descid	"DesSp_spell_undead_dmg_earth";
+
+icon_small "Resources\items\runes\spell_undead_dmg_earth.t";
+icon "Resources\items\cards\spell_undead_dmg_earth.t";
+scene "Resources\FX\Map_Spells\Map_Worm\fx_worm.scene";
+scene_crop "Resources\FX\Map_Spells\Map_Worm\fx_worm_arena.scene";
+
+default_nation	"Undead";
+level	5;
+target	enemy;
+
+game_effect	"nspell_undead_dmg_earth";
+
+cost_spell "Life mana" 165, 330;
+cost_spell "Grove mana" 165, 330;
+cost_spell "Infernal mana" 165, 330;
+cost_spell "Death mana" 165, 330;
+
+rune	"rune_spell_undead_dmg_earth";
+rune_cost "Life mana", 60;
+rune_cost "Grove mana", 60;
+rune_cost "Infernal mana", 60;
+rune_cost "Death mana", 60;
+rune_cost "Stone", 240;

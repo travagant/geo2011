@@ -1,0 +1,18 @@
+grid "neutrals_hydra_female"
+{
+ unit_start 1 9;
+ unit_skill "n_skill_zone_dmg_3_info" 1 1 1 24;
+ unit_skill "n_skill_skill_ysmirenie_onattack" 1 1 1 25;
+ unit_skill "n_skill_agi" 1 0 2 9;
+ unit_skill "n_skill_str" 1 0 3 9;
+ unit_skill "n_skill_spd" 1 0 4 9;
+ unit_skill "n_skill_res_death" 1 0 5 9;
+ unit_skill "n_skill_agi" 1 0 6 9;
+ unit_skill "n_skill_str" 1 0 7 9;
+ unit_skill "n_skill_spd" 1 0 8 9;
+ unit_skill "n_skill_res_water" 1 0 9 9;
+ unit_skill "n_skill_agi" 1 0 10 9;
+ unit_skill "n_skill_str" 1 0 11 9;
+ unit_skill "n_skill_spd" 1 0 12 9;
+ unit_skill "n_skill_agi" 1 0 13 9;
+}

@@ -1,0 +1,17 @@
+//interactive map object for Tree_tower
+
+id	"map_Tree_tower";
+
+nameid	"map_Tree_towerN";
+msgid	"map_Tree_towerAD";
+msg_inactiveid	"map_Tree_towerNAD";
+descid	"map_Tree_towerD";
+desc_inactid	"map_Tree_towerND";
+effectid	"map_Tree_towerEff";
+ambient_sound	"$(Sounds)\\Buildings\\tree_tower.wav";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_n_buff_dex.scene";
+
+//destination
+action_class	"object";
+game_effect	"OpenFogMid";
+respawn	1;

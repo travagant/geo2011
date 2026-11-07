@@ -1,0 +1,16 @@
+//interactive map object for Demons_Capital
+
+id	"map_Demons_Capital";
+
+nameid	"map_Demons_CapitalN";
+descid	"map_Demons_CapitalD";
+desc_inactid	"map_Demons_CapitalND";
+ambient_sound	"$(Sounds)\\Buildings\\demons_capital.wav";
+
+//destination
+action_class	"town";
+action_class_script	"resources\\profiles\\scripts\\town_legions.s";
+default_unit	"demons_ashkael";
+arena	"Resources\\Hexagons\\Models\\Arena\\Resources\\Hexagons\\Models\\Arena\\arena_back_capital_legions\\arena_back_capital_legions_hexmap.scene.scene";
+landguardian    32.0;
+respawn	0;

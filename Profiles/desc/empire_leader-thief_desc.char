@@ -1,0 +1,4 @@
+//empire_leader-thief's description
+nameid "EmpireLeaderthiefName";
+descid "EmpireLeaderthiefDesc";
+minidesc "EmpireLeaderthief_MD";

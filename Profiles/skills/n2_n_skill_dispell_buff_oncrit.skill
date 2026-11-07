@@ -1,0 +1,20 @@
+// Skill profile n_skill_dispell_buff_oncrit
+
+skill	"n_skill_dispell_buff_oncrit"
+{
+nameid "n_skill_dispell_buff_oncrit_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_res_empire_mage.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_res_empire_mage_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_dispell_buff_oncrit";
+
+
+element	air;
+info_tag;
+on_crit;
+//Modifi
+}

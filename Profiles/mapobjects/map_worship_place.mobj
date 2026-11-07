@@ -1,0 +1,18 @@
+//interactive map object for Worship_place
+
+id	"map_Worship_place";
+
+nameid	"map_Worship_placeN";
+msgid	"map_Worship_placeAD";
+msg_inactiveid	"map_Worship_placeNAD";
+descid	"map_Worship_placeD";
+desc_inactid	"map_Worship_placeND";
+effectid	"map_Worship_placeEff";
+ambient_sound	"$(Sounds)\\Buildings\\worship_place.wav";
+fx_start	"Resources\\FX\Arena_FX\Sign\fx_sign_arrow.scene";
+
+//destination
+action_class	"object";
+game_effect	"Getskill";
+once;
+allside;

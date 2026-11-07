@@ -1,0 +1,16 @@
+//interactive map object for Well_02
+
+id	"map_Well_02";
+
+nameid	"map_Well_02N";
+msgid	"map_Well_02AD";
+msg_inactiveid	"map_Well_02NAD";
+descid	"map_Well_02D";
+desc_inactid	"map_Well_02ND";
+effectid	"map_Well_02Eff";
+fx_start	"Resources\\FX\Arena_FX\Sign\fx_sign_move.scene";
+
+//destination
+action_class	"object";
+game_effect	"ApWorldMin";
+respawn	1;

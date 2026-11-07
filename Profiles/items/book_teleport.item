@@ -1,0 +1,18 @@
+// Equipment Profile
+
+id	"book_teleport";
+
+nameid "book_teleport_name";
+descid "book_teleport_desc";
+
+
+class	"book";
+level	2;
+
+icon "resources\Items\book\book_teleport.t";
+
+add_skill	"n_book_teleport";
+add_skill_uses	1;
+
+gold_cost	6000;
+//Modifi

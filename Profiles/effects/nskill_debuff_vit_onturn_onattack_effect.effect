@@ -1,0 +1,13 @@
+// Effect profile for nskill_debuff_vit_onturn_onattack_effect
+
+effect "nskill_debuff_vit_onturn_onattack_effect"
+{
+nameid "nskill_debuff_vit_onturn_onattack_effect_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_spell_undead_debuff_vit.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_defense.t";
+duration_turns	-1;
+debuff;
+vit	-1;
+//Modifi
+stackable	1;
+}

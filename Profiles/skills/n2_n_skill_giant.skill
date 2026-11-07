@@ -1,0 +1,19 @@
+// Skill profile n_skill_giant
+
+skill	"n_skill_giant"
+{
+nameid "n_skill_giant_nameid";
+effectdescid "n_skill_giant_descid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_immune_doppel.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_immune_doppel_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+
+
+info_tag;
+//Modifi
+immune_dopel;
+}

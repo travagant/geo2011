@@ -1,0 +1,10 @@
+// Effect profile for npotion_dispel_debuffs
+
+effect "npotion_dispel_debuffs"
+{
+nameid "npotion_dispel_debuffs_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_dispell_buff_1_cast.scene";
+buff;
+dispel_debuffs	1;
+//Modifi
+}

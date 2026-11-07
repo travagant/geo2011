@@ -1,0 +1,23 @@
+//Unit Profile
+//
+id                       "demons_rod-2";
+unit_scene              "Resources\\Characters\\Demons\\Rod-2\\character_demons_rod-2.scene";
+unit_scene_lod		"resources\characters\demons\rod-2\character_demons_rod-2_lod.scene",30;
+icon                     "resources\\characters\\demons\\rod-2\\icon_rod-2.t";
+subicon                  "resources\\characters\\demons\\rod-2\\icon_rod-2_small.t";
+layout_icon              "resources\\characters\\demons\\rod-2\\icon_rod-2_node.t";
+capital_icon             "resources\\characters\\demons\\rod-2\\icon_rod-2_capital.t";
+dialog_icon              "resources\\characters\\demons\\rod-2\\icon_rod-2_dialog.t";
+leader_icon              "resources\\characters\\demons\\rod-2\\icon_rod-2_ring.t"
+fxproc                   "lighting";
+fxscene                  "resources\\fx\\Arena_Spells\\Demons\\Rod-2\\fx_demons_rod-2_spell.scene";
+fxcast                   "resources\\FX\\Attacks\\Demons\\Rod-1\\fx_demons_rod-1_cast.scene";
+fxscene_ko               "resources\\fx\\Arena_FX\\Death\\fx_die_demons.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_demons_levelup.scene";
+centerbone               "Bone07";
+move_speed                0;
+nodesx                   1;
+nodesz                   1;
+#include                 "desc\\demons_rod-2_desc.char";
+#include                 "sound\\demons_rod-2_sound.char";
+#include                 "stats\\demons_rod-2_stats.char";

@@ -1,0 +1,23 @@
+//Unit Profile
+//
+id                       "elves_spiritess";
+unit_scene              "resources\\characters\\elves\\spiritess\\character_elves_spiritess.scene";
+unit_scene_lod		"resources\characters\elves\spiritess\character_elves_spiritess_lod.scene",10;
+icon                     "resources\\characters\\elves\\spiritess\\icon_spiritess.t";
+subicon                  "resources\\characters\\elves\\spiritess\\icon_spiritess_small.t";
+layout_icon              "resources\\characters\\elves\\spiritess\\icon_spiritess_node.t";
+capital_icon             "resources\\characters\\elves\\spiritess\\icon_spiritess_capital.t";
+dialog_icon              "resources\\characters\\elves\\spiritess\\icon_spiritess_dialog.t";
+leader_icon              "resources\\characters\\elves\\spiritess\\icon_spiritess_ring.t";
+fxproc                   "lighting";
+fxscene                  "resources\\fx\\Arena_Spells\\elves\\spiritess\\fx_elves_spiritess_spell.scene";
+fxcast                   "resources\\fx\\Attacks\\elves\\spiritess\\fx_elves_spiritess_cast.scene";
+fxscene_ko               "resources\\fx\\Arena_FX\\Death\\fx_die_elves.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_elves_levelup.scene";
+centerbone               "Spine1";
+move_speed                2.5;
+nodesx                   1;
+nodesz                   1;
+#include                 "desc\\elves_spiritess_desc.char";
+#include                 "sound\\elves_spiritess_sound.char";
+#include                 "stats\\elves_spiritess_stats.char";

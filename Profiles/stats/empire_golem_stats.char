@@ -1,0 +1,59 @@
+// Characters stats profile
+
+unit_class	melee;
+unit_side	"elementals_giant";
+ship	"empire2";
+attack_type	"earth";
+level	22;
+side	empire;
+exp_base	159;
+
+//stats
+str	10;
+spd	1;
+dex	5;
+agi	5;
+vit	12;
+
+
+ap	1;
+up	100;
+mov	1;
+movwm	12;
+
+atck_range	1;
+zone_radius	1;
+atck_zone;
+Control	1;
+Cover	1;
+
+//resists
+res_slash	25;
+res_pierce	25;
+res_blunt	-25;
+res_earth	50;
+
+leadership_cost	2;
+cost	6000;
+skill_grid	"empire_golem";
+viewradius	8;
+
+//Modifi
+dmg_str_mod	 900;
+dmg_agi_mod	 600;
+crit_dex_mod	 400;
+crit_vit_mod	 200;
+flee_agi_mod	 400;
+flee_spd_mod	 200;
+hp_vit_mod	 7500;
+hp_str_mod	 3800;
+ini_spd_mod	 200;
+ini_dex_mod	 100;
+mov_mod	 0;
+movwm_mod	 0;
+cover_mod	 0;
+viewradius_mod	 0;
+Discount_Mod	 0;
+Bonusexp_Mod	 0;
+level_cap	34;
+levels_to_up	3;

@@ -1,0 +1,21 @@
+// Skill profile n_teleport_friend
+
+skill	"n_teleport_friend"
+{
+nameid "n_teleport_friend_nameid";
+effectdescid "n_teleport_friend_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_tel_friend_point.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_tel_friend_point_inactive.t";
+
+skill_range	3;
+cast_type	single;
+cast_target	friendly;
+game_effect	"nskill_teleport_friendly";
+
+request_ap	1;
+battle;
+
+info_tag;
+//Modifi
+}

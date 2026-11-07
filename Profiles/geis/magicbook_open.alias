@@ -1,0 +1,10 @@
+
+
+
+alias "magicbook_open" {
+
+
+   sound 100, "$(Sounds)\interface\magicbook_open.wav", 100, 3;
+
+
+}  

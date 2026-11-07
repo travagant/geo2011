@@ -1,0 +1,13 @@
+// Effect profile for nskill_book_hero
+
+effect "nskill_book_hero"
+{
+nameid "nskill_book_hero_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_book_hero.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_bless.t";
+duration_turns	3;
+buff;
+//Modifi
+crit_per	20;
+stackable	1;
+}

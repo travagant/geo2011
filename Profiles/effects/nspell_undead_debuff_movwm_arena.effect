@@ -1,0 +1,14 @@
+// Effect profile for nspell_undead_debuff_movwm_arena
+
+effect "nspell_undead_debuff_movwm_arena"
+{
+nameid "nspell_undead_debuff_movwm_arena_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_world.t";
+duration_turns	-1;
+debuff;
+agi	-1;
+dex	-1;
+spd	-1;
+movwm	-6;
+//Modifi
+}

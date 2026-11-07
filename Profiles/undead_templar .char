@@ -1,0 +1,23 @@
+// Unit Profile
+//
+id 		"undead_templar";
+unit_scene 	"Resources\\characters\\undead\\templar\\character_undead_templar.scene"
+unit_scene_lod	"resources\characters\undead\templar\character_undead_templar_lod.scene",10;
+icon		"resources\\characters\\undead\\templar\\icon_templar.t";
+subicon 	"resources\\characters\\undead\\templar\\icon_templar_small.t";
+layout_icon	"resources\\characters\\undead\\templar\\icon_templar_node.t";
+fxproc 		"lighting";
+fxscene 	"resources\fx\Arena_FX\Physical_Damage\fx_small_attack_damage.scene";
+fxcast		"resources\\fx\\Attacks\\undead\\templar\\fx_undead_templar_cast.scene";
+fxscene_ko 	"Resources\FX\Arena_FX\Death\fx_die_undeads.scene";
+fxlevelup	"Resources\\FX\\Arena_FX\\LevelUp\\fx_undead_levelup.scene";
+centerbone 	"Bone04";
+#include	"desc\\undead_templar_desc.char";
+#include	"stats\\undead_templar_stats.char";
+#include      	"sound\\undead_templar_sound.char";
+move_speed 	2.1;
+nodesx 		1;
+nodesz 		1;
+capital_icon 	 "resources\characters\undead\templar\icon_templar_capital.t";
+dialog_icon 	 "resources\characters\undead\templar\icon_templar_dialog.t";
+leader_icon 	 "resources\characters\undead\templar\icon_templar_ring.t";

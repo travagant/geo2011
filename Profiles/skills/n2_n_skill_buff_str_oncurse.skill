@@ -1,0 +1,19 @@
+// Skill profile n_skill_buff_str_oncurse
+
+skill	"n_skill_buff_str_oncurse"
+{
+nameid "n_skill_buff_str_oncurse_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_summon_demons.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_summon_demons_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_buff_str_oncurse";
+
+
+info_tag;
+on_cursed;
+//Modifi
+}

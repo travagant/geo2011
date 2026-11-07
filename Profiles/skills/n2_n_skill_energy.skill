@@ -1,0 +1,15 @@
+// Skill profile n_skill_energy
+
+skill	"n_skill_energy"
+{
+nameid "n_skill_energy_nameid";
+effectdescid "n_skill_energy_descid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_userune.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_userune_inactive.t";
+
+
+
+//Modifi
+up	20;
+}

@@ -1,0 +1,16 @@
+//interactive map object for Mana_death_big
+
+id	"Mana_death_big";
+
+nameid	"map_manadeath_bigN";
+msgid	"map_manadeath_bigAD";
+msg_inactiveid	"";
+descid	"map_manadeath_bigD";
+effectid	"map_manadeath_bigEff";
+fx_start	"Resources\\FX\Arena_FX\Sign\fx_sign_mana_death.scene";
+
+//destination
+action_class	"heap_resource";
+heap_resource	death_mana 100;
+msg_popup	"map_manadeath_bigPopup";
+once;

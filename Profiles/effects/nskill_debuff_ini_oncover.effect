@@ -1,0 +1,12 @@
+// Effect profile for nskill_debuff_ini_oncover
+
+effect "nskill_debuff_ini_oncover"
+{
+nameid "nskill_debuff_ini_oncover_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_speed_map_dwn_2_spell.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_attack.t";
+duration_turns	2;
+debuff;
+//Modifi
+ini_per	-10;
+}

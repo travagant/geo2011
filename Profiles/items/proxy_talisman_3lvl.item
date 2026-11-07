@@ -1,0 +1,16 @@
+// Equipment Profile
+
+id	"proxy_talisman_3lvl";
+
+nameid "proxy_talisman_3lvl_name";
+descid "proxy_talisman_3lvl_desc";
+
+
+class	"talisman";
+level	3;
+
+icon "resources\Items\talisman\proxy_talisman_3lvl.t";
+
+proxy;
+
+//Modifi

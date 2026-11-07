@@ -1,0 +1,13 @@
+// Effect profile for nskill_spell_undead_buff_str_onkill
+
+effect "nskill_spell_undead_buff_str_onkill"
+{
+nameid "nskill_spell_undead_buff_str_onkill_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_debuff_stop_1_cast.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_attack.t";
+duration_turns	-1;
+buff;
+str	3;
+//Modifi
+stackable	1;
+}

@@ -1,0 +1,18 @@
+id "dungeon_lvl_1";
+
+// reward item "class" level, resource N(-M), "id";
+
+reward	item	"rune"	1	,	resource	150		,	mana	100		;
+reward	item	"rune"	1	,	mana	150		,	mana	100		;
+reward	item	"rune"	1	,	resource	150		,	mana	100		;
+reward	item	"rune"	1	,	mana	150		,	mana	100		;
+reward	item	"potion"	1	,	resource	100						;
+reward	item	"potion"	1	,	mana	100						;
+reward	item	"gems"	1									;
+reward	item	"gems"	1									;
+
+
+
+
+
+

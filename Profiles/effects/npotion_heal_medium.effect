@@ -1,0 +1,10 @@
+// Effect profile for npotion_heal_medium
+
+effect "npotion_heal_medium"
+{
+nameid "npotion_heal_medium_nameid";
+fx_start	"resources\fx\\Arena_FX\Potions\fx_potion_heal_medium.scene";
+buff;
+heal	250;
+//Modifi
+}

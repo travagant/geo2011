@@ -1,0 +1,10 @@
+// Effect profile for nspell_undead_dmg_earth_arena
+
+effect "nspell_undead_dmg_earth_arena"
+{
+nameid "nspell_undead_dmg_earth_arena_nameid";
+debuff;
+damage	220;
+element	"earth";
+//Modifi
+}

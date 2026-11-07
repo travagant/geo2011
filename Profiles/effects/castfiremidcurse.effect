@@ -1,0 +1,12 @@
+// Effect profile for CastFireMidCurse
+
+effect "CastFireMidCurse"
+{
+nameid "CastFireMidCurse_nameid";
+duration_turns	5;
+debuff;
+curse	10;
+damage	30;
+element	"Fire";
+//Modifi
+}

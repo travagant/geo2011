@@ -1,0 +1,22 @@
+// Unit Profile
+//
+id 		"neutrals_nosferatu";
+unit_scene 	"Resources\\characters\\neutrals\\nosferatu\\character_neutrals_nosferatu.scene"
+unit_scene_lod		"resources\characters\neutrals\nosferatu\character_neutrals_nosferatu_lod.scene",10;
+icon		"resources\\characters\\neutrals\\nosferatu\\icon_nosferatu.t";
+subicon 	"resources\\characters\\neutrals\\nosferatu\\icon_nosferatu_small.t";
+layout_icon	"resources\\characters\\neutrals\\nosferatu\\icon_nosferatu_node.t";
+fxproc 		"lighting";
+fxscene         "resources\\fx\\Arena_Spells\\neutrals\\nosferatu\\fx_undeads_nosferatu_spell.scene";
+fxcast          "resources\\fx\\Attacks\\neutrals\\nosferatu\\fx_undeads_nosferatu_cast.scene";
+fxscene_ko      "resources\\fx\\Arena_FX\\Death\\fx_die_neutrals.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_neutrals_levelup.scene";
+move_speed 	3;
+nodesx 		1;
+nodesz 		1;
+capital_icon 	 "resources\characters\neutrals\nosferatu\icon_nosferatu_capital.t";
+dialog_icon 	 "resources\characters\neutrals\nosferatu\icon_nosferatu_dialog.t";
+leader_icon 	 "resources\characters\neutrals\nosferatu\icon_nosferatu_ring.t";
+#include	"desc\\neutrals_nosferatu_desc.char";
+#include	"stats\\neutrals_nosferatu_stats.char";
+#include      	"sound\\neutrals_nosferatu_sound.char";

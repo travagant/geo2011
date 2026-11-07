@@ -1,0 +1,14 @@
+//interactive map object for Prison
+
+id	"map_Prison";
+
+nameid	"map_PrisonN";
+descid	"map_PrisonD";
+desc_inactid	"map_PrisonND";
+msg_inactiveid	"map_PrisonNAD";
+ambient_sound	"$(Sounds)\\Buildings\\prison.wav";
+
+//destination
+action_class	"dungeon";
+action_class_script	"resources\\profiles\\dungeons\\prison.s";
+respawn	10;

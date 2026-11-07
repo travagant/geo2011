@@ -1,0 +1,16 @@
+//interactive map object for Magic_Crypt
+
+id	"map_Magic_Crypt";
+
+nameid	"map_Magic_CryptN";
+msgid	"map_Magic_CryptAD";
+msg_inactiveid	"map_Magic_CryptNAD";
+descid	"map_Magic_CryptD";
+desc_inactid	"map_Magic_CryptND";
+effectid	"map_Magic_CryptEff";
+ambient_sound	"$(Sounds)\\Buildings\\magic_crypt.wav";
+
+//destination
+action_class	"object";
+game_effect	"nMagic_Crypt";
+respawn	5;

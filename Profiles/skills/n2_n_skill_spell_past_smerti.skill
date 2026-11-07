@@ -1,0 +1,20 @@
+// Skill profile n_skill_spell_past_smerti
+
+skill	"n_skill_spell_past_smerti"
+{
+nameid "n_skill_spell_past_smerti_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_spell_undead_debuff_flee_dmg.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_spell_undead_debuff_flee_dmg_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_spell_past_smerti";
+
+
+element	earth;
+info_tag;
+on_attack;
+//Modifi
+}

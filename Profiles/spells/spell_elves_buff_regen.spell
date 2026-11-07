@@ -1,0 +1,27 @@
+// Spell Profile
+
+id	"spell_elves_buff_regen";
+
+nameid	"NamSp_spell_elves_buff_regen";
+descid	"DesSp_spell_elves_buff_regen";
+
+icon_small "Resources\items\runes\spell_elves_buff_regen.t";
+icon "Resources\items\cards\spell_elves_buff_regen.t";
+scene "Resources\FX\Map_Spells\Elves\Spell_Elves_Armor\spell_elves_armor.scene";
+scene_crop "Resources\FX\Map_Spells\Elves\Spell_Elves_Armor\spell_elves_armor_arena.scene";
+
+default_nation	"Elves";
+level	4;
+target	ally;
+
+game_effect	"nspell_elves_buff_regen";
+
+cost_spell "Life mana" 200, 400;
+cost_spell "Grove mana" 200, 400;
+cost_spell "Infernal mana" 200, 400;
+
+rune	"rune_spell_elves_buff_regen";
+rune_cost "Life mana", 70;
+rune_cost "Grove mana", 70;
+rune_cost "Infernal mana", 70;
+rune_cost "Stone", 210;

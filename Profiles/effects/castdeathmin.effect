@@ -1,0 +1,10 @@
+// Effect profile for CastDeathMin
+
+effect "CastDeathMin"
+{
+nameid "CastDeathMin_nameid";
+debuff;
+damage	25;
+element	"death";
+//Modifi
+}

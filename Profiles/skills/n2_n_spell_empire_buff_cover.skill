@@ -1,0 +1,19 @@
+// Skill profile n_spell_empire_buff_cover
+
+skill	"n_spell_empire_buff_cover"
+{
+nameid "n_spell_empire_buff_cover_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_spell_empire_buff_cover.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_spell_empire_buff_cover_inactive.t";
+
+skill_range	1;
+cast_type	around;
+cast_target	friendly;
+game_effect	"nskill_spell_empire_buff_cover";
+
+
+info_tag;
+on_cover;
+//Modifi
+}

@@ -1,0 +1,8 @@
+// Effect profile for nskill_defform_Legion
+
+effect "nskill_defform_Legion"
+{
+nameid "nskill_defform_Legion_nameid";
+morph	"demons_beliarh" "nskill_defform_duration";
+//Modifi
+}

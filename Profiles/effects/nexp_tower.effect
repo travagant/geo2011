@@ -1,0 +1,13 @@
+// Effect profile for nExp_tower
+
+effect "nExp_tower"
+{
+nameid "nExp_tower_nameid";
+icon "Resources\Interface\Icons\buffs\icon_buff_world.t";
+duration_days	1;
+buff;
+bonusexp	15;
+dontdispell;
+//Modifi
+stackable	1;
+}

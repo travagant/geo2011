@@ -1,0 +1,23 @@
+// Spell Profile
+
+id	"spell_empire_buff_dex_mod";
+
+nameid	"NamSp_spell_empire_buff_dex_mod";
+descid	"DesSp_spell_empire_buff_dex_mod";
+
+icon_small "Resources\items\runes\spell_empire_buff_dex_mod.t";
+icon "Resources\items\cards\spell_empire_buff_dex_mod.t";
+scene "Resources\FX\Map_Spells\Empire\Spell_Buff_Dex\spell_buff_dex.scene";
+scene_crop "Resources\FX\Map_Spells\Empire\Spell_Buff_Dex\spell_buff_dex_arena.scene";
+
+default_nation	"Empire";
+level	1;
+target	ally;
+
+game_effect	"nspell_empire_buff_dex_mod";
+
+cost_spell "Life mana" 150, 300;
+
+rune	"rune_spell_empire_buff_dex_mod";
+rune_cost "Life mana", 55;
+rune_cost "Stone", 55;

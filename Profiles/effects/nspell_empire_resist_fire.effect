@@ -1,0 +1,12 @@
+// Effect profile for nspell_empire_resist_fire
+
+effect "nspell_empire_resist_fire"
+{
+nameid "nspell_empire_resist_fire_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_bless.t";
+duration_days	2;
+buff;
+res_fire	25;
+//Modifi
+add_skill	"n_spell_empire_resist_fire";
+}

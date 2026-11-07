@@ -1,0 +1,10 @@
+
+
+
+alias "journal_open" {
+
+
+   sound 100, "$(Sounds)\interface\open_journal.wav", 100, 3;
+
+
+}  

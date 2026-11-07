@@ -1,0 +1,10 @@
+// Effect profile for CastEarthMin
+
+effect "CastEarthMin"
+{
+nameid "CastEarthMin_nameid";
+debuff;
+damage	20;
+element	"Earth";
+//Modifi
+}

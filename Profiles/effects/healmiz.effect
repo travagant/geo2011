@@ -1,0 +1,10 @@
+// Effect profile for HealMiz
+
+effect "HealMiz"
+{
+nameid "HealMiz_nameid";
+fx_start	"resources\fx\\Arena_FX\Sign\fx_sign_heal.scene";
+buff;
+heal	50;
+//Modifi
+}

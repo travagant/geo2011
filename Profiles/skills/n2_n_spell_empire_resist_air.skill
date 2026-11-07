@@ -1,0 +1,19 @@
+// Skill profile n_spell_empire_resist_air
+
+skill	"n_spell_empire_resist_air"
+{
+nameid "n_spell_empire_resist_air_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_spell_empire_resist_air.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_spell_empire_resist_air_inactive.t";
+
+skill_range	1;
+cast_type	around;
+cast_target	enemy;
+game_effect	"nskill_spell_empire_resist_air";
+
+
+info_tag;
+on_damaged;
+//Modifi
+}

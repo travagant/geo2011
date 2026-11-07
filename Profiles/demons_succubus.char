@@ -1,0 +1,23 @@
+//Unit Profile
+//
+id                       "demons_succubus";
+unit_scene              "resources\\characters\\demons\\succubus\\character_demons_succubus.scene";
+unit_scene_lod		"resources\characters\demons\succubus\character_demons_succubus_lod.scene",10;
+icon                     "resources\\characters\\demons\\succubus\\icon_succubus.t";
+subicon                  "resources\\characters\\demons\\succubus\\icon_succubus_small.t";
+layout_icon              "resources\\characters\\demons\\succubus\\icon_succubus_node.t";
+capital_icon             "resources\\characters\\demons\\succubus\\icon_succubus_capital.t";
+dialog_icon              "resources\\characters\\demons\\succubus\\icon_succubus_dialog.t";
+leader_icon              "resources\\characters\\demons\\succubus\\icon_succubus_ring.t";
+fxproc                   "lighting";
+fxscene                  "resources\\fx\\Arena_Spells\\Demons\\succubus\\fx_transform_imps.scene";
+fxcast                   "resources\\fx\\Attacks\\demons\\succubus\\fx_demons_succubus_cast.scene";
+fxscene_ko               "resources\\fx\\Arena_FX\\Death\\fx_die_demons.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_demons_levelup.scene";
+centerbone               "Spine1";
+move_speed                5;
+nodesx                   1;
+nodesz                   1;
+#include                 "desc\\demons_succubus_desc.char";
+#include                 "sound\\demons_succubus_sound.char";
+#include                 "stats\\demons_succubus_stats.char";

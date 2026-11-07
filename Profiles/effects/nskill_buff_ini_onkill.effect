@@ -1,0 +1,13 @@
+// Effect profile for nskill_buff_ini_onkill
+
+effect "nskill_buff_ini_onkill"
+{
+nameid "nskill_buff_ini_onkill_nameid";
+fx_start	"resources\fx\\Arena_FX\Sign\fx_sign_chest.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_attack.t";
+duration_turns	2;
+buff;
+//Modifi
+ini_per	35;
+stackable	1;
+}

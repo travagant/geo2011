@@ -1,0 +1,11 @@
+// Effect profile for nskill_death_blow_damage
+
+effect "nskill_death_blow_damage"
+{
+nameid "nskill_death_blow_damage_nameid";
+fx_start	"Resources\FX\Arena_FX\Skills\fx_skill_double_damage_1_spell.scene";
+buff;
+attack_pow	200;
+element	"slash";
+//Modifi
+}

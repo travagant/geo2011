@@ -1,0 +1,58 @@
+// Characters stats profile
+
+unit_class	caster;
+unit_side	"empire";
+ship	"empire2";
+attack_type	"water";
+level	16;
+side	empire;
+exp_base	118;
+
+//stats
+str	7;
+spd	1;
+dex	6;
+agi	4;
+vit	5;
+
+
+ap	1;
+up	100;
+mov	2;
+movwm	12;
+
+atck_range	3;
+zone_radius	1;
+atck_zone;
+
+//resists
+res_fire	25;
+res_water	25;
+res_air	25;
+res_earth	25;
+res_mind	-25;
+
+leadership_cost	1;
+cost	1200;
+skill_grid	"empire_elementalist";
+viewradius	8;
+
+//Modifi
+dmg_str_mod	 700;
+dmg_agi_mod	 400;
+crit_dex_mod	 400;
+crit_vit_mod	 200;
+flee_agi_mod	 300;
+flee_spd_mod	 100;
+hp_vit_mod	 3000;
+hp_str_mod	 1500;
+ini_spd_mod	 150;
+ini_dex_mod	 100;
+mov_mod	 0;
+movwm_mod	 0;
+cover_mod	 0;
+viewradius_mod	 0;
+Discount_Mod	 0;
+Bonusexp_Mod	 0;
+level_cap	28;
+levels_to_up	3;

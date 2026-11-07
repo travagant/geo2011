@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_demons_dispell_weapon_resist";
+
+nameid "NamSp_spell_demons_dispell_weapon_resist";
+descid "DesSp_spell_demons_dispell_weapon_resist";
+
+level 4;
+class "runes";
+icon "Resources\items\runes\spell_demons_dispell_weapon_resist.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Debuff_Def\spell_debuff_def_2_arena.scene";
+
+target enemy;
+game_effect "nspell_demons_dispell_weapon_resist_arena";
+
+gold_cost 1020;
+usage_cost 40;
+race "Demons";

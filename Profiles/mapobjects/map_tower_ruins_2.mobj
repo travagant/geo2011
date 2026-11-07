@@ -1,0 +1,14 @@
+//interactive map object for Tower_ruins_2
+
+id	"map_Tower_ruins_2";
+
+nameid	"Tower_ruins_2N";
+descid	"map_Tower_ruins_2D";
+desc_inactid	"map_Tower_ruins_2ND";
+msg_inactiveid	"map_Tower_ruins_2NAD";
+ambient_sound	"$(Sounds)\\Buildings\\tower_ruins_2.wav";
+
+//destination
+action_class	"dungeon";
+action_class_script	"resources\\profiles\\dungeons\\tower_ruins_2.s";
+respawn	4;

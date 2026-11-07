@@ -1,0 +1,9 @@
+// Effect profile for ntotem_altar
+
+effect "ntotem_altar"
+{
+nameid "ntotem_altar_nameid";
+damage	120;
+element	"air";
+//Modifi
+}

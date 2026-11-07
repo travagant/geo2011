@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_undead_resurrect";
+
+nameid "NamSp_spell_undead_resurrect";
+descid "DesSp_spell_undead_resurrect";
+
+level 3;
+class "runes";
+icon "Resources\items\runes\spell_undead_resurrect.t";
+scene "Resources\FX\Map_Spells\Undead\Spell_Undead_Revive\spell_undead_revive_arena.scene";
+
+target ally;
+game_effect "nspell_undead_resurrect_arena";
+
+gold_cost 1080;
+usage_cost 20;
+race "Undead";

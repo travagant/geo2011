@@ -1,0 +1,7 @@
+// Unit Sound
+//
+sndevent_attack 	"$(Sounds)\sound_attack\attack_lance_1.wav";
+sndevent_step       "$(Sounds)\sound_step\step_hoof_rock_1.wav";
+sndevent_damage		"$(Sounds)\snd_damage\dmg_body_blunt_4.wav";
+sndevent_ko		"$(Sounds)\empire_imperialknight_death.wav";
+sndevent_custom1	"$(Sounds)\sound_attack\attack_horse_1.wav";

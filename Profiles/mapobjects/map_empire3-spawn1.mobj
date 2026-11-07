@@ -1,0 +1,9 @@
+//interactive map object for empire3-spawn1
+
+id	"map_empire3-spawn1";
+
+nameid	"";
+
+//destination
+action_class	"resp";
+action_class_script	"resources\\profiles\\resp\\empire3-spawn1.s";

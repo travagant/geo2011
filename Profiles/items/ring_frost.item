@@ -1,0 +1,17 @@
+// Equipment Profile
+
+id	"ring_frost";
+
+nameid "ring_frost_name";
+descid "ring_frost_desc";
+
+
+class	"rings";
+level	3;
+
+icon "resources\Items\rings\ring_frost.t";
+
+add_skill	"n_ring_frost";
+
+gold_cost	10000;
+//Modifi

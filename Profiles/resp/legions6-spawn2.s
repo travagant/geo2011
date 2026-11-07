@@ -1,0 +1,11 @@
+//MapParty Profile
+
+id	"legions6-spawn2";
+
+level	2;
+unit_side	"legions6s2";
+party_side	"elves";
+first_resp	10;
+next_resp	10;
+next_resp_if_die	1;
+max_resp	999;

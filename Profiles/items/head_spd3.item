@@ -1,0 +1,18 @@
+// Equipment Profile
+
+id	"head_spd3";
+
+nameid "head_spd3_name";
+descid "head_spd3_desc";
+
+
+class	"head";
+replace	"head" set 3;
+level	3;
+
+icon "resources\Items\head\head_spd3.t";
+
+spd	3;
+
+gold_cost	10000;
+//Modifi

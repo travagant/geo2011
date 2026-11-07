@@ -1,0 +1,14 @@
+// Effect profile for nskill_weakness
+
+effect "nskill_weakness"
+{
+nameid "nskill_weakness_nameid";
+fx_start	"Resources\FX\Arena_FX\Skills\fx_skill_stack_map_down_1_spell.scene";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_attack.t";
+duration_turns	5;
+debuff;
+str	-2;
+dex	-2;
+spd	-2;
+//Modifi
+}

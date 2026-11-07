@@ -1,0 +1,15 @@
+// Skill profile n_skill_info_boss
+
+skill	"n_skill_info_boss"
+{
+nameid "n_skill_info_boss_nameid";
+effectdescid "n_skill_info_boss_descid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_info_boss.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_info_boss_inactive.t";
+
+
+
+info_tag;
+//Modifi
+}

@@ -1,0 +1,26 @@
+// Equipment Profile
+
+id	"totem_altar";
+
+nameid "totem_altar_name";
+descid "totem_altar_desc";
+effectdescid "totem_altar_efdesc";
+
+
+class	"banner";
+level	3;
+
+icon "resources\Items\banner\totem_altar.t";
+
+
+gold_cost	10000;
+//Modifi
+banner_profile	{
+ //сцена флага
+ banner_scene "Resources\Hexagons\Models\Flags\totem_altar.scene"
+
+ //действия на очередном ходе
+ // "цель" "накладываемый эффект" "сцена спецэффекта"
+ turn_action "field_random" "ntotem_altar" "Resources\FX\Arena_Spells\Totems\fx_totem_altar_spell.scene"
+ fxcast "Resources\FX\Arena_FX\Totems\fx_totem_altar_cast.scene"
+};

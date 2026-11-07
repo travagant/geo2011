@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_elves_dmg_water";
+
+nameid "NamSp_spell_elves_dmg_water";
+descid "DesSp_spell_elves_dmg_water";
+
+level 5;
+class "runes";
+icon "Resources\items\runes\spell_elves_dmg_water.t";
+scene "Resources\FX\Map_Spells\Elves\Spell_Elves_Dmg_Water\spell_elves_dmg_water_arena.scene";
+
+target enemy;
+game_effect "nspell_elves_dmg_water_arena";
+
+gold_cost 1280;
+usage_cost 40;
+race "Elves";

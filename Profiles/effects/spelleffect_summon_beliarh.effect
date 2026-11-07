@@ -1,0 +1,10 @@
+// Effect profile for spelleffect_summon_beliarh
+
+effect "spelleffect_summon_beliarh"
+{
+nameid "spelleffect_summon_beliarh_nameid";
+fx_start	"Resources\FX\\Arena_FX\Skills\fx_skills_summon_pet_demons.scene";
+buff;
+summon	"demons_beliarh";
+//Modifi
+}

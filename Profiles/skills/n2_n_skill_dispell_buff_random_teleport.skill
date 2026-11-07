@@ -1,0 +1,20 @@
+// Skill profile n_skill_dispell_buff_random_teleport
+
+skill	"n_skill_dispell_buff_random_teleport"
+{
+nameid "n_skill_dispell_buff_random_teleport_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_usesphere.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_usesphere_inactive.t";
+
+skill_range	3;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_dispell_buff_random_teleport";
+
+request_ap	1;
+battle;
+
+element	air;
+//Modifi
+}

@@ -1,0 +1,22 @@
+// Skill profile n_teleport_enemy
+
+skill	"n_teleport_enemy"
+{
+nameid "n_teleport_enemy_nameid";
+effectdescid "n_teleport_enemy_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_tel_enemy_point.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_tel_enemy_point_inactive.t";
+
+skill_range	3;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_teleport_enemy";
+
+request_ap	1;
+battle;
+
+element	air;
+info_tag;
+//Modifi
+}

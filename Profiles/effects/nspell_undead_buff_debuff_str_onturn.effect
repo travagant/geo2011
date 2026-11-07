@@ -1,0 +1,12 @@
+// Effect profile for nspell_undead_buff_debuff_str_onturn
+
+effect "nspell_undead_buff_debuff_str_onturn"
+{
+nameid "nspell_undead_buff_debuff_str_onturn_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_n_debuff_resist_mind.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_bless.t";
+duration_days	2;
+buff;
+//Modifi
+add_skill	"n_spell_undead_buff_debuff_str_onturn";
+}

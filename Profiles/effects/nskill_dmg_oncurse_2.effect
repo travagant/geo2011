@@ -1,0 +1,10 @@
+// Effect profile for nskill_dmg_oncurse_2
+
+effect "nskill_dmg_oncurse_2"
+{
+nameid "nskill_dmg_oncurse_2_nameid";
+fx_start	"resources\fx\\Arena_Spells\Demons\Cultist\fx_demons_cultist_spell.scene";
+attack_pow	50;
+element	"fire";
+//Modifi
+}

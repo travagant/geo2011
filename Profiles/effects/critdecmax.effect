@@ -1,0 +1,11 @@
+// Effect profile for CritDecMax
+
+effect "CritDecMax"
+{
+nameid "CritDecMax_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_attack.t";
+duration_turns	3;
+debuff;
+crit	-75;
+//Modifi
+}

@@ -1,0 +1,16 @@
+//interactive map object for Mana_elves_big
+
+id	"map_Mana_elves_big";
+
+nameid	"map_managrove_bigN";
+msgid	"map_managrove_bigAD";
+msg_inactiveid	"";
+descid	"map_managrove_bigD";
+effectid	"map_managrove_bigEff";
+fx_start	"Resources\\FX\Arena_FX\Sign\fx_sign_mana_elves.scene";
+
+//destination
+action_class	"heap_resource";
+heap_resource	grove_mana 100;
+msg_popup	"map_managrove_bigPopup";
+once;

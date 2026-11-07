@@ -1,0 +1,15 @@
+// Skill profile n_skill_res_air
+
+skill	"n_skill_res_air"
+{
+nameid "n_skill_res_air_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_res-air.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_res-air_inactive.t";
+
+
+
+res_air	25;
+info_tag;
+//Modifi
+}

@@ -1,0 +1,16 @@
+// Skill profile n_skill_res_pierce
+
+skill	"n_skill_res_pierce"
+{
+nameid "n_skill_res_pierce_nameid";
+effectdescid "n_skill_res_pierce_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_res_pierse.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_res_pierse_inactive.t";
+
+
+
+info_tag;
+res_pierce	25;
+//Modifi
+}

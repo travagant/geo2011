@@ -1,0 +1,11 @@
+// Effect profile for DefMid
+
+effect "DefMid"
+{
+nameid "DefMid_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_defense.t";
+duration_turns	2;
+buff;
+def	50;
+//Modifi
+}

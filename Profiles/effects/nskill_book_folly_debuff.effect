@@ -1,0 +1,13 @@
+// Effect profile for nskill_book_folly_debuff
+
+effect "nskill_book_folly_debuff"
+{
+nameid "nskill_book_folly_debuff_nameid";
+fx_start	"resources\fx\\Arena_FX\Potions\fx_skill_book_folly.scene";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_defense.t";
+duration_turns	2;
+debuff;
+//Modifi
+flee_per	-20;
+stackable	1;
+}

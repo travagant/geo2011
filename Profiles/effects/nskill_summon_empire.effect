@@ -1,0 +1,10 @@
+// Effect profile for nskill_summon_Empire
+
+effect "nskill_summon_Empire"
+{
+nameid "nskill_summon_Empire_nameid";
+fx_start	"Resources\FX\\Arena_FX\Skills\fx_skills_summon_pet_empire.scene";
+buff;
+summon	"empire_golem";
+//Modifi
+}

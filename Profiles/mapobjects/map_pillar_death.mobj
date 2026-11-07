@@ -1,0 +1,17 @@
+//magic zone map object for Pillar_Death
+
+id 	"map_Pillar_Death";
+
+nameid	"map_Pillar_DeathN";
+descid	"map_Pillar_DeathD";
+effectdescid "map_Pillar_DeathEff";
+
+action_class	"magiczone" 
+{
+	radius 3;
+	on 		"unit_step";
+	race 	"!owner";
+	race 	"!neutral";
+	effect	"npillar_death";
+	fx "resources\fx\\LandFX\fx_pillar_death_map.scene"
+}

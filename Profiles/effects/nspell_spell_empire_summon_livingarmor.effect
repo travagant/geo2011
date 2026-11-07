@@ -1,0 +1,9 @@
+// Effect profile for nspell_spell_empire_summon_livingarmor
+
+effect "nspell_spell_empire_summon_livingarmor"
+{
+nameid "nspell_spell_empire_summon_livingarmor_nameid";
+fx_start	"Resources\FX\\Arena_FX\Skills\fx_skills_summon_pet_empire.scene";
+summon	"empire_livingarmor";
+//Modifi
+}

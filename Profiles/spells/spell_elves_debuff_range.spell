@@ -1,0 +1,27 @@
+// Spell Profile
+
+id	"spell_elves_debuff_range";
+
+nameid	"NamSp_spell_elves_debuff_range";
+descid	"DesSp_spell_elves_debuff_range";
+
+icon_small "Resources\items\runes\spell_elves_debuff_range.t";
+icon "Resources\items\cards\spell_elves_debuff_range.t";
+scene "Resources\FX\Map_Spells\Elves\Spell_Debuff_Dex\spell_debuff_dex.scene";
+scene_crop "Resources\FX\Map_Spells\Elves\Spell_Debuff_Dex\spell_debuff_dex_arena.scene";
+
+default_nation	"Elves";
+level	4;
+target	enemy;
+
+game_effect	"nspell_elves_debuff_range";
+
+cost_spell "Life mana" 160, 320;
+cost_spell "Grove mana" 160, 320;
+cost_spell "Infernal mana" 160, 320;
+
+rune	"rune_spell_elves_debuff_range";
+rune_cost "Life mana", 60;
+rune_cost "Grove mana", 60;
+rune_cost "Infernal mana", 60;
+rune_cost "Stone", 180;

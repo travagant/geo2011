@@ -1,0 +1,19 @@
+// Skill profile n_skill_buff_ini_onattack
+
+skill	"n_skill_buff_ini_onattack"
+{
+nameid "n_skill_buff_ini_onattack_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_deathblow.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_deathblow_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_buff_ini_onattack";
+
+
+info_tag;
+on_attack;
+//Modifi
+}

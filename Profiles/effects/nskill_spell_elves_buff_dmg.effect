@@ -1,0 +1,10 @@
+// Effect profile for nskill_spell_elves_buff_dmg
+
+effect "nskill_spell_elves_buff_dmg"
+{
+nameid "nskill_spell_elves_buff_dmg_nameid";
+fx_start	"resources\fx\\Arena_Spells\Undead\EvilEnt\fx_undead_evilent_spell.scene";
+damage	150;
+element	"earth";
+//Modifi
+}

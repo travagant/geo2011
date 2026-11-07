@@ -1,0 +1,11 @@
+// Effect profile for MattackDecMid
+
+effect "MattackDecMid"
+{
+nameid "MattackDecMid_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_attack.t";
+duration_turns	10;
+debuff;
+spd	-2;
+//Modifi
+}

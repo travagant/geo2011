@@ -1,0 +1,11 @@
+// Effect profile for nskill_waterfall
+
+effect "nskill_waterfall"
+{
+nameid "nskill_waterfall_nameid";
+fx_start	"Resources\FX\Arena_FX\Skills\fx_skill_water_damage_2_spell.scene";
+buff;
+attack_pow	50;
+element	"water";
+//Modifi
+}

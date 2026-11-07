@@ -1,0 +1,52 @@
+// Characters stats profile
+
+unit_class	rogue;
+ship	"elves2";
+attack_type	"slash";
+level	1;
+exp_base	200;
+
+//stats
+str	2;
+spd	2;
+dex	2;
+agi	3;
+vit	3;
+
+
+up	40;
+mov	2;
+movwm	12;
+
+atck_range	1;
+
+//resists
+res_pierce	25;
+res_water	-25;
+
+raceleader;
+Leadership	3;
+leadership_cost	1;
+cost	500;
+skill_grid	"elves_leader-forestliege";
+viewradius	8;
+
+//Modifi
+dmg_str_mod	 700;
+dmg_agi_mod	 500;
+crit_dex_mod	 500;
+crit_vit_mod	 300;
+flee_agi_mod	 500;
+flee_spd_mod	 300;
+hp_vit_mod	 3000;
+hp_str_mod	 1500;
+ini_spd_mod	 100;
+ini_dex_mod	 100;
+mov_mod	 0;
+movwm_mod	 0;
+cover_mod	 0;
+viewradius_mod	 0;
+Discount_Mod	 0;
+Bonusexp_Mod	 0;
+level_cap	30;
+levels_to_up	3;

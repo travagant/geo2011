@@ -1,0 +1,23 @@
+// Spell Profile
+
+id	"spell_demons_buff_dmg";
+
+nameid	"NamSp_spell_demons_buff_dmg";
+descid	"DesSp_spell_demons_buff_dmg";
+
+icon_small "Resources\items\runes\spell_demons_buff_dmg.t";
+icon "Resources\items\cards\spell_demons_buff_dmg.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Demons_Agi_Buff\spell_demons_agi_buff.scene";
+scene_crop "Resources\FX\Map_Spells\Demons\Spell_Demons_Agi_Buff\spell_demons_agi_buff_arena.scene";
+
+default_nation	"Demons";
+level	1;
+target	ally;
+
+game_effect	"nspell_demons_buff_dmg";
+
+cost_spell "Infernal mana" 150, 300;
+
+rune	"rune_spell_demons_buff_dmg";
+rune_cost "Infernal mana", 55;
+rune_cost "Stone", 55;

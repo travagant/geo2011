@@ -1,0 +1,22 @@
+// Spell Profile
+
+id	"spell_demons_openfog";
+
+nameid	"NamSp_spell_demons_openfog";
+descid	"DesSp_spell_demons_openfog";
+
+icon_small "Resources\items\runes\spell_demons_openfog.t";
+icon "Resources\items\cards\spell_demons_openfog.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Demons_Openfog\spell_demons_openfog.scene";
+scene_crop "Resources\FX\Map_Spells\Demons\Spell_Demons_Openfog\spell_demons_openfog_arena.scene";
+
+default_nation	"Demons";
+level	1;
+target	zone;
+
+game_effect	"nspell_demons_openfog";
+
+cost_spell "Infernal mana" 120, 240;
+
+rune_cost "Infernal mana", 45;
+rune_cost "Stone", 45;

@@ -1,0 +1,9 @@
+// Effect profile for nskill_statue_heal
+
+effect "nskill_statue_heal"
+{
+nameid "nskill_statue_heal_nameid";
+buff;
+heal	50;
+//Modifi
+}

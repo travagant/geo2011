@@ -1,0 +1,20 @@
+// Skill profile n_skill_debuff_ini_onattack
+
+skill	"n_skill_debuff_ini_onattack"
+{
+nameid "n_skill_debuff_ini_onattack_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_map_demoralize.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_map_demoralize_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_debuff_ini_onattack";
+
+
+element	mind;
+info_tag;
+on_attack;
+//Modifi
+}

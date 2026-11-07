@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_empire_resist_fire";
+
+nameid "NamSp_spell_empire_resist_fire";
+descid "DesSp_spell_empire_resist_fire";
+
+level 3;
+class "runes";
+icon "Resources\items\runes\spell_empire_resist_fire.t";
+scene "Resources\FX\Map_Spells\Empire\Spell_Resist_Fire\spell_resist_fire_arena.scene";
+
+target ally;
+game_effect "nspell_empire_resist_fire_arena";
+
+gold_cost 520;
+usage_cost 30;
+race "Empire";

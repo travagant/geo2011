@@ -1,0 +1,11 @@
+// Effect profile for nskill_extra_attack_self
+
+effect "nskill_extra_attack_self"
+{
+nameid "nskill_extra_attack_self_nameid";
+effectdescid "nskill_extra_attack_self_descid";
+duration_turns	1;
+ap	-1;
+//Modifi
+remove_immediately;
+}

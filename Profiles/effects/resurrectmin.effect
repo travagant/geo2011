@@ -1,0 +1,9 @@
+// Effect profile for ResurrectMin
+
+effect "ResurrectMin"
+{
+nameid "ResurrectMin_nameid";
+buff;
+resurrect	5;
+//Modifi
+}

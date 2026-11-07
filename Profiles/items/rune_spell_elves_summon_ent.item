@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_elves_summon_ent";
+
+nameid "NamSp_spell_elves_summon_ent";
+descid "DesSp_spell_elves_summon_ent";
+
+level 3;
+class "runes";
+icon "Resources\items\runes\spell_elves_summon_ent.t";
+scene "Resources\FX\Map_Spells\Elves\Spell_Summon\spell_summon_ent_arena.scene";
+
+target zone;
+game_effect "nspell_elves_summon_ent_arena";
+
+gold_cost 640;
+usage_cost 30;
+race "Elves";

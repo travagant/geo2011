@@ -1,0 +1,25 @@
+// Equipment Profile
+
+id	"banner_of_hospital";
+
+nameid "banner_of_hospital_name";
+descid "banner_of_hospital_desc";
+effectdescid "banner_of_hospital_efdesc";
+
+
+class	"banner";
+level	2;
+
+icon "resources\Items\banner\banner_of_hospital.t";
+
+
+gold_cost	6000;
+//Modifi
+banner_profile	{
+ //сцена флага
+ banner_scene "Resources\Hexagons\Models\Flags\banner_of_hospital.scene"
+
+ //действия в началае боя
+ // "цель" "накладываемый эффект"
+ start_action "owner" "nbanner_of_hospital"
+};

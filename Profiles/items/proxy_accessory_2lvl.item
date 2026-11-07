@@ -1,0 +1,16 @@
+// Equipment Profile
+
+id	"proxy_accessory_2lvl";
+
+nameid "proxy_accessory_2lvl_name";
+descid "proxy_accessory_2lvl_desc";
+
+
+class	"accessory";
+level	2;
+
+icon "resources\Items\accessory\proxy_accessory_2lvl.t";
+
+proxy;
+
+//Modifi

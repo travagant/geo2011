@@ -1,0 +1,16 @@
+//interactive map object for Manasource_death
+
+id	"map_Manasource_death";
+
+nameid	"map_Manasource_deathN";
+msgid	"map_Manasource_deathAD";
+msg_inactiveid	"map_Manasource_deathNAD";
+descid	"map_Manasource_deathD";
+desc_inactid	"map_Manasource_deathND";
+effectid	"map_Manasource_deathEff";
+ambient_sound	"$(Sounds)\\Buildings\\manasource_death.wav";
+
+//destination
+action_class	"resource";
+action_class_script	"resources\\profiles\\actionscript\\resource_deathmana.acscript";
+respawn	1;

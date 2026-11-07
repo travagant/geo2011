@@ -1,0 +1,9 @@
+// Effect profile for nspell_empire_heal
+
+effect "nspell_empire_heal"
+{
+nameid "nspell_empire_heal_nameid";
+buff;
+heal	60;
+//Modifi
+}

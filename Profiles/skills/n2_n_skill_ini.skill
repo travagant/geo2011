@@ -1,0 +1,14 @@
+// Skill profile n_skill_ini
+
+skill	"n_skill_ini"
+{
+nameid "n_skill_ini_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_init.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_init_inactive.t";
+
+
+
+ini	5;
+//Modifi
+}

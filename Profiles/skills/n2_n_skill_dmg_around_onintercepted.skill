@@ -1,0 +1,19 @@
+// Skill profile n_skill_dmg_around_onintercepted
+
+skill	"n_skill_dmg_around_onintercepted"
+{
+nameid "n_skill_dmg_around_onintercepted_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_spell_demons_dmg_oncrited.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_spell_demons_dmg_oncrited_inactive.t";
+
+skill_range	1;
+cast_type	around;
+cast_target	enemy;
+game_effect	"nskill_dmg_around_onintercepted";
+
+
+info_tag;
+on_intercepted;
+//Modifi
+}

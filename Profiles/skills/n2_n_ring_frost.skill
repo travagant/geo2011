@@ -1,0 +1,20 @@
+// Skill profile n_ring_frost
+
+skill	"n_ring_frost"
+{
+nameid "n_ring_frost_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_ring_frost.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_ring_frost_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_ring_frost";
+
+
+element	water;
+info_tag;
+on_attack;
+//Modifi
+}

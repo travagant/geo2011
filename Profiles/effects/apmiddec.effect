@@ -1,0 +1,12 @@
+// Effect profile for ApMidDec
+
+effect "ApMidDec"
+{
+nameid "ApMidDec_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_stop.t";
+duration_turns	1;
+debuff;
+mov	-2;
+movwm	-12;
+//Modifi
+}

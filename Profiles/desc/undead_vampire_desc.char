@@ -1,0 +1,4 @@
+//undead_Vampire's description
+nameid "UndeadVampireName";
+descid "UndeadVampireDesc";
+minidesc "UndeadVampire_MD";

@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_elves_buff_regen";
+
+nameid "NamSp_spell_elves_buff_regen";
+descid "DesSp_spell_elves_buff_regen";
+
+level 4;
+class "runes";
+icon "Resources\items\runes\spell_elves_buff_regen.t";
+scene "Resources\FX\Map_Spells\Elves\Spell_Elves_Armor\spell_elves_armor_arena.scene";
+
+target ally;
+game_effect "nspell_elves_buff_regen_arena";
+
+gold_cost 840;
+usage_cost 30;
+race "Elves";

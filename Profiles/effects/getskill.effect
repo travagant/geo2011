@@ -1,0 +1,9 @@
+// Effect profile for Getskill
+
+effect "Getskill"
+{
+nameid "Getskill_nameid";
+buff;
+getskills;
+//Modifi
+}

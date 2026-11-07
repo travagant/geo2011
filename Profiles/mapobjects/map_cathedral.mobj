@@ -1,0 +1,17 @@
+//interactive map object for Cathedral
+
+id	"map_Cathedral";
+
+nameid	"map_CathedralN";
+msgid	"map_CathedralAD";
+msg_inactiveid	"map_CathedralNAD";
+descid	"map_CathedralD";
+desc_inactid	"map_CathedralND";
+effectid	"map_CathedralEff";
+ambient_sound	"$(Sounds)\\Buildings\\carthedral.wav";
+fx_start	"Resources\\FX\Arena_FX\Sign\fx_sign_carthedral.scene";
+
+//destination
+action_class	"object";
+game_effect	"nskill_resurrect_effect";
+respawn	4;

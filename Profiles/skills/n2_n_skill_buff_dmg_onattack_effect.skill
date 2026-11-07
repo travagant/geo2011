@@ -1,0 +1,19 @@
+// Skill profile n_skill_buff_dmg_onattack_effect
+
+skill	"n_skill_buff_dmg_onattack_effect"
+{
+nameid "n_skill_buff_dmg_onattack_effect_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_buff_dmg_onattack_effect.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_buff_dmg_onattack_effect_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_buff_dmg_onattack_effect";
+
+
+info_tag;
+on_attack;
+//Modifi
+}

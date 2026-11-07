@@ -1,0 +1,4 @@
+//undead_Warlock's description
+nameid "UndeadWarlockName";
+descid "UndeadWarlockDesc";
+minidesc "UndeadWarlock_MD";

@@ -1,0 +1,20 @@
+// Skill profile n_skill_dispell_buff_debuff_air
+
+skill	"n_skill_dispell_buff_debuff_air"
+{
+nameid "n_skill_dispell_buff_debuff_air_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_map_debuff_accuracy_empire.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_map_debuff_accuracy_empire_inactive.t";
+
+skill_range	3;
+cast_type	zone;
+cast_target	enemy;
+game_effect	"nskill_dispell_buff_debuff_air";
+
+request_ap	1;
+battle;
+
+element	mind;
+//Modifi
+}

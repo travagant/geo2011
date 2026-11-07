@@ -1,0 +1,21 @@
+grid "empire_imperialpriestess"
+{
+ unit_start 1 9;
+ unit_skill "n_skill_heal_buff" 1 1 1 24;
+ unit_skill "n_skill_heal_buff_info" 1 1 1 25;
+ unit_skill "n_skill_buff_ini_onheal" 1 1 1 26;
+ unit_skill "n_knockback" 1 1 1 27;
+ uses 1;
+ unit_skill "n_skill_str" 1 0 2 9;
+ unit_skill "n_skill_dex" 1 0 3 9;
+ unit_skill "n_skill_agi" 1 0 4 9;
+ unit_skill "n_skill_battle_pathfinder" 1 0 5 9;
+ unit_skill "n_skill_vit" 1 0 6 9;
+ unit_skill "n_skill_str" 1 0 7 9;
+ unit_skill "n_skill_spd" 1 0 8 9;
+ unit_skill "n_skill_res_slash" 1 0 9 9;
+ unit_skill "n_skill_agi" 1 0 10 9;
+ unit_skill "n_skill_str" 1 0 11 9;
+ unit_skill "n_skill_vit" 1 0 12 9;
+ unit_skill "n_skill_spd" 1 0 13 9;
+}

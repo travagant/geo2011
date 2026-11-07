@@ -1,0 +1,9 @@
+// Effect profile for nskill_delete_wall
+
+effect "nskill_delete_wall"
+{
+nameid "nskill_delete_wall_nameid";
+debuff;
+banish;
+//Modifi
+}

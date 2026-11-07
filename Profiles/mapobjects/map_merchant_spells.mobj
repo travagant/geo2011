@@ -1,0 +1,13 @@
+//interactive map object for Merchant_Spells
+
+id	"map_Merchant_Spells";
+
+nameid	"map_Merchant_SpellsN";
+descid	"map_Merchant_SpellsD";
+effectdescid "map_Merchant_SpellsEff";
+ambient_sound	"$(Sounds)\\Buildings\\merchant_spells.wav";
+
+//destination
+action_class	"shop";
+action_class_script	"resources\\profiles\\scripts\\shop_spell.s";
+respawn	0;

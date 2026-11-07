@@ -1,0 +1,9 @@
+// Effect profile for Goldmin
+
+effect "Goldmin"
+{
+nameid "Goldmin_nameid";
+buff;
+resource_gold	100;
+//Modifi
+}

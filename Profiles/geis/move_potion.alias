@@ -1,0 +1,10 @@
+
+
+
+alias "move_potion" {
+
+
+   sound 100, "$(Sounds)\interface\potion.wav", 100, 3;
+
+
+}  

@@ -1,0 +1,12 @@
+// Effect profile for nspell_empire_resist_water_arena
+
+effect "nspell_empire_resist_water_arena"
+{
+nameid "nspell_empire_resist_water_arena_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_resist.t";
+duration_turns	-1;
+buff;
+res_water	25;
+//Modifi
+hp_per	20;
+}

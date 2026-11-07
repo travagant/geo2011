@@ -1,0 +1,23 @@
+// Skill profile n_sniping
+
+skill	"n_sniping"
+{
+nameid "n_sniping_nameid";
+effectdescid "n_sniping_descid";
+
+icon	"Resources\Interface\Icons\skills\n_sniping.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_sniping_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_sniping";
+fx_scene	"resources\fx\\Arena_FX\Skills\fx_skill_multishot_cast.scene";
+
+request_ap	1;
+battle;
+
+self_effect	"nskill_sniping_self";
+info_tag;
+//Modifi
+}

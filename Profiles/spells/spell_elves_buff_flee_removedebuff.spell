@@ -1,0 +1,23 @@
+// Spell Profile
+
+id	"spell_elves_buff_flee_removedebuff";
+
+nameid	"NamSp_spell_elves_buff_flee_removedebuff";
+descid	"DesSp_spell_elves_buff_flee_removedebuff";
+
+icon_small "Resources\items\runes\spell_elves_buff_flee_removedebuff.t";
+icon "Resources\items\cards\spell_elves_buff_flee_removedebuff.t";
+scene "Resources\FX\Map_Spells\Elves\Spell_Buff_Flee\spell_buff_flee.scene";
+scene_crop "Resources\FX\Map_Spells\Elves\Spell_Buff_Flee\spell_buff_flee_arena.scene";
+
+default_nation	"Elves";
+level	2;
+target	ally;
+
+game_effect	"nspell_elves_buff_flee_removedebuff";
+
+cost_spell "Grove mana" 250, 500;
+
+rune	"rune_spell_elves_buff_flee_removedebuff";
+rune_cost "Grove mana", 90;
+rune_cost "Stone", 90;

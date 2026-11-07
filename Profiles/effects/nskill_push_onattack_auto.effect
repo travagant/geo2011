@@ -1,0 +1,10 @@
+// Effect profile for nskill_push_onattack_auto
+
+effect "nskill_push_onattack_auto"
+{
+nameid "nskill_push_onattack_auto_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_push_1_spell.scene";
+push;
+push_collide	"nskill_push_collide";
+//Modifi
+}

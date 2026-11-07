@@ -1,0 +1,25 @@
+// Spell Profile
+
+id	"spell_demons_buff_vit";
+
+nameid	"NamSp_spell_demons_buff_vit";
+descid	"DesSp_spell_demons_buff_vit";
+
+icon_small "Resources\items\runes\spell_demons_buff_vit.t";
+icon "Resources\items\cards\spell_demons_buff_vit.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Demons_Vit_Buff\spell_demons_vit_buff.scene";
+scene_crop "Resources\FX\Map_Spells\Demons\Spell_Demons_Vit_Buff\spell_demons_vit_buff_arena.scene";
+
+default_nation	"Demons";
+level	3;
+target	ally;
+
+game_effect	"nspell_demons_buff_vit";
+
+cost_spell "Life mana" 225, 450;
+cost_spell "Infernal mana" 225, 450;
+
+rune	"rune_spell_demons_buff_vit";
+rune_cost "Life mana", 80;
+rune_cost "Infernal mana", 80;
+rune_cost "Stone", 160;

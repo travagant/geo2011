@@ -1,0 +1,12 @@
+// Effect profile for nspell_demons_debuff_dmg_mod
+
+effect "nspell_demons_debuff_dmg_mod"
+{
+nameid "nspell_demons_debuff_dmg_mod_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_attack.t";
+duration_days	2;
+debuff;
+res_slash	-25;
+//Modifi
+dmg_per	-25;
+}

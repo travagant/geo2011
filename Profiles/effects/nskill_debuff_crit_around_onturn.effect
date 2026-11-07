@@ -1,0 +1,12 @@
+// Effect profile for nskill_debuff_crit_around_onturn
+
+effect "nskill_debuff_crit_around_onturn"
+{
+nameid "nskill_debuff_crit_around_onturn_nameid";
+fx_start	"resources\fx\\Arena_FX\Rune\Fear\fx_fear.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_attack.t";
+duration_turns	1;
+debuff;
+//Modifi
+crit_per	-25;
+}

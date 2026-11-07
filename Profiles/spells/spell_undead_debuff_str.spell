@@ -1,0 +1,29 @@
+// Spell Profile
+
+id	"spell_undead_debuff_str";
+
+nameid	"NamSp_spell_undead_debuff_str";
+descid	"DesSp_spell_undead_debuff_str";
+
+icon_small "Resources\items\runes\spell_undead_debuff_str.t";
+icon "Resources\items\cards\spell_undead_debuff_str.t";
+scene "Resources\FX\Map_Spells\Undead\Spell_Undead_Weakness\spell_undead_weakness.scene";
+scene_crop "Resources\FX\Map_Spells\Undead\Spell_Undead_Weakness\spell_undead_weakness_arena.scene";
+
+default_nation	"Undead";
+level	5;
+target	enemy;
+
+game_effect	"nspell_undead_debuff_str";
+
+cost_spell "Grove mana" 200, 400;
+cost_spell "Infernal mana" 200, 400;
+cost_spell "Death mana" 200, 400;
+cost_spell "Runstone mana" 200, 400;
+
+rune	"rune_spell_undead_debuff_str";
+rune_cost "Grove mana", 70;
+rune_cost "Infernal mana", 70;
+rune_cost "Death mana", 70;
+rune_cost "Runstone mana", 70;
+rune_cost "Stone", 280;

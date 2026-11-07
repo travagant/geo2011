@@ -1,0 +1,18 @@
+// Skill profile n_talisman_air
+
+skill	"n_talisman_air"
+{
+nameid "n_talisman_air_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_res-air.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_res-air_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+
+
+res_air	25;
+info_tag;
+//Modifi
+}

@@ -1,0 +1,13 @@
+// Effect profile for nskill_debuff_crit_onflee
+
+effect "nskill_debuff_crit_onflee"
+{
+nameid "nskill_debuff_crit_onflee_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_attack_dwn_1_spell.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_attack.t";
+duration_turns	2;
+debuff;
+//Modifi
+ini_per	-15;
+stackable	1;
+}

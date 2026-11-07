@@ -1,0 +1,11 @@
+// Effect profile for nskill_spell_undead_dmg_death
+
+effect "nskill_spell_undead_dmg_death"
+{
+nameid "nskill_spell_undead_dmg_death_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_spell_undead_dmg_death.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_curse.t";
+damage	50;
+element	"mind";
+//Modifi
+}

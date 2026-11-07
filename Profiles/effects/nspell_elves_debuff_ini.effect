@@ -1,0 +1,13 @@
+// Effect profile for nspell_elves_debuff_ini
+
+effect "nspell_elves_debuff_ini"
+{
+nameid "nspell_elves_debuff_ini_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_curse.t";
+duration_days	2;
+debuff;
+ini	-4;
+res_death	-25;
+//Modifi
+add_skill	"n_spell_elves_debuff_ini";
+}

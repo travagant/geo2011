@@ -1,0 +1,17 @@
+//interactive map object for Tavern_1
+
+id	"map_Tavern_1";
+
+nameid	"map_Tavern_1N";
+msgid	"map_Tavern_1AD";
+msg_inactiveid	"map_Tavern_1NAD";
+descid	"map_Tavern_1D";
+desc_inactid	"map_Tavern_1ND";
+effectid	"map_Tavern_1Eff";
+ambient_sound	"$(Sounds)\\Buildings\\tavern_1.wav";
+fx_start	"Resources\\FX\Arena_FX\Sign\fx_sign_statsup.scene";
+
+//destination
+action_class	"object";
+game_effect	"nTavern_1";
+respawn	4;

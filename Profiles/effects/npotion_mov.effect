@@ -1,0 +1,13 @@
+// Effect profile for npotion_mov
+
+effect "npotion_mov"
+{
+nameid "npotion_mov_nameid";
+fx_start	"resources\fx\\Arena_FX\Potions\fx_potion_mov.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_attack.t";
+duration_days	3;
+buff;
+mov	1;
+dontdispell;
+//Modifi
+}

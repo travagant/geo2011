@@ -1,0 +1,19 @@
+// Equipment Profile
+
+id	"body_slash";
+
+nameid "body_slash_name";
+descid "body_slash_desc";
+
+
+class	"body";
+replace	"body" set 2;
+level	2;
+
+icon "resources\Items\body\body_slash.t";
+
+str	1;
+res_slash	25;
+
+gold_cost	6000;
+//Modifi

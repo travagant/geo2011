@@ -1,0 +1,17 @@
+// Equipment Profile
+
+id	"ring_vampire";
+
+nameid "ring_vampire_name";
+descid "ring_vampire_desc";
+
+
+class	"rings";
+level	3;
+
+icon "resources\Items\rings\ring_vampire.t";
+
+add_skill	"n_ring_vampire";
+
+gold_cost	10000;
+//Modifi

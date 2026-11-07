@@ -1,0 +1,21 @@
+// Unit Profile
+//
+id 		"story_emperor_ferre";
+unit_scene 	"resources\\Characters\\Story\\emperor_ferre\\character_story_emperor_ferre.scene";
+unit_scene_lod	"resources\\Characters\\Story\\emperor_ferre\\character_story_emperor_ferre_lod.scene",10;
+icon 		"resources\\characters\\story\\emperor_ferre\\icon_emperor_ferre.t";
+subicon 	"resources\\characters\\story\\emperor_ferre\\icon_emperor_ferre_small.t";
+layout_icon 	"resources\\characters\\story\\emperor_ferre\\icon_emperor_ferre_node.t";
+capital_icon 	 "resources\\characters\\story\\emperor_ferre\\icon_emperor_ferre_capital.t";
+dialog_icon 	 "resources\\characters\\story\\emperor_ferre\\icon_emperor_ferre_dialog.t";
+leader_icon      "resources\\characters\\story\\emperor_ferre\\icon_emperor_ferre_ring.t";
+fxproc 		"lighting";
+fxscene 	"resources\fx\Arena_FX\Physical_Damage\fx_small_attack_damage.scene";
+fxscene_ko 	"Resources\FX\Arena_FX\Death\fx_die_empire_2x.scene";
+fxlevelup	"Resources\\FX\\Arena_FX\\LevelUp\\fx_empires_levelup.scene";
+#include	"desc\\story_emperor_ferre_desc.char";
+#include	"stats\\story_emperor_ferre_stats.char";
+#include	"sound\\story_emperor_ferre_sound.char";
+move_speed 	5;
+nodesx 		1;
+nodesz 		1;

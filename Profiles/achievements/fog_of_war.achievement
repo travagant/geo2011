@@ -1,0 +1,18 @@
+// Achievement Profile
+
+achievement "fog_of_war"
+{
+	nameid  "fog_of_war_name"; 
+	descid  "fog_of_war_desc";
+	type percentage;
+	count_name "str_fog_of_war_CN";
+
+	level_bronze 50;
+	icon_bronze "Resources\Interface\Icons\achievements\achieve_fog_of_war.t";
+
+	level_silver 70;
+	icon_silver "Resources\Interface\Icons\achievements\achieve_fog_of_war.t";
+
+	level_gold 90;
+	icon_gold "Resources\Interface\Icons\achievements\achieve_fog_of_war.t";
+};

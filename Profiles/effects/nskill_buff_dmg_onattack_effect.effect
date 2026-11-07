@@ -1,0 +1,10 @@
+// Effect profile for nskill_buff_dmg_onattack_effect
+
+effect "nskill_buff_dmg_onattack_effect"
+{
+nameid "nskill_buff_dmg_onattack_effect_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_pillar_air.scene";
+attack_pow	30;
+element	"air";
+//Modifi
+}

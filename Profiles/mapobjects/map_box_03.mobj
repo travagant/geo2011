@@ -1,0 +1,19 @@
+// Map Object Profile
+//
+
+id 		"map_box_03";
+
+nameid	"map_treasureboxN";
+descid	"map_treasureboxD";
+desc_inactid	"map_treasureboxDN";
+
+scene 		"resources\map_objects\Box_03\map_box_03.scene";
+icon 		"resources\map_objects\Box_03\icon_map_box_03.t";
+script		"No script";
+sound		"No Sound";
+fx_start	"Resources\FX\Arena_FX\Sign\fx_sign_telega.scene";
+default_nation	"Neutral";
+action_class	"item";
+
+item_id		"elves_story_erion_set1_weapon";
+interact_type "take";

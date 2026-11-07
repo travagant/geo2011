@@ -1,0 +1,11 @@
+// Effect profile for ResFireDecMax
+
+effect "ResFireDecMax"
+{
+nameid "ResFireDecMax_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_resist.t";
+duration_turns	3;
+debuff;
+res_fire	-75;
+//Modifi
+}

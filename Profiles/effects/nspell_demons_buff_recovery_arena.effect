@@ -1,0 +1,12 @@
+// Effect profile for nspell_demons_buff_recovery_arena
+
+effect "nspell_demons_buff_recovery_arena"
+{
+nameid "nspell_demons_buff_recovery_arena_nameid";
+icon "Resources\Interface\Icons\buffs\icon_buff_attack.t";
+duration_turns	-1;
+buff;
+str	1;
+//Modifi
+recovery	10;
+}

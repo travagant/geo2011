@@ -1,0 +1,12 @@
+// Effect profile for nskill_debuff_resist_weapon_oncrit
+
+effect "nskill_debuff_resist_weapon_oncrit"
+{
+nameid "nskill_debuff_resist_weapon_oncrit_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_double_damage_2_spell.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_resist.t";
+duration_turns	1;
+debuff;
+def	-25;
+//Modifi
+}

@@ -1,0 +1,11 @@
+//caster_empire.scheme
+// Caster/empire race unit progress scheme file.
+
+scheme "caster_empire"
+{
+	str 10;
+	dex 20;
+	int 60;
+	agi 10;
+	vit 20;
+};

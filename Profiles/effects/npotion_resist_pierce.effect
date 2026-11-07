@@ -1,0 +1,13 @@
+// Effect profile for npotion_resist_pierce
+
+effect "npotion_resist_pierce"
+{
+nameid "npotion_resist_pierce_nameid";
+fx_start	"resources\fx\\Arena_FX\Potions\fx_potion_resist_pierce.scene";
+icon "Resources\Interface\Icons\buffs\Icon_buff_resist.t";
+duration_days	5;
+buff;
+dontdispell;
+res_pierce	25;
+//Modifi
+}

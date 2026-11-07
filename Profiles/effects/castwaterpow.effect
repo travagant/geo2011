@@ -1,0 +1,10 @@
+// Effect profile for CastWaterPow
+
+effect "CastWaterPow"
+{
+nameid "CastWaterPow_nameid";
+debuff;
+damage	110;
+element	"Water";
+//Modifi
+}

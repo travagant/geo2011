@@ -1,0 +1,25 @@
+// Spell Profile
+
+id	"spell_elves_summon_ent";
+
+nameid	"NamSp_spell_elves_summon_ent";
+descid	"DesSp_spell_elves_summon_ent";
+
+icon_small "Resources\items\runes\spell_elves_summon_ent.t";
+icon "Resources\items\cards\spell_elves_summon_ent.t";
+scene "Resources\FX\Map_Spells\Elves\Spell_Summon\spell_summon_ent.scene";
+scene_crop "Resources\FX\Map_Spells\Elves\Spell_Summon\spell_summon_ent_arena.scene";
+
+default_nation	"Elves";
+level	3;
+target	zone;
+
+game_effect	"nspell_elves_summon_ent";
+
+cost_spell "Life mana" 225, 450;
+cost_spell "Grove mana" 225, 450;
+
+rune	"rune_spell_elves_summon_ent";
+rune_cost "Life mana", 80;
+rune_cost "Grove mana", 80;
+rune_cost "Stone", 160;

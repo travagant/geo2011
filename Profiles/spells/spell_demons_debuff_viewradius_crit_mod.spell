@@ -1,0 +1,25 @@
+// Spell Profile
+
+id	"spell_demons_debuff_viewradius_crit_mod";
+
+nameid	"NamSp_spell_demons_debuff_viewradius_crit_mod";
+descid	"DesSp_spell_demons_debuff_viewradius_crit_mod";
+
+icon_small "Resources\items\runes\spell_demons_debuff_viewradius_crit_mod.t";
+icon "Resources\items\cards\spell_demons_debuff_viewradius_crit_mod.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Dex_Debuff\spell_dex_debuff.scene";
+scene_crop "Resources\FX\Map_Spells\Demons\Spell_Dex_Debuff\spell_dex_debuff_arena.scene";
+
+default_nation	"Demons";
+level	3;
+target	enemy;
+
+game_effect	"nspell_demons_debuff_viewradius_crit_mod";
+
+cost_spell "Infernal mana" 200, 400;
+cost_spell "Death mana" 200, 400;
+
+rune	"rune_spell_demons_debuff_viewradius_crit_mod";
+rune_cost "Infernal mana", 70;
+rune_cost "Death mana", 70;
+rune_cost "Stone", 140;

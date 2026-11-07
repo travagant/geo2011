@@ -1,0 +1,16 @@
+// Skill profile n_skill_shadowhide
+
+skill	"n_skill_shadowhide"
+{
+nameid "n_skill_shadowhide_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_shadowhide.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_shadowhide_inactive.t";
+
+
+
+agi	3;
+info_tag;
+activity_cycle	"night";
+//Modifi
+}

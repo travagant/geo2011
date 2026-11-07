@@ -1,0 +1,22 @@
+// Skill profile n_statue
+
+skill	"n_statue"
+{
+nameid "n_statue_nameid";
+effectdescid "n_statue_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_statue.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_statue_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_statue";
+fx_scene	"Resources\FX\Arena_FX\Skills\fx_skill_full_invinsible_1_cast.scene";
+
+request_ap	1;
+battle;
+
+info_tag;
+//Modifi
+}

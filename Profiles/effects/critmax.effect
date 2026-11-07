@@ -1,0 +1,11 @@
+// Effect profile for CritMax
+
+effect "CritMax"
+{
+nameid "CritMax_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_attack.t";
+duration_turns	2;
+buff;
+crit	75;
+//Modifi
+}

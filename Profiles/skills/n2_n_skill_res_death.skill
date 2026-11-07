@@ -1,0 +1,15 @@
+// Skill profile n_skill_res_death
+
+skill	"n_skill_res_death"
+{
+nameid "n_skill_res_death_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_res-death.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_res-death_inactive.t";
+
+
+
+res_death	25;
+info_tag;
+//Modifi
+}

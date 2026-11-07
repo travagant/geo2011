@@ -1,0 +1,19 @@
+// Equipment Profile
+
+id	"head_vit2_spd1";
+
+nameid "head_vit2_spd1_name";
+descid "head_vit2_spd1_desc";
+
+
+class	"head";
+replace	"head" set 3;
+level	3;
+
+icon "resources\Items\head\head_vit2_spd1.t";
+
+spd	1;
+vit	2;
+
+gold_cost	10000;
+//Modifi

@@ -1,0 +1,12 @@
+// Effect profile for DebuffIniMin
+
+effect "DebuffIniMin"
+{
+nameid "DebuffIniMin_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_attack.t";
+duration_turns	3;
+debuff;
+ini	-10;
+element	"Fire";
+//Modifi
+}

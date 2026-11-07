@@ -1,0 +1,19 @@
+// Skill profile n_skill_buff_mov_onhealth
+
+skill	"n_skill_buff_mov_onhealth"
+{
+nameid "n_skill_buff_mov_onhealth_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_battle_pathfinder_old.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_battle_pathfinder_old_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_buff_mov_onhealth";
+
+
+info_tag;
+on_health	50;
+//Modifi
+}

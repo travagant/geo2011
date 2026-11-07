@@ -1,0 +1,8 @@
+// Effect profile for nspell_undead_summon_nightmare
+
+effect "nspell_undead_summon_nightmare"
+{
+nameid "nspell_undead_summon_nightmare_nameid";
+summon	"undead_Nightmare";
+//Modifi
+}

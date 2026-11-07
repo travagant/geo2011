@@ -1,0 +1,12 @@
+// Effect profile for nspell_undead_debuff_dex_arena
+
+effect "nspell_undead_debuff_dex_arena"
+{
+nameid "nspell_undead_debuff_dex_arena_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_attack.t";
+duration_turns	-1;
+debuff;
+dex	-3;
+res_pierce	-25;
+//Modifi
+}

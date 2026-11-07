@@ -1,0 +1,17 @@
+//magic zone map object for Pillar_Fire
+
+id 	"map_Pillar_Fire";
+
+nameid	"map_Pillar_FireN";
+descid	"map_Pillar_FireD";
+effectdescid "map_Pillar_FireEff";
+
+action_class	"magiczone" 
+{
+	radius 3;
+	on 		"unit_step";
+	race 	"!owner";
+	race 	"!neutral";
+	effect	"npillar_fire";
+	fx "resources\fx\\LandFX\fx_pillar_fire_map.scene"
+}

@@ -1,0 +1,13 @@
+// Effect profile for npotion_dex_small
+
+effect "npotion_dex_small"
+{
+nameid "npotion_dex_small_nameid";
+fx_start	"resources\fx\\Arena_FX\Potions\fx_potion_dex_small.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_attack.t";
+duration_days	3;
+buff;
+dex	2;
+dontdispell;
+//Modifi
+}

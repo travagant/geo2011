@@ -1,0 +1,11 @@
+// Effect profile for ResAirMin
+
+effect "ResAirMin"
+{
+nameid "ResAirMin_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_resist.t";
+duration_turns	10;
+buff;
+res_air	25;
+//Modifi
+}

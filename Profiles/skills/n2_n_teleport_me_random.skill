@@ -1,0 +1,21 @@
+// Skill profile n_teleport_me_random
+
+skill	"n_teleport_me_random"
+{
+nameid "n_teleport_me_random_nameid";
+effectdescid "n_teleport_me_random_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_teleport_me_random.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_teleport_me_random_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_teleport_random";
+
+request_ap	1;
+battle;
+
+info_tag;
+//Modifi
+}

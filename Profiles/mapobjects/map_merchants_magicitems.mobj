@@ -1,0 +1,13 @@
+//interactive map object for Merchants_MagicItems
+
+id	"map_Merchants_MagicItems";
+
+nameid	"map_Merchants_MagicItemsN";
+descid	"map_Merchants_MagicItemsD";
+effectdescid "map_Merchants_MagicItemsEff";
+ambient_sound	"$(Sounds)\\Buildings\\merchant_magic_items.wav";
+
+//destination
+action_class	"shop";
+action_class_script	"resources\\profiles\\scripts\\shop_item.s";
+respawn	0;

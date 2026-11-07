@@ -1,0 +1,13 @@
+// Effect profile for npotion_vit_huge
+
+effect "npotion_vit_huge"
+{
+nameid "npotion_vit_huge_nameid";
+fx_start	"resources\fx\\Arena_FX\Potions\fx_potion_vit_huge.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_defense.t";
+duration_days	3;
+buff;
+vit	4;
+dontdispell;
+//Modifi
+}

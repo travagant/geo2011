@@ -1,0 +1,12 @@
+// Effect profile for nspell_undead_debuff_dex
+
+effect "nspell_undead_debuff_dex"
+{
+nameid "nspell_undead_debuff_dex_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_attack.t";
+duration_days	2;
+debuff;
+dex	-3;
+res_pierce	-25;
+//Modifi
+}

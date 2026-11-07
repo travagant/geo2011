@@ -1,0 +1,17 @@
+// Equipment Profile
+
+id	"ring_dex";
+
+nameid "ring_dex_name";
+descid "ring_dex_desc";
+
+
+class	"rings";
+level	2;
+
+icon "resources\Items\rings\ring_dex.t";
+
+add_skill	"n_ring_dex";
+
+gold_cost	6000;
+//Modifi

@@ -1,0 +1,20 @@
+// Skill profile n_skill_poison_stackable
+
+skill	"n_skill_poison_stackable"
+{
+nameid "n_skill_poison_stackable_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_debuff_agi.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_debuff_agi_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_poison_stackable";
+
+
+element	death;
+info_tag;
+on_attack;
+//Modifi
+}

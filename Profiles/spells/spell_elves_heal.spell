@@ -1,0 +1,25 @@
+// Spell Profile
+
+id	"spell_elves_heal";
+
+nameid	"NamSp_spell_elves_heal";
+descid	"DesSp_spell_elves_heal";
+
+icon_small "Resources\items\runes\spell_elves_heal.t";
+icon "Resources\items\cards\spell_elves_heal.t";
+scene "Resources\FX\Map_Spells\Elves\Spell_Elves_Heal_Water\spell_elves_heal_water.scene";
+scene_crop "Resources\FX\Map_Spells\Elves\Spell_Elves_Heal_Water\spell_elves_heal_water_arena.scene";
+
+default_nation	"Elves";
+level	3;
+target	ally;
+
+game_effect	"nspell_elves_heal";
+
+cost_spell "Life mana" 210, 420;
+cost_spell "Grove mana" 210, 420;
+
+rune	"rune_spell_elves_heal";
+rune_cost "Life mana", 75;
+rune_cost "Grove mana", 75;
+rune_cost "Stone", 150;

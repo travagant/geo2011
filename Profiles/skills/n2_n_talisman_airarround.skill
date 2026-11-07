@@ -1,0 +1,21 @@
+// Skill profile n_talisman_airarround
+
+skill	"n_talisman_airarround"
+{
+nameid "n_talisman_airarround_nameid";
+effectdescid "n_talisman_airarround_descid";
+
+icon	"Resources\Interface\Icons\skills\n_talisman_airarround.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_talisman_airarround_inactive.t";
+
+skill_range	1;
+cast_type	around;
+cast_target	friendly;
+game_effect	"nskill_talisman_airarround";
+fx_scene	"resources\fx\\Arena_FX\Skills\fx_skill_resist_air_around.scene";
+
+
+info_tag;
+on_turn;
+//Modifi
+}

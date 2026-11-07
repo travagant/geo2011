@@ -1,0 +1,19 @@
+// Equipment Profile
+
+id	"book_help";
+
+nameid "book_help_name";
+descid "book_help_desc";
+
+
+class	"book";
+level	2;
+
+icon "resources\Items\book\book_help.t";
+
+add_skill	"n_book_help";
+add_skill_uses	1;
+cover	1;
+
+gold_cost	6000;
+//Modifi

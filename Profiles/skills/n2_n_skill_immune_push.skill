@@ -1,0 +1,15 @@
+// Skill profile n_skill_immune_push
+
+skill	"n_skill_immune_push"
+{
+nameid "n_skill_immune_push_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_info_boss.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_info_boss_inactive.t";
+
+
+
+info_tag;
+//Modifi
+immune_push;
+}

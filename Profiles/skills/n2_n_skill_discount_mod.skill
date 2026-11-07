@@ -1,0 +1,15 @@
+// Skill profile n_skill_discount_mod
+
+skill	"n_skill_discount_mod"
+{
+nameid "n_skill_discount_mod_nameid";
+effectdescid "n_skill_discount_mod_descid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_discount_mod.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_discount_mod_inactive.t";
+
+
+
+//Modifi
+discount_mod	 50;
+}

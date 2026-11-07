@@ -1,0 +1,16 @@
+//magic zone map object for exp_tower
+
+id 	"map_exp_tower";
+
+nameid	"map_exp_towerN";
+descid	"map_exp_towerD";
+effectdescid "map_exp_towerEff";
+
+action_class	"magiczone" 
+{
+	radius 9999;
+	on 		"side_bgn";
+	race 	"owner";
+	race 	"!neutral";
+	effect	"nExp_tower";
+}

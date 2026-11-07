@@ -1,0 +1,13 @@
+// Effect profile for nskill_summon_witchhunters
+
+effect "nskill_summon_witchhunters"
+{
+nameid "nskill_summon_witchhunters_nameid";
+fx_start	"Resources\FX\\Arena_FX\Skills\fx_skills_summon_pet_empire.scene";
+buff;
+summon	"empire_witchhunter";
+autosummon	6
+autosummonrange	2
+autosummonover	1
+//Modifi
+}

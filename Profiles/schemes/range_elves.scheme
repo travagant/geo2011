@@ -1,0 +1,11 @@
+//range_elves.scheme
+// Range/elves race unit progress scheme file.
+
+scheme "range_elves"
+{
+	str 30;
+	dex 60;
+	int 10;
+	agi 10;
+	vit 20;
+};

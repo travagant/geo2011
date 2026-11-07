@@ -1,0 +1,15 @@
+//interactive map object for Dragons_altar
+
+id	"map_Dragons_altar";
+
+nameid	"map_Dragons_altarN";
+descid	"map_Dragons_altarD";
+desc_inactid	"map_Dragons_altarND";
+msg_inactiveid	"map_Dragons_altarNAD";
+ambient_sound	"$(Sounds)\\Buildings\\dragons_altar.wav";
+
+//destination
+action_class	"dungeon";
+action_class_script	"resources\\profiles\\dungeons\\dragons_altar.s";
+respawn	10;
+allside;

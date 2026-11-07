@@ -1,0 +1,11 @@
+// Effect profile for CritDecMid
+
+effect "CritDecMid"
+{
+nameid "CritDecMid_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_attack.t";
+duration_turns	3;
+debuff;
+crit	-50;
+//Modifi
+}

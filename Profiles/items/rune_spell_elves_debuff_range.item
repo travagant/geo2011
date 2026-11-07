@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_elves_debuff_range";
+
+nameid "NamSp_spell_elves_debuff_range";
+descid "DesSp_spell_elves_debuff_range";
+
+level 4;
+class "runes";
+icon "Resources\items\runes\spell_elves_debuff_range.t";
+scene "Resources\FX\Map_Spells\Elves\Spell_Debuff_Dex\spell_debuff_dex_arena.scene";
+
+target enemy;
+game_effect "nspell_elves_debuff_range_arena";
+
+gold_cost 720;
+usage_cost 40;
+race "Elves";

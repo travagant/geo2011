@@ -1,0 +1,17 @@
+// Equipment Profile
+
+id	"ring_mirror";
+
+nameid "ring_mirror_name";
+descid "ring_mirror_desc";
+
+
+class	"rings";
+level	3;
+
+icon "resources\Items\rings\ring_mirror.t";
+
+add_skill	"n_ring_mirror";
+
+gold_cost	10000;
+//Modifi

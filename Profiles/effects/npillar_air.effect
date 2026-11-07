@@ -1,0 +1,12 @@
+// Effect profile for npillar_air
+
+effect "npillar_air"
+{
+nameid "npillar_air_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_pillar_air.scene";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_defense.t";
+damage_per	5;
+element	"air";
+//Modifi
+dmg_per	-20;
+}

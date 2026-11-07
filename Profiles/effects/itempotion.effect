@@ -1,0 +1,9 @@
+// Effect profile for Itempotion
+
+effect "Itempotion"
+{
+nameid "Itempotion_nameid";
+buff;
+resource_item	"potion_agi_small";
+//Modifi
+}

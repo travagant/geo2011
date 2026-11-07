@@ -1,0 +1,14 @@
+// Effect profile for HealPowWaterAir
+
+effect "HealPowWaterAir"
+{
+nameid "HealPowWaterAir_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_defense.t";
+duration_turns	6;
+buff;
+res_water	25;
+res_air	25;
+heal	300;
+element	"divine";
+//Modifi
+}

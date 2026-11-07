@@ -1,0 +1,10 @@
+// Effect profile for nskill_spell_undead_debuff_flee_dmg
+
+effect "nskill_spell_undead_debuff_flee_dmg"
+{
+nameid "nskill_spell_undead_debuff_flee_dmg_nameid";
+fx_start	"resources\fx\\Arena_Spells\Undead\Rod-1\fx_undead_rod-1_spell.scene";
+damage	75;
+element	"death";
+//Modifi
+}

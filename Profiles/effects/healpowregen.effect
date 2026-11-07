@@ -1,0 +1,12 @@
+// Effect profile for HealPowRegen
+
+effect "HealPowRegen"
+{
+nameid "HealPowRegen_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_regen.t";
+duration_turns	10;
+buff;
+regen	30;
+heal	300;
+//Modifi
+}

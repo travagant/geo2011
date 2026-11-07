@@ -1,0 +1,25 @@
+// Spell Profile
+
+id	"spell_empire_buff_cover_onblessed";
+
+nameid	"NamSp_spell_empire_buff_cover_onblessed";
+descid	"DesSp_spell_empire_buff_cover_onblessed";
+
+icon_small "Resources\items\runes\spell_empire_buff_cover_onblessed.t";
+icon "Resources\items\cards\spell_empire_buff_cover_onblessed.t";
+scene "Resources\FX\Map_Spells\Empire\Spell_Buff_Counter\spell_buff_counter_4.scene";
+scene_crop "Resources\FX\Map_Spells\Empire\Spell_Buff_Counter\spell_buff_counter_4_arena.scene";
+
+default_nation	"Empire";
+level	3;
+target	ally;
+
+game_effect	"nspell_empire_buff_cover_onblessed";
+
+cost_spell "Life mana" 225, 450;
+cost_spell "Runstone mana" 225, 450;
+
+rune	"rune_spell_empire_buff_cover_onblessed";
+rune_cost "Life mana", 80;
+rune_cost "Runstone mana", 80;
+rune_cost "Stone", 160;

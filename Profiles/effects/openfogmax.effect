@@ -1,0 +1,9 @@
+// Effect profile for OpenFogMax
+
+effect "OpenFogMax"
+{
+nameid "OpenFogMax_nameid";
+buff;
+openfog	40;
+//Modifi
+}

@@ -1,0 +1,9 @@
+// Effect profile for ExpMax
+
+effect "ExpMax"
+{
+nameid "ExpMax_nameid";
+buff;
+exp	500;
+//Modifi
+}

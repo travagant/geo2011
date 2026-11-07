@@ -1,0 +1,8 @@
+// Effect profile for nspell_undead_summon_skeleton
+
+effect "nspell_undead_summon_skeleton"
+{
+nameid "nspell_undead_summon_skeleton_nameid";
+summon	"undead_Skeleton";
+//Modifi
+}

@@ -1,0 +1,13 @@
+//interactive map object for Merchant_Weapons
+
+id	"map_Merchant_Weapons";
+
+nameid	"map_Merchant_WeaponsN";
+descid	"map_Merchant_WeaponsD";
+effectdescid "map_Merchant_WeaponsEff";
+ambient_sound	"$(Sounds)\\Buildings\\merchant_weapons.wav";
+
+//destination
+action_class	"shop";
+action_class_script	"resources\\profiles\\scripts\\shop_weapon.s";
+respawn	0;

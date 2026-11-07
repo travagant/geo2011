@@ -1,0 +1,18 @@
+// Achievement Profile
+
+achievement "long_way"
+{
+	nameid  "long_way_name"; 
+	descid  "long_way_desc";
+	type range;
+	count_name "str_long_way_CN";
+
+	level_bronze 50;
+	icon_bronze "Resources\Interface\Icons\achievements\achieve_long_way.t";
+
+	level_silver 200;
+	icon_silver "Resources\Interface\Icons\achievements\achieve_long_way.t";
+
+	level_gold 500;
+	icon_gold "Resources\Interface\Icons\achievements\achieve_long_way.t";
+};

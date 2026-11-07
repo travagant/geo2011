@@ -1,0 +1,10 @@
+// Effect profile for npillar_death
+
+effect "npillar_death"
+{
+nameid "npillar_death_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_pillar_death.scene";
+damage_per	5;
+element	"death";
+//Modifi
+}

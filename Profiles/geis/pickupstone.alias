@@ -1,0 +1,11 @@
+
+
+
+alias "PickupStone" {
+
+
+   //sound 100, "$(Sounds)\interface\open_dialog.wav", 100, 3;
+   sound 100, "$(Sounds)\stone.wav", 100, 3;
+
+
+}  

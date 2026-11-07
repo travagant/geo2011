@@ -1,0 +1,19 @@
+// Skill profile n_spell_undead_dmg_death
+
+skill	"n_spell_undead_dmg_death"
+{
+nameid "n_spell_undead_dmg_death_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_spell_undead_dmg_death.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_spell_undead_dmg_death_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_spell_undead_dmg_death";
+
+
+info_tag;
+on_cursed;
+//Modifi
+}

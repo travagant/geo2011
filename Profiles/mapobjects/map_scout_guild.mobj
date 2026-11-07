@@ -1,0 +1,18 @@
+//magic zone map object for scout_guild
+
+id 	"map_scout_guild";
+
+nameid	"map_scout_guildN";
+descid	"map_scout_guildD";
+effectdescid "map_scout_guildEff";
+
+action_class	"magiczone" 
+{
+	radius 9999;
+	on 		"side_bgn";
+	race 	"owner";
+	race 	"!neutral";
+	effect	"nScout_guild";
+}
+
+

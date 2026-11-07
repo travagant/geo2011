@@ -1,0 +1,16 @@
+// Effect profile for nskill_debuff_cover_ini
+
+effect "nskill_debuff_cover_ini"
+{
+nameid "nskill_debuff_cover_ini_nameid";
+effectdescid "nskill_debuff_cover_ini_descid";
+bubleid "nskill_debuff_cover_ini_bubleid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_del_wall_spell.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_defense.t";
+duration_turns	1;
+debuff;
+cover	-99;
+//Modifi
+flee_per	-50;
+ini_per	-15;
+}

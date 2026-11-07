@@ -1,0 +1,36 @@
+//Char stats Profile for demons_mage_defform
+
+unit_class	melee;
+level	5;
+side	legions;
+exp_base	100;
+
+//stats
+str	4;
+int	1;
+dex	1;
+agi	0;
+vit	30;
+
+ini	10;
+def	100;
+
+action_point	1;
+apmax	2;
+apmax_worldmap	0;
+
+atck_range	1;
+control	1;
+cover	1;
+
+//resists
+res_earth	50;
+res_fire	50;
+res_air	50;
+res_water	50;
+res_mind	50;
+res_death	50;
+
+giant;
+cost	2000;
+viewradius	10;

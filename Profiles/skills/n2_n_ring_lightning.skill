@@ -1,0 +1,19 @@
+// Skill profile n_ring_lightning
+
+skill	"n_ring_lightning"
+{
+nameid "n_ring_lightning_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_ring_lightning.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_ring_lightning_inactive.t";
+
+skill_range	12;
+cast_type	zone;
+cast_target	enemy;
+game_effect	"nskill_ring_lightning";
+
+
+info_tag;
+on_attack;
+//Modifi
+}

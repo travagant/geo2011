@@ -1,0 +1,18 @@
+// Equipment Profile
+
+id	"body_vit3";
+
+nameid "body_vit3_name";
+descid "body_vit3_desc";
+
+
+class	"body";
+replace	"body" set 3;
+level	3;
+
+icon "resources\Items\body\body_vit3.t";
+
+vit	3;
+
+gold_cost	10000;
+//Modifi

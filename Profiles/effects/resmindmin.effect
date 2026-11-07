@@ -1,0 +1,11 @@
+// Effect profile for ResMindMin
+
+effect "ResMindMin"
+{
+nameid "ResMindMin_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_resist.t";
+duration_turns	10;
+buff;
+res_mind	25;
+//Modifi
+}

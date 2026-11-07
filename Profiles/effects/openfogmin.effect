@@ -1,0 +1,9 @@
+// Effect profile for OpenFogMin
+
+effect "OpenFogMin"
+{
+nameid "OpenFogMin_nameid";
+buff;
+openfog	20;
+//Modifi
+}

@@ -1,0 +1,19 @@
+// Equipment Profile
+
+id	"body_vit2_agi1";
+
+nameid "body_vit2_agi1_name";
+descid "body_vit2_agi1_desc";
+
+
+class	"body";
+replace	"body" set 3;
+level	3;
+
+icon "resources\Items\body\body_vit2_agi1.t";
+
+agi	1;
+vit	2;
+
+gold_cost	10000;
+//Modifi

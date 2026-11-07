@@ -1,0 +1,10 @@
+// Effect profile for nskill_book_morph_duration
+
+effect "nskill_book_morph_duration"
+{
+nameid "nskill_book_morph_duration_nameid";
+duration_turns	-1;
+buff;
+morphed;
+//Modifi
+}

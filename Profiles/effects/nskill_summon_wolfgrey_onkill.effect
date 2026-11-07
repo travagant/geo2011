@@ -1,0 +1,12 @@
+// Effect profile for nskill_summon_wolfgrey_onkill
+
+effect "nskill_summon_wolfgrey_onkill"
+{
+nameid "nskill_summon_wolfgrey_onkill_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_n_cannibal.scene";
+summon	"neutrals_wolfgrey";
+autosummon	1
+autosummonrange	2
+autosummonover	1
+//Modifi
+}

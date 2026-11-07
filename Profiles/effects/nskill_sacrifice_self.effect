@@ -1,0 +1,9 @@
+// Effect profile for nskill_sacrifice_self
+
+effect "nskill_sacrifice_self"
+{
+nameid "nskill_sacrifice_self_nameid";
+buff;
+//Modifi
+add_skill	"n_healer";
+}

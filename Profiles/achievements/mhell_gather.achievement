@@ -1,0 +1,18 @@
+// Achievement Profile
+
+achievement "mhell_gather"
+{
+	nameid  "mhell_gather_name"; 
+	descid  "mhell_gather_desc";
+	type range;
+	count_name "str_mhell_gather_CN";
+
+	level_bronze 10000;
+	icon_bronze "Resources\Interface\Icons\achievements\achieve_mhell_gather.t";
+
+	level_silver 50000;
+	icon_silver "Resources\Interface\Icons\achievements\achieve_mhell_gather.t";
+
+	level_gold 90000;
+	icon_gold "Resources\Interface\Icons\achievements\achieve_mhell_gather.t";
+};

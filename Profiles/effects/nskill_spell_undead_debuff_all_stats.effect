@@ -1,0 +1,10 @@
+// Effect profile for nskill_spell_undead_debuff_all_stats
+
+effect "nskill_spell_undead_debuff_all_stats"
+{
+nameid "nskill_spell_undead_debuff_all_stats_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_spell_undead_debuff_all.scene";
+damage	70;
+element	"blunt";
+//Modifi
+}

@@ -1,0 +1,11 @@
+// Effect profile for ResFireMin
+
+effect "ResFireMin"
+{
+nameid "ResFireMin_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_resist.t";
+duration_turns	10;
+buff;
+res_fire	25;
+//Modifi
+}

@@ -1,0 +1,11 @@
+// Effect profile for nskill_buff_ap
+
+effect "nskill_buff_ap"
+{
+nameid "nskill_buff_ap_nameid";
+icon "Resources\Interface\Icons\buffs\icon_buff_attack.t";
+duration_turns	1;
+buff;
+c_mov	2;
+//Modifi
+}

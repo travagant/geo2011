@@ -1,0 +1,15 @@
+// Effect profile for nskill_buff_param_oncursed
+
+effect "nskill_buff_param_oncursed"
+{
+nameid "nskill_buff_param_oncursed_nameid";
+fx_start	"resources\fx\\Arena_FX\Potions\fx_story_potion.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_attack.t";
+duration_turns	2;
+buff;
+res_death	25;
+//Modifi
+dmg_per	15;
+hp_per	15;
+ini_per	15;
+}

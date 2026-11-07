@@ -1,0 +1,11 @@
+//rogue_empire.scheme
+// Rogue/empire race unit progress scheme file.
+
+scheme "rogue_empire"
+{
+	str 10;
+	dex 10;
+	int 10;
+	agi 60;
+	vit 10;
+};

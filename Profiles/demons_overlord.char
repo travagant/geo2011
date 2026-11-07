@@ -1,0 +1,23 @@
+//Unit Profile
+//
+id                       "demons_overlord";
+unit_scene              "resources\\characters\\demons\\overlord\\character_demons_overlord.scene";
+unit_scene_lod		"resources\characters\demons\overlord\character_demons_overlord_lod.scene",10;
+icon                     "resources\\characters\\demons\\overlord\\icon_overlord.t";
+subicon                  "resources\\characters\\demons\\overlord\\icon_overlord_small.t";
+layout_icon              "resources\\characters\\demons\\overlord\\icon_overlord_node.t";
+capital_icon             "resources\\characters\\demons\\overlord\\icon_overlord_capital.t";
+dialog_icon              "resources\\characters\\demons\\overlord\\icon_overlord_dialog.t";
+leader_icon              "resources\\characters\\demons\\overlord\\icon_overlord_ring.t";
+fxproc                   "lighting";
+fxscene                  "resources\\fx\\Arena_FX\\Physical_Damage\\fx_small_attack_damage_2x.scene";
+fxcast                   "resources\\fx\\";
+fxscene_ko               "resources\\fx\\Arena_FX\\Death\\fx_die_demons.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_demons_levelup.scene";
+centerbone               "Spine1";
+move_speed                2.2;
+nodesx                   1;
+nodesz                   1;
+#include                 "desc\\demons_overlord_desc.char";
+#include                 "sound\\demons_overlord_sound.char";
+#include                 "stats\\demons_overlord_stats.char";

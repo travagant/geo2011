@@ -1,0 +1,22 @@
+// Skill profile n_book_anger
+
+skill	"n_book_anger"
+{
+nameid "n_book_anger_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_book_anger.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_book_anger_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_book_anger";
+fx_scene	"resources\fx\\Arena_FX\Skills\fx_skill_n_rage.scene";
+
+
+info_tag;
+on_intercepted;
+on_crited;
+on_miss;
+//Modifi
+}

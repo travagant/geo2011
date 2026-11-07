@@ -1,0 +1,11 @@
+// Effect profile for ApMax
+
+effect "ApMax"
+{
+nameid "ApMax_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_attack.t";
+duration_days	3;
+buff;
+c_movwm	10;
+//Modifi
+}

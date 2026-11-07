@@ -1,0 +1,5 @@
+id "waterbeast_hydra_female";
+race "neutral";
+scene "Resources\Characters\Neutrals\Hydra_Female\character_neutrals_hydra_female.scene";
+offset -0.6;
+Waterbeast;

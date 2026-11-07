@@ -1,0 +1,11 @@
+//rogue_elves.scheme
+// Rogue/elves race unit progress scheme file.
+
+scheme "rogue_elves"
+{
+	str 10;
+	dex 10;
+	int 10;
+	agi 60;
+	vit 10;
+};

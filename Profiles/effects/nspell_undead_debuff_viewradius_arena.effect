@@ -1,0 +1,12 @@
+// Effect profile for nspell_undead_debuff_viewradius_arena
+
+effect "nspell_undead_debuff_viewradius_arena"
+{
+nameid "nspell_undead_debuff_viewradius_arena_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_world.t";
+duration_turns	-1;
+debuff;
+atck_range	-1;
+viewradius	-6;
+//Modifi
+}

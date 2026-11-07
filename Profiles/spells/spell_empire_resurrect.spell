@@ -1,0 +1,27 @@
+// Spell Profile
+
+id	"spell_empire_resurrect";
+
+nameid	"NamSp_spell_empire_resurrect";
+descid	"DesSp_spell_empire_resurrect";
+
+icon_small "Resources\items\runes\spell_empire_resurrect.t";
+icon "Resources\items\cards\spell_empire_resurrect.t";
+scene "Resources\FX\Map_Spells\Empire\Spell_Empire_Revive\spell_empire_revive.scene";
+scene_crop "Resources\FX\Map_Spells\Empire\Spell_Empire_Revive\spell_empire_revive_arena.scene";
+
+default_nation	"Empire";
+level	4;
+target	ally;
+
+game_effect	"nspell_empire_resurrect";
+
+cost_spell "Life mana" 250, 500;
+cost_spell "Death mana" 250, 500;
+cost_spell "Runstone mana" 250, 500;
+
+rune	"rune_spell_empire_resurrect";
+rune_cost "Life mana", 90;
+rune_cost "Death mana", 90;
+rune_cost "Runstone mana", 90;
+rune_cost "Stone", 270;

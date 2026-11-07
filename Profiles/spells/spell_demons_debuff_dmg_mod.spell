@@ -1,0 +1,27 @@
+// Spell Profile
+
+id	"spell_demons_debuff_dmg_mod";
+
+nameid	"NamSp_spell_demons_debuff_dmg_mod";
+descid	"DesSp_spell_demons_debuff_dmg_mod";
+
+icon_small "Resources\items\runes\spell_demons_debuff_dmg_mod.t";
+icon "Resources\items\cards\spell_demons_debuff_dmg_mod.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Fire_Curse_2\spell_fire_curse_2.scene";
+scene_crop "Resources\FX\Map_Spells\Demons\Spell_Fire_Curse_2\spell_fire_curse_2_arena.scene";
+
+default_nation	"Demons";
+level	4;
+target	enemy;
+
+game_effect	"nspell_demons_debuff_dmg_mod";
+
+cost_spell "Life mana" 160, 320;
+cost_spell "Grove mana" 160, 320;
+cost_spell "Infernal mana" 160, 320;
+
+rune	"rune_spell_demons_debuff_dmg_mod";
+rune_cost "Life mana", 60;
+rune_cost "Grove mana", 60;
+rune_cost "Infernal mana", 60;
+rune_cost "Stone", 180;

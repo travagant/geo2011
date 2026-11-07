@@ -1,0 +1,29 @@
+// Spell Profile
+
+id	"spell_empire_buff_all_mod";
+
+nameid	"NamSp_spell_empire_buff_all_mod";
+descid	"DesSp_spell_empire_buff_all_mod";
+
+icon_small "Resources\items\runes\spell_empire_buff_all_mod.t";
+icon "Resources\items\cards\spell_empire_buff_all_mod.t";
+scene "Resources\FX\Map_Spells\Empire\Spell_Buff_Int_Str_Dex\spell_buff_int_str_dex.scene";
+scene_crop "Resources\FX\Map_Spells\Empire\Spell_Buff_Int_Str_Dex\spell_buff_int_str_dex_arena.scene";
+
+default_nation	"Empire";
+level	5;
+target	ally;
+
+game_effect	"nspell_empire_buff_all_mod";
+
+cost_spell "Life mana" 200, 400;
+cost_spell "Grove mana" 200, 400;
+cost_spell "Infernal mana" 200, 400;
+cost_spell "Runstone mana" 200, 400;
+
+rune	"rune_spell_empire_buff_all_mod";
+rune_cost "Life mana", 70;
+rune_cost "Grove mana", 70;
+rune_cost "Infernal mana", 70;
+rune_cost "Runstone mana", 70;
+rune_cost "Stone", 280;

@@ -1,0 +1,58 @@
+// Characters stats profile
+
+unit_class	caster;
+unit_side	"undead_giant";
+ship	"undead2";
+attack_type	"air";
+level	21;
+side	undead;
+exp_base	162;
+
+//stats
+str	14;
+spd	1;
+dex	3;
+agi	6;
+vit	8;
+
+
+ap	1;
+up	100;
+mov	1;
+movwm	12;
+
+atck_range	3;
+zone_radius	2;
+atck_zone;
+Control	1;
+Cover	1;
+
+//resists
+res_blunt	-25;
+res_fire	50;
+res_mind	25;
+
+leadership_cost	2;
+cost	5580;
+skill_grid	"undead_Dracolich";
+viewradius	8;
+
+//Modifi
+dmg_str_mod	 600;
+dmg_agi_mod	 300;
+crit_dex_mod	 400;
+crit_vit_mod	 200;
+flee_agi_mod	 300;
+flee_spd_mod	 100;
+hp_vit_mod	 4500;
+hp_str_mod	 2300;
+ini_spd_mod	 150;
+ini_dex_mod	 100;
+mov_mod	 0;
+movwm_mod	 0;
+cover_mod	 0;
+viewradius_mod	 0;
+Discount_Mod	 0;
+Bonusexp_Mod	 0;
+level_cap	33;
+levels_to_up	3;

@@ -1,0 +1,13 @@
+// Effect profile for nskill_spell_undead_buff_debuff_cover
+
+effect "nskill_spell_undead_buff_debuff_cover"
+{
+nameid "nskill_spell_undead_buff_debuff_cover_nameid";
+fx_start	"resources\fx\\Arena_FX\Potions\fx_skill_book_folly.scene";
+duration_turns	-1;
+debuff;
+dontdispell;
+//Modifi
+c_cover	-1;
+stackable	1;
+}

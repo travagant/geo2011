@@ -1,0 +1,4 @@
+//undead_Fighter's description
+nameid "UndeadFighterName";
+descid "UndeadFighterDesc";
+minidesc "UndeadFighter_MD";

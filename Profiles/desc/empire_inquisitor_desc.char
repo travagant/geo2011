@@ -1,0 +1,4 @@
+//empire_inquisitor's description
+nameid "EmpireInquisitorName";
+descid "EmpireInquisitorDesc";
+minidesc "EmpireInquisitor_MD";

@@ -1,0 +1,25 @@
+// Equipment Profile
+
+id	"totem_barrel";
+
+nameid "totem_barrel_name";
+descid "totem_barrel_desc";
+effectdescid "totem_barrel_efdesc";
+
+
+class	"banner";
+level	3;
+
+icon "resources\Items\banner\totem_barrel.t";
+
+
+gold_cost	10000;
+//Modifi
+banner_profile	{
+ //сцена флага
+ banner_scene "Resources\Hexagons\Models\Flags\totem_barrel.scene"
+
+ //действия в началае боя
+ // "цель" "накладываемый эффект"
+ start_action "all" "ntotem_barrel"
+};

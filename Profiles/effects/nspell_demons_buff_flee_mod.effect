@@ -1,0 +1,12 @@
+// Effect profile for nspell_demons_buff_flee_mod
+
+effect "nspell_demons_buff_flee_mod"
+{
+nameid "nspell_demons_buff_flee_mod_nameid";
+icon "Resources\Interface\Icons\buffs\icon_buff_bless.t";
+duration_days	2;
+buff;
+//Modifi
+flee_per	30;
+add_skill	"n_spell_demons_buff_flee_mod";
+}

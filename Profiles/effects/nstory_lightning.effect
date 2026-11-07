@@ -1,0 +1,9 @@
+// Effect profile for nstory_lightning
+
+effect "nstory_lightning"
+{
+nameid "nstory_lightning_nameid";
+fx_start	"resources\fx\\Arena_Spells\Empire\Whitewizard\fx_empire_whitewizard_spell.scene";
+damage_per	15;
+//Modifi
+}

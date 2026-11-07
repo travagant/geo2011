@@ -1,0 +1,9 @@
+// Effect profile for nskill_resurrect_20_effect
+
+effect "nskill_resurrect_20_effect"
+{
+nameid "nskill_resurrect_20_effect_nameid";
+fx_start	"Resources\FX\Arena_FX\Skills\fx_skill_poison_map_1_spell.scene";
+resurrect	20;
+//Modifi
+}

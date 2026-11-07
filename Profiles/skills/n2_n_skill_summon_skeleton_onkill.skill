@@ -1,0 +1,19 @@
+// Skill profile n_skill_summon_skeleton_onkill
+
+skill	"n_skill_summon_skeleton_onkill"
+{
+nameid "n_skill_summon_skeleton_onkill_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_manacost.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_manacost_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_summon_skeleton_onkill";
+
+
+info_tag;
+on_kill;
+//Modifi
+}

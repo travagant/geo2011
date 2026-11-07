@@ -1,0 +1,15 @@
+// Effect profile for nspell_empire_dmg_air_removebuff_arena
+
+effect "nspell_empire_dmg_air_removebuff_arena"
+{
+nameid "nspell_empire_dmg_air_removebuff_arena_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_resist.t";
+duration_turns	-1;
+debuff;
+res_water	-25;
+damage	100;
+dispel_buffs	1;
+banish;
+element	"air";
+//Modifi
+}

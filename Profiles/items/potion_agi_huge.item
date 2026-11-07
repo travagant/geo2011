@@ -1,0 +1,16 @@
+// Potion Profile
+
+id	"potion_agi_huge";
+
+
+nameid	"ItNPotAgiH";
+descid	"ItDPotAgiH";
+
+class "potion";
+level	3;
+icon "Resources\\Items\\potion\\potion_agi_huge.t";
+
+game_effect	"npotion_agi_huge";
+gold_cost	2000;
+usage_cost	20;
+target	"ally";

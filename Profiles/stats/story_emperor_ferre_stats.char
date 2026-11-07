@@ -1,0 +1,58 @@
+// Characters stats profile
+
+unit_class	melee;
+ship	"empire2";
+attack_type	"pierce";
+level	63;
+exp_base	100;
+
+//stats
+str	19;
+spd	10;
+dex	10;
+agi	10;
+vit	25;
+
+
+ap	1;
+up	100;
+mov	2;
+movwm	12;
+
+atck_range	1;
+Control	1;
+Cover	2;
+
+//resists
+res_fire	25;
+res_air	25;
+res_earth	25;
+res_death	25;
+res_mind	50;
+
+keycharacter;
+Leadership	3;
+leadership_cost	1;
+cost	109500;
+skill_grid	"story_emperor_ferre";
+viewradius	8;
+
+//Modifi
+dmg_str_mod	 600;
+dmg_agi_mod	 400;
+crit_dex_mod	 400;
+crit_vit_mod	 200;
+flee_agi_mod	 400;
+flee_spd_mod	 200;
+hp_vit_mod	 5000;
+hp_str_mod	 2500;
+ini_spd_mod	 200;
+ini_dex_mod	 100;
+mov_mod	 0;
+movwm_mod	 0;
+cover_mod	 0;
+viewradius_mod	 0;
+Discount_Mod	 0;
+Bonusexp_Mod	 0;
+level_cap	75;
+levels_to_up	3;

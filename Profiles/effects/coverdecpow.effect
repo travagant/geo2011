@@ -1,0 +1,11 @@
+// Effect profile for CoverDecPow
+
+effect "CoverDecPow"
+{
+nameid "CoverDecPow_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_defense.t";
+debuff;
+cover	-5;
+element	"mind";
+//Modifi
+}

@@ -1,0 +1,12 @@
+// Effect profile for BuffFireAgi
+
+effect "BuffFireAgi"
+{
+nameid "BuffFireAgi_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_defense.t";
+duration_turns	4;
+buff;
+agi	2;
+res_fire	25;
+//Modifi
+}

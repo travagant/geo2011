@@ -1,0 +1,12 @@
+// Effect profile for nbanner_of_pointer
+
+effect "nbanner_of_pointer"
+{
+nameid "nbanner_of_pointer_nameid";
+icon "Resources\Interface\Icons\buffs\icon_buff_attack.t";
+duration_turns	-1;
+buff;
+dex	1;
+dontdispell;
+//Modifi
+}

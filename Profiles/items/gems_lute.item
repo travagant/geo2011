@@ -1,0 +1,13 @@
+// Gem Profile
+
+id	"gems_lute";
+
+
+nameid	"ItNGeLute";
+descid	"ItDGeLute";
+
+class "gems";
+level	2;
+icon "Resources\\Items\\gems\\gems_lute.t";
+
+gold_cost	4000;

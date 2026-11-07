@@ -1,0 +1,9 @@
+// Effect profile for nskill_dispel_debuff
+
+effect "nskill_dispel_debuff"
+{
+nameid "nskill_dispel_debuff_nameid";
+buff;
+dispel_debuffs	1;
+//Modifi
+}

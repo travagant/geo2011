@@ -1,0 +1,27 @@
+// Spell Profile
+
+id	"spell_empire_buff_agi_mod";
+
+nameid	"NamSp_spell_empire_buff_agi_mod";
+descid	"DesSp_spell_empire_buff_agi_mod";
+
+icon_small "Resources\items\runes\spell_empire_buff_agi_mod.t";
+icon "Resources\items\cards\spell_empire_buff_agi_mod.t";
+scene "Resources\FX\Map_Spells\Empire\Spell_Buff_Ap\spell_buff_ap_2.scene";
+scene_crop "Resources\FX\Map_Spells\Empire\Spell_Buff_Ap\spell_buff_ap_2_arena.scene";
+
+default_nation	"Empire";
+level	4;
+target	ally;
+
+game_effect	"nspell_empire_buff_agi_mod";
+
+cost_spell "Life mana" 220, 440;
+cost_spell "Death mana" 220, 440;
+cost_spell "Runstone mana" 220, 440;
+
+rune	"rune_spell_empire_buff_agi_mod";
+rune_cost "Life mana", 80;
+rune_cost "Death mana", 80;
+rune_cost "Runstone mana", 80;
+rune_cost "Stone", 240;

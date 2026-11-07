@@ -1,0 +1,12 @@
+// Effect profile for nskill_heal_melee
+
+effect "nskill_heal_melee"
+{
+nameid "nskill_heal_melee_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_n_cannibal.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_attack.t";
+buff;
+heal	70;
+//Modifi
+dmg_per	10;
+}

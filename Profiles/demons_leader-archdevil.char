@@ -1,0 +1,51 @@
+// Unit Profile
+//
+id		"demons_leader-archdevil";
+unit_scene 	"resources\\characters\\demons\\leader-archdevil\\character_demons_leader-archdevil.scene"
+unit_scene_lod		"resources\characters\demons\leader-archdevil\character_demons_leader-archdevil_lod.scene",10;
+icon 		"resources\\characters\\demons\\leader-archdevil\\icon_leader-archdevil.t";
+subicon 	"resources\\characters\\demons\\leader-archdevil\\icon_leader-archdevil_small.t";
+layout_icon 	"resources\\characters\\demons\\leader-archdevil\\icon_leader-archdevil_node.t";
+capital_icon 	 "resources\characters\demons\leader-archdevil\icon_leader-archdevil_capital.t";
+dialog_icon 	 "resources\characters\demons\leader-archdevil\icon_leader-archdevil_dialog.t";
+leader_icon 	 "resources\characters\demons\leader-archdevil\icon_leader-archdevil_ring.t";
+fxproc 		"lighting";
+fxscene                  "resources\\fx\\Arena_Spells\\elves\\Leader-Dryad\\fx_leader-dryad_spell.scene";
+fxcast          "resources\\fx\\Attacks\\demons\\Leader-Archdevil\\fx_demons_Leader-Archdevil_cast.scene";
+fxscene_ko      "resources\\fx\\Arena_FX\\Death\\fx_die_demons.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_demons_levelup.scene";
+centerbone "Spine1";
+#include      	"desc\\demons_leader-archdevil_desc.char";
+#include 	"stats\\demons_leader-archdevil_stats.char";
+#include      	"sound\\demons_leader-archdevil_sound.char";
+move_speed	4.5;
+nodesx 		1;
+nodesz		1;
+names "$(Texts)/demons_leader-archdevil.txt";
+set 1 {
+    weapon "resources\Characters\demons\leader-archdevil\weapon\demons_leader-archdevil_set1_weapon.scene";
+    feet "resources\Characters\demons\leader-archdevil\feet\demons_leader-archdevil_set1_feet.scene";
+    body "resources\Characters\demons\leader-archdevil\body\demons_leader-archdevil_set1_body.scene";
+    head "resources\Characters\demons\leader-archdevil\head\demons_leader-archdevil_set1_head.scene";
+    legs "resources\Characters\demons\leader-archdevil\legs\demons_leader-archdevil_set1_legs.scene";
+    arms "resources\Characters\demons\leader-archdevil\arms\demons_leader-archdevil_set1_arms.scene";
+    hands "resources\Characters\demons\leader-archdevil\hands\demons_leader-archdevil_set1_hands.scene";
+}
+set 2 {
+    weapon "resources\Characters\demons\leader-archdevil\weapon\demons_leader-archdevil_set2_weapon.scene";
+    feet "resources\Characters\demons\leader-archdevil\feet\demons_leader-archdevil_set2_feet.scene";
+    body "resources\Characters\demons\leader-archdevil\body\demons_leader-archdevil_set2_body.scene";
+    head "resources\Characters\demons\leader-archdevil\head\demons_leader-archdevil_set2_head.scene";
+    legs "resources\Characters\demons\leader-archdevil\legs\demons_leader-archdevil_set2_legs.scene";
+    arms "resources\Characters\demons\leader-archdevil\arms\demons_leader-archdevil_set2_arms.scene";
+    hands "resources\Characters\demons\leader-archdevil\hands\demons_leader-archdevil_set2_hands.scene";
+}
+set 3 {
+    weapon "resources\Characters\demons\leader-archdevil\weapon\demons_leader-archdevil_set3_weapon.scene";
+    feet "resources\Characters\demons\leader-archdevil\feet\demons_leader-archdevil_set3_feet.scene";
+    body "resources\Characters\demons\leader-archdevil\body\demons_leader-archdevil_set3_body.scene";
+    head "resources\Characters\demons\leader-archdevil\head\demons_leader-archdevil_set3_head.scene";
+    legs "resources\Characters\demons\leader-archdevil\legs\demons_leader-archdevil_set3_legs.scene";
+    arms "resources\Characters\demons\leader-archdevil\arms\demons_leader-archdevil_set3_arms.scene";
+    hands "resources\Characters\demons\leader-archdevil\hands\demons_leader-archdevil_set3_hands.scene";
+}

@@ -1,0 +1,23 @@
+// Spell Profile
+
+id	"spell_elves_get_potion";
+
+nameid	"NamSp_spell_elves_get_potion";
+effectdescid	"EffSp_spell_elves_get_potion";
+descid	"DesSp_spell_elves_get_potion";
+
+icon_small "Resources\items\runes\spell_elves_get_potion.t";
+icon "Resources\items\cards\spell_elves_get_potion.t";
+scene "Resources\FX\Map_Spells\Elves\Spell_Heal_Buff_Water\spell_heal_buff_water.scene";
+scene_crop "Resources\FX\Map_Spells\Elves\Spell_Heal_Buff_Water\spell_heal_buff_water_arena.scene";
+
+default_nation	"Elves";
+level	1;
+target	ally;
+
+game_effect	"nspell_elves_get_potion";
+
+cost_spell "Grove mana" 160, 320;
+
+rune_cost "Grove mana", 60;
+rune_cost "Stone", 60;

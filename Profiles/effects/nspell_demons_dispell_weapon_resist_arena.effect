@@ -1,0 +1,11 @@
+// Effect profile for nspell_demons_dispell_weapon_resist_arena
+
+effect "nspell_demons_dispell_weapon_resist_arena"
+{
+nameid "nspell_demons_dispell_weapon_resist_arena_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_resist.t";
+duration_turns	-1;
+debuff;
+//Modifi
+ignore_def;
+}

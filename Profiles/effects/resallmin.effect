@@ -1,0 +1,11 @@
+// Effect profile for ResAllMin
+
+effect "ResAllMin"
+{
+nameid "ResAllMin_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_resist.t";
+duration_turns	10;
+buff;
+res	25;
+//Modifi
+}

@@ -1,0 +1,11 @@
+// Effect profile for ResMindDecMid
+
+effect "ResMindDecMid"
+{
+nameid "ResMindDecMid_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_resist.t";
+duration_turns	3;
+debuff;
+res_mind	-25;
+//Modifi
+}

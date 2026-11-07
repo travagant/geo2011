@@ -1,0 +1,18 @@
+// Achievement Profile
+
+achievement "magic_use"
+{
+	nameid  "magic_use_name"; 
+	descid  "magic_use_desc";
+	type range;
+	count_name "str_magic_use_CN";
+
+	level_bronze 1;
+	icon_bronze "Resources\Interface\Icons\achievements\achieve_magic_use.t";
+
+	level_silver 15;
+	icon_silver "Resources\Interface\Icons\achievements\achieve_magic_use.t";
+
+	level_gold 30;
+	icon_gold "Resources\Interface\Icons\achievements\achieve_magic_use.t";
+};

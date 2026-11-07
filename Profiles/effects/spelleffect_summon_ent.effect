@@ -1,0 +1,10 @@
+// Effect profile for spelleffect_summon_ent
+
+effect "spelleffect_summon_ent"
+{
+nameid "spelleffect_summon_ent_nameid";
+fx_start	"Resources\FX\\Arena_FX\Skills\fx_skills_summon_pet_elves.scene";
+buff;
+summon	"elves_ent";
+//Modifi
+}

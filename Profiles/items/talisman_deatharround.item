@@ -1,0 +1,18 @@
+// Equipment Profile
+
+id	"talisman_deatharround";
+
+nameid "talisman_deatharround_name";
+descid "talisman_deatharround_desc";
+
+
+class	"talisman";
+level	3;
+
+icon "resources\Items\talisman\talisman_deatharround.t";
+
+add_skill	"n_talisman_deatharround";
+res_death	25;
+
+gold_cost	10000;
+//Modifi

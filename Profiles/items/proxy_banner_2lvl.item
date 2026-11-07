@@ -1,0 +1,16 @@
+// Equipment Profile
+
+id	"proxy_banner_2lvl";
+
+nameid "proxy_banner_2lvl_name";
+descid "proxy_banner_2lvl_desc";
+
+
+class	"banner";
+level	2;
+
+icon "resources\Items\banner\proxy_banner_2lvl.t";
+
+proxy;
+
+//Modifi

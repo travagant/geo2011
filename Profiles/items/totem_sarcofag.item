@@ -1,0 +1,30 @@
+// Equipment Profile
+
+id	"totem_sarcofag";
+
+nameid "totem_sarcofag_name";
+descid "totem_sarcofag_desc";
+effectdescid "totem_sarcofag_efdesc";
+
+
+class	"banner";
+level	3;
+
+icon "resources\Items\banner\totem_sarcofag.t";
+
+
+gold_cost	10000;
+//Modifi
+banner_profile	{
+ //сцена флага
+ banner_scene "Resources\Hexagons\Models\Flags\totem_sarcofag.scene"
+
+ //действия в началае боя
+ // "цель" "накладываемый эффект"
+ start_action "enemy" "ntotem_sarcofag"
+
+ //действия на очередном ходе
+ // "цель" "накладываемый эффект"
+ turn_action "enemy" "ntotem_sarcofag" ""
+ fxcast "Resources\FX\Arena_FX\Totems\fx_totem_sarcofag_cast.scene"
+};

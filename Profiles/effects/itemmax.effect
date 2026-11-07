@@ -1,0 +1,11 @@
+// Effect profile for Itemmax
+
+effect "Itemmax"
+{
+nameid "Itemmax_nameid";
+buff;
+resource_item	"proxy_potion_3lvl";
+resource_item	"proxy_rune_3lvl";
+resource_item	"proxy_gems_3lvl";
+//Modifi
+}

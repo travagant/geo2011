@@ -1,0 +1,14 @@
+// Effect profile for AllstatsDecMin
+
+effect "AllstatsDecMin"
+{
+nameid "AllstatsDecMin_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_attack.t";
+duration_turns	3;
+debuff;
+str	-1;
+agi	-1;
+dex	-1;
+spd	-1;
+//Modifi
+}

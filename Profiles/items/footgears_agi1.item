@@ -1,0 +1,19 @@
+// Equipment Profile
+
+id	"footgears_agi1";
+
+nameid "footgears_agi1_name";
+descid "footgears_agi1_desc";
+
+
+class	"footgears";
+replace	"feet" set 1;
+replace	"legs" set 1;
+level	1;
+
+icon "resources\Items\footgears\footgears_agi1.t";
+
+agi	1;
+
+gold_cost	2300;
+//Modifi

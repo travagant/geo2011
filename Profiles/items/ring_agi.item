@@ -1,0 +1,17 @@
+// Equipment Profile
+
+id	"ring_agi";
+
+nameid "ring_agi_name";
+descid "ring_agi_desc";
+
+
+class	"rings";
+level	2;
+
+icon "resources\Items\rings\ring_agi.t";
+
+add_skill	"n_ring_agi";
+
+gold_cost	6000;
+//Modifi

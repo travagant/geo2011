@@ -1,0 +1,56 @@
+// Characters stats profile
+
+unit_class	caster;
+unit_side	"greenskins";
+ship	"neutral2";
+attack_type	"fire";
+level	15;
+side	neutrals;
+exp_base	120;
+
+//stats
+str	11;
+spd	1;
+dex	6;
+agi	3;
+vit	5;
+
+
+ap	1;
+up	100;
+mov	2;
+movwm	12;
+
+atck_range	3;
+zone_radius	2;
+atck_zone;
+
+//resists
+res_blunt	-50;
+res_fire	25;
+res_air	25;
+
+leadership_cost	1;
+cost	2010;
+skill_grid	"neutrals_goblinmage";
+viewradius	8;
+
+//Modifi
+dmg_str_mod	 400;
+dmg_agi_mod	 200;
+crit_dex_mod	 400;
+crit_vit_mod	 200;
+flee_agi_mod	 300;
+flee_spd_mod	 100;
+hp_vit_mod	 3000;
+hp_str_mod	 1500;
+ini_spd_mod	 150;
+ini_dex_mod	 100;
+mov_mod	 0;
+movwm_mod	 0;
+cover_mod	 0;
+viewradius_mod	 0;
+Discount_Mod	 0;
+Bonusexp_Mod	 0;
+level_cap	27;
+levels_to_up	3;

@@ -1,0 +1,25 @@
+// Spell Profile
+
+id	"spell_elves_get_skill_earth";
+
+nameid	"NamSp_spell_elves_get_skill_earth";
+descid	"DesSp_spell_elves_get_skill_earth";
+
+icon_small "Resources\items\runes\spell_elves_get_skill_earth.t";
+icon "Resources\items\cards\spell_elves_get_skill_earth.t";
+scene "Resources\FX\Map_Spells\Elves\Spell_Heal_Buff_Earth\spell_heal_buff_earth.scene";
+scene_crop "Resources\FX\Map_Spells\Elves\Spell_Heal_Buff_Earth\spell_heal_buff_earth_arena.scene";
+
+default_nation	"Elves";
+level	3;
+target	ally;
+
+game_effect	"nspell_elves_get_skill_earth";
+
+cost_spell "Grove mana" 225, 450;
+cost_spell "Runstone mana" 225, 450;
+
+rune	"rune_spell_elves_get_skill_earth";
+rune_cost "Grove mana", 80;
+rune_cost "Runstone mana", 80;
+rune_cost "Stone", 160;

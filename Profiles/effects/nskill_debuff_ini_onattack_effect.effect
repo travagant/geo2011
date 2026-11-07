@@ -1,0 +1,13 @@
+// Effect profile for nskill_debuff_ini_onattack_effect
+
+effect "nskill_debuff_ini_onattack_effect"
+{
+nameid "nskill_debuff_ini_onattack_effect_nameid";
+fx_start	"resources\fx\\Arena_FX\Rune\Fear\fx_fear.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_attack.t";
+duration_turns	2;
+debuff;
+//Modifi
+crit_per	-30;
+flee_per	-30;
+}

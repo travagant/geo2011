@@ -1,0 +1,4 @@
+//empire_knight's description
+nameid "EmpireKnightName";
+descid "EmpireKnightDesc";
+minidesc "EmpireKnight_MD";

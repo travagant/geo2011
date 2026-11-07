@@ -1,0 +1,10 @@
+// Effect profile for CastEarthMid
+
+effect "CastEarthMid"
+{
+nameid "CastEarthMid_nameid";
+debuff;
+damage	60;
+element	"Earth";
+//Modifi
+}

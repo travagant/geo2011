@@ -1,0 +1,12 @@
+// Effect profile for ApMinDec
+
+effect "ApMinDec"
+{
+nameid "ApMinDec_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_stop.t";
+duration_turns	1;
+debuff;
+mov	-1;
+movwm	-6;
+//Modifi
+}

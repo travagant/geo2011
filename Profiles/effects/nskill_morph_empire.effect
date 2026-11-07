@@ -1,0 +1,12 @@
+// Effect profile for nskill_morph_Empire
+
+effect "nskill_morph_Empire"
+{
+nameid "nskill_morph_Empire_nameid";
+fx_start	"Resources\FX\Arena_FX\Skills\fx_skill_morf_bad_1_spell.scene";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_morph.t";
+duration_turns	2;
+debuff;
+morph	"neutrals_peasant" "nskill_morph_duration";
+//Modifi
+}

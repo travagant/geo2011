@@ -1,0 +1,11 @@
+// Effect profile for DefUndead
+
+effect "DefUndead"
+{
+nameid "DefUndead_nameid";
+icon "Resources\Interface\Icons\buffs\icon_buff_defense.t";
+duration_turns	3;
+buff;
+immune_phys_damage;
+//Modifi
+}

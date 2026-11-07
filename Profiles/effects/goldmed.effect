@@ -1,0 +1,9 @@
+// Effect profile for Goldmed
+
+effect "Goldmed"
+{
+nameid "Goldmed_nameid";
+buff;
+resource_gold	250;
+//Modifi
+}

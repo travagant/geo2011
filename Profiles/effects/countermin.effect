@@ -1,0 +1,11 @@
+// Effect profile for CounterMin
+
+effect "CounterMin"
+{
+nameid "CounterMin_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_attack.t";
+duration_turns	2;
+buff;
+def	25;
+//Modifi
+}

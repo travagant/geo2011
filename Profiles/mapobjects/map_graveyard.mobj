@@ -1,0 +1,14 @@
+//interactive map object for Graveyard
+
+id	"map_Graveyard";
+
+nameid	"map_GraveyardN";
+descid	"map_GraveyardD";
+desc_inactid	"map_GraveyardND";
+msg_inactiveid	"map_GraveyardNAD";
+ambient_sound	"$(Sounds)\\Buildings\\graveyard.wav";
+
+//destination
+action_class	"dungeon";
+action_class_script	"resources\\profiles\\dungeons\\graveyard.s";
+respawn	8;

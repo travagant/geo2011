@@ -1,0 +1,19 @@
+// Skill profile n_book_help
+
+skill	"n_book_help"
+{
+nameid "n_book_help_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_dispell_debuff.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_dispell_debuff_inactive.t";
+
+skill_range	3;
+cast_type	single;
+cast_target	friendly;
+game_effect	"nskill_book_help";
+
+request_ap	1;
+battle;
+
+//Modifi
+}

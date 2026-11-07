@@ -1,0 +1,4 @@
+//undead_Initiate's description
+nameid "UndeadInitiateName";
+descid "UndeadInitiateDesc";
+minidesc "UndeadInitiate_MD";

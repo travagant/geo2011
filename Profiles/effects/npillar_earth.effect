@@ -1,0 +1,13 @@
+// Effect profile for npillar_earth
+
+effect "npillar_earth"
+{
+nameid "npillar_earth_nameid";
+fx_start	"resources\fx\\Arena_Spells\Undead\EvilEnt\fx_undead_evilent_spell.scene";
+duration_days	1;
+c_movwm	-1;
+damage_per	3;
+element	"earth";
+//Modifi
+stackable	1;
+}

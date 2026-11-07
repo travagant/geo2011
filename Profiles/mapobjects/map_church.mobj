@@ -1,0 +1,17 @@
+//interactive map object for Church
+
+id	"map_Church";
+
+nameid	"map_ChurchN";
+msgid	"map_ChurchAD";
+msg_inactiveid	"map_ChurchNAD";
+descid	"map_ChurchD";
+desc_inactid	"map_ChurchND";
+effectid	"map_ChurchEff";
+ambient_sound	"$(Sounds)\\Buildings\\church.wav";
+fx_start	"Resources\\FX\\Arena_FX\\Rune\\fx_rune_big_heals.scene";
+
+//destination
+action_class	"object";
+game_effect	"nChurch";
+respawn	4;

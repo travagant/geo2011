@@ -1,0 +1,10 @@
+// Effect profile for nskill_transfer_hp_self
+
+effect "nskill_transfer_hp_self"
+{
+nameid "nskill_transfer_hp_self_nameid";
+fx_start	"resources\fx\\Arena_Spells\Undead\ElderVampire\fx_undead_eldervampire_spell.scene";
+damage	250;
+element	"divine";
+//Modifi
+}

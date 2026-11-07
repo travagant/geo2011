@@ -1,0 +1,55 @@
+// Characters stats profile
+
+unit_class	melee;
+ship	"empire1";
+attack_type	"blunt";
+level	24;
+exp_base	150;
+
+//stats
+str	10;
+spd	5;
+dex	6;
+agi	5;
+vit	9;
+
+
+ap	1;
+up	100;
+mov	2;
+movwm	12;
+
+atck_range	1;
+Control	1;
+Cover	1;
+
+//resists
+res_slash	25;
+res_water	-25;
+res_air	25;
+res_mind	25;
+
+leadership_cost	1;
+cost	6540;
+skill_grid	"story_johann";
+viewradius	8;
+
+//Modifi
+dmg_str_mod	 600;
+dmg_agi_mod	 400;
+crit_dex_mod	 400;
+crit_vit_mod	 200;
+flee_agi_mod	 400;
+flee_spd_mod	 200;
+hp_vit_mod	 5000;
+hp_str_mod	 2500;
+ini_spd_mod	 200;
+ini_dex_mod	 100;
+mov_mod	 0;
+movwm_mod	 0;
+cover_mod	 0;
+viewradius_mod	 0;
+Discount_Mod	 0;
+Bonusexp_Mod	 0;
+level_cap	36;
+levels_to_up	3;

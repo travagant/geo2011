@@ -1,0 +1,23 @@
+// Spell Profile
+
+id	"spell_empire_debuff_ini";
+
+nameid	"NamSp_spell_empire_debuff_ini";
+descid	"DesSp_spell_empire_debuff_ini";
+
+icon_small "Resources\items\runes\spell_empire_debuff_ini.t";
+icon "Resources\items\cards\spell_empire_debuff_ini.t";
+scene "Resources\FX\Map_Spells\Empire\Spell_Debuff_Crit\spell_debuff_crit_1.scene";
+scene_crop "Resources\FX\Map_Spells\Empire\Spell_Debuff_Crit\spell_debuff_crit_1_arena.scene";
+
+default_nation	"Empire";
+level	2;
+target	enemy;
+
+game_effect	"nspell_empire_debuff_ini";
+
+cost_spell "Life mana" 180, 360;
+
+rune	"rune_spell_empire_debuff_ini";
+rune_cost "Life mana", 65;
+rune_cost "Stone", 65;

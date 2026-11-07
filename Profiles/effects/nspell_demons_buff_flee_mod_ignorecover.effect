@@ -1,0 +1,15 @@
+// Effect profile for nspell_demons_buff_flee_mod_ignorecover
+
+effect "nspell_demons_buff_flee_mod_ignorecover"
+{
+nameid "nspell_demons_buff_flee_mod_ignorecover_nameid";
+icon "Resources\Interface\Icons\buffs\icon_buff_defense.t";
+duration_days	1;
+buff;
+//Modifi
+crit_dex_mod	 120;
+crit_vit_mod	 80;
+flee_agi_mod	 120;
+flee_spd_mod	 80;
+immune_cover;
+}

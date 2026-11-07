@@ -1,0 +1,22 @@
+// Skill profile n_petrify_mass
+
+skill	"n_petrify_mass"
+{
+nameid "n_petrify_mass_nameid";
+effectdescid "n_petrify_mass_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_full_stop.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_full_stop_inactive.t";
+
+skill_range	12;
+cast_type	zone;
+cast_target	enemy;
+game_effect	"nskill_petrify";
+
+request_ap	1;
+
+element	earth;
+info_tag;
+on_attack;
+//Modifi
+}

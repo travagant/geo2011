@@ -1,0 +1,14 @@
+// Skill profile n_skill_cover
+
+skill	"n_skill_cover"
+{
+nameid "n_skill_cover_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_cover_I.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_cover_I_inactive.t";
+
+
+
+cover	1;
+//Modifi
+}

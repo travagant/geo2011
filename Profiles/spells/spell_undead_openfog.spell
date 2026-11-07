@@ -1,0 +1,26 @@
+// Spell Profile
+
+id	"spell_undead_openfog";
+
+nameid	"NamSp_spell_undead_openfog";
+descid	"DesSp_spell_undead_openfog";
+
+icon_small "Resources\items\runes\spell_undead_openfog.t";
+icon "Resources\items\cards\spell_undead_openfog.t";
+scene "Resources\FX\Map_Spells\Undead\Spell_Undead_Openfog\spell_empire_openfog.scene";
+scene_crop "Resources\FX\Map_Spells\Undead\Spell_Undead_Openfog\spell_empire_openfog_arena.scene";
+
+default_nation	"Undead";
+level	4;
+target	zone;
+
+game_effect	"nspell_undead_openfog";
+
+cost_spell "Infernal mana" 120, 240;
+cost_spell "Death mana" 120, 240;
+cost_spell "Runstone mana" 120, 240;
+
+rune_cost "Infernal mana", 45;
+rune_cost "Death mana", 45;
+rune_cost "Runstone mana", 45;
+rune_cost "Stone", 135;

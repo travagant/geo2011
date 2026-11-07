@@ -1,0 +1,10 @@
+// Effect profile for nskill_animate_dead
+
+effect "nskill_animate_dead"
+{
+nameid "nskill_animate_dead_nameid";
+fx_start	"Resources\FX\Arena_FX\Skills\fx_skill_poison_map_1_spell.scene";
+buff;
+resurrect_mode	"nskill_animate_dead_effect";
+//Modifi
+}

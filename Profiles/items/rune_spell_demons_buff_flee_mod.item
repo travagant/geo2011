@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_demons_buff_flee_mod";
+
+nameid "NamSp_spell_demons_buff_flee_mod";
+descid "DesSp_spell_demons_buff_flee_mod";
+
+level 2;
+class "runes";
+icon "Resources\items\runes\spell_demons_buff_flee_mod.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Demons_Buff_Flee\spell_demons_buff_flee_arena.scene";
+
+target ally;
+game_effect "nspell_demons_buff_flee_mod_arena";
+
+gold_cost 380;
+usage_cost 30;
+race "Demons";

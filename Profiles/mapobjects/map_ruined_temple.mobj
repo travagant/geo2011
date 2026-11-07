@@ -1,0 +1,14 @@
+//interactive map object for Ruined_temple
+
+id	"map_Ruined_temple";
+
+nameid	"map_Ruined_templeN";
+descid	"map_Ruined_templeD";
+desc_inactid	"map_Ruined_templeND";
+msg_inactiveid	"map_Ruined_templeNAD";
+ambient_sound	"$(Sounds)\\Buildings\\ruined_temple.wav";
+
+//destination
+action_class	"dungeon";
+action_class_script	"resources\\profiles\\dungeons\\ruined_temple.s";
+respawn	10;

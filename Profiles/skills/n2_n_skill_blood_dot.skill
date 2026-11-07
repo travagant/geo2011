@@ -1,0 +1,20 @@
+// Skill profile n_skill_blood_dot
+
+skill	"n_skill_blood_dot"
+{
+nameid "n_skill_blood_dot_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_debuff_spd_oncrit.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_debuff_spd_oncrit_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_blood_dot";
+
+
+element	water;
+info_tag;
+on_crit;
+//Modifi
+}

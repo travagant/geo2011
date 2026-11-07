@@ -1,0 +1,21 @@
+// Skill profile n_buff_dex_all
+
+skill	"n_buff_dex_all"
+{
+nameid "n_buff_dex_all_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_buff_dex_all.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_buff_dex_all_inactive.t";
+
+skill_range	1;
+cast_type	around;
+cast_target	friendly;
+game_effect	"nskill_buff_dex_all";
+fx_scene	"Resources\FX\Arena_FX\Skills\fx_skill_summon_pet_1_cast.scene";
+
+request_ap	1;
+battle;
+
+info_tag;
+//Modifi
+}

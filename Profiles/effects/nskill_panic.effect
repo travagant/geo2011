@@ -1,0 +1,12 @@
+// Effect profile for nskill_panic
+
+effect "nskill_panic"
+{
+nameid "nskill_panic_nameid";
+fx_start	"Resources\FX\Arena_FX\Skills\fx_skill_stack_map_down_1_spell.scene";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_attack.t";
+duration_turns	3;
+debuff;
+ini	-10;
+//Modifi
+}

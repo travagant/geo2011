@@ -1,0 +1,19 @@
+// Skill profile n_healer
+
+skill	"n_healer"
+{
+nameid "n_healer_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_usepotion.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_usepotion_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	friendly;
+game_effect	"nskill_healer";
+
+request_ap	1;
+battle;
+
+//Modifi
+}

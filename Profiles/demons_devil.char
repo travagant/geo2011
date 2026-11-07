@@ -1,0 +1,22 @@
+//Unit Profile
+//
+id                       "demons_devil";
+unit_scene              "resources\\characters\\demons\\devil\\character_demons_devil.scene";
+unit_scene_lod		"resources\characters\demons\devil\character_demons_devil_lod.scene",10;
+icon                     "resources\\characters\\demons\\devil\\icon_devil.t";
+subicon                  "resources\\characters\\demons\\devil\\icon_devil_small.t";
+layout_icon              "resources\\characters\\demons\\devil\\icon_devil_node.t";
+capital_icon             "resources\\characters\\demons\\devil\\icon_devil_capital.t";
+dialog_icon              "resources\\characters\\demons\\devil\\icon_devil_dialog.t";
+leader_icon              "resources\\characters\\demons\\devil\\icon_devil_ring.t";
+fxproc                   "lighting";
+fxscene                  "resources\\fx\\Arena_FX\\Physical_Damage\\fx_small_attack_damage.scene";
+fxscene_ko               "resources\\fx\\Arena_FX\\Death\\fx_die_demons.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_demons_levelup.scene";
+centerbone               "Bip01 Spine1";
+move_speed                1;
+nodesx                   1;
+nodesz                   1;
+#include                 "desc\\demons_devil_desc.char";
+#include                 "sound\\demons_devil_sound.char";
+#include                 "stats\\demons_devil_stats.char";

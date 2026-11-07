@@ -1,0 +1,20 @@
+// Skill profile n_buff_regen
+
+skill	"n_buff_regen"
+{
+nameid "n_buff_regen_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_recovery.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_recovery_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"RegenMax";
+fx_scene	"Resources\FX\Map_Spells\Map_Regeneration\fx_regeneration.scene";
+
+
+info_tag;
+on_health	50;
+//Modifi
+}

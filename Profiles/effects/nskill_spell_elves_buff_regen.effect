@@ -1,0 +1,9 @@
+// Effect profile for nskill_spell_elves_buff_regen
+
+effect "nskill_spell_elves_buff_regen"
+{
+nameid "nskill_spell_elves_buff_regen_nameid";
+fx_start	"resources\fx\\Map_Spells\Map_Regeneration\fx_regeneration.scene";
+heal	40;
+//Modifi
+}

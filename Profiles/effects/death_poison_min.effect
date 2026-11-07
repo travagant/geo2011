@@ -1,0 +1,12 @@
+// Effect profile for Death_poison_min
+
+effect "Death_poison_min"
+{
+nameid "Death_poison_min_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_poison.t";
+duration_turns	20;
+debuff;
+curse	10;
+element	"death";
+//Modifi
+}

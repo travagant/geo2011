@@ -1,0 +1,16 @@
+//interactive map object for spring_south
+
+id	"map_spring_south";
+
+nameid	"map_SpringSouthN";
+msgid	"map_SpringSouthAD";
+msg_inactiveid	"";
+descid	"map_SpringSouthD";
+desc_inactid	"map_SpringSouthND";
+effectid	"map_SpringSouthEff";
+fx_start	"Resources\\FX\\Arena_FX\\Rune\\fx_rune_big_heals.scene";
+
+//destination
+action_class	"object";
+game_effect	"HealPow";
+respawn	4;

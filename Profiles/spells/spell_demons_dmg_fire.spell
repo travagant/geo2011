@@ -1,0 +1,23 @@
+// Spell Profile
+
+id	"spell_demons_dmg_fire";
+
+nameid	"NamSp_spell_demons_dmg_fire";
+descid	"DesSp_spell_demons_dmg_fire";
+
+icon_small "Resources\items\runes\spell_demons_dmg_fire.t";
+icon "Resources\items\cards\spell_demons_dmg_fire.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Fire_Cast\spell_fire_cast_4.scene";
+scene_crop "Resources\FX\Map_Spells\Demons\Spell_Fire_Cast\spell_fire_cast_4_arena.scene";
+
+default_nation	"Demons";
+level	1;
+target	enemy;
+
+game_effect	"nspell_demons_dmg_fire";
+
+cost_spell "Infernal mana" 180, 360;
+
+rune	"rune_spell_demons_dmg_fire";
+rune_cost "Infernal mana", 65;
+rune_cost "Stone", 65;

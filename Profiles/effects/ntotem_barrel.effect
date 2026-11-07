@@ -1,0 +1,13 @@
+// Effect profile for ntotem_barrel
+
+effect "ntotem_barrel"
+{
+nameid "ntotem_barrel_nameid";
+effectdescid "ntotem_barrel_descid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_attack.t";
+duration_turns	-1;
+buff;
+atck_range	-9999;
+dontdispell;
+//Modifi
+}

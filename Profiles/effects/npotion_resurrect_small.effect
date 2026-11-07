@@ -1,0 +1,10 @@
+// Effect profile for npotion_resurrect_small
+
+effect "npotion_resurrect_small"
+{
+nameid "npotion_resurrect_small_nameid";
+fx_start	"resources\fx\\Arena_FX\Potions\fx_potion_revive_small.scene";
+buff;
+resurrect	1;
+//Modifi
+}

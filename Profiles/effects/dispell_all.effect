@@ -1,0 +1,13 @@
+// Effect profile for Dispell_all
+
+effect "Dispell_all"
+{
+nameid "Dispell_all_nameid";
+buff;
+debuff;
+dispell	100;
+dispel_buffs	1;
+dispel_debuffs	1;
+banish;
+//Modifi
+}

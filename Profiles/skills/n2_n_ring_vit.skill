@@ -1,0 +1,19 @@
+// Skill profile n_ring_vit
+
+skill	"n_ring_vit"
+{
+nameid "n_ring_vit_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_ring_vit.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_ring_vit_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_ring_vit";
+
+
+info_tag;
+on_damaged;
+//Modifi
+}

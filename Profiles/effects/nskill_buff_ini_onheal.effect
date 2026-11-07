@@ -1,0 +1,12 @@
+// Effect profile for nskill_buff_ini_onheal
+
+effect "nskill_buff_ini_onheal"
+{
+nameid "nskill_buff_ini_onheal_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_double_damage_1_cast.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_attack.t";
+duration_turns	1;
+buff;
+//Modifi
+ini_per	15;
+}

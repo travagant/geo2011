@@ -1,0 +1,11 @@
+// Effect profile for CounterMax
+
+effect "CounterMax"
+{
+nameid "CounterMax_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_attack.t";
+duration_turns	2;
+buff;
+def	100;
+//Modifi
+}

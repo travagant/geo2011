@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_empire_dmg_air_debuff";
+
+nameid "NamSp_spell_empire_dmg_air_debuff";
+descid "DesSp_spell_empire_dmg_air_debuff";
+
+level 4;
+class "runes";
+icon "Resources\items\runes\spell_empire_dmg_air_debuff.t";
+scene "Resources\FX\Map_Spells\Empire\Spell_Debuff_Dex\spell_debuff_dex_arena.scene";
+
+target enemy;
+game_effect "nspell_empire_dmg_air_debuff_arena";
+
+gold_cost 840;
+usage_cost 40;
+race "Empire";

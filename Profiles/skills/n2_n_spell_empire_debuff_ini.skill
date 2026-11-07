@@ -1,0 +1,20 @@
+// Skill profile n_spell_empire_debuff_ini
+
+skill	"n_spell_empire_debuff_ini"
+{
+nameid "n_spell_empire_debuff_ini_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_slow_i.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_slow_i_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_spell_empire_debuff_ini";
+
+
+element	mind;
+info_tag;
+on_attack;
+//Modifi
+}

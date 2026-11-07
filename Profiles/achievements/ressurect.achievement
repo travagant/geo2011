@@ -1,0 +1,18 @@
+// Achievement Profile
+
+achievement "ressurect"
+{
+	nameid  "ressurect_name"; 
+	descid  "ressurect_desc";
+	type range;
+	count_name "str_ressurect_CN";
+
+	level_bronze 5;
+	icon_bronze "Resources\Interface\Icons\achievements\achieve_resurrect.t";
+
+	level_silver 15;
+	icon_silver "Resources\Interface\Icons\achievements\achieve_resurrect.t";
+
+	level_gold 30;
+	icon_gold "Resources\Interface\Icons\achievements\achieve_resurrect.t";
+};

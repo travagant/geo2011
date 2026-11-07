@@ -1,0 +1,16 @@
+//interactive map object for road_sign_1
+
+id	"map_road_sign_1";
+
+nameid	"map_road_sign_1N";
+msgid	"map_road_sign_1AD";
+msg_inactiveid	"map_road_sign_1NAD";
+descid	"map_road_sign_1D";
+desc_inactid	"map_road_sign_1ND";
+effectid	"map_road_sign_1Eff";
+fx_start	"Resources\\FX\Arena_FX\Sign\fx_sign_move.scene";
+
+//destination
+action_class	"object";
+game_effect	"ApWorldRoad_1";
+respawn	1;

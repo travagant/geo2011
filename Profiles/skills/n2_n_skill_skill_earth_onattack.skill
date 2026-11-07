@@ -1,0 +1,18 @@
+// Skill profile n_skill_skill_earth_onattack
+
+skill	"n_skill_skill_earth_onattack"
+{
+nameid "n_skill_skill_earth_onattack_nameid";
+
+icon	"Resources\Interface\Icons\skills\icon_unitstart.t";
+icon_inactive	"Resources\Interface\Icons\skills\icon_unitstart_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_skill_earth_onattack";
+
+
+element	earth;
+//Modifi
+}

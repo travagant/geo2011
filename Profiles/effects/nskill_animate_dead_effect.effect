@@ -1,0 +1,9 @@
+// Effect profile for nskill_animate_dead_effect
+
+effect "nskill_animate_dead_effect"
+{
+nameid "nskill_animate_dead_effect_nameid";
+buff;
+resurrect	1;
+//Modifi
+}

@@ -1,0 +1,18 @@
+// Equipment Profile
+
+id	"talisman_death";
+
+nameid "talisman_death_name";
+descid "talisman_death_desc";
+
+
+class	"talisman";
+level	2;
+
+icon "resources\Items\talisman\talisman_death.t";
+
+str	1;
+res_death	25;
+
+gold_cost	6000;
+//Modifi

@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_demons_buff_str_spd";
+
+nameid "NamSp_spell_demons_buff_str_spd";
+descid "DesSp_spell_demons_buff_str_spd";
+
+level 2;
+class "runes";
+icon "Resources\items\runes\spell_demons_buff_str_spd.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Demons_Buff_Str_Spd\spell_demons_buff_str_spd_arena.scene";
+
+target ally;
+game_effect "nspell_demons_buff_str_spd_arena";
+
+gold_cost 420;
+usage_cost 20;
+race "Demons";

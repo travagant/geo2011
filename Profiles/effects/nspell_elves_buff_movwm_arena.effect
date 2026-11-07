@@ -1,0 +1,12 @@
+// Effect profile for nspell_elves_buff_movwm_arena
+
+effect "nspell_elves_buff_movwm_arena"
+{
+nameid "nspell_elves_buff_movwm_arena_nameid";
+icon "Resources\Interface\Icons\buffs\icon_buff_world.t";
+duration_turns	-1;
+buff;
+ini	4;
+movwm	3;
+//Modifi
+}

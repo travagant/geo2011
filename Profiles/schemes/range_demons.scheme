@@ -1,0 +1,11 @@
+//range_demons.scheme
+// Range/demons race unit progress scheme file.
+
+scheme "range_demons"
+{
+	str 30;
+	dex 60;
+	int 10;
+	agi 10;
+	vit 20;
+};

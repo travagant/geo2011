@@ -1,0 +1,11 @@
+// Effect profile for potion_effect_dex
+
+effect "potion_effect_dex"
+{
+nameid "potion_effect_dex_nameid";
+icon "Resources\Interface\Icons\buffs\icon_buff_defense.t";
+duration_turns	10;
+buff;
+dex	3;
+//Modifi
+}

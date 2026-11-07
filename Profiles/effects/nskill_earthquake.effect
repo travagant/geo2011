@@ -1,0 +1,14 @@
+// Effect profile for nskill_earthquake
+
+effect "nskill_earthquake"
+{
+nameid "nskill_earthquake_nameid";
+fx_start	"Resources\FX\\Arena_FX\skills\fx_skill_n_earthquake.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_attack.t";
+duration_turns	2;
+debuff;
+attack_pow	20;
+element	"earth";
+//Modifi
+ini_per	-15;
+}

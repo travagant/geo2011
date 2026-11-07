@@ -1,0 +1,13 @@
+// Effect profile for nUndead_fountain
+
+effect "nUndead_fountain"
+{
+nameid "nUndead_fountain_nameid";
+fx_start	"resources\fx\\Arena_FX\Sign\fx_sign_statsup.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_defense.t";
+duration_days	3;
+buff;
+dontdispell;
+hp	200;
+//Modifi
+}

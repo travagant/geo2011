@@ -1,0 +1,20 @@
+// Skill profile n_skill_skill_gnienie_razyma_onattack
+
+skill	"n_skill_skill_gnienie_razyma_onattack"
+{
+nameid "n_skill_skill_gnienie_razyma_onattack_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_spell_elves_buff_dmg.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_spell_elves_buff_dmg_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_skill_gnienie_razyma_onattack";
+
+
+element	death;
+info_tag;
+on_attack;
+//Modifi
+}

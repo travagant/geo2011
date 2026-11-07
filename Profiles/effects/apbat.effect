@@ -1,0 +1,15 @@
+// Effect profile for ApBat
+
+effect "ApBat"
+{
+nameid "ApBat_nameid";
+fx_start	"resources\fx\\Arena_FX\Potions\fx_potion_mov.scene";
+icon "Resources\Interface\Icons\buffs\Icon_buff_attack.t";
+duration_turns	1;
+buff;
+mov	2;
+//Modifi
+dmg_per	30;
+crit_per	30;
+immune_cover;
+}

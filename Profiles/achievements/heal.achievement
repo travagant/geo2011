@@ -1,0 +1,18 @@
+// Achievement Profile
+
+achievement "heal"
+{
+	nameid  "heal_name"; 
+	descid  "heal_desc";
+	type range;
+	count_name "str_heal_CN";
+
+	level_bronze 1000;
+	icon_bronze "Resources\Interface\Icons\achievements\achieve_heal.t";
+
+	level_silver 10000;
+	icon_silver "Resources\Interface\Icons\achievements\achieve_heal.t";
+
+	level_gold 50000;
+	icon_gold "Resources\Interface\Icons\achievements\achieve_heal.t";
+};

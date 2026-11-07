@@ -1,0 +1,15 @@
+// Effect profile for nskill_spell_demons_dmg_mind_huge
+
+effect "nskill_spell_demons_dmg_mind_huge"
+{
+nameid "nskill_spell_demons_dmg_mind_huge_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_n_rage.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_attack.t";
+duration_turns	3;
+debuff;
+element	"mind";
+//Modifi
+crit_per	-5;
+flee_per	-5;
+stackable	1;
+}

@@ -1,0 +1,10 @@
+// Effect profile for nskill_wall_Empire
+
+effect "nskill_wall_Empire"
+{
+nameid "nskill_wall_Empire_nameid";
+fx_start	"Resources\FX\Arena_FX\Skills\fx_skill_stone_wall_spell.scene";
+buff;
+summon	"neutrals_wall";
+//Modifi
+}

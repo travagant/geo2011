@@ -1,0 +1,11 @@
+//range.scheme
+// Range unit progress scheme file.
+
+scheme "range"
+{
+	str 30;
+	dex 60;
+	int 10;
+	agi 10;
+	vit 20;
+};

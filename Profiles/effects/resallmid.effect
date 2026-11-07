@@ -1,0 +1,11 @@
+// Effect profile for ResAllMid
+
+effect "ResAllMid"
+{
+nameid "ResAllMid_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_resist.t";
+duration_turns	10;
+buff;
+res	50;
+//Modifi
+}

@@ -1,0 +1,13 @@
+// Effect profile for nspell_demons_debuff_viewradius_crit_mod_arena
+
+effect "nspell_demons_debuff_viewradius_crit_mod_arena"
+{
+nameid "nspell_demons_debuff_viewradius_crit_mod_arena_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_world.t";
+duration_turns	-1;
+debuff;
+dex	-3;
+res_fire	-25;
+viewradius	-7;
+//Modifi
+}

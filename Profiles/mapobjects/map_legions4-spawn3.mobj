@@ -1,0 +1,9 @@
+//interactive map object for legions4-spawn3
+
+id	"map_legions4-spawn3";
+
+nameid	"";
+
+//destination
+action_class	"resp";
+action_class_script	"resources\\profiles\\resp\\legions4-spawn3.s";

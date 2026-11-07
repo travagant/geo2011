@@ -1,0 +1,16 @@
+// Potion Profile
+
+id	"potion_resurrect_small";
+
+
+nameid	"ItNPotResS";
+descid	"ItDPotResS";
+
+class "potion";
+level	1;
+icon "Resources\\Items\\potion\\potion_resurrect_small.t";
+
+game_effect	"npotion_resurrect_small";
+gold_cost	300;
+usage_cost	10;
+target	"ally";

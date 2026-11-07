@@ -1,0 +1,50 @@
+//Unit Profile
+//
+id			"story_lambert";
+unit_scene		"resources\\characters\\story\\lambert\\character_story_lambert.scene";
+unit_scene_lod		"resources\characters\story\lambert\character_story_lambert_lod.scene",10;
+icon			"resources\\characters\\story\\lambert\\icon_lambert.t";
+subicon			"resources\\characters\\story\\lambert\\icon_lambert_small.t";
+layout_icon		"resources\\characters\\story\\lambert\\icon_lambert_node.t";
+capital_icon		"resources\\characters\\story\\lambert\\icon_lambert_capital.t";
+dialog_icon		"resources\\characters\\story\\lambert\\icon_lambert_dialog.t";
+leader_icon		"resources\\characters\\story\\lambert\\icon_lambert_ring.t"
+fxproc                   "default";
+fxscene			"resources\\fx\\Arena_FX\\Physical_Damage\\fx_small_attack_damage.scene";
+//fxcast                   "resources\\fx\\";
+fxscene_ko		"resources\\fx\\Arena_FX\\Death\\fx_die_empire_2x.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_empires_levelup.scene";
+centerbone		"Spine1";
+move_speed		7;
+nodesx			1;
+nodesz			1;
+#include		"desc\\story_lambert_desc.char";
+#include		"sound\\story_lambert_sound.char";
+#include		"stats\\story_lambert_stats.char";
+set 1 {
+    weapon "resources\Characters\story\lambert\weapon\story_lambert_set1_weapon.scene";
+    feet "resources\Characters\story\lambert\feet\story_lambert_set1_feet.scene";
+    body "resources\Characters\story\lambert\body\story_lambert_set1_body.scene";
+    head "resources\Characters\story\lambert\head\story_lambert_set1_head.scene";
+    legs "resources\Characters\story\lambert\legs\story_lambert_set1_legs.scene";
+    arms "resources\Characters\story\lambert\arms\story_lambert_set1_arms.scene";
+    hands "resources\Characters\story\lambert\hands\story_lambert_set1_hands.scene";
+}
+set 2 {
+    weapon "resources\Characters\story\lambert\weapon\story_lambert_set2_weapon.scene";
+    feet "resources\Characters\story\lambert\feet\story_lambert_set2_feet.scene";
+    body "resources\Characters\story\lambert\body\story_lambert_set2_body.scene";
+    head "resources\Characters\story\lambert\head\story_lambert_set2_head.scene";
+    legs "resources\Characters\story\lambert\legs\story_lambert_set2_legs.scene";
+    arms "resources\Characters\story\lambert\arms\story_lambert_set2_arms.scene";
+    hands "resources\Characters\story\lambert\hands\story_lambert_set2_hands.scene";
+}
+set 3 {
+    weapon "resources\Characters\story\lambert\weapon\story_lambert_set3_weapon.scene";
+    feet "resources\Characters\story\lambert\feet\story_lambert_set3_feet.scene";
+    body "resources\Characters\story\lambert\body\story_lambert_set3_body.scene";
+    head "resources\Characters\story\lambert\head\story_lambert_set3_head.scene";
+    legs "resources\Characters\story\lambert\legs\story_lambert_set3_legs.scene";
+    arms "resources\Characters\story\lambert\arms\story_lambert_set3_arms.scene";
+    hands "resources\Characters\story\lambert\hands\story_lambert_set3_hands.scene";
+}

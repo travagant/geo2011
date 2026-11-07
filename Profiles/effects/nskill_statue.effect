@@ -1,0 +1,15 @@
+// Effect profile for nskill_statue
+
+effect "nskill_statue"
+{
+nameid "nskill_statue_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_stop.t";
+duration_turns	3;
+buff;
+stop;
+def	50;
+res	75;
+paralize;
+//Modifi
+add_skill	"n_statue_heal";
+}

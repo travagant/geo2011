@@ -1,0 +1,10 @@
+// Effect profile for nskill_dmg_oncrit
+
+effect "nskill_dmg_oncrit"
+{
+nameid "nskill_dmg_oncrit_nameid";
+fx_start	"resources\fx\\Arena_FX\Physical_Damage\fx_small_attack_damage_2x.scene";
+attack_pow	100;
+element	"slash";
+//Modifi
+}

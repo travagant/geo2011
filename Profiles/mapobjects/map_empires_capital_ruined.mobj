@@ -1,0 +1,11 @@
+//interactive map object for Empires_capital_ruined
+
+id	"map_Empires_capital_ruined";
+
+nameid	"map_Empires_capital_ruinedN";
+descid	"map_Empires_capital_ruinedD";
+desc_inactid	"map_Empires_capital_ruinedD";
+
+//destination
+action_class	"object";
+respawn	0;

@@ -1,0 +1,11 @@
+// Effect profile for IntMid
+
+effect "IntMid"
+{
+nameid "IntMid_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_attack.t";
+duration_turns	5;
+buff;
+spd	2;
+//Modifi
+}

@@ -1,0 +1,23 @@
+// Spell Profile
+
+id	"spell_elves_debuff_ini";
+
+nameid	"NamSp_spell_elves_debuff_ini";
+descid	"DesSp_spell_elves_debuff_ini";
+
+icon_small "Resources\items\runes\spell_elves_debuff_ini.t";
+icon "Resources\items\cards\spell_elves_debuff_ini.t";
+scene "Resources\FX\Map_Spells\Elves\Spell_Debuff_Ini\spell_debuff_ini.scene";
+scene_crop "Resources\FX\Map_Spells\Elves\Spell_Debuff_Ini\spell_debuff_ini_arena.scene";
+
+default_nation	"Elves";
+level	1;
+target	enemy;
+
+game_effect	"nspell_elves_debuff_ini";
+
+cost_spell "Grove mana" 120, 240;
+
+rune	"rune_spell_elves_debuff_ini";
+rune_cost "Grove mana", 45;
+rune_cost "Stone", 45;

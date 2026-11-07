@@ -1,0 +1,21 @@
+// Skill profile n_animate_dead
+
+skill	"n_animate_dead"
+{
+nameid "n_animate_dead_nameid";
+effectdescid "n_animate_dead_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_revive_i.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_revive_i_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	friendly;
+game_effect	"nskill_animate_dead";
+
+request_ap	1;
+battle;
+
+info_tag;
+//Modifi
+}

@@ -1,0 +1,24 @@
+grid "story_emperor_ferre"
+{
+ unit_start 1 9;
+ unit_skill "n_skill_info_doublestrike" 1 1 1 24;
+ unit_skill "n_skill_buff_ini_onkill" 1 1 1 25;
+ unit_skill "n_skill_blood_dot" 1 1 1 26;
+ unit_skill "n_skill_dmg_oncrited" 1 1 1 27;
+ unit_skill "n_skill_buff_ini_onattack" 1 1 1 28;
+ unit_skill "n_skill_summon_nightmare" 1 1 1 29;
+ uses 3;
+ unit_skill "n_skill_summon_skeleton_onkill" 1 1 1 30;
+ unit_skill "n_skill_agi" 1 0 2 9;
+ unit_skill "n_skill_str" 1 0 3 9;
+ unit_skill "n_skill_spd" 1 0 4 9;
+ unit_skill "n_skill_battle_pathfinder" 1 0 5 9;
+ unit_skill "n_skill_spd" 1 0 6 9;
+ unit_skill "n_skill_str" 1 0 7 9;
+ unit_skill "n_skill_agi" 1 0 8 9;
+ unit_skill "n_skill_cover" 1 0 9 9;
+ unit_skill "n_skill_vit" 1 0 10 9;
+ unit_skill "n_skill_agi" 1 0 11 9;
+ unit_skill "n_skill_spd" 1 0 12 9;
+ unit_skill "n_skill_agi" 1 0 13 9;
+}

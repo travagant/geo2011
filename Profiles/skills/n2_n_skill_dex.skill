@@ -1,0 +1,14 @@
+// Skill profile n_skill_dex
+
+skill	"n_skill_dex"
+{
+nameid "n_skill_dex_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_dex_up_i.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_dex_up_i_inactive.t";
+
+
+
+dex	1;
+//Modifi
+}

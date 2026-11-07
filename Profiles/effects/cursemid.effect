@@ -1,0 +1,12 @@
+// Effect profile for CurseMid
+
+effect "CurseMid"
+{
+nameid "CurseMid_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_poison.t";
+duration_turns	3;
+debuff;
+curse	20;
+element	"fire";
+//Modifi
+}

@@ -1,0 +1,9 @@
+// Effect profile for nskill_morph_Legion
+
+effect "nskill_morph_Legion"
+{
+nameid "nskill_morph_Legion_nameid";
+fx_start	"Resources\FX\Arena_FX\Skills\fx_skill_morf_bad_1_spell.scene";
+morph	"neutrals_imp_morph", "neutrals_fatimp_morph" "nskill_morph_duration";
+//Modifi
+}

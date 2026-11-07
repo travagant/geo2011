@@ -1,0 +1,13 @@
+// Effect profile for nGreenGrit
+
+effect "nGreenGrit"
+{
+nameid "nGreenGrit_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_regen.t";
+duration_days	1;
+buff;
+dontdispell;
+//Modifi
+recovery	10;
+stackable	1;
+}

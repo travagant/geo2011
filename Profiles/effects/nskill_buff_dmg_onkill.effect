@@ -1,0 +1,12 @@
+// Effect profile for nskill_buff_dmg_onkill
+
+effect "nskill_buff_dmg_onkill"
+{
+nameid "nskill_buff_dmg_onkill_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_ring_innerfire.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_attack.t";
+duration_turns	1;
+buff;
+//Modifi
+dmg_per	75;
+}

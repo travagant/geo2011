@@ -1,0 +1,18 @@
+// Skill profile n_talisman_earth
+
+skill	"n_talisman_earth"
+{
+nameid "n_talisman_earth_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_res-earth.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_res-earth_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+
+
+res_earth	25;
+info_tag;
+//Modifi
+}

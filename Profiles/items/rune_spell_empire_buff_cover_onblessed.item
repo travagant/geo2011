@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_empire_buff_cover_onblessed";
+
+nameid "NamSp_spell_empire_buff_cover_onblessed";
+descid "DesSp_spell_empire_buff_cover_onblessed";
+
+level 3;
+class "runes";
+icon "Resources\items\runes\spell_empire_buff_cover_onblessed.t";
+scene "Resources\FX\Map_Spells\Empire\Spell_Buff_Counter\spell_buff_counter_4_arena.scene";
+
+target ally;
+game_effect "nspell_empire_buff_cover_onblessed_arena";
+
+gold_cost 640;
+usage_cost 20;
+race "Empire";

@@ -1,0 +1,21 @@
+// Skill profile n_skill_debuff_flee_resist_around
+
+skill	"n_skill_debuff_flee_resist_around"
+{
+nameid "n_skill_debuff_flee_resist_around_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_dex.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_dex_inactive.t";
+
+skill_range	1;
+cast_type	around;
+cast_target	enemy;
+game_effect	"nskill_debuff_flee_resist_around";
+fx_scene	"resources\fx\\Arena_FX\Skills\fx_skill_double_attack_1_cast.scene";
+
+request_ap	1;
+battle;
+
+element	mind;
+//Modifi
+}

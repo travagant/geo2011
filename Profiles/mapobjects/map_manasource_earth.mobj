@@ -1,0 +1,16 @@
+//interactive map object for Manasource_earth
+
+id	"map_Manasource_earth";
+
+nameid	"map_Manasource_earthN";
+msgid	"map_Manasource_earthAD";
+msg_inactiveid	"map_Manasource_earthNAD";
+descid	"map_Manasource_earthD";
+desc_inactid	"map_Manasource_earthND";
+effectid	"map_Manasource_earthEff";
+ambient_sound	"$(Sounds)\\Buildings\\manasource_earth.wav";
+
+//destination
+action_class	"resource";
+action_class_script	"resources\\profiles\\actionscript\\resource_grovemana.acscript";
+respawn	1;

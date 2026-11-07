@@ -1,0 +1,23 @@
+// Unit Profile
+//
+id 		"empire_wizard";
+unit_scene 	"resources\\characters\\empire\\wizard\\character_empire_wizard.scene";
+unit_scene_lod		"resources\characters\empire\wizard\character_empire_wizard_lod.scene",10;
+icon 		"resources\\characters\\empire\\wizard\\icon_wizard.t";
+subicon 	"resources\\characters\\empire\\wizard\\icon_wizard_small.t";
+layout_icon	"resources\characters\\empire\\wizard\\icon_wizard_node.t";
+fxproc 		"lighting";
+fxcast 		"Resources\FX\Attacks\Empire\Wizard\fx_empire_wizard_cast.scene";
+fxscene 	"Resources\FX\Arena_Spells\Empire\Wizard\fx_empire_wizard_spell.scene";
+fxscene_ko 	"Resources\FX\Arena_FX\Death\fx_die_empire.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_empires_levelup.scene";
+centerbone "Spine1";
+#include      	"desc\\empire_wizard_desc.char";
+#include	"stats\\empire_wizard_stats.char";
+#include      	"sound\\empire_wizard_sound.char";
+move_speed 	3;
+nodesx 		1;
+nodesz 		1;
+capital_icon 	 "resources\characters\empire\wizard\icon_wizard_capital.t";
+dialog_icon 	 "resources\characters\empire\wizard\icon_wizard_dialog.t";
+leader_icon      "resources\characters\empire\wizard\icon_wizard_ring.t"

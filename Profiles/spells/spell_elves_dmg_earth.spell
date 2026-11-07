@@ -1,0 +1,23 @@
+// Spell Profile
+
+id	"spell_elves_dmg_earth";
+
+nameid	"NamSp_spell_elves_dmg_earth";
+descid	"DesSp_spell_elves_dmg_earth";
+
+icon_small "Resources\items\runes\spell_elves_dmg_earth.t";
+icon "Resources\items\cards\spell_elves_dmg_earth.t";
+scene "Resources\FX\Map_Spells\Elves\Spell_Earth_Cast\spell_earth_cast_4.scene";
+scene_crop "Resources\FX\Map_Spells\Elves\Spell_Earth_Cast\spell_earth_cast_4_arena.scene";
+
+default_nation	"Elves";
+level	2;
+target	enemy;
+
+game_effect	"nspell_elves_dmg_earth";
+
+cost_spell "Grove mana" 360, 720;
+
+rune	"rune_spell_elves_dmg_earth";
+rune_cost "Grove mana", 130;
+rune_cost "Stone", 130;

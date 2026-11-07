@@ -1,0 +1,10 @@
+
+
+
+alias "chest_open" {
+
+
+   sound 100, "$(Sounds)\interface\chest_open.wav", 100, 3;
+
+
+}  

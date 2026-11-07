@@ -1,0 +1,11 @@
+// Effect profile for CritMid
+
+effect "CritMid"
+{
+nameid "CritMid_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_attack.t";
+duration_turns	2;
+buff;
+crit	50;
+//Modifi
+}

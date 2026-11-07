@@ -1,0 +1,12 @@
+// Effect profile for RegenMax
+
+effect "RegenMax"
+{
+nameid "RegenMax_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_regen.t";
+duration_turns	-1;
+buff;
+regen	50;
+dontdispell;
+//Modifi
+}

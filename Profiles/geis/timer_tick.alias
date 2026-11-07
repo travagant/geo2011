@@ -1,0 +1,10 @@
+
+
+
+alias "TimerTick" {
+
+
+  sound 100, "$(Sounds)\interface\sound_quest_event.wav", 100, 3;
+
+
+}  

@@ -1,0 +1,11 @@
+
+
+
+alias "PickupMana" {
+
+
+   //sound 100, "$(Sounds)\interface\open_dialog.wav", 100, 3;
+   sound 100, "$(Sounds)\collect_mana.wav", 100, 3;
+
+
+}  

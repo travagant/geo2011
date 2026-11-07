@@ -1,0 +1,23 @@
+// Spell Profile
+
+id	"spell_empire_get_rune";
+
+nameid	"NamSp_spell_empire_get_rune";
+effectdescid	"EffSp_spell_empire_get_rune";
+descid	"DesSp_spell_empire_get_rune";
+
+icon_small "Resources\items\runes\spell_empire_get_rune.t";
+icon "Resources\items\cards\spell_empire_get_rune.t";
+scene "Resources\FX\Map_Spells\Empire\Spell_Buff_Int\spell_buff_int.scene";
+scene_crop "Resources\FX\Map_Spells\Empire\Spell_Buff_Int\spell_buff_int_arena.scene";
+
+default_nation	"Empire";
+level	2;
+target	ally;
+
+game_effect	"nspell_empire_get_rune";
+
+cost_spell "Life mana" 200, 400;
+
+rune_cost "Life mana", 70;
+rune_cost "Stone", 70;

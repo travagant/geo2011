@@ -1,0 +1,22 @@
+// Skill profile n_defform_doppleganger
+
+skill	"n_defform_doppleganger"
+{
+nameid "n_defform_doppleganger_nameid";
+effectdescid "n_defform_doppleganger_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_morf_defform.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_morf_defform_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	any;
+game_effect	"nskill_defform_doppleganger";
+fx_scene	"Resources\FX\Arena_FX\Skills\fx_skill_morf_defform_1_cast.scene";
+
+request_ap	1;
+battle;
+
+info_tag;
+//Modifi
+}

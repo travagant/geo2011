@@ -1,0 +1,25 @@
+// Equipment Profile
+
+id	"banner_of_heroism";
+
+nameid "banner_of_heroism_name";
+descid "banner_of_heroism_desc";
+effectdescid "banner_of_heroism_efdesc";
+
+
+class	"banner";
+level	2;
+
+icon "resources\Items\banner\banner_of_heroism.t";
+
+
+gold_cost	6000;
+//Modifi
+banner_profile	{
+ //сцена флага
+ banner_scene "Resources\Hexagons\Models\Flags\banner_of_heroism.scene"
+
+ //действия в началае боя
+ // "цель" "накладываемый эффект"
+ start_action "owner" "nbanner_of_heroism"
+};

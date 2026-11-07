@@ -1,0 +1,12 @@
+// Effect profile for nskill_immobilize
+
+effect "nskill_immobilize"
+{
+nameid "nskill_immobilize_nameid";
+fx_start	"Resources\FX\\Arena_FX\skills\fx_skill_n_immobilize";
+icon "Resources\Interface\Icons\buffs\icon_debuff_stop.t";
+duration_turns	3;
+debuff;
+c_mov	-10;
+//Modifi
+}

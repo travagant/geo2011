@@ -1,0 +1,8 @@
+// Effect profile for nskill_heal_buff
+
+effect "nskill_heal_buff"
+{
+nameid "nskill_heal_buff_nameid";
+buff;
+//Modifi
+}

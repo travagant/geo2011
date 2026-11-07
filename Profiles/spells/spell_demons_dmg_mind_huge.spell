@@ -1,0 +1,29 @@
+// Spell Profile
+
+id	"spell_demons_dmg_mind_huge";
+
+nameid	"NamSp_spell_demons_dmg_mind_huge";
+descid	"DesSp_spell_demons_dmg_mind_huge";
+
+icon_small "Resources\items\runes\spell_demons_dmg_mind_huge.t";
+icon "Resources\items\cards\spell_demons_dmg_mind_huge.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Mind_Cast\spell_mind_cast_4.scene";
+scene_crop "Resources\FX\Map_Spells\Demons\Spell_Mind_Cast\spell_mind_cast_4_arena.scene";
+
+default_nation	"Demons";
+level	5;
+target	enemy;
+
+game_effect	"nspell_demons_dmg_mind_huge";
+
+cost_spell "Life mana" 225, 450;
+cost_spell "Infernal mana" 225, 450;
+cost_spell "Death mana" 225, 450;
+cost_spell "Runstone mana" 225, 450;
+
+rune	"rune_spell_demons_dmg_mind_huge";
+rune_cost "Life mana", 80;
+rune_cost "Infernal mana", 80;
+rune_cost "Death mana", 80;
+rune_cost "Runstone mana", 80;
+rune_cost "Stone", 320;

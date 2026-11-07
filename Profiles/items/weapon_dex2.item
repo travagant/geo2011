@@ -1,0 +1,19 @@
+// Equipment Profile
+
+id	"weapon_dex2";
+
+nameid "weapon_dex2_name";
+descid "weapon_dex2_desc";
+
+
+class	"weapon";
+replace	"weapon" set 2;
+level	2;
+
+icon "resources\Items\weapon\weapon_dex2.t";
+
+add_skill	"n_delete_wall";
+dex	1;
+
+gold_cost	6000;
+//Modifi

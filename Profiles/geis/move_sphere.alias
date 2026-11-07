@@ -1,0 +1,10 @@
+
+
+
+alias "move_sphere" {
+
+
+   sound 100, "$(Sounds)\interface\sphere.wav", 100, 3;
+
+
+}  

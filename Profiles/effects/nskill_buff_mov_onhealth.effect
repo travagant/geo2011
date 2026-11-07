@@ -1,0 +1,13 @@
+// Effect profile for nskill_buff_mov_onhealth
+
+effect "nskill_buff_mov_onhealth"
+{
+nameid "nskill_buff_mov_onhealth_nameid";
+fx_start	"resources\fx\\Arena_FX\Potions\fx_potion_mov.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_attack.t";
+duration_turns	-1;
+buff;
+mov	1;
+dontdispell;
+//Modifi
+}

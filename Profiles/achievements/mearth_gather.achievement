@@ -1,0 +1,18 @@
+// Achievement Profile
+
+achievement "mearth_gather"
+{
+	nameid  "mearth_gather_name"; 
+	descid  "mearth_gather_desc";
+	type range;
+	count_name "str_mearth_gather_CN";
+
+	level_bronze 10000;
+	icon_bronze "Resources\Interface\Icons\achievements\achieve_mearth_gather.t";
+
+	level_silver 50000;
+	icon_silver "Resources\Interface\Icons\achievements\achieve_mearth_gather.t";
+
+	level_gold 90000;
+	icon_gold "Resources\Interface\Icons\achievements\achieve_mearth_gather.t";
+};

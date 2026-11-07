@@ -1,0 +1,29 @@
+// Spell Profile
+
+id	"spell_demons_buff_flee_crit_mod_ignorecover";
+
+nameid	"NamSp_spell_demons_buff_flee_crit_mod_ignorecover";
+descid	"DesSp_spell_demons_buff_flee_crit_mod_ignorecover";
+
+icon_small "Resources\items\runes\spell_demons_buff_flee_crit_mod_ignorecover.t";
+icon "Resources\items\cards\spell_demons_buff_flee_crit_mod_ignorecover.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Ignore_Cover\spell_ignore_cover.scene";
+scene_crop "Resources\FX\Map_Spells\Demons\Spell_Ignore_Cover\spell_ignore_cover_arena.scene";
+
+default_nation	"Demons";
+level	5;
+target	ally;
+
+game_effect	"nspell_demons_buff_flee_crit_mod_ignorecover";
+
+cost_spell "Grove mana" 200, 400;
+cost_spell "Infernal mana" 200, 400;
+cost_spell "Death mana" 200, 400;
+cost_spell "Runstone mana" 200, 400;
+
+rune	"rune_spell_demons_buff_flee_crit_mod_ignorecover";
+rune_cost "Grove mana", 70;
+rune_cost "Infernal mana", 70;
+rune_cost "Death mana", 70;
+rune_cost "Runstone mana", 70;
+rune_cost "Stone", 280;

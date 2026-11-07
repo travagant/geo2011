@@ -1,0 +1,10 @@
+// Effect profile for nskill_book_summon
+
+effect "nskill_book_summon"
+{
+nameid "nskill_book_summon_nameid";
+fx_start	"Resources\FX\\Arena_FX\Skills\fx_skills_summon_pet_undead.scene";
+buff;
+summon	"neutrals_zombie";
+//Modifi
+}

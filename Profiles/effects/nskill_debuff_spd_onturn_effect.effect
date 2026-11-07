@@ -1,0 +1,12 @@
+// Effect profile for nskill_debuff_spd_onturn_effect
+
+effect "nskill_debuff_spd_onturn_effect"
+{
+nameid "nskill_debuff_spd_onturn_effect_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_debuff_spd_onturn.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_attack.t";
+duration_turns	3;
+debuff;
+spd	-1;
+//Modifi
+}

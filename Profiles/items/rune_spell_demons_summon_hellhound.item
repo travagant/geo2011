@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_demons_summon_hellhound";
+
+nameid "NamSp_spell_demons_summon_hellhound";
+descid "DesSp_spell_demons_summon_hellhound";
+
+level 2;
+class "runes";
+icon "Resources\items\runes\spell_demons_summon_hellhound.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Summon\spell_summon_hellhound_arena.scene";
+
+target zone;
+game_effect "nspell_demons_summon_hellhound_arena";
+
+gold_cost 600;
+usage_cost 20;
+race "Demons";

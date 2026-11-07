@@ -1,0 +1,19 @@
+// Effect profile for nskill_statue_push_around_self
+
+effect "nskill_statue_push_around_self"
+{
+nameid "nskill_statue_push_around_self_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_full_invinsible_1_cast.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_stop.t";
+duration_turns	2;
+buff;
+stop;
+def	50;
+res	50;
+paralize;
+//Modifi
+immune_push;
+immune_teleport;
+immune_morph;
+add_skill	"n_skill_statue_push_around_effect";
+}

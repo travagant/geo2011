@@ -1,0 +1,57 @@
+// Characters stats profile
+
+unit_class	melee;
+unit_side	"elves";
+ship	"elves2";
+attack_type	"slash";
+level	1;
+side	elves;
+exp_base	200;
+
+//stats
+str	3;
+spd	2;
+dex	2;
+agi	2;
+vit	3;
+
+
+ap	1;
+up	40;
+mov	2;
+movwm	12;
+
+atck_range	1;
+Control	1;
+Cover	1;
+
+//resists
+res_slash	25;
+res_water	-25;
+
+raceleader;
+Leadership	3;
+leadership_cost	1;
+cost	500;
+skill_grid	"elves_leader-forestliege";
+viewradius	8;
+
+//Modifi
+dmg_str_mod	 900;
+dmg_agi_mod	 600;
+crit_dex_mod	 300;
+crit_vit_mod	 150;
+flee_agi_mod	 300;
+flee_spd_mod	 150;
+hp_vit_mod	 4000;
+hp_str_mod	 2000;
+ini_spd_mod	 100;
+ini_dex_mod	 0;
+mov_mod	 0;
+movwm_mod	 0;
+cover_mod	 0;
+viewradius_mod	 0;
+Discount_Mod	 0;
+Bonusexp_Mod	 0;
+level_cap	30;
+levels_to_up	3;

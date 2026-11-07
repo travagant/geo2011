@@ -1,0 +1,13 @@
+// Effect profile for nskill_buff_str_oncurse
+
+effect "nskill_buff_str_oncurse"
+{
+nameid "nskill_buff_str_oncurse_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_fire_arrow_2_cast.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_attack.t";
+duration_turns	-1;
+buff;
+//Modifi
+crit_per	50;
+stackable	1;
+}

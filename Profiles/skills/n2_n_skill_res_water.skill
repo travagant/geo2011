@@ -1,0 +1,15 @@
+// Skill profile n_skill_res_water
+
+skill	"n_skill_res_water"
+{
+nameid "n_skill_res_water_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_res-water.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_res-water_inactive.t";
+
+
+
+res_water	25;
+info_tag;
+//Modifi
+}

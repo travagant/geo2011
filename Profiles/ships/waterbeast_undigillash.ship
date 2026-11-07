@@ -1,0 +1,5 @@
+id "waterbeast_undigillash";
+race "neutral";
+scene "Resources\\characters\\story\\undigillash\\character_story_undigillash.scene";
+offset -2.0;
+Waterbeast;

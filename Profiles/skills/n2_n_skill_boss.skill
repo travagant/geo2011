@@ -1,0 +1,19 @@
+// Skill profile n_skill_boss
+
+skill	"n_skill_boss"
+{
+nameid "n_skill_boss_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_info_boss.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_info_boss_inactive.t";
+
+
+
+info_tag;
+//Modifi
+immune_cover;
+immune_push;
+immune_teleport;
+immune_morph;
+immune_dopel;
+}

@@ -1,0 +1,16 @@
+// Potion Profile
+
+id	"potion_str_huge";
+
+
+nameid	"ItNPotStrH";
+descid	"ItDPotStrH";
+
+class "potion";
+level	3;
+icon "Resources\\Items\\potion\\potion_str_huge.t";
+
+game_effect	"npotion_str_huge";
+gold_cost	2000;
+usage_cost	20;
+target	"ally";

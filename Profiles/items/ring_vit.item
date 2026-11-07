@@ -1,0 +1,17 @@
+// Equipment Profile
+
+id	"ring_vit";
+
+nameid "ring_vit_name";
+descid "ring_vit_desc";
+
+
+class	"rings";
+level	2;
+
+icon "resources\Items\rings\ring_vit.t";
+
+add_skill	"n_ring_vit";
+
+gold_cost	6000;
+//Modifi

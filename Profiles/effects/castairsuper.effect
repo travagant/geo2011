@@ -1,0 +1,10 @@
+// Effect profile for CastAirSuper
+
+effect "CastAirSuper"
+{
+nameid "CastAirSuper_nameid";
+debuff;
+damage	750;
+element	"Air";
+//Modifi
+}

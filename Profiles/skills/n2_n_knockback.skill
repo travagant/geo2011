@@ -1,0 +1,23 @@
+// Skill profile n_knockback
+
+skill	"n_knockback"
+{
+nameid "n_knockback_nameid";
+effectdescid "n_knockback_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_knockback.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_knockback_inactive.t";
+
+skill_range	1;
+cast_type	around;
+cast_target	enemy;
+game_effect	"nskill_knockback";
+fx_scene	"Resources\FX\ArenaFX\skills\fx_skill_n_knockback";
+
+request_ap	1;
+battle;
+
+element	water;
+info_tag;
+//Modifi
+}

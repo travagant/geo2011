@@ -1,0 +1,16 @@
+//magic zone map object for temple_regen
+
+id 	"map_temple_regen";
+
+nameid	"map_temple_regenN";
+descid	"map_temple_regenD";
+effectdescid "map_temple_regenEff";
+
+action_class	"magiczone" 
+{
+	radius 9999;
+	on 		"side_bgn";
+	race 	"owner";
+	race 	"!neutral";
+	effect	"nTemple_regen";
+}

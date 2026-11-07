@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_undead_dmg_water";
+
+nameid "NamSp_spell_undead_dmg_water";
+descid "DesSp_spell_undead_dmg_water";
+
+level 4;
+class "runes";
+icon "Resources\items\runes\spell_undead_dmg_water.t";
+scene "Resources\FX\Map_Spells\Undead\Spell_undead_Water_Cast\spell_undead_water_cast_arena.scene";
+
+target enemy;
+game_effect "nspell_undead_dmg_water_arena";
+
+gold_cost 840;
+usage_cost 30;
+race "Undead";

@@ -1,0 +1,9 @@
+// Effect profile for nspell_spell_empire_dmg_air
+
+effect "nspell_spell_empire_dmg_air"
+{
+nameid "nspell_spell_empire_dmg_air_nameid";
+damage	40;
+element	"air";
+//Modifi
+}

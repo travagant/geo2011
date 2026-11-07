@@ -1,0 +1,23 @@
+// Unit Profile
+//
+id 		         "neutrals_watersnake";
+unit_scene 	         "Resources\Characters\Neutrals\watersnake\character_neutrals_watersnake_sea.scene";
+unit_scene_arena 	 "Resources\Characters\Neutrals\watersnake\character_neutrals_watersnake.scene";
+icon                     "Resources\Characters\Neutrals\watersnake\icon_watersnake.t";
+subicon                  "Resources\Characters\Neutrals\watersnake\icon_watersnake_small.t";
+layout_icon              "Resources\Characters\Neutrals\watersnake\icon_watersnake_node.t";
+capital_icon             "Resources\Characters\Neutrals\watersnake\icon_watersnake_capital.t";
+dialog_icon              "Resources\Characters\Neutrals\watersnake\icon_watersnake_dialog.t";
+leader_icon              "Resources\Characters\Neutrals\watersnake\icon_watersnake_ring.t";
+fxproc 		         "lighting";
+fxscene              "resources\\fx\\Arena_Spells\\Neutrals\\watersnake\\fx_neutrals_watersnake_spell.scene";
+fxcast  	         "Resources\\FX\\Attacks\\Neutrals\\watersnake\\fx_neutrals_watersnake_cast.scene";
+fxscene_ko 	         "resources\\fx\\fx_die_neutrals.scene";
+fxlevelup		 "Resources\\FX\\Arena_FX\\LevelUp\\fx_neutrals_levelup.scene";
+centerbone "Upper_body";
+move_speed 	0;
+nodesx 		1;
+nodesz 		1;
+#include                 "desc\\neutrals_watersnake_desc.char";
+#include                 "sound\\neutrals_watersnake_sound.char";
+#include                 "stats\\neutrals_watersnake_stats.char";

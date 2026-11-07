@@ -1,0 +1,12 @@
+// Effect profile for PoisonMax
+
+effect "PoisonMax"
+{
+nameid "PoisonMax_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_poison.t";
+duration_turns	10;
+debuff;
+curse	25;
+element	"death";
+//Modifi
+}

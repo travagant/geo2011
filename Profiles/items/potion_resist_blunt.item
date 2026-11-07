@@ -1,0 +1,16 @@
+// Potion Profile
+
+id	"potion_resist_blunt";
+
+
+nameid	"ItNPotResBlunt";
+descid	"ItDPotResBlunt";
+
+class "potion";
+level	2;
+icon "Resources\\Items\\potion\\potion_resist_blunt.t";
+
+game_effect	"npotion_resist_blunt";
+gold_cost	1000;
+usage_cost	10;
+target	"ally";

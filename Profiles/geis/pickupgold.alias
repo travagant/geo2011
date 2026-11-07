@@ -1,0 +1,11 @@
+
+
+
+alias "PickupGold" {
+
+
+   //sound 100, "$(Sounds)\interface\open_dialog.wav", 100, 3;
+   sound 100, "$(Sounds)\gold.wav", 100, 3;
+
+
+}  

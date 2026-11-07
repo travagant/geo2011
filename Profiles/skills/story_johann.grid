@@ -1,0 +1,25 @@
+grid "story_johann"
+{
+ unit_start 1 9;
+ unit_skill "n_skill_info_doublestrike" 1 1 1 24;
+ unit_skill "n_delete_wall" 1 1 1 25;
+ unit_skill "n_skill_dmg_oncurse" 1 1 1 26;
+ unit_skill "n_skill_dispell_buff_debuff_air" 1 1 1 27;
+ uses 1;
+ unit_skill "n_skill_push_activate" 1 1 1 28;
+ unit_skill "n_spell_empire_resist_mind" 1 1 1 29;
+ unit_skill "n_skill_debuff_mov_oncrit" 1 1 1 30;
+ unit_skill "n_skill_buff_resist_arround_onturn" 1 1 1 31;
+ unit_skill "n_skill_agi" 1 0 2 9;
+ unit_skill "n_skill_vit" 1 0 3 9;
+ unit_skill "n_skill_spd" 1 0 4 9;
+ unit_skill "n_skill_vit" 1 0 5 9;
+ unit_skill "n_skill_agi" 1 0 6 9;
+ unit_skill "n_skill_spd" 1 0 7 9;
+ unit_skill "n_skill_str" 1 0 8 9;
+ unit_skill "n_skill_agi" 1 0 9 9;
+ unit_skill "n_skill_str" 1 0 10 9;
+ unit_skill "n_skill_spd" 1 0 11 9;
+ unit_skill "n_skill_agi" 1 0 12 9;
+ unit_skill "n_skill_str" 1 0 13 9;
+}

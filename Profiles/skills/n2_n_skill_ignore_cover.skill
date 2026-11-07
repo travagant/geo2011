@@ -1,0 +1,15 @@
+// Skill profile n_skill_ignore_cover
+
+skill	"n_skill_ignore_cover"
+{
+nameid "n_skill_ignore_cover_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_immune_thief.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_immune_thief_inactive.t";
+
+
+
+info_tag;
+//Modifi
+immune_cover;
+}

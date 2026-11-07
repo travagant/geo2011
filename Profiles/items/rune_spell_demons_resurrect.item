@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_demons_resurrect";
+
+nameid "NamSp_spell_demons_resurrect";
+descid "DesSp_spell_demons_resurrect";
+
+level 5;
+class "runes";
+icon "Resources\items\runes\spell_demons_resurrect.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Demons_Revive\spell_demons_revive_arena.scene";
+
+target ally;
+game_effect "nspell_demons_resurrect_arena";
+
+gold_cost 1040;
+usage_cost 40;
+race "Demons";

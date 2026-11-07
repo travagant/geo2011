@@ -1,0 +1,16 @@
+// Equipment Profile
+
+id	"proxy_potion_4lvl";
+
+nameid "proxy_potion_4lvl_name";
+descid "proxy_potion_4lvl_desc";
+
+
+class	"potion";
+level	4;
+
+icon "resources\Items\potion\proxy_potion_4lvl.t";
+
+proxy;
+
+//Modifi

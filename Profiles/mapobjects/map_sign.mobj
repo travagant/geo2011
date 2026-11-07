@@ -1,0 +1,16 @@
+//interactive map object for Sign
+
+id	"map_Sign";
+
+nameid	"map_SignN";
+msgid	"map_SignAD";
+msg_inactiveid	"map_SignNAD";
+descid	"map_SignD";
+desc_inactid	"map_SignND";
+effectid	"map_SignEff";
+fx_start	"Resources\\FX\Arena_FX\Sign\fx_sign_move.scene";
+
+//destination
+action_class	"object";
+game_effect	"ApWorldMax";
+respawn	4;

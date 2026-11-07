@@ -1,0 +1,19 @@
+// Equipment Profile
+
+id	"footgears_movwm5";
+
+nameid "footgears_movwm5_name";
+descid "footgears_movwm5_desc";
+
+
+class	"footgears";
+replace	"feet" set 1;
+replace	"legs" set 1;
+level	5;
+
+icon "resources\Items\footgears\footgears_movwm5.t";
+
+movwm	4;
+
+gold_cost	2300;
+//Modifi

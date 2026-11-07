@@ -1,0 +1,11 @@
+// Effect profile for CounterDecMax
+
+effect "CounterDecMax"
+{
+nameid "CounterDecMax_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_attack.t";
+duration_turns	3;
+debuff;
+def	-100;
+//Modifi
+}

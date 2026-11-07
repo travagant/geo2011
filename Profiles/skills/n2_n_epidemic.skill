@@ -1,0 +1,21 @@
+// Skill profile n_epidemic
+
+skill	"n_epidemic"
+{
+nameid "n_epidemic_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_poison_i.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_poison_i_inactive.t";
+
+skill_range	12;
+cast_type	all;
+cast_target	enemy;
+game_effect	"nskill_epidemic";
+
+request_ap	1;
+battle;
+
+element	death;
+info_tag;
+//Modifi
+}

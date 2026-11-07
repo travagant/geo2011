@@ -1,0 +1,20 @@
+// Skill profile n_buff_resist_air_all
+
+skill	"n_buff_resist_air_all"
+{
+nameid "n_buff_resist_air_all_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_res-air.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_res-air_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	friendly;
+game_effect	"nskill_buff_resist_air";
+
+request_ap	1;
+
+info_tag;
+on_attack;
+//Modifi
+}

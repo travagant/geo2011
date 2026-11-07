@@ -1,0 +1,17 @@
+// Equipment Profile
+
+id	"book_hero";
+
+nameid "book_hero_name";
+descid "book_hero_desc";
+
+
+class	"book";
+level	3;
+
+icon "resources\Items\book\book_hero.t";
+
+add_skill	"n_book_hero";
+
+gold_cost	10000;
+//Modifi

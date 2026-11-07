@@ -1,0 +1,19 @@
+//Unit Stats
+//
+
+unit_class          caster;
+unit_side	"wall";
+str                 3;
+spd                 3;
+dex                 3;
+agi                 3;
+vit                 300;
+
+ini                 50;
+def                 0;
+
+mov               	0;
+movwm      			0;
+atck_range          1;
+
+wall;

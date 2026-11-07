@@ -1,0 +1,18 @@
+// Achievement Profile
+
+achievement "unit_kill"
+{
+	nameid  "unit_kill_name"; 
+	descid  "unit_kill_desc";
+	type percentage;
+	count_name "str_unit_kill_CN";
+
+	level_bronze 50;
+	icon_bronze "Resources\Interface\Icons\achievements\achieve_unit_kill.t";
+
+	level_silver 70;
+	icon_silver "Resources\Interface\Icons\achievements\achieve_unit_kill.t";
+
+	level_gold 90;
+	icon_gold "Resources\Interface\Icons\achievements\achieve_unit_kill.t";
+};

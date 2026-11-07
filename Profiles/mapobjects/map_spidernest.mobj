@@ -1,0 +1,14 @@
+//interactive map object for Spidernest
+
+id	"map_Spidernest";
+
+nameid	"map_SpidernestN";
+descid	"map_SpidernestD";
+desc_inactid	"map_SpidernestND";
+msg_inactiveid	"map_SpidernestNAD";
+ambient_sound	"$(Sounds)\\Buildings\\spidernest.wav";
+
+//destination
+action_class	"dungeon";
+action_class_script	"resources\\profiles\\dungeons\\spidernest.s";
+respawn	6;

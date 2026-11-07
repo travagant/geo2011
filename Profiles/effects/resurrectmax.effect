@@ -1,0 +1,9 @@
+// Effect profile for ResurrectMax
+
+effect "ResurrectMax"
+{
+nameid "ResurrectMax_nameid";
+buff;
+resurrect	100;
+//Modifi
+}

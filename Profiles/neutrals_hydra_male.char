@@ -1,0 +1,22 @@
+//Unit Profile
+//
+id                       "neutrals_hydra_male";
+unit_scene              "Resources\Characters\Neutrals\Hydra_Male\character_neutrals_hydra_male.scene";
+unit_scene_lod		"resources\characters\neutrals\hydra_Male\character_neutrals_hydra_male_lod.scene",10;
+icon                     "Resources\Characters\Neutrals\Hydra_Male\icon_hydra_male.t";
+subicon                  "Resources\Characters\Neutrals\Hydra_Male\icon_hydra_male_small.t";
+layout_icon              "Resources\Characters\Neutrals\Hydra_Male\icon_hydra_male_node.t";
+capital_icon             "Resources\Characters\Neutrals\Hydra_Male\icon_hydra_male_capital.t";
+dialog_icon              "Resources\Characters\Neutrals\Hydra_Male\icon_hydra_male_dialog.t";
+leader_icon              "Resources\Characters\Neutrals\Hydra_Male\icon_hydra_male_ring.t"
+fxproc                   "default";
+fxcast                   "resources\\fx\\Attacks\\neutrals\\hydra_male\\fx_hydra_male_cast.scene";
+fxscene_ko               "resources\\fx\\Arena_FX\\Death\\fx_die_neutrals.scene";
+fxlevelup		 "Resources\\FX\\Arena_FX\\LevelUp\\fx_neutrals_levelup.scene";
+centerbone               "spine1";
+move_speed               1.7;
+nodesx                   1;
+nodesz                   1;
+#include                 "desc\\neutrals_hydra_male_desc.char";
+#include                 "sound\\neutrals_hydra_male_sound.char";
+#include                 "stats\\neutrals_hydra_male_stats.char";

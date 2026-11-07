@@ -1,0 +1,10 @@
+
+
+
+alias "move" {
+
+
+   sound 100, "$(Sounds)\interface\move.wav", 100, 3;
+
+
+}  

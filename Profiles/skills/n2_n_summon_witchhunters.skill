@@ -1,0 +1,21 @@
+// Skill profile n_summon_Witchhunters
+
+skill	"n_summon_Witchhunters"
+{
+nameid "n_summon_Witchhunters_nameid";
+effectdescid "n_summon_Witchhunters_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_summon.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_summon_inactive.t";
+
+skill_range	12;
+cast_target	self;
+game_effect	"nskill_summon_witchhunters";
+fx_scene	"Resources\FX\Arena_FX\Skills\fx_skill_summon_pet_1_cast.scene";
+
+request_ap	1;
+battle;
+
+info_tag;
+//Modifi
+}

@@ -1,0 +1,15 @@
+// Skill profile n_skill_res_mind
+
+skill	"n_skill_res_mind"
+{
+nameid "n_skill_res_mind_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_res-mind.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_res-mind_inactive.t";
+
+
+
+res_mind	25;
+info_tag;
+//Modifi
+}

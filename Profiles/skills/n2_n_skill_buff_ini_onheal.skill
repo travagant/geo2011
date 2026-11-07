@@ -1,0 +1,19 @@
+// Skill profile n_skill_buff_ini_onheal
+
+skill	"n_skill_buff_ini_onheal"
+{
+nameid "n_skill_buff_ini_onheal_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_leadership.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_leadership_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	friendly;
+game_effect	"nskill_buff_ini_onheal";
+
+
+info_tag;
+on_attack;
+//Modifi
+}

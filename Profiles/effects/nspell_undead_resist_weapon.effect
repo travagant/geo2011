@@ -1,0 +1,11 @@
+// Effect profile for nspell_undead_resist_weapon
+
+effect "nspell_undead_resist_weapon"
+{
+nameid "nspell_undead_resist_weapon_nameid";
+icon "Resources\Interface\Icons\buffs\icon_buff_resist.t";
+duration_days	5;
+buff;
+def	25;
+//Modifi
+}

@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_undead_summon_thanatos";
+
+nameid "NamSp_spell_undead_summon_thanatos";
+descid "DesSp_spell_undead_summon_thanatos";
+
+level 5;
+class "runes";
+icon "Resources\items\runes\spell_undead_summon_thanatos.t";
+scene "Resources\FX\Map_Spells\Undead\Spell_Summon\spell_summon_skeleton_arena.scene";
+
+target zone;
+game_effect "nspell_undead_summon_thanatos_arena";
+
+gold_cost 2080;
+usage_cost 50;
+race "Undead";

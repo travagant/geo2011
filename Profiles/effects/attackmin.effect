@@ -1,0 +1,11 @@
+// Effect profile for AttackMin
+
+effect "AttackMin"
+{
+nameid "AttackMin_nameid";
+icon "Resources\Interface\Icons\buffs\icon_buff_attack.t";
+duration_turns	10;
+buff;
+str	1;
+//Modifi
+}

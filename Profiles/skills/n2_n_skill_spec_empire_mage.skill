@@ -1,0 +1,16 @@
+// Skill profile n_skill_spec_empire_mage
+
+skill	"n_skill_spec_empire_mage"
+{
+nameid "n_skill_spec_empire_mage_nameid";
+effectdescid "n_skill_spec_empire_mage_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_wisdom.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_wisdom_inactive.t";
+
+
+
+//Modifi
+dmg_agi_mod	 100;
+flee_agi_mod	-200;
+}

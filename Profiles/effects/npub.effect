@@ -1,0 +1,13 @@
+// Effect profile for nPub
+
+effect "nPub"
+{
+nameid "nPub_nameid";
+fx_start	"resources\fx\\Arena_FX\Sign\fx_sign_weapon.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_attack.t";
+duration_days	3;
+buff;
+mov	1;
+dontdispell;
+//Modifi
+}

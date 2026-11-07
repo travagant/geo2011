@@ -1,0 +1,12 @@
+// Effect profile for nspell_elves_buff_flee_removedebuff_arena
+
+effect "nspell_elves_buff_flee_removedebuff_arena"
+{
+nameid "nspell_elves_buff_flee_removedebuff_arena_nameid";
+icon "Resources\Interface\Icons\buffs\icon_buff_defense.t";
+duration_turns	-1;
+buff;
+dispel_debuffs	1;
+flee	20;
+//Modifi
+}

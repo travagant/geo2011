@@ -1,0 +1,16 @@
+//interactive map object for Statue_sword
+
+id	"map_Statue_sword";
+
+nameid	"map_Statue_swordN";
+msgid	"Statue_swordAD";
+msg_inactiveid	"Statue_swordNAD";
+descid	"Statue_swordD";
+desc_inactid	"Statue_swordND";
+effectid	"Statue_swordEff";
+fx_start	"Resources\\FX\Arena_FX\Sign\fx_sign_weapon.scene";
+
+//destination
+action_class	"object";
+game_effect	"nStatue_sword";
+respawn	4;

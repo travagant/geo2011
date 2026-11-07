@@ -1,0 +1,11 @@
+
+
+
+alias "system_msg" {
+
+
+
+   sound 100, "$(Sounds)\interface\sound_system_msg.wav", 100, 3;
+
+
+}  

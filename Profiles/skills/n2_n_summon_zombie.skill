@@ -1,0 +1,21 @@
+// Skill profile n_summon_zombie
+
+skill	"n_summon_zombie"
+{
+nameid "n_summon_zombie_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_summon.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_summon_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	self;
+game_effect	"spelleffect_summon_zombie";
+
+request_ap	1;
+
+info_tag;
+on_kill;
+on_crit;
+//Modifi
+}

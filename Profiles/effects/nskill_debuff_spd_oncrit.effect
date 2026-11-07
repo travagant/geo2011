@@ -1,0 +1,13 @@
+// Effect profile for nskill_debuff_spd_oncrit
+
+effect "nskill_debuff_spd_oncrit"
+{
+nameid "nskill_debuff_spd_oncrit_nameid";
+fx_start	"resources\fx\\Arena_FX\Physical_Damage\fx_small_attack_damage_2x.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_attack.t";
+duration_turns	-1;
+debuff;
+spd	-1;
+//Modifi
+stackable	1;
+}

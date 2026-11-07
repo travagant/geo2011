@@ -1,0 +1,13 @@
+// Effect profile for nskill_extra_attack
+
+effect "nskill_extra_attack"
+{
+nameid "nskill_extra_attack_nameid";
+effectdescid "nskill_extra_attack_descid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_ring_innerfire.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_attack.t";
+duration_turns	1;
+buff;
+ap	1;
+//Modifi
+}

@@ -1,0 +1,16 @@
+// Skill profile n_skill_heal_buff
+
+skill	"n_skill_heal_buff"
+{
+nameid "n_skill_heal_buff_nameid";
+
+
+skill_range	12;
+cast_type	single;
+cast_target	friendly;
+game_effect	"nskill_heal_buff";
+
+
+on_attack;
+//Modifi
+}

@@ -1,0 +1,23 @@
+//Unit Profile
+//
+id                       "empire_titan";
+unit_scene              "resources\\characters\\empire\\titan\\character_empire_titan.scene";
+unit_scene_lod		"resources\characters\empire\titan\character_empire_titan_lod.scene",30;
+icon                     "resources\\characters\\empire\\titan\\icon_titan.t";
+subicon                  "resources\\characters\\empire\\titan\\icon_titan_small.t";
+layout_icon              "resources\\characters\\empire\\titan\\icon_titan_node.t";
+capital_icon             "resources\\characters\\empire\\titan\\icon_titan_capital.t";
+dialog_icon              "resources\\characters\\empire\\titan\\icon_titan_dialog.t";
+leader_icon              "resources\\characters\\empire\\titan\\icon_titan_ring.t"
+fxproc                   "default";
+fxscene                  "resources\\fx\\Arena_Spells\\empire\\titan\\fx_empire_titan_spell.scene";
+fxcast                   "resources\\fx\\Attacks\\empire\\titan\\fx_empire_titan_cast.scene";
+fxscene_ko               "resources\\fx\\Arena_FX\\Death\\fx_die_empire.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_empires_levelup.scene";
+centerbone               "spine1";
+move_speed               4;
+nodesx                   1;
+nodesz                   1;
+#include                 "desc\\empire_titan_desc.char";
+#include                 "sound\\empire_titan_sound.char";
+#include                 "stats\\empire_titan_stats.char";

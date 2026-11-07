@@ -1,0 +1,23 @@
+// Spell Profile
+
+id	"spell_elves_buff_movwm";
+
+nameid	"NamSp_spell_elves_buff_movwm";
+descid	"DesSp_spell_elves_buff_movwm";
+
+icon_small "Resources\items\runes\spell_elves_buff_movwm.t";
+icon "Resources\items\cards\spell_elves_buff_movwm.t";
+scene "Resources\FX\Map_Spells\Elves\Spell_Buff_Ap\spell_buff_ap.scene";
+scene_crop "Resources\FX\Map_Spells\Elves\Spell_Buff_Ap\spell_buff_ap_arena.scene";
+
+default_nation	"Elves";
+level	1;
+target	ally;
+
+game_effect	"nspell_elves_buff_movwm";
+
+cost_spell "Grove mana" 180, 360;
+
+rune	"rune_spell_elves_buff_movwm";
+rune_cost "Grove mana", 65;
+rune_cost "Stone", 65;

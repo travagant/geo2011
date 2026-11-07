@@ -1,0 +1,4 @@
+//demons_possessed's description
+nameid "DemonsPossessedName";
+descid "DemonsPossessedDesc";
+minidesc "DemonsPossessed_MD";

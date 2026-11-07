@@ -1,0 +1,29 @@
+// Spell Profile
+
+id	"spell_demons_resurrect";
+
+nameid	"NamSp_spell_demons_resurrect";
+descid	"DesSp_spell_demons_resurrect";
+
+icon_small "Resources\items\runes\spell_demons_resurrect.t";
+icon "Resources\items\cards\spell_demons_resurrect.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Demons_Revive\spell_demons_revive.scene";
+scene_crop "Resources\FX\Map_Spells\Demons\Spell_Demons_Revive\spell_demons_revive_arena.scene";
+
+default_nation	"Demons";
+level	5;
+target	ally;
+
+game_effect	"nspell_demons_resurrect";
+
+cost_spell "Life mana" 185, 370;
+cost_spell "Grove mana" 185, 370;
+cost_spell "Infernal mana" 185, 370;
+cost_spell "Runstone mana" 185, 370;
+
+rune	"rune_spell_demons_resurrect";
+rune_cost "Life mana", 65;
+rune_cost "Grove mana", 65;
+rune_cost "Infernal mana", 65;
+rune_cost "Runstone mana", 65;
+rune_cost "Stone", 260;

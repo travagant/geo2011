@@ -1,0 +1,27 @@
+// Spell Profile
+
+id	"spell_empire_dmg_air_debuff";
+
+nameid	"NamSp_spell_empire_dmg_air_debuff";
+descid	"DesSp_spell_empire_dmg_air_debuff";
+
+icon_small "Resources\items\runes\spell_empire_dmg_air_debuff.t";
+icon "Resources\items\cards\spell_empire_dmg_air_debuff.t";
+scene "Resources\FX\Map_Spells\Empire\Spell_Debuff_Dex\spell_debuff_dex.scene";
+scene_crop "Resources\FX\Map_Spells\Empire\Spell_Debuff_Dex\spell_debuff_dex_arena.scene";
+
+default_nation	"Empire";
+level	4;
+target	enemy;
+
+game_effect	"nspell_empire_dmg_air_debuff";
+
+cost_spell "Life mana" 200, 400;
+cost_spell "Infernal mana" 200, 400;
+cost_spell "Death mana" 200, 400;
+
+rune	"rune_spell_empire_dmg_air_debuff";
+rune_cost "Life mana", 70;
+rune_cost "Infernal mana", 70;
+rune_cost "Death mana", 70;
+rune_cost "Stone", 210;

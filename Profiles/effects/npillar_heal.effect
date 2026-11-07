@@ -1,0 +1,10 @@
+// Effect profile for npillar_heal
+
+effect "npillar_heal"
+{
+nameid "npillar_heal_nameid";
+fx_start	"resources\fx\\Arena_Spells\Empire\Acolyte\fx_empire_acolyte_spell.scene";
+heal_per	5;
+element	"divine";
+//Modifi
+}

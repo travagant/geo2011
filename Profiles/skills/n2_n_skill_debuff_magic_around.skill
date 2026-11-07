@@ -1,0 +1,19 @@
+// Skill profile n_skill_debuff_magic_around
+
+skill	"n_skill_debuff_magic_around"
+{
+nameid "n_skill_debuff_magic_around_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_debuff_magic_around.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_debuff_magic_around_inactive.t";
+
+skill_range	1;
+cast_type	around;
+cast_target	enemy;
+game_effect	"nskill_debuff_magic_around";
+
+
+info_tag;
+on_turn;
+//Modifi
+}

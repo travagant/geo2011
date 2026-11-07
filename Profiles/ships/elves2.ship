@@ -1,0 +1,5 @@
+id "elves2";
+race "elves";
+scene "Resources\Characters\Elves\Ship\character_elves_ship.scene";
+morph_fx "Resources\FX\Arena_FX\Skills\fx_skill_morf_defform_1_cast.scene";
+offset -0.1;

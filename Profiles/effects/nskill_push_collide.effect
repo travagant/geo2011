@@ -1,0 +1,9 @@
+// Effect profile for nskill_push_collide
+
+effect "nskill_push_collide"
+{
+nameid "nskill_push_collide_nameid";
+debuff;
+damage_per	15;
+//Modifi
+}

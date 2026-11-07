@@ -1,0 +1,18 @@
+// Skill profile n_talisman_mind
+
+skill	"n_talisman_mind"
+{
+nameid "n_talisman_mind_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_res-mind.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_res-mind_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+
+
+res_mind	25;
+info_tag;
+//Modifi
+}

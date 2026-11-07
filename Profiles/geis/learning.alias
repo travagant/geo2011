@@ -1,0 +1,10 @@
+
+
+
+alias "learning_open" {
+
+
+   sound 100, "$(Sounds)\interface\learning.wav", 100, 3;
+
+
+}  

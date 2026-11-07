@@ -1,0 +1,11 @@
+// Effect profile for DexDecPow
+
+effect "DexDecPow"
+{
+nameid "DexDecPow_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_attack.t";
+duration_turns	3;
+debuff;
+dex	-7;
+//Modifi
+}

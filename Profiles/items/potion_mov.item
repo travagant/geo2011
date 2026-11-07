@@ -1,0 +1,16 @@
+// Potion Profile
+
+id	"potion_mov";
+
+
+nameid	"ItNPotMov";
+descid	"ItDPotMov";
+
+class "potion";
+level	2;
+icon "Resources\\Items\\potion\\potion_mov.t";
+
+game_effect	"npotion_mov";
+gold_cost	1000;
+usage_cost	20;
+target	"ally";

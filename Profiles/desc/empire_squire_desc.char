@@ -1,0 +1,4 @@
+//empire_squire's description
+nameid "EmpireSquireName";
+descid "EmpireSquireDesc";
+minidesc "EmpireSquire_MD";

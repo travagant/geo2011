@@ -1,0 +1,14 @@
+//interactive map object for Mine_entrance
+
+id	"map_Mine_entrance";
+
+nameid	"map_Mine_entranceN";
+descid	"map_Mine_entranceD";
+desc_inactid	"map_Mine_entranceND";
+msg_inactiveid	"map_Mine_entranceNAD";
+ambient_sound	"$(Sounds)\\Buildings\\mine_entrance.wav";
+
+//destination
+action_class	"dungeon";
+action_class_script	"resources\\profiles\\dungeons\\mine_entrance.s";
+respawn	8;

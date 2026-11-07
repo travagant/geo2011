@@ -1,0 +1,10 @@
+// Effect profile for nskill_ring_mirror
+
+effect "nskill_ring_mirror"
+{
+nameid "nskill_ring_mirror_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_ring_mirrow_spell.scene";
+attack_pow	25;
+element	"mind";
+//Modifi
+}

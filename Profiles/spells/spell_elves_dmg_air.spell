@@ -1,0 +1,27 @@
+// Spell Profile
+
+id	"spell_elves_dmg_air";
+
+nameid	"NamSp_spell_elves_dmg_air";
+descid	"DesSp_spell_elves_dmg_air";
+
+icon_small "Resources\items\runes\spell_elves_dmg_air.t";
+icon "Resources\items\cards\spell_elves_dmg_air.t";
+scene "Resources\FX\Map_Spells\Elves\Spell_Air_Cast\spell_air_cast.scene";
+scene_crop "Resources\FX\Map_Spells\Elves\Spell_Air_Cast\spell_air_cast_arena.scene";
+
+default_nation	"Elves";
+level	4;
+target	enemy;
+
+game_effect	"nspell_elves_dmg_air";
+
+cost_spell "Grove mana" 200, 400;
+cost_spell "Infernal mana" 200, 400;
+cost_spell "Runstone mana" 200, 400;
+
+rune	"rune_spell_elves_dmg_air";
+rune_cost "Grove mana", 70;
+rune_cost "Infernal mana", 70;
+rune_cost "Runstone mana", 70;
+rune_cost "Stone", 210;

@@ -1,0 +1,20 @@
+// Skill profile n_skill_buff_ini_around_ondamaged_effect
+
+skill	"n_skill_buff_ini_around_ondamaged_effect"
+{
+nameid "n_skill_buff_ini_around_ondamaged_effect_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_buff_dex_all.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_buff_dex_all_inactive.t";
+
+skill_range	1;
+cast_type	around;
+cast_target	enemy;
+game_effect	"nskill_buff_ini_around_ondamaged_effect";
+fx_scene	"resources\fx\\Arena_Spells\Undead\Vampire\fx_undead_vampire_spell.scene";
+
+
+info_tag;
+on_damaged;
+//Modifi
+}

@@ -1,0 +1,10 @@
+
+
+
+alias "resurrect" {
+
+
+   sound 100, "$(Sounds)\interface\resurrect.wav", 100, 3;
+
+
+}  

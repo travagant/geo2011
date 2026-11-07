@@ -1,0 +1,18 @@
+// Equipment Profile
+
+id	"head_dex1";
+
+nameid "head_dex1_name";
+descid "head_dex1_desc";
+
+
+class	"head";
+replace	"head" set 1;
+level	1;
+
+icon "resources\Items\head\head_dex1.t";
+
+dex	1;
+
+gold_cost	2300;
+//Modifi

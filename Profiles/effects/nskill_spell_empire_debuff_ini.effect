@@ -1,0 +1,13 @@
+// Effect profile for nskill_spell_empire_debuff_ini
+
+effect "nskill_spell_empire_debuff_ini"
+{
+nameid "nskill_spell_empire_debuff_ini_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_spell_empire_debuff_ini.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_attack.t";
+duration_turns	-1;
+debuff;
+//Modifi
+ini_per	-5;
+stackable	1;
+}

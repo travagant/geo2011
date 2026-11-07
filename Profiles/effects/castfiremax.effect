@@ -1,0 +1,12 @@
+// Effect profile for CastFireMax
+
+effect "CastFireMax"
+{
+nameid "CastFireMax_nameid";
+duration_turns	10;
+debuff;
+curse	150;
+damage	500;
+element	"Fire";
+//Modifi
+}

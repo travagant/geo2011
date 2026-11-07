@@ -1,0 +1,11 @@
+// Effect profile for nskill_heal_oncrit
+
+effect "nskill_heal_oncrit"
+{
+nameid "nskill_heal_oncrit_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_n_cannibal.scene";
+buff;
+heal_per	10;
+element	"divine";
+//Modifi
+}

@@ -1,0 +1,21 @@
+// Skill profile n_polymorph_Undead
+
+skill	"n_polymorph_Undead"
+{
+nameid "n_polymorph_Undead_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_morf_defform.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_morf_defform_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_defform_Undead";
+fx_scene	"Resources\FX\Arena_FX\Skills\fx_skill_morf_defform_1_cast.scene";
+
+request_ap	1;
+battle;
+
+info_tag;
+//Modifi
+}

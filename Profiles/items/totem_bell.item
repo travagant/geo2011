@@ -1,0 +1,26 @@
+// Equipment Profile
+
+id	"totem_bell";
+
+nameid "totem_bell_name";
+descid "totem_bell_desc";
+effectdescid "totem_bell_efdesc";
+
+
+class	"banner";
+level	3;
+
+icon "resources\Items\banner\totem_bell.t";
+
+
+gold_cost	10000;
+//Modifi
+banner_profile	{
+ //сцена флага
+ banner_scene "Resources\Hexagons\Models\Flags\totem_bell.scene"
+
+ //блокирует использование активных скилов для обоих игроков
+ block_active_skills
+ //блокирует реплики юнитов для обоих игроков
+ block_units_voices
+};

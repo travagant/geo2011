@@ -1,0 +1,19 @@
+// Equipment Profile
+
+id	"accessory_dex3";
+
+nameid "accessory_dex3_name";
+descid "accessory_dex3_desc";
+
+
+class	"accessory";
+replace	"hands" set 3;
+replace	"arms" set 3;
+level	3;
+
+icon "resources\Items\accessory\accessory_dex3.t";
+
+dex	3;
+
+gold_cost	10000;
+//Modifi

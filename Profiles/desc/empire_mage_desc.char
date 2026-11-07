@@ -1,0 +1,4 @@
+//empire_mage's description
+nameid "EmpireMageName";
+descid "EmpireMageDesc";
+minidesc "EmpireMage_MD";

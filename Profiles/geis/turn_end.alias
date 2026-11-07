@@ -1,0 +1,10 @@
+
+
+
+alias "TurnEnd" {
+
+
+  sound 100, "$(Sounds)\map_objects\short_amb_mana_people.wav", 100, 3;
+
+
+}  

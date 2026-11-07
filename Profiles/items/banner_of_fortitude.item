@@ -1,0 +1,25 @@
+// Equipment Profile
+
+id	"banner_of_fortitude";
+
+nameid "banner_of_fortitude_name";
+descid "banner_of_fortitude_desc";
+effectdescid "banner_of_fortitude_efdesc";
+
+
+class	"banner";
+level	3;
+
+icon "resources\Items\banner\banner_of_fortitude.t";
+
+
+gold_cost	10000;
+//Modifi
+banner_profile	{
+ //сцена флага
+ banner_scene "Resources\Hexagons\Models\Flags\banner_of_fortitude.scene"
+
+ //действия в началае боя
+ // "цель" "накладываемый эффект"
+ start_action "owner" "nbanner_of_fortitude"
+};

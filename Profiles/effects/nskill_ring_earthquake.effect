@@ -1,0 +1,10 @@
+// Effect profile for nskill_ring_earthquake
+
+effect "nskill_ring_earthquake"
+{
+nameid "nskill_ring_earthquake_nameid";
+fx_start	"Resources\FX\\Arena_FX\skills\fx_skill_n_earthquake.scene";
+attack_pow	10;
+element	"earth";
+//Modifi
+}

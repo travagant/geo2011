@@ -1,0 +1,21 @@
+// Skill profile n_frost_shot
+
+skill	"n_frost_shot"
+{
+nameid "n_frost_shot_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_water_arrow.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_water_arrow_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_frost_shot";
+
+request_ap	1;
+
+element	water;
+info_tag;
+on_attack;
+//Modifi
+}

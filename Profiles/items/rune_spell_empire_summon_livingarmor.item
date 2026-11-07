@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_empire_summon_livingarmor";
+
+nameid "NamSp_spell_empire_summon_livingarmor";
+descid "DesSp_spell_empire_summon_livingarmor";
+
+level 2;
+class "runes";
+icon "Resources\items\runes\spell_empire_summon_livingarmor.t";
+scene "Resources\FX\Map_Spells\Empire\Spell_Summon\spell_summon_livingarmor_arena.scene";
+
+target zone;
+game_effect "nspell_empire_summon_livingarmor_arena";
+
+gold_cost 360;
+usage_cost 30;
+race "Empire";

@@ -1,0 +1,4 @@
+//empire_acolyte's description
+nameid "EmpireAcolyteName";
+descid "EmpireAcolyteDesc";
+minidesc "EmpireAcolyte_MD";

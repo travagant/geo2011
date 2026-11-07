@@ -1,0 +1,10 @@
+// Effect profile for nskill_transfer_hp
+
+effect "nskill_transfer_hp"
+{
+nameid "nskill_transfer_hp_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_transfer_hp_self.scene";
+buff;
+heal	250;
+//Modifi
+}

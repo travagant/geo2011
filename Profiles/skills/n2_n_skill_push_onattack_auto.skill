@@ -1,0 +1,21 @@
+// Skill profile n_skill_push_onattack_auto
+
+skill	"n_skill_push_onattack_auto"
+{
+nameid "n_skill_push_onattack_auto_nameid";
+effectdescid "n_skill_push_onattack_auto_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_push_i.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_push_i_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_push_onattack_auto";
+
+
+element	blunt;
+info_tag;
+on_attack;
+//Modifi
+}

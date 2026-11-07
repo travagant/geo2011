@@ -1,0 +1,12 @@
+// Achievement Profile
+
+achievement "all_missions_accomplished"
+{
+	nameid  "all_missions_accomplished_name"; 
+	descid  "all_missions_accomplished_desc";
+	type presence;
+	count_name "str_all_missions_accomplished_CN";
+
+	level_gold 1;
+	icon_gold "Resources\Interface\Icons\achievements\all_missions_accomplished.t";
+};

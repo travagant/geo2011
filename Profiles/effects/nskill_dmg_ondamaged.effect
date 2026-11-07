@@ -1,0 +1,10 @@
+// Effect profile for nskill_dmg_ondamaged
+
+effect "nskill_dmg_ondamaged"
+{
+nameid "nskill_dmg_ondamaged_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_spell_demons_dmg_mind.scene";
+attack_pow	50;
+element	"mind";
+//Modifi
+}

@@ -1,0 +1,9 @@
+// Effect profile for nskill_dispell_debuff_onturn
+
+effect "nskill_dispell_debuff_onturn"
+{
+nameid "nskill_dispell_debuff_onturn_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_dispell_debuff_onturn.scene";
+dispel_debuffs	1;
+//Modifi
+}

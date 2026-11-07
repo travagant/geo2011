@@ -1,0 +1,19 @@
+// Equipment Profile
+
+id	"footgears_vit1";
+
+nameid "footgears_vit1_name";
+descid "footgears_vit1_desc";
+
+
+class	"footgears";
+replace	"feet" set 1;
+replace	"legs" set 1;
+level	1;
+
+icon "resources\Items\footgears\footgears_vit1.t";
+
+vit	1;
+
+gold_cost	2300;
+//Modifi

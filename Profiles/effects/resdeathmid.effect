@@ -1,0 +1,11 @@
+// Effect profile for ResDeathMid
+
+effect "ResDeathMid"
+{
+nameid "ResDeathMid_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_resist.t";
+duration_turns	10;
+buff;
+res_death	25;
+//Modifi
+}

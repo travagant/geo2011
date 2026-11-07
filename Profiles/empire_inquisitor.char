@@ -1,0 +1,22 @@
+// Unit Profile
+//
+id 		"empire_inquisitor";
+unit_scene 	"resources\\characters\\empire\\inquisitor\\character_empire_inquisitor.scene"
+unit_scene_lod		"resources\characters\empire\inquisitor\character_empire_inquisitor_lod.scene",10;
+icon 		"resources\\characters\\empire\\inquisitor\\icon_inquisitor.t";
+subicon 	"resources\\characters\\empire\\inquisitor\\icon_inquisitor_small.t";
+layout_icon 	"resources\\characters\\empire\\inquisitor\\icon_inquisitor_node.t";
+fxproc 		"lighting";
+fxscene 	"resources\fx\Arena_FX\Physical_Damage\fx_small_attack_damage.scene";
+fxscene_ko 	"Resources\FX\Arena_FX\Death\fx_die_empire.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_empires_levelup.scene";
+centerbone "Spine1";
+#include      	"desc\\empire_inquisitor_desc.char";
+#include	"stats\\empire_inquisitor_stats.char";
+#include      	"sound\\empire_inquisitor_sound.char";
+move_speed 	3.5;
+nodesx 		1;
+nodesz 		1;
+capital_icon 	 "resources\characters\empire\inquisitor\icon_inquisitor_capital.t";
+dialog_icon 	 "resources\characters\empire\inquisitor\icon_inquisitor_dialog.t";
+leader_icon      "resources\characters\empire\inquisitor\icon_inquisitor_ring.t"

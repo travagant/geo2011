@@ -1,0 +1,14 @@
+// Skill profile n_skill_def
+
+skill	"n_skill_def"
+{
+nameid "n_skill_def_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_armor_up_I.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_armor_up_I_inactive.t";
+
+
+
+def	25;
+//Modifi
+}

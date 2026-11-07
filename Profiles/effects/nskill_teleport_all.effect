@@ -1,0 +1,10 @@
+// Effect profile for nskill_teleport_all
+
+effect "nskill_teleport_all"
+{
+nameid "nskill_teleport_all_nameid";
+fx_start	"Resources\FX\Arena_FX\Skills\fx_skill_tel_self_point_spell.scene";
+teleport_target;
+//Modifi
+fx_teleport	"Resources\FX\Arena_FX\Skills\fx_skill_tel_self_point_spell.scene";
+}

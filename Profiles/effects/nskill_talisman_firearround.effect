@@ -1,0 +1,12 @@
+// Effect profile for nskill_talisman_firearround
+
+effect "nskill_talisman_firearround"
+{
+nameid "nskill_talisman_firearround_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_resist_fire_around.scene";
+icon "Resources\Interface\Icons\buffs\Icon_buff_resist.t";
+duration_turns	2;
+buff;
+res_fire	25;
+//Modifi
+}

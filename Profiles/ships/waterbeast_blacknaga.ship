@@ -1,0 +1,5 @@
+id "waterbeast_blacknaga";
+race "neutral";
+scene "resources\\characters\\neutrals\\blacknaga\\character_neutrals_blacknaga.scene";
+offset -0.6;
+Waterbeast;

@@ -1,0 +1,10 @@
+// Effect profile for CastEarthMax
+
+effect "CastEarthMax"
+{
+nameid "CastEarthMax_nameid";
+debuff;
+damage	350;
+element	"Earth";
+//Modifi
+}

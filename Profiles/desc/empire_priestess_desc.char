@@ -1,0 +1,4 @@
+//empire_priestess's description
+nameid "EmpirePriestessName";
+descid "EmpirePriestessDesc";
+minidesc "EmpirePriestess_MD";

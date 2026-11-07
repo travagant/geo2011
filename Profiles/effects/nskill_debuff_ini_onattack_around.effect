@@ -1,0 +1,13 @@
+// Effect profile for nskill_debuff_ini_onattack_around
+
+effect "nskill_debuff_ini_onattack_around"
+{
+nameid "nskill_debuff_ini_onattack_around_nameid";
+fx_start	"Resources\FX\\Arena_FX\skills\fx_skill_n_earthquake.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_attack.t";
+duration_turns	1;
+debuff;
+attack_pow	25;
+//Modifi
+ini_per	-10;
+}

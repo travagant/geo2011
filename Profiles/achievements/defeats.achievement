@@ -1,0 +1,18 @@
+// Achievement Profile
+
+achievement "defeats"
+{
+	nameid  "defeats_name"; 
+	descid  "defeats_desc";
+	type percentage;
+	count_name "str_defeats_CN";
+
+	level_bronze 70;
+	icon_bronze "Resources\Interface\Icons\achievements\achieve_defeats.t";
+
+	level_silver 30;
+	icon_silver "Resources\Interface\Icons\achievements\achieve_defeats.t";
+
+	level_gold 5;
+	icon_gold "Resources\Interface\Icons\achievements\achieve_defeats.t";
+};

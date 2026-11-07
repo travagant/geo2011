@@ -1,0 +1,13 @@
+// Effect profile for spelleffect_summon_zombie
+
+effect "spelleffect_summon_zombie"
+{
+nameid "spelleffect_summon_zombie_nameid";
+fx_start	"resources\fx\\Map_Spells\Undead\Spell_Summon\spell_summon_skeleton.scene";
+buff;
+summon	"neutrals_zombie";
+autosummon	1
+autosummonrange	3
+autosummonover	1
+//Modifi
+}

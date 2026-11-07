@@ -1,0 +1,16 @@
+// Skill profile n_skill_res_blunt
+
+skill	"n_skill_res_blunt"
+{
+nameid "n_skill_res_blunt_nameid";
+effectdescid "n_skill_res_blunt_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_res_blunt.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_res_blunt_inactive.t";
+
+
+
+info_tag;
+res_blunt	25;
+//Modifi
+}

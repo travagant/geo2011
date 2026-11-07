@@ -1,0 +1,18 @@
+//interactive map object for Fountain_biggest
+
+id	"map_Fountain_biggest";
+
+nameid	"map_Fountain_biggestN";
+msgid	"map_Fountain_biggestAD";
+msg_inactiveid	"map_Fountain_biggestNAD";
+descid	"map_Fountain_biggestD";
+desc_inactid	"map_Fountain_biggestND";
+effectid	"map_Fountain_biggestEff";
+ambient_sound	"$(Sounds)\\Buildings\\fountain_biggest.wav";
+fx_start	"Resources\\FX\Arena_FX\Sign\fx_sign_heal.scene";
+
+//destination
+action_class	"object";
+game_effect	"HealMax";
+respawn	4;
+allside;

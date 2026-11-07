@@ -1,0 +1,11 @@
+//melee_elves.scheme
+// Melee/elves race unit progress scheme file.
+
+scheme "melee_empire"
+{
+	str 60;
+	dex 20;
+	int 20;
+	agi 10;
+	vit 20;
+};

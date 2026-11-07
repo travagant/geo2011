@@ -1,0 +1,8 @@
+// Effect profile for stack_backward
+
+effect "stack_backward"
+{
+nameid "stack_backward_nameid";
+debuff;
+//Modifi
+}

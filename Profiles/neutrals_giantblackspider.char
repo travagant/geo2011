@@ -1,0 +1,22 @@
+// Unit Profile
+//
+id 		"neutrals_giantblackspider";
+unit_scene 	"Resources\\characters\\Neutrals\\GiantBlackSpider\\character_neutrals_GiantBlackSpider.scene";
+unit_scene_lod		"resources\characters\neutrals\giantblackspider\character_neutrals_giantblackspider_lod.scene",10;
+icon		"resources\\characters\\neutrals\\GiantBlackSpider\\icon_GiantBlackSpider.t";
+subicon 	"resources\\characters\\Neutrals\\GiantBlackSpider\\icon_GiantBlackSpider_small.t";
+layout_icon	"resources\\characters\\Neutrals\\GiantBlackSpider\\icon_GiantBlackSpider_node.t";
+fxproc 		"lighting";
+fxscene 	"Resources\FX\Arena_FX\Physical_Damage\fx_small_attack_damage.scene";
+fxscene_ko 	"Resources\FX\Arena_FX\Death\fx_die_neutrals.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_neutrals_levelup.scene";
+centerbone "Back01";
+#include	"desc\\neutrals_GiantBlackSpider_desc.char";
+#include	"stats\\neutrals_GiantBlackSpider_stats.char";
+#include      	"sound\\neutrals_giantblackspider_sound.char";
+move_speed 	3;
+nodesx 		1;
+nodesz 		1;
+capital_icon 	 "resources\characters\neutrals\giantblackspider\icon_giantblackspider_capital.t";
+dialog_icon 	 "resources\characters\neutrals\giantblackspider\icon_giantblackspider_dialog.t";
+leader_icon 	 "resources\characters\neutrals\giantblackspider\icon_giantblackspider_ring.t";

@@ -1,0 +1,13 @@
+// Effect profile for npotion_resist_blunt
+
+effect "npotion_resist_blunt"
+{
+nameid "npotion_resist_blunt_nameid";
+fx_start	"resources\fx\\Arena_FX\Potions\fx_potion_resist_blunt.scene";
+icon "Resources\Interface\Icons\buffs\Icon_buff_resist.t";
+duration_days	5;
+buff;
+dontdispell;
+res_blunt	25;
+//Modifi
+}

@@ -1,0 +1,20 @@
+// Skill profile n_skill_buff_resist_arround_onturn
+
+skill	"n_skill_buff_resist_arround_onturn"
+{
+nameid "n_skill_buff_resist_arround_onturn_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_debuff_magic_around.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_debuff_magic_around_inactive.t";
+
+skill_range	1;
+cast_type	around;
+cast_target	friendly;
+game_effect	"nskill_buff_resist_arround_onturn";
+
+
+self_effect	"nskill_buff_resist_arround_onturn_self";
+info_tag;
+on_turn;
+//Modifi
+}

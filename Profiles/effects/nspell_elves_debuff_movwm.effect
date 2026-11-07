@@ -1,0 +1,14 @@
+// Effect profile for nspell_elves_debuff_movwm
+
+effect "nspell_elves_debuff_movwm"
+{
+nameid "nspell_elves_debuff_movwm_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_world.t";
+duration_days	2;
+debuff;
+res_earth	-25;
+crit	-10;
+dmg	-5;
+movwm	-5;
+//Modifi
+}

@@ -1,0 +1,13 @@
+// Effect profile for nskill_spell_undead_debuff_str_onturn_self
+
+effect "nskill_spell_undead_debuff_str_onturn_self"
+{
+nameid "nskill_spell_undead_debuff_str_onturn_self_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_n_debuff_resist_mind.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_attack.t";
+duration_turns	3;
+debuff;
+str	-1;
+//Modifi
+stackable	1;
+}

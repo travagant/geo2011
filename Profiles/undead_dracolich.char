@@ -1,0 +1,23 @@
+// Unit Profile
+//
+id 		"undead_dracolich";
+unit_scene 	"Resources\\characters\\undead\\dracolich\\character_undead_dracolich.scene"
+unit_scene_lod	"resources\characters\undead\dracolich\character_undead_dracolich_lod.scene",10;
+icon		"resources\\characters\\undead\\dracolich\\icon_dracolich.t";
+subicon 	"resources\\characters\\undead\\dracolich\\icon_dracolich_small.t";
+layout_icon	"resources\\characters\\undead\\dracolich\\icon_dracolich_node.t";
+fxproc 		"lighting";
+fxcast 		 "resources\fx\attacks\undead\dracolich\fx_undead_dracolich_cast.scene";
+fxscene 	 "resources\fx\arena_spells\undead\dracolich\fx_undead_dracolich_spell.scene";
+fxscene_ko 	"Resources\FX\Arena_FX\Death\fx_die_undeads.scene";
+fxlevelup	"Resources\\FX\\Arena_FX\\LevelUp\\fx_undead_levelup.scene";
+centerbone 	"Bone04";
+#include	"desc\\undead_dracolich_desc.char";
+#include	"stats\\undead_dracolich_stats.char";
+#include      	"sound\\undead_dracolich_sound.char";
+move_speed 	1.5;
+nodesx 		1;
+nodesz 		1;
+capital_icon 	 "resources\characters\undead\dracolich\icon_dracolich_capital.t";
+dialog_icon 	 "resources\characters\undead\dracolich\icon_dracolich_dialog.t";
+leader_icon 	 "resources\characters\undead\dracolich\icon_dracolich_ring.t";

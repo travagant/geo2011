@@ -1,0 +1,10 @@
+// Effect profile for CastAirMid
+
+effect "CastAirMid"
+{
+nameid "CastAirMid_nameid";
+debuff;
+damage	85;
+element	"Air";
+//Modifi
+}

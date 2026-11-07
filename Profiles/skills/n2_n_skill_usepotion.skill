@@ -1,0 +1,15 @@
+// Skill profile n_skill_usepotion
+
+skill	"n_skill_usepotion"
+{
+nameid "n_skill_usepotion_nameid";
+effectdescid "n_skill_usepotion_descid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_usepotion.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_usepotion_inactive.t";
+
+
+
+info_tag;
+//Modifi
+}

@@ -1,0 +1,19 @@
+// Skill profile n_buff_cover
+
+skill	"n_buff_cover"
+{
+nameid "n_buff_cover_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_cover_I.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_cover_I_inactive.t";
+
+skill_range	4;
+cast_type	single;
+cast_target	friendly;
+game_effect	"nskill_buff_cover";
+
+request_ap	1;
+battle;
+
+//Modifi
+}

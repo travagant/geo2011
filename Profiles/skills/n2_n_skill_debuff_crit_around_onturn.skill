@@ -1,0 +1,20 @@
+// Skill profile n_skill_debuff_crit_around_onturn
+
+skill	"n_skill_debuff_crit_around_onturn"
+{
+nameid "n_skill_debuff_crit_around_onturn_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_map_debuff_accuracy_demons.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_map_debuff_accuracy_demons_inactive.t";
+
+skill_range	1;
+cast_type	around;
+cast_target	enemy;
+game_effect	"nskill_debuff_crit_around_onturn";
+
+
+element	mind;
+info_tag;
+on_turn;
+//Modifi
+}

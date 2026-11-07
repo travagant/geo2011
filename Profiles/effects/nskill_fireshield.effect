@@ -1,0 +1,11 @@
+// Effect profile for nskill_fireshield
+
+effect "nskill_fireshield"
+{
+nameid "nskill_fireshield_nameid";
+fx_start	"resources\FX\arena_FX\Skills\fx_skill_fire_sword_1_spell.scene";
+debuff;
+attack_pow	25;
+element	"fire";
+//Modifi
+}

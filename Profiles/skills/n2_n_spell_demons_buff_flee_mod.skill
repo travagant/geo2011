@@ -1,0 +1,19 @@
+// Skill profile n_spell_demons_buff_flee_mod
+
+skill	"n_spell_demons_buff_flee_mod"
+{
+nameid "n_spell_demons_buff_flee_mod_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_spell_demons_buff_flee_mod.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_spell_demons_buff_flee_mod_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_spell_demons_buff_flee_mod";
+
+
+info_tag;
+on_flee;
+//Modifi
+}

@@ -1,0 +1,10 @@
+
+
+
+alias "enter_shop" {
+
+
+   sound 100, "$(Sounds)\interface\enter_shop.wav", 100, 3;
+
+
+}  

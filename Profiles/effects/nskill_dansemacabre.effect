@@ -1,0 +1,13 @@
+// Effect profile for nskill_dansemacabre
+
+effect "nskill_dansemacabre"
+{
+nameid "nskill_dansemacabre_nameid";
+fx_start	"Resources\FX\Arena_FX\Skills\fx_skill_double_damage_1_cast.scene";
+duration_turns	1;
+buff;
+c_mov	1;
+ap	1;
+//Modifi
+remove_immediately;
+}

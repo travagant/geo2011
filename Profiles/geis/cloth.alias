@@ -1,0 +1,11 @@
+
+
+
+alias "cloth" {
+
+
+   sound 100, "$(Sounds)\interface\cloth.wav", 100, 3;
+
+
+
+}  

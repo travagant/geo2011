@@ -1,0 +1,9 @@
+//interactive map object for legions2-spawn2
+
+id	"map_legions2-spawn2";
+
+nameid	"";
+
+//destination
+action_class	"resp";
+action_class_script	"resources\\profiles\\resp\\legions2-spawn2.s";

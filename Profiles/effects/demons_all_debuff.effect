@@ -1,0 +1,7 @@
+// Effect profile for demons_all_debuff
+
+effect "demons_all_debuff"
+{
+nameid "demons_all_debuff_nameid";
+//Modifi
+}

@@ -1,0 +1,20 @@
+// Skill profile n_skill_change_vit
+
+skill	"n_skill_change_vit"
+{
+nameid "n_skill_change_vit_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_strength.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_strength_inactive.t";
+
+skill_range	4;
+cast_type	single;
+cast_target	friendly;
+game_effect	"nskill_change_vit";
+
+request_ap	1;
+battle;
+
+self_effect	"nskill_change_vit_self";
+//Modifi
+}

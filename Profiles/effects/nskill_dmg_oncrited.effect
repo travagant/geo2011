@@ -1,0 +1,10 @@
+// Effect profile for nskill_dmg_oncrited
+
+effect "nskill_dmg_oncrited"
+{
+nameid "nskill_dmg_oncrited_nameid";
+fx_start	"resources\fx\\Arena_Spells\Empire\Angel\fx_empire_angel_spell.scene";
+attack_pow	100;
+element	"air";
+//Modifi
+}

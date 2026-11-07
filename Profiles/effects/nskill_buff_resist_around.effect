@@ -1,0 +1,11 @@
+// Effect profile for nskill_buff_resist_around
+
+effect "nskill_buff_resist_around"
+{
+nameid "nskill_buff_resist_around_nameid";
+icon "Resources\Interface\Icons\buffs\icon_buff_resist.t";
+duration_turns	2;
+buff;
+res	25;
+//Modifi
+}

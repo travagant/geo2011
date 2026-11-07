@@ -1,0 +1,11 @@
+// Effect profile for ResEarthMid
+
+effect "ResEarthMid"
+{
+nameid "ResEarthMid_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_resist.t";
+duration_turns	10;
+buff;
+res_earth	25;
+//Modifi
+}

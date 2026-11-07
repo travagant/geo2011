@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_demons_dmg_mind";
+
+nameid "NamSp_spell_demons_dmg_mind";
+descid "DesSp_spell_demons_dmg_mind";
+
+level 2;
+class "runes";
+icon "Resources\items\runes\spell_demons_dmg_mind.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Mind_Small_Cast\spell_mind_small_cast_arena.scene";
+
+target enemy;
+game_effect "nspell_demons_dmg_mind_arena";
+
+gold_cost 420;
+usage_cost 30;
+race "Demons";

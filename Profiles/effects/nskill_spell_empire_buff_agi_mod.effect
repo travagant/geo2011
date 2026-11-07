@@ -1,0 +1,12 @@
+// Effect profile for nskill_spell_empire_buff_agi_mod
+
+effect "nskill_spell_empire_buff_agi_mod"
+{
+nameid "nskill_spell_empire_buff_agi_mod_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_buff_agi_mod.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_defense.t";
+duration_turns	2;
+buff;
+//Modifi
+flee_per	150;
+}

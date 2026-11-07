@@ -1,0 +1,11 @@
+// Effect profile for nspell_elves_debuff_dmg
+
+effect "nspell_elves_debuff_dmg"
+{
+nameid "nspell_elves_debuff_dmg_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_curse.t";
+duration_days	2;
+debuff;
+//Modifi
+add_skill	"n_spell_elves_debuff_dmg";
+}

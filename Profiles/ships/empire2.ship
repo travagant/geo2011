@@ -1,0 +1,5 @@
+id "empire2";
+race "empire";
+scene "Resources\Characters\Empire\Ship\character_empire_ship.scene";
+morph_fx "Resources\FX\Arena_FX\Skills\fx_skill_morf_defform_1_cast.scene";
+offset -0.15;

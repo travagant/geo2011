@@ -1,0 +1,21 @@
+// Skill profile n_skill_dispell_buff_buff_debuff_all_onattack
+
+skill	"n_skill_dispell_buff_buff_debuff_all_onattack"
+{
+nameid "n_skill_dispell_buff_buff_debuff_all_onattack_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_sphere.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_sphere_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_dispell_buff_buff_debuff_all_onattack";
+
+
+self_effect	"nskill_dispell_buff_buff_debuff_all_onattack_self";
+element	death;
+info_tag;
+on_attack;
+//Modifi
+}

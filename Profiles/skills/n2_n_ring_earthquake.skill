@@ -1,0 +1,20 @@
+// Skill profile n_ring_earthquake
+
+skill	"n_ring_earthquake"
+{
+nameid "n_ring_earthquake_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_ring_earthquake.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_ring_earthquake_inactive.t";
+
+skill_range	12;
+cast_type	all;
+cast_target	enemy;
+game_effect	"nskill_ring_earthquake";
+fx_scene	"Resources\FX\Arena_Spells\Demons\came_shake.scene";
+
+
+info_tag;
+on_attack;
+//Modifi
+}

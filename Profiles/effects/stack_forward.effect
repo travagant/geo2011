@@ -1,0 +1,8 @@
+// Effect profile for stack_forward
+
+effect "stack_forward"
+{
+nameid "stack_forward_nameid";
+buff;
+//Modifi
+}

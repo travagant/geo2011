@@ -1,0 +1,11 @@
+// Effect profile for VitPow
+
+effect "VitPow"
+{
+nameid "VitPow_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_defense.t";
+duration_turns	2;
+buff;
+vit	3;
+//Modifi
+}

@@ -1,0 +1,10 @@
+// Effect profile for ntotem_sarcofag
+
+effect "ntotem_sarcofag"
+{
+nameid "ntotem_sarcofag_nameid";
+fx_start	"resources\fx\\Arena_Spells\Neutrals\Death\fx_undeads_death_spell.scene";
+damage	25;
+element	"death";
+//Modifi
+}

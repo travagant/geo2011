@@ -1,0 +1,19 @@
+//interactive map object for Lighthouse_sea
+
+id	"map_Lighthouse_sea";
+
+nameid	"map_Lighthouse_seaN";
+msgid	"map_Lighthouse_seaAD";
+msg_inactiveid	"map_Lighthouse_seaNAD";
+descid	"map_Lighthouse_seaD";
+desc_inactid	"map_Lighthouse_seaND";
+effectid	"map_Lighthouse_seaEff";
+ambient_sound	"$(Sounds)\\Buildings\\great_tower.wav";
+fx_start	"Resources\\FX\Arena_FX\Sign\fx_sign_move.scene";
+
+//destination
+action_class	"object";
+game_effect	"ApWorldMax";
+respawn	1;
+allside;
+

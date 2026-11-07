@@ -1,0 +1,8 @@
+// Effect profile for nspell_demons_summon_avenger_arena
+
+effect "nspell_demons_summon_avenger_arena"
+{
+nameid "nspell_demons_summon_avenger_arena_nameid";
+summon	"demons_avenger";
+//Modifi
+}

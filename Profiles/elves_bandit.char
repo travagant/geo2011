@@ -1,0 +1,23 @@
+//Unit Profile
+//
+id                       "elves_bandit";
+unit_scene              "resources\\characters\\elves\\bandit\\character_elves_bandit.scene";
+unit_scene_lod		"resources\characters\elves\bandit\character_elves_bandit_lod.scene",10;
+icon                     "resources\\characters\\elves\\bandit\\icon_bandit.t";
+subicon                  "resources\\characters\\elves\\bandit\\icon_bandit_small.t";
+layout_icon              "resources\\characters\\elves\\bandit\\icon_bandit_node.t";
+capital_icon             "resources\\characters\\elves\\bandit\\icon_bandit_capital.t";
+dialog_icon              "resources\\characters\\elves\\bandit\\icon_bandit_dialog.t";
+leader_icon              "resources\\characters\\elves\\bandit\\icon_bandit_ring.t";
+fxproc                   "lighting";
+fxscene                  "resources\\fx\\Arena_FX\\Physical_Damage\\fx_small_attack_damage.scene";
+fxcast                   "Resources\\FX\\Attacks\\Elves\\Bandit\\fx_elves_bandit_cast.scene"
+fxscene_ko               "resources\\fx\\Arena_FX\\Death\\fx_die_elves.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_elves_levelup.scene";
+centerbone "Spine1";
+move_speed               3.5;
+nodesx                   1;
+nodesz                   1;
+#include                 "desc\\elves_bandit_desc.char";
+#include                 "sound\\elves_bandit_sound.char";
+#include                 "stats\\elves_bandit_stats.char";

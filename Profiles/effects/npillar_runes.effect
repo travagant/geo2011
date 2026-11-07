@@ -1,0 +1,11 @@
+// Effect profile for npillar_runes
+
+effect "npillar_runes"
+{
+nameid "npillar_runes_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_pillar_rune.scene";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_attack.t";
+damage_per	5;
+element	"water";
+//Modifi
+}

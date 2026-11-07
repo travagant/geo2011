@@ -1,0 +1,19 @@
+// Skill profile n_skill_buff_resist_earth_zone
+
+skill	"n_skill_buff_resist_earth_zone"
+{
+nameid "n_skill_buff_resist_earth_zone_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_res-earth.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_res-earth_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	friendly;
+game_effect	"nskill_buff_resist_earth_zone";
+
+
+info_tag;
+on_attack;
+//Modifi
+}

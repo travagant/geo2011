@@ -1,0 +1,10 @@
+// Effect profile for nskill_summon_assassin
+
+effect "nskill_summon_assassin"
+{
+nameid "nskill_summon_assassin_nameid";
+fx_start	"Resources\FX\\Arena_FX\Skills\fx_skills_summon_pet_empire.scene";
+buff;
+summon	"empire_imperialassassin";
+//Modifi
+}

@@ -1,0 +1,20 @@
+// Skill profile n_book_balance_self
+
+skill	"n_book_balance_self"
+{
+nameid "n_book_balance_self_nameid";
+
+icon	"Resources\Interface\Icons\skills\book_balance_self.t";
+icon_inactive	"Resources\Interface\Icons\skills\book_balance_self_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_book_balance_curse";
+
+
+element	air;
+info_tag;
+on_cursed;
+//Modifi
+}

@@ -1,0 +1,18 @@
+// Achievement Profile
+
+achievement "buildings"
+{
+	nameid  "buildings_name"; 
+	descid  "buildings_desc";
+	type percentage;
+	count_name "str_buildings_CN";
+
+	level_bronze 50;
+	icon_bronze "Resources\Interface\Icons\achievements\achieve_building.t";
+
+	level_silver 70;
+	icon_silver "Resources\Interface\Icons\achievements\achieve_building.t";
+
+	level_gold 90;
+	icon_gold "Resources\Interface\Icons\achievements\achieve_building.t";
+};

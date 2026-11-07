@@ -1,0 +1,14 @@
+// Effect profile for nskill_spell_empire_resist_death
+
+effect "nskill_spell_empire_resist_death"
+{
+nameid "nskill_spell_empire_resist_death_nameid";
+fx_start	"resources\fx\\Arena_Spells\Empire\Rod-3\fx_empire_rod-3_spell.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_resist.t";
+duration_turns	2;
+debuff;
+damage	175;
+element	"divine";
+res_slash	-25;
+//Modifi
+}

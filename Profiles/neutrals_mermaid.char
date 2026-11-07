@@ -1,0 +1,23 @@
+//Unit Profile
+//
+id                       "neutrals_mermaid";
+unit_scene              "resources\\characters\\neutrals\\mermaid\\character_neutrals_mermaid.scene";
+unit_scene_lod		"resources\characters\neutrals\mermaid\character_neutrals_mermaid_lod.scene",10;
+icon                     "resources\\characters\\neutrals\\mermaid\\icon_mermaid.t";
+subicon                  "resources\\characters\\neutrals\\mermaid\\icon_mermaid_small.t";
+layout_icon              "resources\\characters\\neutrals\\mermaid\\icon_mermaid_node.t";
+capital_icon             "resources\\characters\\neutrals\\mermaid\\icon_mermaid_capital.t";
+dialog_icon              "resources\\characters\\neutrals\\mermaid\\icon_mermaid_dialog.t";
+leader_icon              "resources\\characters\\neutrals\\mermaid\\icon_mermaid_ring.t"
+fxproc                   "default";
+fxscene                  "resources\\fx\\Arena_Spells\\neutrals\\mermaid\\fx_undeads_mermaid_spell.scene";
+fxcast                   "resources\\fx\\Attacks\\neutrals\\mermaid\\fx_undeads_mermaid_cast.scene";
+fxscene_ko               "resources\\fx\\Arena_FX\\Death\\fx_die_neutrals.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_neutrals_levelup.scene";
+centerbone               "spine1";
+move_speed               1.7;
+nodesx                   1;
+nodesz                   1;
+#include                 "desc\\neutrals_mermaid_desc.char";
+#include                 "sound\\neutrals_mermaid_sound.char";
+#include                 "stats\\neutrals_mermaid_stats.char";

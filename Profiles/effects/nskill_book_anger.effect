@@ -1,0 +1,10 @@
+// Effect profile for nskill_book_anger
+
+effect "nskill_book_anger"
+{
+nameid "nskill_book_anger_nameid";
+fx_start	"Resources\FX\Arena_Spells\Demons\Rod-2\fx_demons_rod-2_spell.scene";
+damage	50;
+element	"fire";
+//Modifi
+}

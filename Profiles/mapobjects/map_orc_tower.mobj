@@ -1,0 +1,17 @@
+//interactive map object for Orc_tower
+
+id	"map_Orc_tower";
+
+nameid	"map_Orc_towerN";
+msgid	"map_Orc_towerAD";
+msg_inactiveid	"map_Orc_towerNAD";
+descid	"map_Orc_towerD";
+desc_inactid	"map_Orc_towerND";
+effectid	"map_Orc_towerEff";
+ambient_sound	"$(Sounds)\\Buildings\\tree_tower.wav";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_n_buff_dex.scene";
+
+//destination
+action_class	"object";
+game_effect	"OpenFogMax";
+respawn	1;

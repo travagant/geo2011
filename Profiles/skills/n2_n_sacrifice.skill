@@ -1,0 +1,21 @@
+// Skill profile n_sacrifice
+
+skill	"n_sacrifice"
+{
+nameid "n_sacrifice_nameid";
+effectdescid "n_sacrifice_descid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_spec_empire_mage.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_spec_empire_mage_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	friendly;
+game_effect	"nskill_sacrifice";
+
+request_ap	1;
+battle;
+
+self_effect	"nskill_sacrifice_self";
+//Modifi
+}

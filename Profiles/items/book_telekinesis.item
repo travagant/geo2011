@@ -1,0 +1,17 @@
+// Equipment Profile
+
+id	"book_telekinesis";
+
+nameid "book_telekinesis_name";
+descid "book_telekinesis_desc";
+
+
+class	"book";
+level	2;
+
+icon "resources\Items\book\book_telekinesis.t";
+
+add_skill	"n_book_telekinesis";
+
+gold_cost	6000;
+//Modifi

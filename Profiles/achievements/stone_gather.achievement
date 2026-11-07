@@ -1,0 +1,18 @@
+// Achievement Profile
+
+achievement "stone_gather"
+{
+	nameid  "stone_gather_name"; 
+	descid  "stone_gather_desc";
+	type range;
+	count_name "str_stone_gather_CN";
+
+	level_bronze 10000;
+	icon_bronze "Resources\Interface\Icons\achievements\achieve_stone_gather.t";
+
+	level_silver 50000;
+	icon_silver "Resources\Interface\Icons\achievements\achieve_stone_gather.t";
+
+	level_gold 90000;
+	icon_gold "Resources\Interface\Icons\achievements\achieve_stone_gather.t";
+};

@@ -1,0 +1,16 @@
+// Potion Profile
+
+id	"potion_cover";
+
+
+nameid	"ItNPotCover";
+descid	"ItDPotCover";
+
+class "potion";
+level	2;
+icon "Resources\\Items\\potion\\potion_cover.t";
+
+game_effect	"npotion_cover";
+gold_cost	1000;
+usage_cost	20;
+target	"ally";

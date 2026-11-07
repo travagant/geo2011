@@ -1,0 +1,12 @@
+// Effect profile for nspell_demons_buff_str_spd
+
+effect "nspell_demons_buff_str_spd"
+{
+nameid "nspell_demons_buff_str_spd_nameid";
+icon "Resources\Interface\Icons\buffs\icon_buff_attack.t";
+duration_days	2;
+buff;
+str	1;
+spd	2;
+//Modifi
+}

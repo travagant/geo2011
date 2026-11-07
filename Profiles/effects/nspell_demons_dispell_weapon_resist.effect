@@ -1,0 +1,11 @@
+// Effect profile for nspell_demons_dispell_weapon_resist
+
+effect "nspell_demons_dispell_weapon_resist"
+{
+nameid "nspell_demons_dispell_weapon_resist_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_resist.t";
+duration_days	2;
+debuff;
+//Modifi
+ignore_def;
+}

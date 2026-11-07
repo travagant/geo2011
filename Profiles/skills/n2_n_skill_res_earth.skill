@@ -1,0 +1,15 @@
+// Skill profile n_skill_res_earth
+
+skill	"n_skill_res_earth"
+{
+nameid "n_skill_res_earth_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_res-earth.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_res-earth_inactive.t";
+
+
+
+res_earth	25;
+info_tag;
+//Modifi
+}

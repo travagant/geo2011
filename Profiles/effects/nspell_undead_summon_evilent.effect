@@ -1,0 +1,8 @@
+// Effect profile for nspell_undead_summon_EvilEnt
+
+effect "nspell_undead_summon_EvilEnt"
+{
+nameid "nspell_undead_summon_EvilEnt_nameid";
+summon	"undead_EvilEnt";
+//Modifi
+}

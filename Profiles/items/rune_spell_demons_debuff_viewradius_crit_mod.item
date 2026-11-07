@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_demons_debuff_viewradius_crit_mod";
+
+nameid "NamSp_spell_demons_debuff_viewradius_crit_mod";
+descid "DesSp_spell_demons_debuff_viewradius_crit_mod";
+
+level 3;
+class "runes";
+icon "Resources\items\runes\spell_demons_debuff_viewradius_crit_mod.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Dex_Debuff\spell_dex_debuff_arena.scene";
+
+target enemy;
+game_effect "nspell_demons_debuff_viewradius_crit_mod_arena";
+
+gold_cost 560;
+usage_cost 20;
+race "Demons";

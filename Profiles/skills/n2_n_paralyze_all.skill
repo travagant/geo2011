@@ -1,0 +1,23 @@
+// Skill profile n_paralyze_all
+
+skill	"n_paralyze_all"
+{
+nameid "n_paralyze_all_nameid";
+effectdescid "n_paralyze_all_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_full_stop.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_full_stop_inactive.t";
+
+skill_range	12;
+cast_type	all;
+cast_target	enemy;
+game_effect	"nskill_paralyze";
+bones_state	"attack";
+
+request_ap	1;
+battle;
+
+element	mind;
+info_tag;
+//Modifi
+}

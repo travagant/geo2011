@@ -1,0 +1,24 @@
+// Spell Profile
+
+id	"spell_elves_openfog";
+
+nameid	"NamSp_spell_elves_openfog";
+descid	"DesSp_spell_elves_openfog";
+
+icon_small "Resources\items\runes\spell_elves_openfog.t";
+icon "Resources\items\cards\spell_elves_openfog.t";
+scene "Resources\FX\Map_Spells\Elves\Spell_Elves_Openfog\spell_elves_openfog.scene";
+scene_crop "Resources\FX\Map_Spells\Elves\Spell_Elves_Openfog\spell_elves_openfog_arena.scene";
+
+default_nation	"Elves";
+level	3;
+target	zone;
+
+game_effect	"nspell_elves_openfog";
+
+cost_spell "Grove mana" 140, 280;
+cost_spell "Runstone mana" 140, 280;
+
+rune_cost "Grove mana", 50;
+rune_cost "Runstone mana", 50;
+rune_cost "Stone", 100;

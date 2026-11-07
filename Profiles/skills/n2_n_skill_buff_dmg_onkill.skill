@@ -1,0 +1,19 @@
+// Skill profile n_skill_buff_dmg_onkill
+
+skill	"n_skill_buff_dmg_onkill"
+{
+nameid "n_skill_buff_dmg_onkill_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_ring_innerfire.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_ring_innerfire_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_buff_dmg_onkill";
+
+
+info_tag;
+on_miss;
+//Modifi
+}

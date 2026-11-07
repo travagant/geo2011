@@ -1,0 +1,14 @@
+//interactive map object for dungeon_ship
+id	"map_dungeon_ship";
+
+nameid	"map_dungeon_shipN";
+descid	"map_dungeon_shipD";
+desc_inactid	"map_dungeon_shipND";
+msg_inactiveid	"map_dungeon_shipNAD";
+ambient_sound	"$(Sounds)\\Buildings\\graveyard.wav";
+
+//destination
+action_class	"dungeon";
+action_class_script	"resources\\profiles\\dungeons\\dungeon_ship.s";
+respawn	6;
+allside;

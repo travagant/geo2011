@@ -1,0 +1,19 @@
+// Skill profile n_spell_demons_dmg_earth
+
+skill	"n_spell_demons_dmg_earth"
+{
+nameid "n_spell_demons_dmg_earth_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_spell_demons_dmg_earth.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_spell_demons_dmg_earth_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_spell_demons_dmg_earth";
+
+
+info_tag;
+on_crited;
+//Modifi
+}

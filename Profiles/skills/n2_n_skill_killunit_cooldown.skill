@@ -1,0 +1,22 @@
+// Skill profile n_skill_killunit_cooldown
+
+skill	"n_skill_killunit_cooldown"
+{
+nameid "n_skill_killunit_cooldown_nameid";
+effectdescid "n_skill_killunit_cooldown_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_instructor.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_instructor_inactive.t";
+
+skill_range	3;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_killunit_cooldown";
+bones_state	"attack";
+
+request_ap	1;
+battle;
+
+element	death;
+//Modifi
+}

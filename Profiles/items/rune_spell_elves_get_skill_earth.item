@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_elves_get_skill_earth";
+
+nameid "NamSp_spell_elves_get_skill_earth";
+descid "DesSp_spell_elves_get_skill_earth";
+
+level 3;
+class "runes";
+icon "Resources\items\runes\spell_elves_get_skill_earth.t";
+scene "Resources\FX\Map_Spells\Elves\Spell_Heal_Buff_Earth\spell_heal_buff_earth_arena.scene";
+
+target ally;
+game_effect "nspell_elves_get_skill_earth_arena";
+
+gold_cost 640;
+usage_cost 20;
+race "Elves";

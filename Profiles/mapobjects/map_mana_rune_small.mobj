@@ -1,0 +1,16 @@
+//interactive map object for Mana_hell_small
+
+id	"map_Mana_rune_small";
+
+nameid	"map_manarune_SmallN";
+msgid	"map_manarune_smallAD";
+msg_inactiveid	"";
+descid	"map_manarune_smallD";
+effectid	"map_manarune_smallEff";
+fx_start	"Resources\\FX\Arena_FX\Sign\fx_sign_mana_rune.scene";
+
+//destination
+action_class	"heap_resource";
+heap_resource	runstone_mana 50;
+msg_popup	"map_manarune_smallPopup";
+once;

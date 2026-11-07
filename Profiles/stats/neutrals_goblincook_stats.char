@@ -1,0 +1,26 @@
+// Characters stats profile
+
+unit_class	range;
+unit_side	"greenskins";
+attack_type	"blunt";
+level	18;
+side	neutrals;
+exp_base	43;
+
+//stats
+str	9;
+spd	4;
+dex	6;
+agi	5;
+vit	5;
+
+res	0;
+def	0;
+
+action_point	1;
+mov	2;
+movwm	15;
+
+atck_range	41;
+
+//resists

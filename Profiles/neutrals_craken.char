@@ -1,0 +1,22 @@
+// Unit Profile
+//
+id 		         "neutrals_craken";
+unit_scene 	         "Resources\Characters\Neutrals\Craken\character_neutrals_craken_sea.scene";
+unit_scene_arena 	         "Resources\Characters\Neutrals\Craken\character_neutrals_craken.scene";
+icon                     "Resources\Characters\Neutrals\Craken\icon_craken.t";
+subicon                  "Resources\Characters\Neutrals\Craken\icon_craken_small.t";
+layout_icon              "Resources\Characters\Neutrals\Craken\icon_craken_node.t";
+capital_icon             "Resources\Characters\Neutrals\Craken\icon_craken_capital.t";
+dialog_icon              "Resources\Characters\Neutrals\Craken\icon_craken_dialog.t";
+leader_icon              "Resources\Characters\Neutrals\Craken\icon_craken_ring.t";
+fxproc 		         "lighting";
+fxcast  	         "Resources\\FX\\Attacks\\Neutrals\\craken\\fx_neutrals_craken_cast.scene";
+fxscene_ko 	         "resources\\fx\\fx_die_neutrals.scene";
+fxlevelup		 "Resources\\FX\\Arena_FX\\LevelUp\\fx_neutrals_levelup.scene";
+centerbone "Upper_body";
+move_speed 	0;
+nodesx 		1;
+nodesz 		1;
+#include                 "desc\\neutrals_craken_desc.char";
+#include                 "sound\\neutrals_craken_sound.char";
+#include                 "stats\\neutrals_craken_stats.char";

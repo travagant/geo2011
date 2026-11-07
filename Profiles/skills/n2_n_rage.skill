@@ -1,0 +1,21 @@
+// Skill profile n_rage
+
+skill	"n_rage"
+{
+nameid "n_rage_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_rage.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_rage_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_rage";
+fx_scene	"Resources\FX\Arena_FX\skills\fx_skill_n_rage.scene";
+
+request_ap	1;
+
+info_tag;
+on_health	50;
+//Modifi
+}

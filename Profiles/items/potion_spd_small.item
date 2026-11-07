@@ -1,0 +1,16 @@
+// Potion Profile
+
+id	"potion_spd_small";
+
+
+nameid	"ItNPotSpdS";
+descid	"ItDPotSpdS";
+
+class "potion";
+level	1;
+icon "Resources\\Items\\potion\\potion_spd_small.t";
+
+game_effect	"npotion_spd_small";
+gold_cost	300;
+usage_cost	10;
+target	"ally";

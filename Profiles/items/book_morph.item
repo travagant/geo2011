@@ -1,0 +1,18 @@
+// Equipment Profile
+
+id	"book_morph";
+
+nameid "book_morph_name";
+descid "book_morph_desc";
+
+
+class	"book";
+level	2;
+
+icon "resources\Items\book\book_morph.t";
+
+add_skill	"n_book_morph";
+add_skill_uses	1;
+
+gold_cost	6000;
+//Modifi

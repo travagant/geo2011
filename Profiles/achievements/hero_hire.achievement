@@ -1,0 +1,18 @@
+// Achievement Profile
+
+achievement "hero_hire"
+{
+	nameid  "hero_hire_name"; 
+	descid  "hero_hire_desc";
+	type range;
+	count_name "str_hero_hire_CN";
+
+	level_bronze 1;
+	icon_bronze "Resources\Interface\Icons\achievements\achieve_hero_hire.t";
+
+	level_silver 3;
+	icon_silver "Resources\Interface\Icons\achievements\achieve_hero_hire.t";
+
+	level_gold 5;
+	icon_gold "Resources\Interface\Icons\achievements\achieve_hero_hire.t";
+};

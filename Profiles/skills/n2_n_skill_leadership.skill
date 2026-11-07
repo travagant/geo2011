@@ -1,0 +1,15 @@
+// Skill profile n_skill_leadership
+
+skill	"n_skill_leadership"
+{
+nameid "n_skill_leadership_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_leadership.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_leadership_inactive.t";
+
+
+
+leadership	1;
+leadership	1;
+//Modifi
+}

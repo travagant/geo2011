@@ -1,0 +1,13 @@
+// Effect profile for npotion_expmod
+
+effect "npotion_expmod"
+{
+nameid "npotion_expmod_nameid";
+fx_start	"resources\fx\\Arena_FX\Potions\fx_potion_expmod.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_bless.t";
+duration_days	3;
+buff;
+bonusexp	30;
+dontdispell;
+//Modifi
+}

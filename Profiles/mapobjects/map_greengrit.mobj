@@ -1,0 +1,17 @@
+//interactive map object for GreenGrit
+
+id	"map_GreenGrit";
+
+nameid	"map_GreenGritN";
+msgid	"map_GreenGritAD";
+msg_inactiveid	"map_GreenGritNAD";
+descid	"map_GreenGritD";
+desc_inactid	"map_GreenGritND";
+effectid	"map_GreenGritEff";
+ambient_sound	"$(Sounds)\\Buildings\\green_grit.wav";
+
+//destination
+action_class	"object";
+game_effect	"nGreen_grit";
+respawn	5;
+allside;

@@ -1,0 +1,11 @@
+//range_empire.scheme
+// Range/empire race unit progress scheme file.
+
+scheme "range_empire"
+{
+	str 30;
+	dex 60;
+	int 10;
+	agi 10;
+	vit 20;
+};

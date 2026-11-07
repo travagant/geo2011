@@ -1,0 +1,19 @@
+// Rune Profile
+
+id "rune_spell_undead_debuff_all_stats";
+
+nameid "NamSp_spell_undead_debuff_all_stats";
+effectdescid "EffSp_spell_undead_debuff_all_stats";
+descid "DesSp_spell_undead_debuff_all_stats";
+
+level 3;
+class "runes";
+icon "Resources\items\runes\spell_undead_debuff_all_stats.t";
+scene "Resources\FX\Map_Spells\Undead\Spell_undead_Debuff_All\spell_undead_debuff_all_arena.scene";
+
+target enemy;
+game_effect "nspell_undead_debuff_all_stats_arena";
+
+gold_cost 520;
+usage_cost 20;
+race "Undead";

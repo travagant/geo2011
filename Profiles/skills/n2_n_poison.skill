@@ -1,0 +1,21 @@
+// Skill profile n_poison
+
+skill	"n_poison"
+{
+nameid "n_poison_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_poison_i.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_poison_i_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_poison";
+
+request_ap	1;
+
+element	death;
+info_tag;
+on_attack;
+//Modifi
+}

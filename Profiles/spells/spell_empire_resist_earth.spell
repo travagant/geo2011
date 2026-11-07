@@ -1,0 +1,23 @@
+// Spell Profile
+
+id	"spell_empire_resist_earth";
+
+nameid	"NamSp_spell_empire_resist_earth";
+descid	"DesSp_spell_empire_resist_earth";
+
+icon_small "Resources\items\runes\spell_empire_resist_earth.t";
+icon "Resources\items\cards\spell_empire_resist_earth.t";
+scene "Resources\FX\Map_Spells\Empire\Spell_Resist_Earth\spell_resist_earth.scene";
+scene_crop "Resources\FX\Map_Spells\Empire\Spell_Resist_Earth\spell_resist_earth_arena.scene";
+
+default_nation	"Empire";
+level	2;
+target	ally;
+
+game_effect	"nspell_empire_resist_earth";
+
+cost_spell "Life mana" 200, 400;
+
+rune	"rune_spell_empire_resist_earth";
+rune_cost "Life mana", 70;
+rune_cost "Stone", 70;

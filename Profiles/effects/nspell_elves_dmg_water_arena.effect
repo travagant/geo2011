@@ -1,0 +1,12 @@
+// Effect profile for nspell_elves_dmg_water_arena
+
+effect "nspell_elves_dmg_water_arena"
+{
+nameid "nspell_elves_dmg_water_arena_nameid";
+debuff;
+damage	250;
+dispel_buffs	1;
+banish;
+element	"water";
+//Modifi
+}

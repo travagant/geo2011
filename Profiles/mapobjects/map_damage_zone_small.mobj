@@ -1,0 +1,14 @@
+
+name "Бдыщ!"
+desc "Бескомпромиссно херачит все живое вокруг себя в начале хода"
+id 			"map_damage_zone_small";
+
+action_class	"magiczone" 
+{
+	radius 4; // исключая гекс на котором стоит
+	on 		"side_bgn"; // в начале хода рассы
+	race 	"all";
+	effect	"MagicZoneDamage";
+	fx "Resources\FX\LandFX\fx_flakes_red.scene"
+}
+

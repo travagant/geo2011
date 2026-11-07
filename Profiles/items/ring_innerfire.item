@@ -1,0 +1,17 @@
+// Equipment Profile
+
+id	"ring_innerfire";
+
+nameid "ring_innerfire_name";
+descid "ring_innerfire_desc";
+
+
+class	"rings";
+level	3;
+
+icon "resources\Items\rings\ring_innerfire.t";
+
+add_skill	"n_ring_innerfire";
+
+gold_cost	10000;
+//Modifi

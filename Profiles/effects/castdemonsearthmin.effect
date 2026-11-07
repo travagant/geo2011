@@ -1,0 +1,12 @@
+// Effect profile for CastDemonsEarthMin
+
+effect "CastDemonsEarthMin"
+{
+nameid "CastDemonsEarthMin_nameid";
+duration_turns	2;
+debuff;
+c_mov	-2;
+damage	30;
+element	"earth";
+//Modifi
+}

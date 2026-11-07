@@ -1,0 +1,10 @@
+// Effect profile for nspell_empire_heal_removedebuff_arena
+
+effect "nspell_empire_heal_removedebuff_arena"
+{
+nameid "nspell_empire_heal_removedebuff_arena_nameid";
+buff;
+heal	120;
+dispel_debuffs	1;
+//Modifi
+}

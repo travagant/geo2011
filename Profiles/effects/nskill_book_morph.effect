@@ -1,0 +1,12 @@
+// Effect profile for nskill_book_morph
+
+effect "nskill_book_morph"
+{
+nameid "nskill_book_morph_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_morf_defform_1_cast.scene";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_morph.t";
+duration_turns	-1;
+buff;
+morph	"neutrals_giantblackspider" "nskill_book_morph_duration";
+//Modifi
+}

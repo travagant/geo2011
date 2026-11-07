@@ -1,0 +1,13 @@
+// Effect profile for undeadweak2Min
+
+effect "undeadweak2Min"
+{
+nameid "undeadweak2Min_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_attack.t";
+duration_turns	10;
+debuff;
+str	-10;
+dex	-10;
+spd	-10;
+//Modifi
+}

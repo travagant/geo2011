@@ -1,0 +1,16 @@
+//interactive map object for Goldmine
+
+id	"map_Goldmine";
+
+nameid	"map_GoldmineN";
+msgid	"map_GoldmineAD";
+msg_inactiveid	"map_GoldmineNAD";
+descid	"map_GoldmineD";
+desc_inactid	"map_GoldmineND";
+effectid	"map_GoldmineEff";
+ambient_sound	"$(Sounds)\\Buildings\\gold_mine.wav";
+
+//destination
+action_class	"resource";
+action_class_script	"resources\\profiles\\actionscript\\Resource_gold.acscript";
+respawn	1;

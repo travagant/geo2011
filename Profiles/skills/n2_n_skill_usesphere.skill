@@ -1,0 +1,15 @@
+// Skill profile n_skill_usesphere
+
+skill	"n_skill_usesphere"
+{
+nameid "n_skill_usesphere_nameid";
+effectdescid "n_skill_usesphere_descid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_usesphere.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_usesphere_inactive.t";
+
+
+
+info_tag;
+//Modifi
+}

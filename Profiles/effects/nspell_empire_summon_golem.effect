@@ -1,0 +1,8 @@
+// Effect profile for nspell_empire_summon_golem
+
+effect "nspell_empire_summon_golem"
+{
+nameid "nspell_empire_summon_golem_nameid";
+summon	"empire_golem";
+//Modifi
+}

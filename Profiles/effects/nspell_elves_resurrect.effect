@@ -1,0 +1,9 @@
+// Effect profile for nspell_elves_resurrect
+
+effect "nspell_elves_resurrect"
+{
+nameid "nspell_elves_resurrect_nameid";
+buff;
+resurrect	25;
+//Modifi
+}

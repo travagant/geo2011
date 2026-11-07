@@ -1,0 +1,27 @@
+// Spell Profile
+
+id	"spell_empire_summon_golem";
+
+nameid	"NamSp_spell_empire_summon_golem";
+descid	"DesSp_spell_empire_summon_golem";
+
+icon_small "Resources\items\runes\spell_empire_summon_golem.t";
+icon "Resources\items\cards\spell_empire_summon_golem.t";
+scene "Resources\FX\Map_Spells\Empire\Spell_Summon\spell_summon_golem.scene";
+scene_crop "Resources\FX\Map_Spells\Empire\Spell_Summon\spell_summon_golem_arena.scene";
+
+default_nation	"Empire";
+level	4;
+target	zone;
+
+game_effect	"nspell_empire_summon_golem";
+
+cost_spell "Life mana" 385, 770;
+cost_spell "Death mana" 385, 770;
+cost_spell "Runstone mana" 385, 770;
+
+rune	"rune_spell_empire_summon_golem";
+rune_cost "Life mana", 135;
+rune_cost "Death mana", 135;
+rune_cost "Runstone mana", 135;
+rune_cost "Stone", 405;

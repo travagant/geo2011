@@ -1,0 +1,13 @@
+// Effect profile for nskill_buff_resist_air
+
+effect "nskill_buff_resist_air"
+{
+nameid "nskill_buff_resist_air_nameid";
+fx_start	"resources\fx\\Arena_FX\Potions\fx_potion_resist_wind.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_resist.t";
+duration_turns	1;
+buff;
+res_air	25;
+//Modifi
+ini_per	10;
+}

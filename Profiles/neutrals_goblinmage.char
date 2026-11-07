@@ -1,0 +1,23 @@
+//Unit Profile
+//
+id                       "neutrals_goblinmage";
+unit_scene              "Resources\Characters\Neutrals\Goblinmage\character_neutrals_goblinmage.scene";
+unit_scene_lod		"resources\characters\Neutrals\Goblinmage\character_neutrals_goblinmage_lod.scene",10;
+icon                     "Resources\Characters\Neutrals\Goblinmage\icon_goblinmage.t";
+subicon                  "Resources\Characters\Neutrals\Goblinmage\icon_goblinmage_small.t";
+layout_icon              "Resources\Characters\Neutrals\Goblinmage\icon_goblinmage_node.t";
+capital_icon             "Resources\Characters\Neutrals\Goblinmage\icon_goblinmage_capital.t";
+dialog_icon              "Resources\Characters\Neutrals\Goblinmage\icon_goblinmage_dialog.t";
+leader_icon              "Resources\Characters\Neutrals\Goblinmage\icon_goblinmage_ring.t"
+fxproc                   "default";
+fxscene                  "resources\FX\Arena_Spells\Neutrals\GoblinMage\fx_goblinmage_spell.scene";
+fxcast                   "resources\FX\Attacks\Neutrals\GoblinMage\fx_goblinmage_cast.scene";
+fxscene_ko               "resources\\fx\\Arena_FX\\Death\\fx_die_neutrals.scene";
+fxlevelup		 		"Resources\\FX\\Arena_FX\\LevelUp\\fx_neutrals_levelup.scene";
+centerbone               "spine1";
+move_speed               1.7;
+nodesx                   1;
+nodesz                   1;
+#include                 "desc\\neutrals_goblinmage_desc.char";
+#include                 "sound\\neutrals_goblinmage_sound.char";
+#include                 "stats\\neutrals_goblinmage_stats.char";

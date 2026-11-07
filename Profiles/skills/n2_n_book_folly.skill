@@ -1,0 +1,21 @@
+// Skill profile n_book_folly
+
+skill	"n_book_folly"
+{
+nameid "n_book_folly_nameid";
+effectdescid "n_book_folly_descid";
+
+icon	"Resources\Interface\Icons\skills\n_book_folly.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_book_folly_inactive.t";
+
+skill_range	4;
+cast_type	zone;
+cast_target	enemy;
+game_effect	"nskill_book_folly_enemy";
+
+request_ap	1;
+battle;
+
+element	mind;
+//Modifi
+}

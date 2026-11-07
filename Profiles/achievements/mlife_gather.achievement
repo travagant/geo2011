@@ -1,0 +1,18 @@
+// Achievement Profile
+
+achievement "mlife_gather"
+{
+	nameid  "mlife_gather_name"; 
+	descid  "mlife_gather_desc";
+	type range;
+	count_name "str_mlife_gather_CN";
+
+	level_bronze 10000;
+	icon_bronze "Resources\Interface\Icons\achievements\achieve_mlife_gather.t";
+
+	level_silver 50000;
+	icon_silver "Resources\Interface\Icons\achievements\achieve_mlife_gather.t";
+
+	level_gold 90000;
+	icon_gold "Resources\Interface\Icons\achievements\achieve_mlife_gather.t";
+};

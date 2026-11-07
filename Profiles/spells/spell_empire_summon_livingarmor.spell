@@ -1,0 +1,23 @@
+// Spell Profile
+
+id	"spell_empire_summon_livingarmor";
+
+nameid	"NamSp_spell_empire_summon_livingarmor";
+descid	"DesSp_spell_empire_summon_livingarmor";
+
+icon_small "Resources\items\runes\spell_empire_summon_livingarmor.t";
+icon "Resources\items\cards\spell_empire_summon_livingarmor.t";
+scene "Resources\FX\Map_Spells\Empire\Spell_Summon\spell_summon_livingarmor.scene";
+scene_crop "Resources\FX\Map_Spells\Empire\Spell_Summon\spell_summon_livingarmor_arena.scene";
+
+default_nation	"Empire";
+level	2;
+target	zone;
+
+game_effect	"nspell_empire_summon_livingarmor";
+
+cost_spell "Life mana" 245, 490;
+
+rune	"rune_spell_empire_summon_livingarmor";
+rune_cost "Life mana", 90;
+rune_cost "Stone", 90;

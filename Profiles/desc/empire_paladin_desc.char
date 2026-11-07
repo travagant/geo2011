@@ -1,0 +1,4 @@
+//empire_paladin's description
+nameid "EmpirePaladinName";
+descid "EmpirePaladinDesc";
+minidesc "EmpirePaladin_MD";

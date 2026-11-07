@@ -1,0 +1,10 @@
+// Effect profile for nskill_stack_forward
+
+effect "nskill_stack_forward"
+{
+nameid "nskill_stack_forward_nameid";
+fx_start	"Resources\FX\Arena_FX\Skills\fx_skill_speed_up_1_spel.scene";
+buff;
+stack_forward	1;
+//Modifi
+}

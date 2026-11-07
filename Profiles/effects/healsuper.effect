@@ -1,0 +1,9 @@
+// Effect profile for HealSuper
+
+effect "HealSuper"
+{
+nameid "HealSuper_nameid";
+buff;
+heal	1000;
+//Modifi
+}

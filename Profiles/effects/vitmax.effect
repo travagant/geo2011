@@ -1,0 +1,11 @@
+// Effect profile for VitMax
+
+effect "VitMax"
+{
+nameid "VitMax_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_defense.t";
+duration_turns	2;
+buff;
+vit	4;
+//Modifi
+}

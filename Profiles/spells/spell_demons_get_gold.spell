@@ -1,0 +1,22 @@
+// Spell Profile
+
+id	"spell_demons_get_gold";
+
+nameid	"NamSp_spell_demons_get_gold";
+descid	"DesSp_spell_demons_get_gold";
+
+icon_small "Resources\items\runes\spell_demons_get_gold.t";
+icon "Resources\items\cards\spell_demons_get_gold.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Demons_All_Buff\spell_demons_all_buff.scene";
+scene_crop "Resources\FX\Map_Spells\Demons\Spell_Demons_All_Buff\spell_demons_all_buff_arena.scene";
+
+default_nation	"Demons";
+level	2;
+target	ally;
+
+game_effect	"nspell_demons_get_gold";
+
+cost_spell "Infernal mana" 300, 600;
+
+rune_cost "Infernal mana", 105;
+rune_cost "Stone", 105;

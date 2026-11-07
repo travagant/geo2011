@@ -1,0 +1,18 @@
+// Equipment Profile
+
+id	"talisman_air";
+
+nameid "talisman_air_name";
+descid "talisman_air_desc";
+
+
+class	"talisman";
+level	2;
+
+icon "resources\Items\talisman\talisman_air.t";
+
+spd	1;
+res_air	25;
+
+gold_cost	6000;
+//Modifi

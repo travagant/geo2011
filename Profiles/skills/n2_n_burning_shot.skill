@@ -1,0 +1,21 @@
+// Skill profile n_burning_shot
+
+skill	"n_burning_shot"
+{
+nameid "n_burning_shot_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_fire_arrow.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_fire_arrow_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_burning_shot";
+
+request_ap	1;
+
+element	fire;
+info_tag;
+on_attack;
+//Modifi
+}

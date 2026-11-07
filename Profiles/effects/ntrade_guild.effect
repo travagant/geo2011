@@ -1,0 +1,14 @@
+// Effect profile for nTrade_guild
+
+effect "nTrade_guild"
+{
+nameid "nTrade_guild_nameid";
+icon "Resources\Interface\Icons\buffs\icon_buff_world.t";
+duration_days	1;
+buff;
+discount	15;
+dontdispell;
+discount	15;
+//Modifi
+stackable	1;
+}

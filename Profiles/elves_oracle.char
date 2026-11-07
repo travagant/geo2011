@@ -1,0 +1,23 @@
+//Unit Profile
+//
+id                       "elves_oracle";
+unit_scene              "resources\\characters\\elves\\oracle\\character_elves_oracle.scene";
+unit_scene_lod		"resources\characters\elves\oracle\character_elves_oracle_lod.scene",10;
+icon                     "resources\\characters\\elves\\oracle\\icon_oracle.t";
+subicon                  "resources\\characters\\elves\\oracle\\icon_oracle_small.t";
+layout_icon              "resources\\characters\\elves\\oracle\\icon_oracle_node.t";
+capital_icon             "resources\\characters\\elves\\oracle\\icon_oracle_capital.t";
+dialog_icon              "resources\\characters\\elves\\oracle\\icon_oracle_dialog.t";
+leader_icon              "resources\\characters\\elves\\oracle\\icon_oracle_ring.t"
+fxproc                   "lighting";
+fxscene                  "resources\\fx\\Arena_Spells\\elves\\oracle\\fx_elves_oracle_spell.scene";
+fxcast                   "resources\\fx\\Attacks\\elves\\oracle\\fx_elves_oracle_cast.scene";
+fxscene_ko               "resources\\fx\\Arena_FX\\Death\\fx_die_elves.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_elves_levelup.scene";
+centerbone               "Spine1";
+move_speed                2.5;
+nodesx                   1;
+nodesz                   1;
+#include                 "desc\\elves_oracle_desc.char";
+#include                 "sound\\elves_oracle_sound.char";
+#include                 "stats\\elves_oracle_stats.char";

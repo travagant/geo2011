@@ -1,0 +1,10 @@
+// Effect profile for nskill_push_curse_pow
+
+effect "nskill_push_curse_pow"
+{
+nameid "nskill_push_curse_pow_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_book_balance_curse.scene";
+push;
+push_collide	"nskill_push_collide";
+//Modifi
+}

@@ -1,0 +1,10 @@
+// Effect profile for nskill_resurrect
+
+effect "nskill_resurrect"
+{
+nameid "nskill_resurrect_nameid";
+fx_start	"Resources\FX\Arena_FX\Skills\fx_skill_revive_1_spell.scene";
+buff;
+resurrect_mode	"nskill_resurrect_effect";
+//Modifi
+}

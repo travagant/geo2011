@@ -1,0 +1,18 @@
+// Skill profile n_skill_debuff_spd_oncrit
+
+skill	"n_skill_debuff_spd_oncrit"
+{
+nameid "n_skill_debuff_spd_oncrit_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_debuff_spd_oncrit.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_debuff_spd_oncrit_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_debuff_spd_oncrit";
+
+
+element	pierce;
+//Modifi
+}

@@ -1,0 +1,8 @@
+// Effect profile for nspell_undead_summon_skeleton_arena
+
+effect "nspell_undead_summon_skeleton_arena"
+{
+nameid "nspell_undead_summon_skeleton_arena_nameid";
+summon	"undead_Skeleton";
+//Modifi
+}

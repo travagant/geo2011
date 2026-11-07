@@ -1,0 +1,23 @@
+// Spell Profile
+
+id	"spell_undead_dmg_death";
+
+nameid	"NamSp_spell_undead_dmg_death";
+descid	"DesSp_spell_undead_dmg_death";
+
+icon_small "Resources\items\runes\spell_undead_dmg_death.t";
+icon "Resources\items\cards\spell_undead_dmg_death.t";
+scene "Resources\FX\Map_Spells\Undead\Spell_undead_Death_Cast\Spell_Undead_death_cast.scene";
+scene_crop "Resources\FX\Map_Spells\Undead\Spell_undead_Death_Cast\Spell_Undead_death_cast_arena.scene";
+
+default_nation	"Undead";
+level	2;
+target	enemy;
+
+game_effect	"nspell_undead_dmg_death";
+
+cost_spell "Death mana" 320, 640;
+
+rune	"rune_spell_undead_dmg_death";
+rune_cost "Death mana", 115;
+rune_cost "Stone", 115;

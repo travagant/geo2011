@@ -1,0 +1,18 @@
+// Equipment Profile
+
+id	"body_agi1";
+
+nameid "body_agi1_name";
+descid "body_agi1_desc";
+
+
+class	"body";
+replace	"body" set 1;
+level	1;
+
+icon "resources\Items\body\body_agi1.t";
+
+agi	1;
+
+gold_cost	2300;
+//Modifi

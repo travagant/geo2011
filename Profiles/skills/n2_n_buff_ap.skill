@@ -1,0 +1,20 @@
+// Skill profile n_buff_ap
+
+skill	"n_buff_ap"
+{
+nameid "n_buff_ap_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_fortitude.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_fortitude_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"ApBat";
+
+request_ap	1;
+battle;
+
+info_tag;
+//Modifi
+}

@@ -1,0 +1,13 @@
+// Effect profile for nskill_buff_ini_ondamaged
+
+effect "nskill_buff_ini_ondamaged"
+{
+nameid "nskill_buff_ini_ondamaged_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_n_rage.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_attack.t";
+duration_turns	2;
+buff;
+//Modifi
+ini_per	15;
+stackable	1;
+}

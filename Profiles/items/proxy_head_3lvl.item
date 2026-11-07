@@ -1,0 +1,16 @@
+// Equipment Profile
+
+id	"proxy_head_3lvl";
+
+nameid "proxy_head_3lvl_name";
+descid "proxy_head_3lvl_desc";
+
+
+class	"head";
+level	3;
+
+icon "resources\Items\head\proxy_head_3lvl.t";
+
+proxy;
+
+//Modifi

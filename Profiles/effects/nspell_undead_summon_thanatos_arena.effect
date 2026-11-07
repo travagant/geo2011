@@ -1,0 +1,8 @@
+// Effect profile for nspell_undead_summon_thanatos_arena
+
+effect "nspell_undead_summon_thanatos_arena"
+{
+nameid "nspell_undead_summon_thanatos_arena_nameid";
+summon	"undead_tanatos";
+//Modifi
+}

@@ -1,0 +1,12 @@
+// Effect profile for nskill_talisman_waterarround
+
+effect "nskill_talisman_waterarround"
+{
+nameid "nskill_talisman_waterarround_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_resist_water_around.scene";
+icon "Resources\Interface\Icons\buffs\Icon_buff_resist.t";
+duration_turns	2;
+buff;
+res_water	25;
+//Modifi
+}

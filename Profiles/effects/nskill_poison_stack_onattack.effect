@@ -1,0 +1,13 @@
+// Effect profile for nskill_poison_stack_onattack
+
+effect "nskill_poison_stack_onattack"
+{
+nameid "nskill_poison_stack_onattack_nameid";
+fx_start	"Resources\FX\Arena_FX\Skills\fx_skill_poison_map_1_spell.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_poison.t";
+duration_turns	5;
+debuff;
+curse_pow	30;
+//Modifi
+stackable	1;
+}

@@ -1,0 +1,13 @@
+// Effect profile for nskill_curse_onblessed
+
+effect "nskill_curse_onblessed"
+{
+nameid "nskill_curse_onblessed_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_dispell_buff_buff_debuff_all_onattack.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_poison.t";
+duration_turns	3;
+debuff;
+curse_pow	50;
+element	"death";
+//Modifi
+}

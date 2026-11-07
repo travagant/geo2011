@@ -1,0 +1,23 @@
+// Spell Profile
+
+id	"spell_elves_summon_earthelemental";
+
+nameid	"NamSp_spell_elves_summon_earthelemental";
+descid	"DesSp_spell_elves_summon_earthelemental";
+
+icon_small "Resources\items\runes\spell_elves_summon_earthelemental.t";
+icon "Resources\items\cards\spell_elves_summon_earthelemental.t";
+scene "Resources\FX\Map_Spells\Elves\Spell_Summon\spell_summon_earthelemental.scene";
+scene_crop "Resources\FX\Map_Spells\Elves\Spell_Summon\spell_summon_earthelemental_arena.scene";
+
+default_nation	"Elves";
+level	2;
+target	zone;
+
+game_effect	"nspell_elves_summon_earthelemental";
+
+cost_spell "Grove mana" 245, 490;
+
+rune	"rune_spell_elves_summon_earthelemental";
+rune_cost "Grove mana", 90;
+rune_cost "Stone", 90;

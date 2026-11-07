@@ -1,0 +1,19 @@
+// Skill profile n_spell_undead_debuff_all_stats
+
+skill	"n_spell_undead_debuff_all_stats"
+{
+nameid "n_spell_undead_debuff_all_stats_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_spell_undead_debuff_all_stats.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_spell_undead_debuff_all_stats_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_spell_undead_debuff_all_stats";
+
+
+info_tag;
+on_crited;
+//Modifi
+}

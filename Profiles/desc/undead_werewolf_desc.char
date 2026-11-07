@@ -1,0 +1,4 @@
+//undead_Werewolf's description
+nameid "UndeadWerewolfName";
+descid "UndeadWerewolfDesc";
+minidesc "UndeadWerewolf_MD";

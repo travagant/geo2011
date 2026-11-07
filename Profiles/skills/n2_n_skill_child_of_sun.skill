@@ -1,0 +1,16 @@
+// Skill profile n_skill_child_of_sun
+
+skill	"n_skill_child_of_sun"
+{
+nameid "n_skill_child_of_sun_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_child_of_sun.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_child_of_sun_inactive.t";
+
+
+
+spd	3;
+info_tag;
+activity_cycle	"noon";
+//Modifi
+}

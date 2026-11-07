@@ -1,0 +1,29 @@
+// Spell Profile
+
+id	"spell_empire_buff_cover";
+
+nameid	"NamSp_spell_empire_buff_cover";
+descid	"DesSp_spell_empire_buff_cover";
+
+icon_small "Resources\items\runes\spell_empire_buff_cover.t";
+icon "Resources\items\cards\spell_empire_buff_cover.t";
+scene "Resources\FX\Map_Spells\Empire\Spell_Empire_Resist\spell_empire_resist_3.scene";
+scene_crop "Resources\FX\Map_Spells\Empire\Spell_Empire_Resist\spell_empire_resist_3_arena.scene";
+
+default_nation	"Empire";
+level	5;
+target	ally;
+
+game_effect	"nspell_empire_buff_cover";
+
+cost_spell "Life mana" 185, 370;
+cost_spell "Grove mana" 185, 370;
+cost_spell "Death mana" 185, 370;
+cost_spell "Runstone mana" 185, 370;
+
+rune	"rune_spell_empire_buff_cover";
+rune_cost "Life mana", 65;
+rune_cost "Grove mana", 65;
+rune_cost "Death mana", 65;
+rune_cost "Runstone mana", 65;
+rune_cost "Stone", 260;

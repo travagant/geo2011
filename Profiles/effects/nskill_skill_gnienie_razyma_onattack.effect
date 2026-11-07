@@ -1,0 +1,12 @@
+// Effect profile for nskill_skill_gnienie_razyma_onattack
+
+effect "nskill_skill_gnienie_razyma_onattack"
+{
+nameid "nskill_skill_gnienie_razyma_onattack_nameid";
+fx_start	"resources\fx\\Arena_Spells\Demons\Tiamath\fx_demons_tiamath_spell.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_curse.t";
+duration_turns	2;
+debuff;
+//Modifi
+add_skill	"n_spell_undead_dmg_death";
+}

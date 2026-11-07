@@ -1,0 +1,8 @@
+// Effect profile for nspell_elves_summon_verdant
+
+effect "nspell_elves_summon_verdant"
+{
+nameid "nspell_elves_summon_verdant_nameid";
+summon	"elves_verdant";
+//Modifi
+}

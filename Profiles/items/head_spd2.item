@@ -1,0 +1,19 @@
+// Equipment Profile
+
+id	"head_spd2";
+
+nameid "head_spd2_name";
+descid "head_spd2_desc";
+
+
+class	"head";
+replace	"head" set 2;
+level	2;
+
+icon "resources\Items\head\head_spd2.t";
+
+spd	1;
+res_mind	25;
+
+gold_cost	6000;
+//Modifi

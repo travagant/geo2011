@@ -1,0 +1,13 @@
+// Effect profile for nspell_elves_dmg_air_arena
+
+effect "nspell_elves_dmg_air_arena"
+{
+nameid "nspell_elves_dmg_air_arena_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_resist.t";
+duration_turns	-1;
+debuff;
+damage	200;
+element	"air";
+res_slash	-25;
+//Modifi
+}

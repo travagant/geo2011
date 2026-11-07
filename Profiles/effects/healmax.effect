@@ -1,0 +1,10 @@
+// Effect profile for HealMax
+
+effect "HealMax"
+{
+nameid "HealMax_nameid";
+fx_start	"resources\fx\\Arena_FX\Sign\fx_sign_heal.scene";
+buff;
+heal	500;
+//Modifi
+}

@@ -1,0 +1,10 @@
+// Effect profile for nskill_summon_Legion
+
+effect "nskill_summon_Legion"
+{
+nameid "nskill_summon_Legion_nameid";
+fx_start	"Resources\FX\\Arena_FX\Skills\fx_skills_summon_pet_demons.scene";
+buff;
+summon	"demons_beliarh";
+//Modifi
+}

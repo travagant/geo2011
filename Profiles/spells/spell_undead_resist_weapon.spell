@@ -1,0 +1,29 @@
+// Spell Profile
+
+id	"spell_undead_resist_weapon";
+
+nameid	"NamSp_spell_undead_resist_weapon";
+descid	"DesSp_spell_undead_resist_weapon";
+
+icon_small "Resources\items\runes\spell_undead_resist_weapon.t";
+icon "Resources\items\cards\spell_undead_resist_weapon.t";
+scene "Resources\FX\Map_Spells\Undead\Spell_Undead_Buf_Def\Spell_Undead_Buf_Def.scene";
+scene_crop "Resources\FX\Map_Spells\Undead\Spell_Undead_Buf_Def\Spell_Undead_Buf_Def_arena.scene";
+
+default_nation	"Undead";
+level	5;
+target	ally;
+
+game_effect	"nspell_undead_resist_weapon";
+
+cost_spell "Life mana" 150, 300;
+cost_spell "Grove mana" 150, 300;
+cost_spell "Death mana" 150, 300;
+cost_spell "Runstone mana" 150, 300;
+
+rune	"rune_spell_undead_resist_weapon";
+rune_cost "Life mana", 55;
+rune_cost "Grove mana", 55;
+rune_cost "Death mana", 55;
+rune_cost "Runstone mana", 55;
+rune_cost "Stone", 220;

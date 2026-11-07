@@ -1,0 +1,11 @@
+// Effect profile for nspell_undead_resist_weapon_arena
+
+effect "nspell_undead_resist_weapon_arena"
+{
+nameid "nspell_undead_resist_weapon_arena_nameid";
+icon "Resources\Interface\Icons\buffs\icon_buff_resist.t";
+duration_turns	-1;
+buff;
+def	25;
+//Modifi
+}

@@ -1,0 +1,18 @@
+// Equipment Profile
+
+id	"talisman_earth";
+
+nameid "talisman_earth_name";
+descid "talisman_earth_desc";
+
+
+class	"talisman";
+level	2;
+
+icon "resources\Items\talisman\talisman_earth.t";
+
+vit	1;
+res_earth	25;
+
+gold_cost	6000;
+//Modifi

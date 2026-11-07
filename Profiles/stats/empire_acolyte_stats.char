@@ -1,0 +1,54 @@
+// Characters stats profile
+
+unit_class	caster;
+unit_side	"empire";
+ship	"empire1";
+attack_type	"divine";
+level	1;
+side	empire;
+exp_base	150;
+
+//stats
+str	5;
+spd	1;
+dex	2;
+agi	2;
+vit	2;
+
+
+ap	1;
+up	100;
+mov	2;
+movwm	12;
+
+atck_range	3;
+
+//resists
+res_pierce	-25;
+res_death	25;
+
+leadership_cost	1;
+cost	220;
+skill_grid	"empire_acolyte";
+viewradius	8;
+
+//Modifi
+dmg_str_mod	 1300;
+dmg_agi_mod	 800;
+crit_dex_mod	 400;
+crit_vit_mod	 200;
+flee_agi_mod	 300;
+flee_spd_mod	 100;
+hp_vit_mod	 3000;
+hp_str_mod	 1500;
+ini_spd_mod	 150;
+ini_dex_mod	 100;
+mov_mod	 0;
+movwm_mod	 0;
+cover_mod	 0;
+viewradius_mod	 0;
+Discount_Mod	 0;
+Bonusexp_Mod	 0;
+level_cap	13;
+levels_to_up	3;
+Healer	1;

@@ -1,0 +1,11 @@
+// Effect profile for BuffCoverMin
+
+effect "BuffCoverMin"
+{
+nameid "BuffCoverMin_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_defense.t";
+buff;
+cover	2;
+element	"mind";
+//Modifi
+}

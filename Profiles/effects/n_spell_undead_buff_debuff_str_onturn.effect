@@ -1,0 +1,10 @@
+// Effect profile for n_spell_undead_buff_debuff_str_onturn
+
+effect "n_spell_undead_buff_debuff_str_onturn"
+{
+nameid "n_spell_undead_buff_debuff_str_onturn_nameid";
+duration_days	1;
+buff;
+//Modifi
+add_skill	"n_spell_undead_buff_debuff_str_onturn";
+}

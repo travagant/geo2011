@@ -1,0 +1,16 @@
+//interactive map object for Manasource_life
+
+id	"map_Manasource_life";
+
+nameid	"map_Manasource_lifeN";
+msgid	"map_Manasource_lifeAD";
+msg_inactiveid	"map_Manasource_lifeNAD";
+descid	"map_Manasource_lifeD";
+desc_inactid	"map_Manasource_lifeND";
+effectid	"map_Manasource_lifeEff";
+ambient_sound	"$(Sounds)\\Buildings\\manasource_life.wav";
+
+//destination
+action_class	"resource";
+action_class_script	"resources\\profiles\\actionscript\\resource_lifemana.acscript";
+respawn	1;

@@ -1,0 +1,8 @@
+// Effect profile for nspell_empire_get_rune_arena
+
+effect "nspell_empire_get_rune_arena"
+{
+nameid "nspell_empire_get_rune_arena_nameid";
+resource_item	"proxy_rune_3lvl";
+//Modifi
+}

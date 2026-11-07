@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_demons_debuff_dmg_mod";
+
+nameid "NamSp_spell_demons_debuff_dmg_mod";
+descid "DesSp_spell_demons_debuff_dmg_mod";
+
+level 4;
+class "runes";
+icon "Resources\items\runes\spell_demons_debuff_dmg_mod.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Fire_Curse_2\spell_fire_curse_2_arena.scene";
+
+target enemy;
+game_effect "nspell_demons_debuff_dmg_mod_arena";
+
+gold_cost 720;
+usage_cost 30;
+race "Demons";

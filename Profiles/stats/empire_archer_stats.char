@@ -1,0 +1,53 @@
+// Characters stats profile
+
+unit_class	range;
+unit_side	"empire";
+ship	"empire1";
+attack_type	"pierce";
+level	1;
+side	empire;
+exp_base	150;
+
+//stats
+str	3;
+spd	3;
+dex	3;
+agi	1;
+vit	2;
+
+
+ap	1;
+up	100;
+mov	2;
+movwm	12;
+
+atck_range	4;
+
+//resists
+res_water	25;
+res_death	-25;
+
+leadership_cost	1;
+cost	140;
+skill_grid	"empire_archer";
+viewradius	8;
+
+//Modifi
+dmg_str_mod	 700;
+dmg_agi_mod	 500;
+crit_dex_mod	 400;
+crit_vit_mod	 200;
+flee_agi_mod	 500;
+flee_spd_mod	 300;
+hp_vit_mod	 3000;
+hp_str_mod	 1500;
+ini_spd_mod	 250;
+ini_dex_mod	 200;
+mov_mod	 0;
+movwm_mod	 0;
+cover_mod	 0;
+viewradius_mod	 0;
+Discount_Mod	 0;
+Bonusexp_Mod	 0;
+level_cap	13;
+levels_to_up	3;

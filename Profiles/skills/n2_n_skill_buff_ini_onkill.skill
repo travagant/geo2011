@@ -1,0 +1,19 @@
+// Skill profile n_skill_buff_ini_onkill
+
+skill	"n_skill_buff_ini_onkill"
+{
+nameid "n_skill_buff_ini_onkill_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_strength.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_strength_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_buff_ini_onkill";
+
+
+info_tag;
+on_kill;
+//Modifi
+}

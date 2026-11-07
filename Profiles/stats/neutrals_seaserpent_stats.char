@@ -1,0 +1,53 @@
+// Characters stats profile
+
+unit_class	caster;
+unit_side	"waterbeasts_unique";
+attack_type	"water";
+level	50;
+side	neutrals;
+exp_base	200;
+
+//stats
+str	17;
+spd	1;
+dex	13;
+agi	15;
+vit	15;
+
+
+ap	1;
+mov	0;
+movwm	0;
+
+atck_range	4;
+zone_radius	9;
+atck_zone;
+
+//resists
+
+no_retreat;
+no_rotate;
+leadership_cost	2;
+cost	4410;
+skill_grid	"neutrals_seaserpent";
+viewradius	10;
+
+//Modifi
+dmg_str_mod	 1000;
+dmg_agi_mod	 600;
+crit_dex_mod	 300;
+crit_vit_mod	 100;
+flee_agi_mod	 400;
+flee_spd_mod	 200;
+hp_vit_mod	 3800;
+hp_str_mod	 2000;
+ini_spd_mod	 150;
+ini_dex_mod	 100;
+mov_mod	 0;
+movwm_mod	 0;
+cover_mod	 0;
+viewradius_mod	 0;
+Discount_Mod	 0;
+Bonusexp_Mod	 0;
+level_cap	62;
+levels_to_up	3;

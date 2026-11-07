@@ -1,0 +1,4 @@
+//undead_Necromancer's description
+nameid "UndeadNecromancerName";
+descid "UndeadNecromancerDesc";
+minidesc "UndeadNecromancer_MD";

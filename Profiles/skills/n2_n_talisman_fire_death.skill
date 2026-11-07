@@ -1,0 +1,20 @@
+// Skill profile n_talisman_fire_death
+
+skill	"n_talisman_fire_death"
+{
+nameid "n_talisman_fire_death_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_talisman_fire_death.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_talisman_fire_death_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+
+
+res_fire	25;
+res_death	25;
+info_tag;
+on_turn;
+//Modifi
+}

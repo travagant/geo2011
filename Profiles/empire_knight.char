@@ -1,0 +1,22 @@
+// Unit Profile
+//
+id 		"empire_knight";
+unit_scene 	"resources\\characters\\empire\\knight\\character_empire_knight.scene"
+unit_scene_lod		"resources\characters\empire\knight\character_empire_knight_lod.scene",10;
+icon 		"resources\\characters\\empire\\knight\\icon_knight.t";
+subicon 	"resources\\characters\\empire\\knight\\icon_knight_small.t";
+layout_icon 	"resources\\characters\\empire\\knight\\icon_knight_node.t";
+fxproc 		"lighting";
+fxscene 	"resources\fx\Arena_FX\Physical_Damage\fx_small_attack_damage.scene";
+fxscene_ko 	"Resources\FX\Arena_FX\Death\fx_die_empire.scene";
+fxlevelup	"Resources\\FX\\Arena_FX\\LevelUp\\fx_empires_levelup.scene";
+centerbone "Knight Spine1";
+#include      	"desc\\empire_knight_desc.char";
+#include	"stats\\empire_knight_stats.char";
+#include      	"sound\\empire_knight_sound.char";
+move_speed 	4.5;
+nodesx 		1;
+nodesz 		1;
+capital_icon 	 "resources\characters\empire\knight\icon_knight_capital.t";
+dialog_icon 	 "resources\characters\empire\knight\icon_knight_dialog.t";
+leader_icon      "resources\characters\empire\knight\icon_knight_ring.t"

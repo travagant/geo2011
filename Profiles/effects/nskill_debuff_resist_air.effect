@@ -1,0 +1,12 @@
+// Effect profile for nskill_debuff_resist_air
+
+effect "nskill_debuff_resist_air"
+{
+nameid "nskill_debuff_resist_air_nameid";
+fx_start	"Resources\FX\ArenaFX\skills\fx_skill_n_debuff_resist_air";
+icon "Resources\Interface\Icons\buffs\icon_debuff_resist.t";
+duration_turns	5;
+debuff;
+res_air	-25;
+//Modifi
+}

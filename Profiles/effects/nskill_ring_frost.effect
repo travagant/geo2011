@@ -1,0 +1,13 @@
+// Effect profile for nskill_ring_frost
+
+effect "nskill_ring_frost"
+{
+nameid "nskill_ring_frost_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_pillar_rune.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_poison.t";
+duration_turns	3;
+debuff;
+curse_pow	20;
+element	"water";
+//Modifi
+}

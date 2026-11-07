@@ -1,0 +1,22 @@
+// Spell Profile
+
+id	"spell_empire_openfog";
+
+nameid	"NamSp_spell_empire_openfog";
+descid	"DesSp_spell_empire_openfog";
+
+icon_small "Resources\items\runes\spell_empire_openfog.t";
+icon "Resources\items\cards\spell_empire_openfog.t";
+scene "Resources\FX\Map_Spells\Empire\Spell_Empire_Openfog\spell_empire_openfog.scene";
+scene_crop "Resources\FX\Map_Spells\Empire\Spell_Empire_Openfog\spell_empire_openfog_arena.scene";
+
+default_nation	"Empire";
+level	2;
+target	zone;
+
+game_effect	"nspell_empire_openfog";
+
+cost_spell "Life mana" 200, 400;
+
+rune_cost "Life mana", 70;
+rune_cost "Stone", 70;

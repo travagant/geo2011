@@ -1,0 +1,20 @@
+// Skill profile n_skill_debuff_range_onattack
+
+skill	"n_skill_debuff_range_onattack"
+{
+nameid "n_skill_debuff_range_onattack_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_debuff_blind.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_debuff_blind_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_debuff_range_onattack";
+
+
+element	water;
+info_tag;
+on_attack;
+//Modifi
+}

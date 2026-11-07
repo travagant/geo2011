@@ -1,0 +1,17 @@
+// Effect profile for nspell_undead_debuff_all_stats
+
+effect "nspell_undead_debuff_all_stats"
+{
+nameid "nspell_undead_debuff_all_stats_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_curse.t";
+duration_days	2;
+debuff;
+str	-1;
+agi	-1;
+dex	-1;
+spd	-1;
+vit	-1;
+res_blunt	-25;
+//Modifi
+add_skill	"n_spell_undead_debuff_all_stats";
+}

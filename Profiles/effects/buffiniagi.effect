@@ -1,0 +1,12 @@
+// Effect profile for BuffIniAgi
+
+effect "BuffIniAgi"
+{
+nameid "BuffIniAgi_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_defense.t";
+duration_turns	6;
+buff;
+agi	2;
+ini	5;
+//Modifi
+}

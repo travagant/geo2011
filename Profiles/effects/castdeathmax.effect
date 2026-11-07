@@ -1,0 +1,10 @@
+// Effect profile for CastDeathMax
+
+effect "CastDeathMax"
+{
+nameid "CastDeathMax_nameid";
+debuff;
+damage	400;
+element	"death";
+//Modifi
+}

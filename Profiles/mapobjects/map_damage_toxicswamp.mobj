@@ -1,0 +1,13 @@
+
+
+id 			"map_damage_zone_toxicswamp";
+
+action_class	"magiczone" 
+{
+	radius 0; // исключая гекс на котором стоит
+	on 		"unit_step"; // на каждый шаг юнита только на этого юнита
+	race 	"all";
+	effect	"ToxicSwampDamage";
+	fx "Resources\FX\LandFX\map_cloud_green.scene"
+}
+

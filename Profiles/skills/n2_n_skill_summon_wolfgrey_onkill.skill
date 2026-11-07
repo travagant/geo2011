@@ -1,0 +1,19 @@
+// Skill profile n_skill_summon_wolfgrey_onkill
+
+skill	"n_skill_summon_wolfgrey_onkill"
+{
+nameid "n_skill_summon_wolfgrey_onkill_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_buff_dexparty.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_buff_dexparty_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_summon_wolfgrey_onkill";
+
+
+info_tag;
+on_kill;
+//Modifi
+}

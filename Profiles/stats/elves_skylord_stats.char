@@ -1,0 +1,56 @@
+// Characters stats profile
+
+unit_class	rogue;
+unit_side	"elves_giant";
+ship	"elves2";
+attack_type	"blunt";
+level	20;
+side	elves;
+exp_base	165;
+
+//stats
+str	7;
+spd	3;
+dex	7;
+agi	5;
+vit	9;
+
+
+ap	1;
+up	100;
+mov	2;
+movwm	12;
+
+atck_range	1;
+Control	1;
+Cover	1;
+
+//resists
+res_slash	-25;
+res_air	25;
+res_mind	50;
+
+leadership_cost	2;
+cost	6050;
+skill_grid	"elves_skylord";
+viewradius	8;
+
+//Modifi
+dmg_str_mod	 1400;
+dmg_agi_mod	 900;
+crit_dex_mod	 700;
+crit_vit_mod	 400;
+flee_agi_mod	 700;
+flee_spd_mod	 400;
+hp_vit_mod	 6000;
+hp_str_mod	 3000;
+ini_spd_mod	 200;
+ini_dex_mod	 150;
+mov_mod	 0;
+movwm_mod	 0;
+cover_mod	 0;
+viewradius_mod	 0;
+Discount_Mod	 0;
+Bonusexp_Mod	 0;
+level_cap	32;
+levels_to_up	3;

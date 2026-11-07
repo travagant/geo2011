@@ -1,0 +1,11 @@
+// Effect profile for VitDecMin
+
+effect "VitDecMin"
+{
+nameid "VitDecMin_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_defense.t";
+duration_turns	3;
+debuff;
+vit	-1;
+//Modifi
+}

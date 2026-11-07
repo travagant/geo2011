@@ -1,0 +1,16 @@
+//interactive map object for Resource_stone_big
+
+id	"map_Resource_stone_big";
+
+nameid	"map_resstone_bigN";
+msgid	"map_resstone_bigAD";
+msg_inactiveid	"";
+descid	"map_resstone_bigD";
+effectid	"map_resstone_bigEff";
+fx_start	"Resources\\FX\Arena_FX\Sign\fx_sign_stones.scene";
+
+//destination
+action_class	"heap_resource";
+heap_resource	stone 100;
+msg_popup	"Resource_stone_bigPopup";
+once;

@@ -1,0 +1,28 @@
+// Spell Profile
+
+id	"spell_demons_debuff_movwm";
+
+nameid	"NamSp_spell_demons_debuff_movwm";
+effectdescid	"EffSp_spell_demons_debuff_movwm";
+descid	"DesSp_spell_demons_debuff_movwm";
+
+icon_small "Resources\items\runes\spell_demons_debuff_movwm.t";
+icon "Resources\items\cards\spell_demons_debuff_movwm.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Fire_Land_Cast\spell_fire_land_cast.scene";
+scene_crop "Resources\FX\Map_Spells\Demons\Spell_Fire_Land_Cast\spell_fire_land_cast_arena.scene";
+
+default_nation	"Demons";
+level	4;
+target	enemy;
+
+game_effect	"nspell_demons_debuff_movwm";
+
+cost_spell "Grove mana" 200, 400;
+cost_spell "Infernal mana" 200, 400;
+cost_spell "Death mana" 200, 400;
+
+rune	"rune_spell_demons_debuff_movwm";
+rune_cost "Grove mana", 70;
+rune_cost "Infernal mana", 70;
+rune_cost "Death mana", 70;
+rune_cost "Stone", 210;

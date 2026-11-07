@@ -1,0 +1,10 @@
+// Effect profile for nskill_dmg_around_onintercepted
+
+effect "nskill_dmg_around_onintercepted"
+{
+nameid "nskill_dmg_around_onintercepted_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_dmg_oncurse.scene";
+attack_pow	75;
+element	"fire";
+//Modifi
+}

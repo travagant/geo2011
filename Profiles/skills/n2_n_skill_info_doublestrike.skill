@@ -1,0 +1,15 @@
+// Skill profile n_skill_info_doublestrike
+
+skill	"n_skill_info_doublestrike"
+{
+nameid "n_skill_info_doublestrike_nameid";
+effectdescid "n_skill_info_doublestrike_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_double_attack.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_double_attack_inactive.t";
+
+
+
+info_tag;
+//Modifi
+}

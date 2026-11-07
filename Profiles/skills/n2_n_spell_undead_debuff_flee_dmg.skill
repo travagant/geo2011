@@ -1,0 +1,19 @@
+// Skill profile n_spell_undead_debuff_flee_dmg
+
+skill	"n_spell_undead_debuff_flee_dmg"
+{
+nameid "n_spell_undead_debuff_flee_dmg_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_spell_undead_debuff_flee_dmg.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_spell_undead_debuff_flee_dmg_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_spell_undead_debuff_flee_dmg";
+
+
+info_tag;
+on_flee;
+//Modifi
+}

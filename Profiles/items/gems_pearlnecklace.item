@@ -1,0 +1,13 @@
+// Gem Profile
+
+id	"gems_pearlnecklace";
+
+
+nameid	"ItNGePearlN";
+descid	"ItDGePearlN";
+
+class "gems";
+level	2;
+icon "Resources\\Items\\gems\\gems_pearlnecklace.t";
+
+gold_cost	4000;

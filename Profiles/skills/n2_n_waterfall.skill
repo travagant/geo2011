@@ -1,0 +1,21 @@
+// Skill profile n_waterfall
+
+skill	"n_waterfall"
+{
+nameid "n_waterfall_nameid";
+effectdescid "n_waterfall_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_waterfall.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_waterfall_inactive.t";
+
+skill_range	12;
+cast_type	all;
+cast_target	enemy;
+game_effect	"nskill_waterfall";
+
+request_ap	1;
+battle;
+
+info_tag;
+//Modifi
+}

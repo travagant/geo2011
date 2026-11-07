@@ -1,0 +1,13 @@
+//interactive map object for Elves_capital_ruined
+
+id	"map_Elves_capital_ruined";
+
+nameid	"map_Elves_capital_ruinedN";
+msgid	"map_Elves_capital_ruinedAD";
+msg_inactiveid	"map_Elves_capital_ruinedAD";
+descid	"map_Elves_capital_ruinedD";
+desc_inactid	"map_Elves_capital_ruinedD";
+
+//destination
+action_class	"object";
+respawn	0;

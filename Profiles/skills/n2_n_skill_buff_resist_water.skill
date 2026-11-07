@@ -1,0 +1,19 @@
+// Skill profile n_skill_buff_resist_water
+
+skill	"n_skill_buff_resist_water"
+{
+nameid "n_skill_buff_resist_water_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_res-water.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_res-water_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	friendly;
+game_effect	"nskill_buff_resist_water";
+
+
+info_tag;
+on_attack;
+//Modifi
+}

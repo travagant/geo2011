@@ -1,0 +1,15 @@
+// Effect profile for nskill_paralyze_dmg_mind
+
+effect "nskill_paralyze_dmg_mind"
+{
+nameid "nskill_paralyze_dmg_mind_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_spell_demons_dmg_mind.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_stop.t";
+duration_turns	1;
+debuff;
+stop;
+attack_pow	150;
+paralize;
+element	"mind";
+//Modifi
+}

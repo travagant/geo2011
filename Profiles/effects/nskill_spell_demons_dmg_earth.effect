@@ -1,0 +1,12 @@
+// Effect profile for nskill_spell_demons_dmg_earth
+
+effect "nskill_spell_demons_dmg_earth"
+{
+nameid "nskill_spell_demons_dmg_earth_nameid";
+fx_start	"resources\fx\\Arena_Spells\Empire\Titan\fx_empire_titan_spell.scene";
+duration_days	2;
+debuff;
+damage	50;
+element	"earth";
+//Modifi
+}

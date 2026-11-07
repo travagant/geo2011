@@ -1,0 +1,21 @@
+// Skill profile n_lightning_bolt
+
+skill	"n_lightning_bolt"
+{
+nameid "n_lightning_bolt_nameid";
+effectdescid "n_lightning_bolt_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_light_damage.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_light_damage_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_lightning_bolt";
+
+request_ap	1;
+battle;
+
+info_tag;
+//Modifi
+}

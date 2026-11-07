@@ -1,0 +1,10 @@
+// Effect profile for Morphed
+
+effect "Morphed"
+{
+nameid "Morphed_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_morph.t";
+duration_turns	2;
+debuff;
+//Modifi
+}

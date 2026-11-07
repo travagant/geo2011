@@ -1,0 +1,12 @@
+// Effect profile for nbanner_of_heroism
+
+effect "nbanner_of_heroism"
+{
+nameid "nbanner_of_heroism_nameid";
+icon "Resources\Interface\Icons\buffs\icon_buff_attack.t";
+duration_turns	-1;
+buff;
+str	1;
+dontdispell;
+//Modifi
+}

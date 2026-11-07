@@ -1,0 +1,11 @@
+// Effect profile for ResDeathDecMid
+
+effect "ResDeathDecMid"
+{
+nameid "ResDeathDecMid_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_resist.t";
+duration_turns	3;
+debuff;
+res_death	-25;
+//Modifi
+}

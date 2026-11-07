@@ -1,0 +1,11 @@
+//interactive map object for TraningCamp
+
+id	"map_TraningCamp";
+
+nameid	"map_Merchants_TraningCampN";
+descid	"map_Merchants_TraningCampD";
+ambient_sound	"$(Sounds)\\Buildings\\training_camp.wav";
+
+//destination
+action_class	"unitupgrade";
+respawn	0;

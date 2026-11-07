@@ -1,0 +1,19 @@
+// Skill profile n_skill_unstopabale
+
+skill	"n_skill_unstopabale"
+{
+nameid "n_skill_unstopabale_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_spell_undead_buff_debuff_cover.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_spell_undead_buff_debuff_cover_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_unstopabale";
+
+
+info_tag;
+on_intercepted;
+//Modifi
+}

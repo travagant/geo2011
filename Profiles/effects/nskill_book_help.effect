@@ -1,0 +1,9 @@
+// Effect profile for nskill_book_help
+
+effect "nskill_book_help"
+{
+nameid "nskill_book_help_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_dispell_buff_1_cast.scene";
+dispel_debuffs	1;
+//Modifi
+}

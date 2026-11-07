@@ -1,0 +1,9 @@
+// Effect profile for nspell_elves_heal
+
+effect "nspell_elves_heal"
+{
+nameid "nspell_elves_heal_nameid";
+buff;
+heal	140;
+//Modifi
+}

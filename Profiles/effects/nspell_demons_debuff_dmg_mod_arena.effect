@@ -1,0 +1,12 @@
+// Effect profile for nspell_demons_debuff_dmg_mod_arena
+
+effect "nspell_demons_debuff_dmg_mod_arena"
+{
+nameid "nspell_demons_debuff_dmg_mod_arena_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_attack.t";
+duration_turns	-1;
+debuff;
+res_slash	-25;
+//Modifi
+dmg_per	-25;
+}

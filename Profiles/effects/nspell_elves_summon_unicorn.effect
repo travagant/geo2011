@@ -1,0 +1,8 @@
+// Effect profile for nspell_elves_summon_unicorn
+
+effect "nspell_elves_summon_unicorn"
+{
+nameid "nspell_elves_summon_unicorn_nameid";
+summon	"elves_unicorn";
+//Modifi
+}

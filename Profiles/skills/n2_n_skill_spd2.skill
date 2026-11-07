@@ -1,0 +1,14 @@
+// Skill profile n_skill_spd2
+
+skill	"n_skill_spd2"
+{
+nameid "n_skill_spd2_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_spd_ii.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_spd_ii_inactive.t";
+
+
+
+spd	2;
+//Modifi
+}

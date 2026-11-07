@@ -1,0 +1,11 @@
+// Effect profile for ApWorldMax
+
+effect "ApWorldMax"
+{
+nameid "ApWorldMax_nameid";
+fx_start	"resources\fx\\Arena_FX\Sign\fx_sign_move.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_world.t";
+buff;
+c_movwm	10;
+//Modifi
+}

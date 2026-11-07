@@ -1,0 +1,12 @@
+// Effect profile for nskill_buff_cover
+
+effect "nskill_buff_cover"
+{
+nameid "nskill_buff_cover_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_armor_up_1_spell.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_defense.t";
+duration_turns	2;
+buff;
+cover	2;
+//Modifi
+}

@@ -1,0 +1,18 @@
+// Equipment Profile
+
+id	"talisman_waterarround";
+
+nameid "talisman_waterarround_name";
+descid "talisman_waterarround_desc";
+
+
+class	"talisman";
+level	3;
+
+icon "resources\Items\talisman\talisman_waterarround.t";
+
+add_skill	"n_talisman_waterarround";
+res_water	25;
+
+gold_cost	10000;
+//Modifi

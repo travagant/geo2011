@@ -1,0 +1,29 @@
+// Spell Profile
+
+id	"spell_demons_summon_avenger";
+
+nameid	"NamSp_spell_demons_summon_avenger";
+descid	"DesSp_spell_demons_summon_avenger";
+
+icon_small "Resources\items\runes\spell_demons_summon_avenger.t";
+icon "Resources\items\cards\spell_demons_summon_avenger.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Summon\spell_summon_avenger.scene";
+scene_crop "Resources\FX\Map_Spells\Demons\Spell_Summon\spell_summon_avenger_arena.scene";
+
+default_nation	"Demons";
+level	5;
+target	zone;
+
+game_effect	"nspell_demons_summon_avenger";
+
+cost_spell "Life mana" 365, 730;
+cost_spell "Grove mana" 365, 730;
+cost_spell "Infernal mana" 365, 730;
+cost_spell "Death mana" 365, 730;
+
+rune	"rune_spell_demons_summon_avenger";
+rune_cost "Life mana", 130;
+rune_cost "Grove mana", 130;
+rune_cost "Infernal mana", 130;
+rune_cost "Death mana", 130;
+rune_cost "Stone", 520;

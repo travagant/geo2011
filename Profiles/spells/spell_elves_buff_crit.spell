@@ -1,0 +1,23 @@
+// Spell Profile
+
+id	"spell_elves_buff_crit";
+
+nameid	"NamSp_spell_elves_buff_crit";
+descid	"DesSp_spell_elves_buff_crit";
+
+icon_small "Resources\items\runes\spell_elves_buff_crit.t";
+icon "Resources\items\cards\spell_elves_buff_crit.t";
+scene "Resources\FX\Map_Spells\Elves\Spell_Buff_Crit\spell_buff_crit_2.scene";
+scene_crop "Resources\FX\Map_Spells\Elves\Spell_Buff_Crit\spell_buff_crit_2_arena.scene";
+
+default_nation	"Elves";
+level	2;
+target	ally;
+
+game_effect	"nspell_elves_buff_crit";
+
+cost_spell "Grove mana" 300, 600;
+
+rune	"rune_spell_elves_buff_crit";
+rune_cost "Grove mana", 105;
+rune_cost "Stone", 105;

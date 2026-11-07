@@ -1,0 +1,55 @@
+// Characters stats profile
+
+unit_class	melee;
+unit_side	"legions_giant";
+ship	"legions1";
+attack_type	"slash";
+level	13;
+side	legions;
+exp_base	186;
+
+//stats
+str	7;
+spd	1;
+dex	4;
+agi	2;
+vit	10;
+
+
+ap	1;
+up	100;
+mov	2;
+movwm	12;
+
+atck_range	1;
+Control	1;
+Cover	1;
+
+//resists
+res_blunt	50;
+res_death	-25;
+
+leadership_cost	2;
+cost	2630;
+skill_grid	"demons_moloch";
+viewradius	8;
+
+//Modifi
+dmg_str_mod	 1800;
+dmg_agi_mod	 1200;
+crit_dex_mod	 400;
+crit_vit_mod	 200;
+flee_agi_mod	 400;
+flee_spd_mod	 200;
+hp_vit_mod	 7500;
+hp_str_mod	 3800;
+ini_spd_mod	 200;
+ini_dex_mod	 100;
+mov_mod	 0;
+movwm_mod	 0;
+cover_mod	 0;
+viewradius_mod	 0;
+Discount_Mod	 0;
+Bonusexp_Mod	 0;
+level_cap	25;
+levels_to_up	3;

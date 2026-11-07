@@ -1,0 +1,9 @@
+// Effect profile for nspell_undead_resurrect
+
+effect "nspell_undead_resurrect"
+{
+nameid "nspell_undead_resurrect_nameid";
+buff;
+resurrect	15;
+//Modifi
+}

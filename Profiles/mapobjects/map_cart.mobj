@@ -1,0 +1,16 @@
+//interactive map object for Cart
+
+id	"map_Cart";
+
+nameid	"map_CartN";
+msgid	"map_CartAD";
+msg_inactiveid	"map_CartNAD";
+descid	"map_CartD";
+desc_inactid	"map_CartND";
+effectid	"map_CartEff";
+fx_start	"Resources\\FX\Arena_FX\Sign\fx_sign_gold.scene";
+
+//destination
+action_class	"object";
+game_effect	"Itemmin";
+once;

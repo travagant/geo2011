@@ -1,0 +1,11 @@
+// Effect profile for ResEarthDecMin
+
+effect "ResEarthDecMin"
+{
+nameid "ResEarthDecMin_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_resist.t";
+duration_turns	3;
+debuff;
+res_earth	-25;
+//Modifi
+}

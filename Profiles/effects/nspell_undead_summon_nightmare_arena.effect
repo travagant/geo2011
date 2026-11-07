@@ -1,0 +1,8 @@
+// Effect profile for nspell_undead_summon_nightmare_arena
+
+effect "nspell_undead_summon_nightmare_arena"
+{
+nameid "nspell_undead_summon_nightmare_arena_nameid";
+summon	"undead_Nightmare";
+//Modifi
+}

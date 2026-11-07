@@ -1,0 +1,9 @@
+// Effect profile for nskill_cannibal
+
+effect "nskill_cannibal"
+{
+nameid "nskill_cannibal_nameid";
+fx_start	"Resources\FX\Arena_FX\Skills\fx_skill_n_cannibal.scene";
+debuff;
+//Modifi
+}

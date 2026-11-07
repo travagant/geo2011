@@ -1,0 +1,8 @@
+// Effect profile for Polymorph
+
+effect "Polymorph"
+{
+nameid "Polymorph_nameid";
+debuff;
+//Modifi
+}

@@ -1,0 +1,57 @@
+// Characters stats profile
+
+unit_class	melee;
+unit_side	"greenskins_giant";
+ship	"neutral2";
+attack_type	"blunt";
+level	33;
+side	neutrals;
+exp_base	126;
+
+//stats
+str	15;
+spd	1;
+dex	6;
+agi	4;
+vit	18;
+
+
+ap	1;
+up	100;
+mov	1;
+movwm	12;
+
+atck_range	1;
+Control	1;
+Cover	1;
+
+//resists
+res_pierce	25;
+res_blunt	50;
+res_water	-50;
+res_mind	25;
+
+leadership_cost	2;
+cost	12910;
+skill_grid	"neutrals_troll";
+viewradius	8;
+
+//Modifi
+dmg_str_mod	 1800;
+dmg_agi_mod	 1200;
+crit_dex_mod	 400;
+crit_vit_mod	 200;
+flee_agi_mod	 400;
+flee_spd_mod	 200;
+hp_vit_mod	 7500;
+hp_str_mod	 3800;
+ini_spd_mod	 200;
+ini_dex_mod	 100;
+mov_mod	 0;
+movwm_mod	 0;
+cover_mod	 0;
+viewradius_mod	 0;
+Discount_Mod	 0;
+Bonusexp_Mod	 0;
+level_cap	45;
+levels_to_up	3;

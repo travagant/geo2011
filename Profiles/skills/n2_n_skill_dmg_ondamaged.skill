@@ -1,0 +1,20 @@
+// Skill profile n_skill_dmg_ondamaged
+
+skill	"n_skill_dmg_ondamaged"
+{
+nameid "n_skill_dmg_ondamaged_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_spell_demons_dmg_mind.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_spell_demons_dmg_mind_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_dmg_ondamaged";
+
+
+element	mind;
+info_tag;
+on_damaged;
+//Modifi
+}

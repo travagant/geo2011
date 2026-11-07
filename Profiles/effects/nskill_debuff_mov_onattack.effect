@@ -1,0 +1,13 @@
+// Effect profile for nskill_debuff_mov_onattack
+
+effect "nskill_debuff_mov_onattack"
+{
+nameid "nskill_debuff_mov_onattack_nameid";
+fx_start	"Resources\FX\\Arena_FX\Skills\fx_skill_water_damage_2_spell.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_attack.t";
+duration_turns	1;
+debuff;
+mov	-1;
+res_blunt	-25;
+//Modifi
+}

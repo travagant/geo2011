@@ -1,0 +1,4 @@
+//empire_marksman's description
+nameid "EmpireMarksmanName";
+descid "EmpireMarksmanDesc";
+minidesc "EmpireMarksman_MD";

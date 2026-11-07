@@ -1,0 +1,11 @@
+// Effect profile for MattackMid
+
+effect "MattackMid"
+{
+nameid "MattackMid_nameid";
+icon "Resources\Interface\Icons\buffs\icon_buff_attack.t";
+duration_turns	10;
+buff;
+spd	2;
+//Modifi
+}

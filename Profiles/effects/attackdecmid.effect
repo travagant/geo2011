@@ -1,0 +1,11 @@
+// Effect profile for AttackDecMid
+
+effect "AttackDecMid"
+{
+nameid "AttackDecMid_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_attack.t";
+duration_turns	10;
+debuff;
+str	-2;
+//Modifi
+}

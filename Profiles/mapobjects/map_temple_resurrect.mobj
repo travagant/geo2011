@@ -1,0 +1,18 @@
+//interactive map object for temple_resurrect
+
+id	"map_temple_resurrect";
+
+nameid	"map_temple_resurrectN";
+msgid	"map_temple_resurrectAD";
+msg_inactiveid	"map_temple_resurrectNAD";
+descid	"map_temple_resurrectD";
+desc_inactid	"map_temple_resurrectND";
+effectid	"map_temple_resurrectEff";
+ambient_sound	"$(Sounds)\\Buildings\\arbor.wav";
+fx_start	"Resources\\FX\Arena_FX\Sign\fx_sign_move.scene";
+
+//destination
+action_class	"object";
+game_effect	"nskill_resurrect_effect";
+respawn	6;
+allside;

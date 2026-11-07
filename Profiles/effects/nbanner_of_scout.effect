@@ -1,0 +1,12 @@
+// Effect profile for nbanner_of_scout
+
+effect "nbanner_of_scout"
+{
+nameid "nbanner_of_scout_nameid";
+icon "Resources\Interface\Icons\buffs\icon_buff_defense.t";
+duration_turns	-1;
+buff;
+agi	1;
+dontdispell;
+//Modifi
+}

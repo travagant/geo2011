@@ -1,0 +1,16 @@
+//interactive map object for Windmill
+
+id	"map_Windmill";
+
+nameid	"map_WindmillN";
+msgid	"map_WiADmillAD";
+msg_inactiveid	"map_WiNADmillNAD";
+descid	"map_WindmillD";
+desc_inactid	"map_WindmillND";
+effectid	"map_WindmillEff";
+ambient_sound	"$(Sounds)\\Buildings\\windmill.wav";
+
+//destination
+action_class	"resource";
+action_class_script	"resources\\profiles\\actionscript\\Resource_gold_2.acscript";
+respawn	1;

@@ -1,0 +1,22 @@
+// Character Setup
+id		"empire_angel";
+unit_scene 	"Resources\\characters\\empire\\angel\\character_empire_angel.scene"
+unit_scene_lod		"resources\characters\empire\angel\character_empire_angel_lod.scene",10;
+icon		"resources\\characters\\empire\\angel\\icon_angel.t";
+subicon		"resources\\characters\\empire\\angel\\icon_angel_small.t";
+layout_icon	"resources\\characters\\empire\\angel\\icon_angel_node.t";
+fxproc		"lighting";
+fxscene		"Resources\FX\Arena_Spells\Empire\Angel\fx_empire_angel_spell.scene";
+fxcast 		"Resources\FX\Attacks\Empire\Angel\fx_empire_angel_cast.scene";
+fxscene_ko 	"Resources\FX\Arena_FX\Death\fx_die_empire.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_empires_levelup.scene";
+centerbone "Bip01 Spine1";
+#include      	"desc\\empire_angel_desc.char";
+#include 	"stats\\empire_angel_stats.char";
+#include      	"sound\\empire_angel_sound.char";
+move_speed	7.0;
+nodesx		1;
+nodesz		1;
+capital_icon 	 "resources\characters\empire\angel\icon_angel_capital.t";
+dialog_icon 	 "resources\characters\empire\angel\icon_angel_dialog.t";
+leader_icon      "resources\characters\empire\angel\icon_angel_ring.t"

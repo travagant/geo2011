@@ -1,0 +1,15 @@
+// Skill profile n_skill_heal_buff_info
+
+skill	"n_skill_heal_buff_info"
+{
+nameid "n_skill_heal_buff_info_nameid";
+effectdescid "n_skill_heal_buff_info_descid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_heal_buff.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_heal_buff_inactive.t";
+
+
+
+info_tag;
+//Modifi
+}

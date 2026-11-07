@@ -1,0 +1,14 @@
+//interactive map object for Mausoleum
+
+id	"map_Mausoleum";
+
+nameid	"map_MausoleumN";
+descid	"map_MausoleumD";
+desc_inactid	"map_MausoleumND";
+msg_inactiveid	"map_MausoleumNAD";
+ambient_sound	"$(Sounds)\\Buildings\\mausoleum.wav";
+
+//destination
+action_class	"dungeon";
+action_class_script	"resources\\profiles\\dungeons\\mausoleum.s";
+respawn	8;

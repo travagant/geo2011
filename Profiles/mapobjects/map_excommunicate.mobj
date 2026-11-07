@@ -1,0 +1,15 @@
+//interactive map object for Excommunicate
+
+id	"map_Excommunicate";
+
+nameid	"map_ExcommunicateN";
+descid	"map_ExcommunicateD";
+desc_inactid	"map_ExcommunicateND";
+msg_inactiveid	"map_ExcommunicateNAD";
+ambient_sound	"$(Sounds)\\Buildings\\excommunicate.wav";
+
+//destination
+action_class	"dungeon";
+action_class_script	"resources\\profiles\\dungeons\\excommunicate.s";
+respawn	8;
+allside;

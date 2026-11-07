@@ -1,0 +1,18 @@
+//interactive map object for Water_Monolith
+
+id	"map_Water_Monolith";
+
+nameid	"map_Water_MonolithN";
+msgid	"map_Water_MonolithAD";
+msg_inactiveid	"map_Water_MonolithNAD";
+descid	"map_Water_MonolithD";
+desc_inactid	"map_Water_MonolithND";
+effectid	"map_Water_MonolithEff";
+ambient_sound	"$(Sounds)\\Buildings\\elven_portal.wav";
+fx_start	"Resources\\FX\Arena_FX\Sign\fx_sign_move.scene";
+
+//destination
+action_class	"object";
+game_effect	"nskill_resurrect_effect";
+respawn	6;
+allside;

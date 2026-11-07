@@ -1,0 +1,20 @@
+// Skill profile n_skill_curse_onblessed_onattack
+
+skill	"n_skill_curse_onblessed_onattack"
+{
+nameid "n_skill_curse_onblessed_onattack_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_curse_onblessed.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_curse_onblessed_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_curse_onblessed_onattack";
+
+
+element	death;
+info_tag;
+on_attack;
+//Modifi
+}

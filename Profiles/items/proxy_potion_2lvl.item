@@ -1,0 +1,16 @@
+// Equipment Profile
+
+id	"proxy_potion_2lvl";
+
+nameid "proxy_potion_2lvl_name";
+descid "proxy_potion_2lvl_desc";
+
+
+class	"potion";
+level	2;
+
+icon "resources\Items\potion\proxy_potion_2lvl.t";
+
+proxy;
+
+//Modifi

@@ -1,0 +1,9 @@
+// Effect profile for ExpMin
+
+effect "ExpMin"
+{
+nameid "ExpMin_nameid";
+buff;
+exp	250;
+//Modifi
+}

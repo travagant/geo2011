@@ -1,0 +1,13 @@
+// Effect profile for nspell_empire_dmg_air
+
+effect "nspell_empire_dmg_air"
+{
+nameid "nspell_empire_dmg_air_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_resist.t";
+duration_days	2;
+debuff;
+damage	40;
+element	"air";
+res_blunt	-25;
+//Modifi
+}

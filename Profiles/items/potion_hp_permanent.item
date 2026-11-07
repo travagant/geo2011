@@ -1,0 +1,16 @@
+// Potion Profile
+
+id	"potion_hp_permanent";
+
+
+nameid	"ItNPotHpP";
+descid	"ItDPotHpP";
+
+class "potion";
+level	4;
+icon "Resources\\Items\\potion\\potion_hp_permanent.t";
+
+game_effect	"npotion_hp_permanent";
+gold_cost	10000;
+usage_cost	10;
+target	"ally";

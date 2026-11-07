@@ -1,0 +1,8 @@
+// Effect profile for nspell_demons_openfog
+
+effect "nspell_demons_openfog"
+{
+nameid "nspell_demons_openfog_nameid";
+openfog	8;
+//Modifi
+}

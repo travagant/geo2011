@@ -1,0 +1,12 @@
+// Effect profile for nskill_debuff_range_onattack
+
+effect "nskill_debuff_range_onattack"
+{
+nameid "nskill_debuff_range_onattack_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_full_stop_2_cast.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_attack.t";
+duration_turns	1;
+debuff;
+atck_range	-1;
+//Modifi
+}

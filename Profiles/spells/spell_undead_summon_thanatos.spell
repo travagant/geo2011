@@ -1,0 +1,29 @@
+// Spell Profile
+
+id	"spell_undead_summon_thanatos";
+
+nameid	"NamSp_spell_undead_summon_thanatos";
+descid	"DesSp_spell_undead_summon_thanatos";
+
+icon_small "Resources\items\runes\spell_undead_summon_thanatos.t";
+icon "Resources\items\cards\spell_undead_summon_thanatos.t";
+scene "Resources\FX\Map_Spells\Undead\Spell_Summon\spell_summon_skeleton.scene";
+scene_crop "Resources\FX\Map_Spells\Undead\Spell_Summon\spell_summon_skeleton_arena.scene";
+
+default_nation	"Undead";
+level	5;
+target	zone;
+
+game_effect	"nspell_undead_summon_thanatos";
+
+cost_spell "Life mana" 365, 730;
+cost_spell "Infernal mana" 365, 730;
+cost_spell "Death mana" 365, 730;
+cost_spell "Runstone mana" 365, 730;
+
+rune	"rune_spell_undead_summon_thanatos";
+rune_cost "Life mana", 130;
+rune_cost "Infernal mana", 130;
+rune_cost "Death mana", 130;
+rune_cost "Runstone mana", 130;
+rune_cost "Stone", 520;

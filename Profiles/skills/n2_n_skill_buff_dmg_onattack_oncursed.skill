@@ -1,0 +1,19 @@
+// Skill profile n_skill_buff_dmg_onattack_oncursed
+
+skill	"n_skill_buff_dmg_onattack_oncursed"
+{
+nameid "n_skill_buff_dmg_onattack_oncursed_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_enchant_poison.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_enchant_poison_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_buff_dmg_onattack_oncursed";
+
+
+info_tag;
+on_cursed;
+//Modifi
+}

@@ -1,0 +1,50 @@
+// Unit Profile
+//
+id 		"empire_leader-warrior";
+unit_scene 	"resources\\characters\\empire\\leader-warrior\\character_empire_leader-warrior.scene"
+unit_scene_lod		"resources\characters\empire\leader-warrior\character_empire_leader-warrior_lod.scene",10;
+icon 		"resources\\characters\\empire\\leader-warrior\\icon_leader-warrior.t";
+subicon 	"resources\\characters\\empire\\leader-warrior\\icon_leader-warrior_small.t";
+layout_icon	"resources\\characters\\empire\\leader-warrior\\icon_leader-warrior_node.t";
+capital_icon 	 "resources\characters\empire\leader-warrior\icon_leader-warrior_capital.t";
+dialog_icon 	 "resources\characters\empire\leader-warrior\icon_leader-warrior_dialog.t";
+leader_icon      "resources\characters\empire\leader-warrior\icon_leader-warrior_ring.t"
+fxproc 		"lighting";
+fxscene 	"resources\fx\Arena_FX\Physical_Damage\fx_small_attack_damage_2x.scene";
+fxscene_ko 	"Resources\FX\Arena_FX\Death\fx_die_empire.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_empires_levelup.scene";
+centerbone "Spine";
+#include      	"desc\\empire_leader-warrior_desc.char";
+#include 	"stats\\empire_leader-warrior_stats.char";
+#include      	"sound\\empire_leader-warrior_sound.char";
+move_speed 	3.5;
+nodesx 		1;
+nodesz 		1;
+names "$(Texts)/empire_leader-warrior.txt";
+set 1 {
+    weapon "resources\Characters\empire\leader-warrior\weapon\empire_leader-warrior_set1_weapon.scene";
+    feet "resources\Characters\empire\leader-warrior\feet\empire_leader-warrior_set1_feet.scene";
+    body "resources\Characters\empire\leader-warrior\body\empire_leader-warrior_set1_body.scene";
+    head "resources\Characters\empire\leader-warrior\head\empire_leader-warrior_set1_head.scene";
+    legs "resources\Characters\empire\leader-warrior\legs\empire_leader-warrior_set1_legs.scene";
+    arms "resources\Characters\empire\leader-warrior\arms\empire_leader-warrior_set1_arms.scene";
+    hands "resources\Characters\empire\leader-warrior\hands\empire_leader-warrior_set1_hands.scene";
+}
+set 2 {
+    weapon "resources\Characters\empire\leader-warrior\weapon\empire_leader-warrior_set2_weapon.scene";
+    feet "resources\Characters\empire\leader-warrior\feet\empire_leader-warrior_set2_feet.scene";
+    body "resources\Characters\empire\leader-warrior\body\empire_leader-warrior_set2_body.scene";
+    head "resources\Characters\empire\leader-warrior\head\empire_leader-warrior_set2_head.scene";
+    legs "resources\Characters\empire\leader-warrior\legs\empire_leader-warrior_set2_legs.scene";
+    arms "resources\Characters\empire\leader-warrior\arms\empire_leader-warrior_set2_arms.scene";
+    hands "resources\Characters\empire\leader-warrior\hands\empire_leader-warrior_set2_hands.scene";
+}
+set 3 {
+    weapon "resources\Characters\empire\leader-warrior\weapon\empire_leader-warrior_set3_weapon.scene";
+    feet "resources\Characters\empire\leader-warrior\feet\empire_leader-warrior_set3_feet.scene";
+    body "resources\Characters\empire\leader-warrior\body\empire_leader-warrior_set3_body.scene";
+    head "resources\Characters\empire\leader-warrior\head\empire_leader-warrior_set3_head.scene";
+    legs "resources\Characters\empire\leader-warrior\legs\empire_leader-warrior_set3_legs.scene";
+    arms "resources\Characters\empire\leader-warrior\arms\empire_leader-warrior_set3_arms.scene";
+    hands "resources\Characters\empire\leader-warrior\hands\empire_leader-warrior_set3_hands.scene";
+}

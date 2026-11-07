@@ -1,0 +1,12 @@
+// Effect profile for nRotunda
+
+effect "nRotunda"
+{
+nameid "nRotunda_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_regen.t";
+duration_days	1;
+buff;
+dontdispell;
+//Modifi
+stackable	1;
+}

@@ -1,0 +1,10 @@
+// Effect profile for nskill_phantom_teleport
+
+effect "nskill_phantom_teleport"
+{
+nameid "nskill_phantom_teleport_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_invisible_cast.scene";
+teleport_target;
+//Modifi
+fx_teleport	"resources\fx\\Arena_FX\Skills\fx_skill_invisible_cast.scene";
+}

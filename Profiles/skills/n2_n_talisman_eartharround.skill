@@ -1,0 +1,21 @@
+// Skill profile n_talisman_eartharround
+
+skill	"n_talisman_eartharround"
+{
+nameid "n_talisman_eartharround_nameid";
+effectdescid "n_talisman_eartharround_descid";
+
+icon	"Resources\Interface\Icons\skills\n_talisman_eartharround.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_talisman_eartharround_inactive.t";
+
+skill_range	1;
+cast_type	around;
+cast_target	friendly;
+game_effect	"nskill_talisman_eartharround";
+fx_scene	"resources\fx\\Arena_FX\Skills\fx_skill_resist_earth_around.scene";
+
+
+info_tag;
+on_turn;
+//Modifi
+}

@@ -1,0 +1,14 @@
+// Effect profile for summon_suicide_wm
+
+effect "summon_suicide_wm"
+{
+nameid "summon_suicide_wm_nameid";
+effectdescid "summon_suicide_wm_descid";
+bubleid "summon_suicide_wm_bubleid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_curse.t";
+duration_days	2;
+debuff;
+dontdispell;
+//Modifi
+suicide;
+}

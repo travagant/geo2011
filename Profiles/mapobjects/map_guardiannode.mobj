@@ -1,0 +1,15 @@
+//interactive map object for GuardianNode
+
+id	"map_GuardianNode";
+
+nameid	"map_GuardianNodeN";
+msgid	"map_GuardianNodeAD";
+msg_inactiveid	"";
+descid	"map_GuardianNodeD";
+desc_inactid	"map_GuardianNodeND";
+effectid	"map_GuardianNodeEff";
+ambient_sound	"$(Sounds)\\Buildings\\guardian_node.wav";
+
+//destination
+action_class	"GuardianNode";
+respawn	0;

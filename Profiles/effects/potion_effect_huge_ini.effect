@@ -1,0 +1,9 @@
+// Effect profile for potion_effect_huge_ini
+
+effect "potion_effect_huge_ini"
+{
+nameid "potion_effect_huge_ini_nameid";
+buff;
+ini	10;
+//Modifi
+}

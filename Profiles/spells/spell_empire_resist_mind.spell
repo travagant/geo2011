@@ -1,0 +1,27 @@
+// Spell Profile
+
+id	"spell_empire_resist_mind";
+
+nameid	"NamSp_spell_empire_resist_mind";
+descid	"DesSp_spell_empire_resist_mind";
+
+icon_small "Resources\items\runes\spell_empire_resist_mind.t";
+icon "Resources\items\cards\spell_empire_resist_mind.t";
+scene "Resources\FX\Map_Spells\Empire\Spell_Resist_Mind\spell_resist_mind.scene";
+scene_crop "Resources\FX\Map_Spells\Empire\Spell_Resist_Mind\spell_resist_mind_arena.scene";
+
+default_nation	"Empire";
+level	4;
+target	ally;
+
+game_effect	"nspell_empire_resist_mind";
+
+cost_spell "Life mana" 160, 320;
+cost_spell "Infernal mana" 160, 320;
+cost_spell "Runstone mana" 160, 320;
+
+rune	"rune_spell_empire_resist_mind";
+rune_cost "Life mana", 60;
+rune_cost "Infernal mana", 60;
+rune_cost "Runstone mana", 60;
+rune_cost "Stone", 180;

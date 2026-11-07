@@ -1,0 +1,14 @@
+//interactive map object for dungeon_cave_sea
+
+id	"map_dungeon_cave_sea";
+
+nameid	"map_dungeon_cave_seaN";
+descid	"map_dungeon_cave_seaD";
+desc_inactid	"map_dungeon_cave_seaND";
+msg_inactiveid	"map_dungeon_cave_seaNAD";
+ambient_sound	"$(Sounds)\\Buildings\\mine_entrance.wav.wav";
+
+//destination
+action_class	"dungeon";
+action_class_script	"resources\\profiles\\dungeons\\dungeon_cave_sea.s";
+respawn	10;

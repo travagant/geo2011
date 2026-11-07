@@ -1,0 +1,52 @@
+// Unit Profile
+//
+id 		"undead_leader-deathknight";
+unit_scene 	"resources\\characters\\undead\\leader-deathknight\\character_undead_leader-deathknight.scene"
+unit_scene_lod		"resources\characters\undead\leader-deathknight\character_undead_leader-deathknight_lod.scene",10;
+icon 		"resources\\characters\\undead\\leader-deathknight\\icon_leader-deathknight.t";
+subicon 	"resources\\characters\\undead\\leader-deathknight\\icon_leader-deathknight_small.t";
+layout_icon	"resources\\characters\\undead\\leader-deathknight\\icon_leader-deathknight_node.t";
+fxproc 		"lighting";
+fxcast 		"Resources\FX\Attacks\undead\leader-deathknight\fx_undead_leader-deathknight_cast.scene";
+fxscene 	"Resources\FX\Arena_Spells\undead\leader-deathknight\fx_undead_leader-deathknight_spell.scene";
+fxscene_ko 	"Resources\FX\Arena_FX\Death\fx_die_undeads.scene";
+fxlevelup	"Resources\\FX\\Arena_FX\\LevelUp\\fx_undead_levelup.scene";
+capital_icon 	 "resources\characters\undead\leader-deathknight\icon_leader-deathknight_capital.t";
+dialog_icon 	 "resources\characters\undead\leader-deathknight\icon_leader-deathknight_dialog.t";
+leader_icon      "resources\characters\undead\leader-deathknight\icon_leader-deathknight_ring.t"
+centerbone "Spine";
+#include    "desc\\undead_leader-deathknight_desc.char";
+#include 	"stats\\undead_leader-deathknight_stats.char";
+#include    "sound\\undead_leader-deathknight_sound.char";
+move_speed 	7;
+nodesx 		1;
+nodesz 		1;
+names "$(Texts)/undead_leader-deathknight.txt";
+
+set 1 {
+    weapon "resources\Characters\undead\leader-deathknight\weapon\undead_leader-deathknight_set1_weapon.scene";
+    feet "resources\Characters\undead\leader-deathknight\feet\undead_leader-deathknight_set1_feet.scene";
+    body "resources\Characters\undead\leader-deathknight\body\undead_leader-deathknight_set1_body.scene";
+    head "resources\Characters\undead\leader-deathknight\head\undead_leader-deathknight_set1_head.scene";
+    legs "resources\Characters\undead\leader-deathknight\legs\undead_leader-deathknight_set1_legs.scene";
+    arms "resources\Characters\undead\leader-deathknight\arms\undead_leader-deathknight_set1_arms.scene";
+    hands "resources\Characters\undead\leader-deathknight\hands\undead_leader-deathknight_set1_hands.scene";
+}
+set 2 {
+    weapon "resources\Characters\undead\leader-deathknight\weapon\undead_leader-deathknight_set2_weapon.scene";
+    feet "resources\Characters\undead\leader-deathknight\feet\undead_leader-deathknight_set2_feet.scene";
+    body "resources\Characters\undead\leader-deathknight\body\undead_leader-deathknight_set2_body.scene";
+    head "resources\Characters\undead\leader-deathknight\head\undead_leader-deathknight_set2_head.scene";
+    legs "resources\Characters\undead\leader-deathknight\legs\undead_leader-deathknight_set2_legs.scene";
+    arms "resources\Characters\undead\leader-deathknight\arms\undead_leader-deathknight_set2_arms.scene";
+    hands "resources\Characters\undead\leader-deathknight\hands\undead_leader-deathknight_set2_hands.scene";
+}
+set 3 {
+    weapon "resources\Characters\undead\leader-deathknight\weapon\undead_leader-deathknight_set3_weapon.scene";
+    feet "resources\Characters\undead\leader-deathknight\feet\undead_leader-deathknight_set3_feet.scene";
+    body "resources\Characters\undead\leader-deathknight\body\undead_leader-deathknight_set3_body.scene";
+    head "resources\Characters\undead\leader-deathknight\head\undead_leader-deathknight_set3_head.scene";
+    legs "resources\Characters\undead\leader-deathknight\legs\undead_leader-deathknight_set3_legs.scene";
+    arms "resources\Characters\undead\leader-deathknight\arms\undead_leader-deathknight_set3_arms.scene";
+    hands "resources\Characters\undead\leader-deathknight\hands\undead_leader-deathknight_set3_hands.scene";
+}

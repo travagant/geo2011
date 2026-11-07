@@ -1,0 +1,14 @@
+// Skill profile n_skill_battle_pathfinder
+
+skill	"n_skill_battle_pathfinder"
+{
+nameid "n_skill_battle_pathfinder_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_battle_pathfinder.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_battle_pathfinder_inactive.t";
+
+
+
+mov	1;
+//Modifi
+}

@@ -1,0 +1,12 @@
+// Effect profile for CastAirMinDispell
+
+effect "CastAirMinDispell"
+{
+nameid "CastAirMinDispell_nameid";
+debuff;
+damage	30;
+dispel_buffs	1;
+banish;
+element	"Air";
+//Modifi
+}

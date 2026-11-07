@@ -1,0 +1,12 @@
+// Effect profile for nskill_talisman_eartharround
+
+effect "nskill_talisman_eartharround"
+{
+nameid "nskill_talisman_eartharround_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_resist_earth_around.scene";
+icon "Resources\Interface\Icons\buffs\Icon_buff_resist.t";
+duration_turns	2;
+buff;
+res_earth	25;
+//Modifi
+}

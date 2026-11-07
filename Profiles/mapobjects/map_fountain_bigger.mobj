@@ -1,0 +1,18 @@
+//interactive map object for Fountain_bigger
+
+id	"map_Fountain_bigger";
+
+nameid	"map_Fountain_bigerN";
+msgid	"map_Fountain_bigerAD";
+msg_inactiveid	"map_Fountain_bigerNAD";
+descid	"map_Fountain_bigerD";
+desc_inactid	"map_Fountain_bigerND";
+effectid	"map_Fountain_bigerEff";
+ambient_sound	"$(Sounds)\\Buildings\\fountain_bigger.wav";
+fx_start	"Resources\\FX\Arena_FX\Sign\fx_sign_heal.scene";
+
+//destination
+action_class	"object";
+game_effect	"HealPow";
+respawn	4;
+allside;

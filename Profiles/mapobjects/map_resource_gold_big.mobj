@@ -1,0 +1,16 @@
+//interactive map object for Resource_gold_big
+
+id	"map_Resource_gold_big";
+
+nameid	"map_resgold_bigN";
+msgid	"map_resgold_bigAD";
+msg_inactiveid	"";
+descid	"map_resgold_bigD";
+effectid	"map_resgold_bigEff";
+fx_start	"Resources\\FX\Arena_FX\Sign\fx_sign_gold.scene";
+
+//destination
+action_class	"heap_resource";
+heap_resource	gold 100;
+msg_popup	"Resource_gold_bigPopup";
+once;

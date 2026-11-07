@@ -1,0 +1,21 @@
+// Skill profile n_book_folly_enemy
+
+skill	"n_book_folly_enemy"
+{
+nameid "n_book_folly_enemy_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_book_folly_enemy.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_book_folly_enemy_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_book_folly_debuff";
+
+
+atck_range	-1;
+element	mind;
+info_tag;
+on_attack;
+//Modifi
+}

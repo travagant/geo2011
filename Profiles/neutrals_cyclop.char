@@ -1,0 +1,23 @@
+//Unit Profile
+//
+id                       "neutrals_cyclop";
+unit_scene              "Resources\Characters\Neutrals\Cyclop\character_neutrals_cyclop.scene";
+unit_scene_lod		"resources\characters\neutrals\Cyclop\character_neutrals_cyclop_lod.scene",10;
+icon                     "Resources\Characters\Neutrals\Cyclop\icon_cyclop.t";
+subicon                  "Resources\Characters\Neutrals\Cyclop\icon_cyclop_small.t";
+layout_icon              "Resources\Characters\Neutrals\Cyclop\icon_cyclop_node.t";
+capital_icon             "Resources\Characters\Neutrals\Cyclop\icon_cyclop_capital.t";
+dialog_icon              "Resources\Characters\Neutrals\Cyclop\icon_cyclop_dialog.t";
+leader_icon              "Resources\Characters\Neutrals\Cyclop\icon_cyclop_ring.t"
+fxproc                   "default";
+fxscene                  "resources\\fx\\Arena_Spells\\neutrals\\Cyclop\\fx_neutrals_cyclop_spell.scene";
+fxcast                   "resources\\fx\\Attacks\\neutrals\\Cyclop\\fx_neutrals_cyclop_cast.scene";
+fxscene_ko               "resources\\fx\\Arena_FX\\Death\\fx_die_neutrals.scene";
+fxlevelup		 "Resources\\FX\\Arena_FX\\LevelUp\\fx_neutrals_levelup.scene";
+centerbone               "spine1";
+move_speed               1.7;
+nodesx                   1;
+nodesz                   1;
+#include                 "desc\\neutrals_cyclop_desc.char";
+#include                 "sound\\neutrals_cyclop_sound.char";
+#include                 "stats\\neutrals_cyclop_stats.char";

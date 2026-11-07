@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_demons_summon_avenger";
+
+nameid "NamSp_spell_demons_summon_avenger";
+descid "DesSp_spell_demons_summon_avenger";
+
+level 5;
+class "runes";
+icon "Resources\items\runes\spell_demons_summon_avenger.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Summon\spell_summon_avenger_arena.scene";
+
+target zone;
+game_effect "nspell_demons_summon_avenger_arena";
+
+gold_cost 2080;
+usage_cost 50;
+race "Demons";

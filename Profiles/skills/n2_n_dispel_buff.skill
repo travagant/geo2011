@@ -1,0 +1,21 @@
+// Skill profile n_dispel_buff
+
+skill	"n_dispel_buff"
+{
+nameid "n_dispel_buff_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_dispell_buff.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_dispell_buff_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_dispel_buff";
+
+request_ap	1;
+battle;
+
+element	water;
+info_tag;
+//Modifi
+}

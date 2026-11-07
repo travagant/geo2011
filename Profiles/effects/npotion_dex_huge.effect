@@ -1,0 +1,13 @@
+// Effect profile for npotion_dex_huge
+
+effect "npotion_dex_huge"
+{
+nameid "npotion_dex_huge_nameid";
+fx_start	"resources\fx\\Arena_FX\Potions\fx_potion_dex_huge.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_attack.t";
+duration_days	3;
+buff;
+dex	4;
+dontdispell;
+//Modifi
+}

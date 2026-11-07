@@ -1,0 +1,25 @@
+// Spell Profile
+
+id	"spell_undead_summon_EvilEnt";
+
+nameid	"NamSp_spell_undead_summon_EvilEnt";
+descid	"DesSp_spell_undead_summon_EvilEnt";
+
+icon_small "Resources\items\runes\spell_undead_summon_EvilEnt.t";
+icon "Resources\items\cards\spell_undead_summon_EvilEnt.t";
+scene "Resources\FX\Map_Spells\Undead\Spell_Summon\spell_summon_skeleton.scene";
+scene_crop "Resources\FX\Map_Spells\Undead\Spell_Summon\spell_summon_skeleton_arena.scene";
+
+default_nation	"Undead";
+level	3;
+target	zone;
+
+game_effect	"nspell_undead_summon_EvilEnt";
+
+cost_spell "Grove mana" 385, 770;
+cost_spell "Death mana" 385, 770;
+
+rune	"rune_spell_undead_summon_EvilEnt";
+rune_cost "Grove mana", 135;
+rune_cost "Death mana", 135;
+rune_cost "Stone", 270;

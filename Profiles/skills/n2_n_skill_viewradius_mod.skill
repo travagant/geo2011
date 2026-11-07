@@ -1,0 +1,15 @@
+// Skill profile n_skill_viewradius_mod
+
+skill	"n_skill_viewradius_mod"
+{
+nameid "n_skill_viewradius_mod_nameid";
+effectdescid "n_skill_viewradius_mod_descid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_viewradius_mod.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_viewradius_mod_inactive.t";
+
+
+
+//Modifi
+viewradius_mod	 25;
+}

@@ -1,0 +1,14 @@
+// Effect profile for nScout_guild
+
+effect "nScout_guild"
+{
+nameid "nScout_guild_nameid";
+icon "Resources\Interface\Icons\buffs\icon_buff_world.t";
+duration_days	1;
+buff;
+dontdispell;
+movwm	3;
+viewradius	3;
+//Modifi
+stackable	1;
+}

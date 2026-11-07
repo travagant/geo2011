@@ -1,0 +1,9 @@
+//interactive map object for elves4-spawn2
+
+id	"map_elves4-spawn2";
+
+nameid	"";
+
+//destination
+action_class	"resp";
+action_class_script	"resources\\profiles\\resp\\elves4-spawn2.s";

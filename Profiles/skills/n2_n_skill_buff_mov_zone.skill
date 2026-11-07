@@ -1,0 +1,19 @@
+// Skill profile n_skill_buff_mov_zone
+
+skill	"n_skill_buff_mov_zone"
+{
+nameid "n_skill_buff_mov_zone_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_battle_pathfinder.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_battle_pathfinder_inactive.t";
+
+skill_range	3;
+cast_type	zone;
+cast_target	friendly;
+game_effect	"nskill_buff_mov_zone";
+
+request_ap	1;
+battle;
+
+//Modifi
+}

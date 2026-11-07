@@ -1,0 +1,27 @@
+// Spell Profile
+
+id	"spell_elves_buff_dmg";
+
+nameid	"NamSp_spell_elves_buff_dmg";
+descid	"DesSp_spell_elves_buff_dmg";
+
+icon_small "Resources\items\runes\spell_elves_buff_dmg.t";
+icon "Resources\items\cards\spell_elves_buff_dmg.t";
+scene "Resources\FX\Map_Spells\Elves\Spell_Heal_Buff_Earth\spell_heal_buff_earth.scene";
+scene_crop "Resources\FX\Map_Spells\Elves\Spell_Heal_Buff_Earth\spell_heal_buff_earth_arena.scene";
+
+default_nation	"Elves";
+level	4;
+target	ally;
+
+game_effect	"nspell_elves_buff_dmg";
+
+cost_spell "Life mana" 200, 400;
+cost_spell "Grove mana" 200, 400;
+cost_spell "Infernal mana" 200, 400;
+
+rune	"rune_spell_elves_buff_dmg";
+rune_cost "Life mana", 70;
+rune_cost "Grove mana", 70;
+rune_cost "Infernal mana", 70;
+rune_cost "Stone", 210;

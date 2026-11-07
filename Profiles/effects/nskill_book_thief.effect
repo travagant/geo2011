@@ -1,0 +1,10 @@
+// Effect profile for nskill_book_thief
+
+effect "nskill_book_thief"
+{
+nameid "nskill_book_thief_nameid";
+fx_start	"Resources\FX\Arena_FX\Skills\fx_skill_dispell_buff_1_cast.scene";
+dispel_buffs	1;
+banish;
+//Modifi
+}

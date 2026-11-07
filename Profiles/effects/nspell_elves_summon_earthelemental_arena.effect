@@ -1,0 +1,8 @@
+// Effect profile for nspell_elves_summon_earthelemental_arena
+
+effect "nspell_elves_summon_earthelemental_arena"
+{
+nameid "nspell_elves_summon_earthelemental_arena_nameid";
+summon	"elves_earthelemental";
+//Modifi
+}

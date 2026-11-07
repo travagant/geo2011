@@ -1,0 +1,16 @@
+// Equipment Profile
+
+id	"proxy_ring_3lvl";
+
+nameid "proxy_ring_3lvl_name";
+descid "proxy_ring_3lvl_desc";
+
+
+class	"rings";
+level	3;
+
+icon "resources\Items\rings\proxy_ring_3lvl.t";
+
+proxy;
+
+//Modifi

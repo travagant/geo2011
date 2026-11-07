@@ -1,0 +1,9 @@
+// Effect profile for SummonNightmare
+
+effect "SummonNightmare"
+{
+nameid "SummonNightmare_nameid";
+fx_start	"Resources\FX\\Arena_FX\Skills\fx_skills_summon_pet_undead.scene";
+summon	"undead_Nightmare";
+//Modifi
+}

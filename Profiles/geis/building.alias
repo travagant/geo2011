@@ -1,0 +1,12 @@
+
+
+
+alias "building" {
+
+
+   sound 100, "$(Sounds)\interface\building_01.wav", 100, 3;
+   sound 100, "$(Sounds)\interface\building_02.wav", 100, 3;
+   sound 100, "$(Sounds)\interface\building_03.wav", 100, 3;
+
+
+}  

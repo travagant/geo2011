@@ -1,0 +1,12 @@
+// Effect profile for nspell_demons_debuff_flee_arena
+
+effect "nspell_demons_debuff_flee_arena"
+{
+nameid "nspell_demons_debuff_flee_arena_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_defense.t";
+duration_turns	-1;
+debuff;
+res_earth	-25;
+flee	-10;
+//Modifi
+}

@@ -1,0 +1,10 @@
+// Effect profile for spelleffect_summon_golem
+
+effect "spelleffect_summon_golem"
+{
+nameid "spelleffect_summon_golem_nameid";
+fx_start	"Resources\FX\\Arena_FX\Skills\fx_skills_summon_pet_empire.scene";
+buff;
+summon	"empire_golem";
+//Modifi
+}

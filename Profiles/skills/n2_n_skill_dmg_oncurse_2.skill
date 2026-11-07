@@ -1,0 +1,19 @@
+// Skill profile n_skill_dmg_oncurse_2
+
+skill	"n_skill_dmg_oncurse_2"
+{
+nameid "n_skill_dmg_oncurse_2_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_dmg_oncurse.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_dmg_oncurse_inactive.t";
+
+skill_range	1;
+cast_type	around;
+cast_target	enemy;
+game_effect	"nskill_dmg_oncurse_2";
+
+
+info_tag;
+on_cursed;
+//Modifi
+}

@@ -1,0 +1,20 @@
+// Skill profile n_skill_debuff_mov_oncrit
+
+skill	"n_skill_debuff_mov_oncrit"
+{
+nameid "n_skill_debuff_mov_oncrit_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_critical.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_critical_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_debuff_mov_oncrit";
+
+
+element	blunt;
+info_tag;
+on_crit;
+//Modifi
+}

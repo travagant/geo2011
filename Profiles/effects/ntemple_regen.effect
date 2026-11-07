@@ -1,0 +1,13 @@
+// Effect profile for nTemple_regen
+
+effect "nTemple_regen"
+{
+nameid "nTemple_regen_nameid";
+icon "Resources\Interface\Icons\buffs\icon_buff_world.t";
+duration_days	1;
+buff;
+dontdispell;
+//Modifi
+recovery	10;
+stackable	1;
+}

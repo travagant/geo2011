@@ -1,0 +1,12 @@
+// Effect profile for nspell_empire_heal_agi_mod
+
+effect "nspell_empire_heal_agi_mod"
+{
+nameid "nspell_empire_heal_agi_mod_nameid";
+icon "Resources\Interface\Icons\buffs\icon_buff_defense.t";
+duration_days	2;
+buff;
+heal	250;
+//Modifi
+flee_per	50;
+}

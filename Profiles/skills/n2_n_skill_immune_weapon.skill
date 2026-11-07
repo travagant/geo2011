@@ -1,0 +1,16 @@
+// Skill profile n_skill_immune_weapon
+
+skill	"n_skill_immune_weapon"
+{
+nameid "n_skill_immune_weapon_nameid";
+effectdescid "n_skill_immune_weapon_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_immune_weapon.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_immune_weapon_inactive.t";
+
+
+
+immune_phys_damage;
+info_tag;
+//Modifi
+}

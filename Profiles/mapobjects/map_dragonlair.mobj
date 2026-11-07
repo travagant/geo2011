@@ -1,0 +1,14 @@
+//interactive map object for Dragonlair
+
+id	"map_Dragonlair";
+
+nameid	"map_DragonlairN";
+descid	"map_DragonlairD";
+desc_inactid	"map_DragonlairND";
+msg_inactiveid	"map_DragonlairNAD";
+ambient_sound	"$(Sounds)\\Buildings\\dragonlair.wav";
+
+//destination
+action_class	"dungeon";
+action_class_script	"resources\\profiles\\dungeons\\dragonlair.s";
+respawn	10;

@@ -1,0 +1,19 @@
+// Equipment Profile
+
+id	"book_thief";
+
+nameid "book_thief_name";
+descid "book_thief_desc";
+
+
+class	"book";
+level	2;
+
+icon "resources\Items\book\book_thief.t";
+
+add_skill	"n_book_thief";
+add_skill_uses	1;
+
+gold_cost	6000;
+//Modifi
+immune_cover;

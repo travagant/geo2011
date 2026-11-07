@@ -1,0 +1,10 @@
+
+
+
+alias "building_complete" {
+
+
+   sound 100, "$(Sounds)\interface\building_complete.wav", 100, 3;
+
+
+}  

@@ -1,0 +1,36 @@
+//Char stats Profile for neutral_cityguard
+
+unit_class	melee;
+unit_side	"neutrals";
+level	3;
+side	neutrals;
+exp_base	80;
+
+//stats
+str	18;
+int	1;
+dex	8;
+agi	6;
+vit	25;
+
+ini	55;
+def	7;
+
+action_point	1;
+apmax	5;
+apmax_worldmap	15;
+
+atck_range	1;
+control	1;
+cover	1;
+
+//resists
+res_earth	0;
+res_fire	0;
+res_air	0;
+res_water	0;
+res_mind	0;
+res_death	0;
+
+cost	1200;
+viewradius	10;

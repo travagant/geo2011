@@ -1,0 +1,23 @@
+// Spell Profile
+
+id	"spell_demons_debuff_flee";
+
+nameid	"NamSp_spell_demons_debuff_flee";
+descid	"DesSp_spell_demons_debuff_flee";
+
+icon_small "Resources\items\runes\spell_demons_debuff_flee.t";
+icon "Resources\items\cards\spell_demons_debuff_flee.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_All_Debuff\spell_all_debuff.scene";
+scene_crop "Resources\FX\Map_Spells\Demons\Spell_All_Debuff\spell_all_debuff_arena.scene";
+
+default_nation	"Demons";
+level	1;
+target	enemy;
+
+game_effect	"nspell_demons_debuff_flee";
+
+cost_spell "Infernal mana" 120, 240;
+
+rune	"rune_spell_demons_debuff_flee";
+rune_cost "Infernal mana", 45;
+rune_cost "Stone", 45;

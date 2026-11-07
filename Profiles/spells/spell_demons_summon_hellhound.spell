@@ -1,0 +1,23 @@
+// Spell Profile
+
+id	"spell_demons_summon_hellhound";
+
+nameid	"NamSp_spell_demons_summon_hellhound";
+descid	"DesSp_spell_demons_summon_hellhound";
+
+icon_small "Resources\items\runes\spell_demons_summon_hellhound.t";
+icon "Resources\items\cards\spell_demons_summon_hellhound.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Summon\spell_summon_hellhound.scene";
+scene_crop "Resources\FX\Map_Spells\Demons\Spell_Summon\spell_summon_hellhound_arena.scene";
+
+default_nation	"Demons";
+level	2;
+target	zone;
+
+game_effect	"nspell_demons_summon_hellhound";
+
+cost_spell "Infernal mana" 420, 840;
+
+rune	"rune_spell_demons_summon_hellhound";
+rune_cost "Infernal mana", 150;
+rune_cost "Stone", 150;

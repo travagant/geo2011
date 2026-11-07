@@ -1,0 +1,8 @@
+// Effect profile for nspell_demons_get_gold_arena
+
+effect "nspell_demons_get_gold_arena"
+{
+nameid "nspell_demons_get_gold_arena_nameid";
+resource_gold	350;
+//Modifi
+}

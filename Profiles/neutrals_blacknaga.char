@@ -1,0 +1,23 @@
+//Unit Profile
+//
+id                       "neutrals_blacknaga";
+unit_scene              "resources\\characters\\neutrals\\blacknaga\\character_neutrals_blacknaga.scene";
+unit_scene_lod		"resources\\characters\\neutrals\\blacknaga\\character_neutrals_blacknaga_lod.scene",10;
+icon                     "resources\\characters\\neutrals\\blacknaga\\icon_blacknaga.t";
+subicon                  "resources\\characters\\neutrals\\blacknaga\\icon_blacknaga_small.t";
+layout_icon              "resources\\characters\\neutrals\\blacknaga\\icon_blacknaga_node.t";
+capital_icon             "resources\\characters\\neutrals\\blacknaga\\icon_blacknaga_capital.t";
+dialog_icon              "resources\\characters\\neutrals\\blacknaga\\icon_blacknaga_dialog.t";
+leader_icon              "resources\\characters\\neutrals\\blacknaga\\icon_blacknaga_ring.t"
+fxproc                   "default";
+fxscene                  "resources\\fx\\Arena_Spells\\neutrals\\mermaid\\fx_undeads_mermaid_spell.scene";
+fxcast                   "resources\\fx\\Attacks\\neutrals\\mermaid\\fx_undeads_mermaid_cast.scene";
+fxscene_ko               "resources\\fx\\Arena_FX\\Death\\fx_die_neutrals.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_neutrals_levelup.scene";
+centerbone               "spine1";
+move_speed               1.7;
+nodesx                   1;
+nodesz                   1;
+#include                 "desc\\neutrals_blacknaga_desc.char";
+#include                 "sound\\neutrals_blacknaga_sound.char";
+#include                 "stats\\neutrals_blacknaga_stats.char";

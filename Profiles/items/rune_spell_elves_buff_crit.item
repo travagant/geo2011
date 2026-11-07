@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_elves_buff_crit";
+
+nameid "NamSp_spell_elves_buff_crit";
+descid "DesSp_spell_elves_buff_crit";
+
+level 2;
+class "runes";
+icon "Resources\items\runes\spell_elves_buff_crit.t";
+scene "Resources\FX\Map_Spells\Elves\Spell_Buff_Crit\spell_buff_crit_2_arena.scene";
+
+target ally;
+game_effect "nspell_elves_buff_crit_arena";
+
+gold_cost 420;
+usage_cost 20;
+race "Elves";

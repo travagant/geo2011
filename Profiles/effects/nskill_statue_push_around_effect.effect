@@ -1,0 +1,12 @@
+// Effect profile for nskill_statue_push_around_effect
+
+effect "nskill_statue_push_around_effect"
+{
+nameid "nskill_statue_push_around_effect_nameid";
+fx_start	"resources\fx\\Arena_Spells\Demons\Gargoyle\fx_demons_gargoyle_spell.scene";
+attack_pow	25;
+push;
+push_collide	"nskill_push_collide";
+element	"earth";
+//Modifi
+}

@@ -1,0 +1,18 @@
+// Achievement Profile
+
+achievement "dungeons"
+{
+	nameid  "dungeons_name"; 
+	descid  "dungeons_desc";
+	type range;
+	count_name "str_dungeons_CN";
+
+	level_bronze 2;
+	icon_bronze "Resources\Interface\Icons\achievements\achieve_dungeons.t";
+
+	level_silver 10;
+	icon_silver "Resources\Interface\Icons\achievements\achieve_dungeons.t";
+
+	level_gold 15;
+	icon_gold "Resources\Interface\Icons\achievements\achieve_dungeons.t";
+};

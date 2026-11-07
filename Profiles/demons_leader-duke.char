@@ -1,0 +1,50 @@
+// Unit Profile
+//
+id		"demons_leader-duke";
+unit_scene 	"resources\\characters\\demons\\leader-duke\\character_demons_leader-duke.scene"
+unit_scene_lod		"resources\characters\demons\leader-duke\character_demons_leader-duke_lod.scene",10;
+icon 		"resources\\characters\\demons\\leader-duke\\icon_leader-duke.t";
+subicon 	"resources\\characters\\demons\\leader-duke\\icon_leader-duke_small.t";
+layout_icon 	"resources\\characters\\demons\\leader-duke\\icon_leader-duke_node.t";
+capital_icon 	 "resources\characters\demons\leader-duke\icon_leader-duke_capital.t";
+dialog_icon 	 "resources\characters\demons\leader-duke\icon_leader-duke_dialog.t";
+leader_icon 	 "resources\characters\demons\leader-duke\icon_leader-duke_ring.t";
+fxproc 		"lighting";
+fxscene 	"resources\\fx\\Arena_FX\\Physical_Damage\\fx_small_attack_damage.scene";
+fxscene_ko 	"resources\\fx\\Arena_FX\\Death\\fx_die_demons.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_demons_levelup.scene";
+centerbone "Spine1";
+#include      	"desc\\demons_leader-duke_desc.char";
+#include 	"stats\\demons_leader-duke_stats.char";
+#include      	"sound\\demons_leader-duke_sound.char";
+move_speed	4.5;
+nodesx 		1;
+nodesz		1;
+names "$(Texts)/demons_leader-counselor.txt";
+set 1 {
+    weapon "resources\Characters\demons\leader-duke\weapon\demons_leader-duke_set1_weapon.scene";
+    feet "resources\Characters\demons\leader-duke\feet\demons_leader-duke_set1_feet.scene";
+    body "resources\Characters\demons\leader-duke\body\demons_leader-duke_set1_body.scene";
+    head "resources\Characters\demons\leader-duke\head\demons_leader-duke_set1_head.scene";
+    legs "resources\Characters\demons\leader-duke\legs\demons_leader-duke_set1_legs.scene";
+    arms "resources\Characters\demons\leader-duke\arms\demons_leader-duke_set1_arms.scene";
+    hands "resources\Characters\demons\leader-duke\hands\demons_leader-duke_set1_hands.scene";
+}
+set 2 {
+    weapon "resources\Characters\demons\leader-duke\weapon\demons_leader-duke_set2_weapon.scene";
+    feet "resources\Characters\demons\leader-duke\feet\demons_leader-duke_set2_feet.scene";
+    body "resources\Characters\demons\leader-duke\body\demons_leader-duke_set2_body.scene";
+    head "resources\Characters\demons\leader-duke\head\demons_leader-duke_set2_head.scene";
+    legs "resources\Characters\demons\leader-duke\legs\demons_leader-duke_set2_legs.scene";
+    arms "resources\Characters\demons\leader-duke\arms\demons_leader-duke_set2_arms.scene";
+    hands "resources\Characters\demons\leader-duke\hands\demons_leader-duke_set2_hands.scene";
+}
+set 3 {
+    weapon "resources\Characters\demons\leader-duke\weapon\demons_leader-duke_set3_weapon.scene";
+    feet "resources\Characters\demons\leader-duke\feet\demons_leader-duke_set3_feet.scene";
+    body "resources\Characters\demons\leader-duke\body\demons_leader-duke_set3_body.scene";
+    head "resources\Characters\demons\leader-duke\head\demons_leader-duke_set3_head.scene";
+    legs "resources\Characters\demons\leader-duke\legs\demons_leader-duke_set3_legs.scene";
+    arms "resources\Characters\demons\leader-duke\arms\demons_leader-duke_set3_arms.scene";
+    hands "resources\Characters\demons\leader-duke\hands\demons_leader-duke_set3_hands.scene";
+}

@@ -1,0 +1,16 @@
+// Potion Profile
+
+id	"potion_dispel_debuffs";
+
+
+nameid	"ItNPotDispelDebuffs";
+descid	"ItDPotDispelDebuffs";
+
+class "potion";
+level	2;
+icon "Resources\\Items\\potion\\potion_dispel_debuffs.t";
+
+game_effect	"npotion_dispel_debuffs";
+gold_cost	1000;
+usage_cost	20;
+target	"ally";

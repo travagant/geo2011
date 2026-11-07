@@ -1,0 +1,16 @@
+// Equipment Profile
+
+id	"proxy_book_2lvl";
+
+nameid "proxy_book_2lvl_name";
+descid "proxy_book_2lvl_desc";
+
+
+class	"book";
+level	2;
+
+icon "resources\Items\book\proxy_book_2lvl.t";
+
+proxy;
+
+//Modifi

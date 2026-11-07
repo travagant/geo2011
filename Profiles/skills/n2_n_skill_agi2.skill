@@ -1,0 +1,14 @@
+// Skill profile n_skill_agi2
+
+skill	"n_skill_agi2"
+{
+nameid "n_skill_agi2_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_double_attack_ii.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_double_attack_ii_inactive.t";
+
+
+
+agi	2;
+//Modifi
+}

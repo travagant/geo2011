@@ -1,0 +1,12 @@
+// Effect profile for nspell_empire_resist_water
+
+effect "nspell_empire_resist_water"
+{
+nameid "nspell_empire_resist_water_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_resist.t";
+duration_days	2;
+buff;
+res_water	25;
+//Modifi
+hp_per	20;
+}

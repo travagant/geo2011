@@ -1,0 +1,16 @@
+// Equipment Profile
+
+id	"proxy_body_2lvl";
+
+nameid "proxy_body_2lvl_name";
+descid "proxy_body_2lvl_desc";
+
+
+class	"body";
+level	2;
+
+icon "resources\Items\body\proxy_body_2lvl.t";
+
+proxy;
+
+//Modifi

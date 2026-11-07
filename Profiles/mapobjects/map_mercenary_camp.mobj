@@ -1,0 +1,13 @@
+//interactive map object for Mercenary_Camp
+
+id	"map_Mercenary_Camp";
+
+nameid	"map_Mercenary_CampN";
+descid	"map_Mercenary_CampD";
+effectdescid "map_Mercenary_CampEff";
+ambient_sound	"$(Sounds)\\Buildings\\merchenary_camp.wav";
+
+//destination
+action_class	"mercenary";
+action_class_script	"resources\\profiles\\scripts\\shop_mercenary.s";
+respawn	0;

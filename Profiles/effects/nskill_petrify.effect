@@ -1,0 +1,14 @@
+// Effect profile for nskill_petrify
+
+effect "nskill_petrify"
+{
+nameid "nskill_petrify_nameid";
+fx_start	"Resources\FX\Arena_FX\Skills\fx_skill_debuff_stop_1_spell.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_stop.t";
+duration_turns	2;
+debuff;
+stop;
+paralize;
+res_blunt	-25;
+//Modifi
+}

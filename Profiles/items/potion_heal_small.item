@@ -1,0 +1,17 @@
+// Potion Profile
+
+id	"potion_heal_small";
+
+
+nameid	"ItNPotHealS";
+descid	"ItDPotHealS";
+effectdescid	"ItEDPotHealS";
+
+class "potion";
+level	1;
+icon "Resources\\Items\\potion\\potion_heal_small.t";
+
+game_effect	"npotion_heal_small";
+gold_cost	300;
+usage_cost	10;
+target	"ally";

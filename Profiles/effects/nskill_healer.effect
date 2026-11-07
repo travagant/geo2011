@@ -1,0 +1,11 @@
+// Effect profile for nskill_healer
+
+effect "nskill_healer"
+{
+nameid "nskill_healer_nameid";
+fx_start	"resources\fx\\Arena_FX\Potions\fx_potion_heal_small.scene";
+duration_days	0;
+buff;
+heal_per	20;
+//Modifi
+}

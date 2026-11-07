@@ -1,0 +1,10 @@
+// Effect profile for npillar_fire
+
+effect "npillar_fire"
+{
+nameid "npillar_fire_nameid";
+fx_start	"resources\fx\\Arena_Spells\Demons\Demonologist\fx_demons_demonologist_spell.scene";
+damage_per	5;
+element	"fire";
+//Modifi
+}

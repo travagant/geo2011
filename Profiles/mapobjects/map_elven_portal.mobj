@@ -1,0 +1,14 @@
+//interactive map object for Elven_portal
+
+id	"map_Elven_portal";
+
+nameid	"map_Elven_portalN";
+descid	"map_Elven_portalD";
+desc_inactid	"map_Elven_portalND";
+msg_inactiveid	"map_Elven_portalNAD";
+ambient_sound	"$(Sounds)\\Buildings\\elven_portal.wav";
+
+//destination
+action_class	"dungeon";
+action_class_script	"resources\\profiles\\dungeons\\elven_portal.s";
+respawn	8;

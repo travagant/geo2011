@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_elves_summon_unicorn";
+
+nameid "NamSp_spell_elves_summon_unicorn";
+descid "DesSp_spell_elves_summon_unicorn";
+
+level 4;
+class "runes";
+icon "Resources\items\runes\spell_elves_summon_unicorn.t";
+scene "Resources\FX\Map_Spells\Elves\Spell_Summon\spell_summon_unicorn_arena.scene";
+
+target zone;
+game_effect "nspell_elves_summon_unicorn_arena";
+
+gold_cost 1080;
+usage_cost 40;
+race "Elves";

@@ -1,0 +1,20 @@
+// Skill profile n_skill_skill_videniya_onattack
+
+skill	"n_skill_skill_videniya_onattack"
+{
+nameid "n_skill_skill_videniya_onattack_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_debuff_stop.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_debuff_stop_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_skill_videniya_onattack";
+
+
+element	mind;
+info_tag;
+on_attack;
+//Modifi
+}

@@ -1,0 +1,4 @@
+//undead_SkeletonChampion's description
+nameid "UndeadSkeletonChampionName";
+descid "UndeadSkeletonChampionDesc";
+minidesc "UndeadSkeletonChampion_MD";

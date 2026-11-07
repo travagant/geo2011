@@ -1,0 +1,8 @@
+// Effect profile for nspell_empire_get_rune
+
+effect "nspell_empire_get_rune"
+{
+nameid "nspell_empire_get_rune_nameid";
+resource_item	"proxy_rune_3lvl";
+//Modifi
+}

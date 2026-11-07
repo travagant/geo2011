@@ -1,0 +1,13 @@
+// Effect profile for nskill_buff_dmg_onattack_oncursed
+
+effect "nskill_buff_dmg_onattack_oncursed"
+{
+nameid "nskill_buff_dmg_onattack_oncursed_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_buff_dmg_onattack_oncursed.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_attack.t";
+duration_turns	-1;
+buff;
+//Modifi
+dmg_per	25;
+stackable	1;
+}

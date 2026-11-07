@@ -1,0 +1,13 @@
+// Effect profile for nskill_ring_str
+
+effect "nskill_ring_str"
+{
+nameid "nskill_ring_str_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_fire_wall_spell.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_attack.t";
+duration_turns	2;
+buff;
+//Modifi
+dmg_per	30;
+stackable	1;
+}

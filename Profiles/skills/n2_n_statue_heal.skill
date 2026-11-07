@@ -1,0 +1,18 @@
+// Skill profile n_statue_heal
+
+skill	"n_statue_heal"
+{
+nameid "n_statue_heal_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_vit.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_vit_inactive.t";
+
+skill_range	1;
+cast_type	around;
+cast_target	friendly;
+game_effect	"nskill_statue_heal";
+
+
+on_turn;
+//Modifi
+}

@@ -1,0 +1,11 @@
+// Effect profile for nspell_elves_buff_hp
+
+effect "nspell_elves_buff_hp"
+{
+nameid "nspell_elves_buff_hp_nameid";
+icon "Resources\Interface\Icons\buffs\icon_buff_defense.t";
+duration_days	2;
+buff;
+hp	50;
+//Modifi
+}

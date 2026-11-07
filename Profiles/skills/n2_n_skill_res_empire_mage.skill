@@ -1,0 +1,17 @@
+// Skill profile n_skill_res_empire_mage
+
+skill	"n_skill_res_empire_mage"
+{
+nameid "n_skill_res_empire_mage_nameid";
+effectdescid "n_skill_res_empire_mage_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_res-slash.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_res-slash_inactive.t";
+
+
+
+res_air	100;
+res_mind	-50;
+info_tag;
+//Modifi
+}

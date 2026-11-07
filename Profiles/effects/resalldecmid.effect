@@ -1,0 +1,11 @@
+// Effect profile for ResAllDecMid
+
+effect "ResAllDecMid"
+{
+nameid "ResAllDecMid_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_resist.t";
+duration_turns	3;
+debuff;
+res	-50;
+//Modifi
+}

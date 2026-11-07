@@ -1,0 +1,23 @@
+grid "demons_beast"
+{
+ unit_start 1 9;
+ unit_skill "n_skill_zone_dmg_3_info" 1 1 1 23;
+ unit_skill "n_skill_giant" 1 1 1 24;
+ unit_skill "n_cannibal" 1 1 1 25;
+ unit_skill "n_skill_buff_ini_around_ondamaged" 1 1 1 26;
+ uses 1;
+ unit_skill "n_skill_debuff_crit_around_onturn" 1 1 1 27;
+ unit_skill "n_skill_buff_str_oncurse" 1 1 1 28;
+ unit_skill "n_skill_str" 1 0 2 9;
+ unit_skill "n_skill_agi" 1 0 3 9;
+ unit_skill "n_skill_dex" 1 0 4 9;
+ unit_skill "n_skill_immune_push" 1 0 5 9;
+ unit_skill "n_skill_vit" 1 0 6 9;
+ unit_skill "n_skill_str" 1 0 7 9;
+ unit_skill "n_skill_dex" 1 0 8 9;
+ unit_skill "n_skill_res_slash" 1 0 9 9;
+ unit_skill "n_skill_vit" 1 0 10 9;
+ unit_skill "n_skill_str" 1 0 11 9;
+ unit_skill "n_skill_agi" 1 0 12 9;
+ unit_skill "n_skill_vit" 1 0 13 9;
+}

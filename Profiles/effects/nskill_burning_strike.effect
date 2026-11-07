@@ -1,0 +1,13 @@
+// Effect profile for nskill_burning_strike
+
+effect "nskill_burning_strike"
+{
+nameid "nskill_burning_strike_nameid";
+fx_start	"Resources\FX\Arena_spells\demons\Rod-1\fx_demons_rod-1_spell.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_poison.t";
+duration_turns	4;
+debuff;
+curse_pow	50;
+element	"fire";
+//Modifi
+}

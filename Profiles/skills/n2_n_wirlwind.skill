@@ -1,0 +1,23 @@
+// Skill profile n_wirlwind
+
+skill	"n_wirlwind"
+{
+nameid "n_wirlwind_nameid";
+effectdescid "n_wirlwind_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_deathblow.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_deathblow_inactive.t";
+
+skill_range	1;
+cast_type	around;
+cast_target	enemy;
+game_effect	"nskill_wirlwind";
+fx_scene	"resources\fx\\Arena_FX\Skills\fx_skill_n_wirlwind.scene";
+bones_state	"attack";
+
+request_ap	1;
+battle;
+
+info_tag;
+//Modifi
+}

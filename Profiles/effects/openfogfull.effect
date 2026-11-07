@@ -1,0 +1,9 @@
+// Effect profile for OpenFogFull
+
+effect "OpenFogFull"
+{
+nameid "OpenFogFull_nameid";
+buff;
+openfog	100;
+//Modifi
+}

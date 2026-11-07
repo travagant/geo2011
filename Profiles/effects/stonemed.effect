@@ -1,0 +1,9 @@
+// Effect profile for Stonemed
+
+effect "Stonemed"
+{
+nameid "Stonemed_nameid";
+buff;
+resource_stone	50;
+//Modifi
+}

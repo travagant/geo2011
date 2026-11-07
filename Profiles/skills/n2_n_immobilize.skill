@@ -1,0 +1,22 @@
+// Skill profile n_immobilize
+
+skill	"n_immobilize"
+{
+nameid "n_immobilize_nameid";
+effectdescid "n_immobilize_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_immobilize.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_immobilize_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"ApBatDec";
+
+request_ap	1;
+
+element	earth;
+info_tag;
+on_attack;
+//Modifi
+}

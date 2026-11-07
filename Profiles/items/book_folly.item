@@ -1,0 +1,17 @@
+// Equipment Profile
+
+id	"book_folly";
+
+nameid "book_folly_name";
+descid "book_folly_desc";
+
+
+class	"book";
+level	3;
+
+icon "resources\Items\book\book_folly.t";
+
+add_skill	"n_book_folly";
+
+gold_cost	10000;
+//Modifi

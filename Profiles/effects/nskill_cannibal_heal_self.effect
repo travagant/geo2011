@@ -1,0 +1,10 @@
+// Effect profile for nskill_cannibal_heal_self
+
+effect "nskill_cannibal_heal_self"
+{
+nameid "nskill_cannibal_heal_self_nameid";
+fx_start	"Resources\FX\Arena_FX\Skills\fx_skill_n_cannibal.scene";
+buff;
+heal_per	20;
+//Modifi
+}

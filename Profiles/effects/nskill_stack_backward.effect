@@ -1,0 +1,10 @@
+// Effect profile for nskill_stack_backward
+
+effect "nskill_stack_backward"
+{
+nameid "nskill_stack_backward_nameid";
+fx_start	"Resources\FX\Arena_FX\Skills\fx_skill_stack_map_down_1_spell.scene";
+debuff;
+stack_backward	1;
+//Modifi
+}

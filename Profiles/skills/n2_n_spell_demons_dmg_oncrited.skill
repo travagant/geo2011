@@ -1,0 +1,19 @@
+// Skill profile n_spell_demons_dmg_oncrited
+
+skill	"n_spell_demons_dmg_oncrited"
+{
+nameid "n_spell_demons_dmg_oncrited_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_spell_demons_dmg_oncrited.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_spell_demons_dmg_oncrited_inactive.t";
+
+skill_range	1;
+cast_type	around;
+cast_target	enemy;
+game_effect	"nskill_spell_demons_dmg_oncrited";
+
+
+info_tag;
+on_crited;
+//Modifi
+}

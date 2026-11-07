@@ -1,0 +1,4 @@
+//empire_apprentice's description
+nameid "EmpireApprenticeName";
+descid "EmpireApprenticeDesc";
+minidesc "EmpireApprentice_MD";

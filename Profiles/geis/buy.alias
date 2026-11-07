@@ -1,0 +1,11 @@
+
+
+
+alias "buy" {
+
+
+   sound 100, "$(Sounds)\interface\buy.wav", 100, 3;
+
+
+
+}  

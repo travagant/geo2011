@@ -1,0 +1,20 @@
+// Skill profile n_skill_debuff_vit_onturn_onattack
+
+skill	"n_skill_debuff_vit_onturn_onattack"
+{
+nameid "n_skill_debuff_vit_onturn_onattack_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_morf_defform_demons.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_morf_defform_demons_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_debuff_vit_onturn_onattack";
+
+
+element	death;
+info_tag;
+on_attack;
+//Modifi
+}

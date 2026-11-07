@@ -1,0 +1,16 @@
+// Equipment Profile
+
+id	"proxy_rune_1lvl";
+
+nameid "proxy_rune_1lvl_name";
+descid "proxy_rune_1lvl_desc";
+
+
+class	"runes";
+level	1;
+
+icon "resources\Items\runes\proxy_rune_1lvl.t";
+
+proxy;
+
+//Modifi

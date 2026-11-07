@@ -1,0 +1,14 @@
+// Effect profile for shop_steal_failed
+
+effect "shop_steal_failed"
+{
+nameid "shop_steal_failed_nameid";
+effectdescid "shop_steal_failed_descid";
+bubleid "shop_steal_failed_bubleid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_world.t";
+duration_days	5;
+debuff;
+dontdispell;
+//Modifi
+shops_disabled;
+}

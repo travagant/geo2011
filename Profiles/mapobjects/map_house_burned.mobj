@@ -1,0 +1,15 @@
+//interactive map object for House_Burned
+
+id	"map_House_Burned";
+
+nameid	"map_House_BurnedN";
+msgid	"map_House_BurnedAD";
+msg_inactiveid	"map_House_BurnedNAD";
+descid	"map_House_BurnedD";
+desc_inactid	"map_House_BurnedND";
+effectid	"map_House_BurnedEff";
+
+//destination
+action_class	"object";
+game_effect	"Goldmed";
+once;

@@ -1,0 +1,12 @@
+// Effect profile for nskill_book_balance_self
+
+effect "nskill_book_balance_self"
+{
+nameid "nskill_book_balance_self_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_book_balance.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_defense.t";
+duration_turns	3;
+buff;
+//Modifi
+add_skill	"n_book_balance_self";
+}

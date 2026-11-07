@@ -1,0 +1,27 @@
+// Spell Profile
+
+id	"spell_demons_dispell_magic_resist";
+
+nameid	"NamSp_spell_demons_dispell_magic_resist";
+descid	"DesSp_spell_demons_dispell_magic_resist";
+
+icon_small "Resources\items\runes\spell_demons_dispell_magic_resist.t";
+icon "Resources\items\cards\spell_demons_dispell_magic_resist.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Magic_Vulnerability\spell_magic_vulnerability.scene";
+scene_crop "Resources\FX\Map_Spells\Demons\Spell_Magic_Vulnerability\spell_magic_vulnerability_arena.scene";
+
+default_nation	"Demons";
+level	4;
+target	enemy;
+
+game_effect	"nspell_demons_dispell_magic_resist";
+
+cost_spell "Life mana" 200, 400;
+cost_spell "Infernal mana" 200, 400;
+cost_spell "Death mana" 200, 400;
+
+rune	"rune_spell_demons_dispell_magic_resist";
+rune_cost "Life mana", 70;
+rune_cost "Infernal mana", 70;
+rune_cost "Death mana", 70;
+rune_cost "Stone", 210;

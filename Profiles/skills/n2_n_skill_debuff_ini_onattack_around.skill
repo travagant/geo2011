@@ -1,0 +1,22 @@
+// Skill profile n_skill_debuff_ini_onattack_around
+
+skill	"n_skill_debuff_ini_onattack_around"
+{
+nameid "n_skill_debuff_ini_onattack_around_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_earth_damage.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_earth_damage_inactive.t";
+
+skill_range	1;
+cast_type	around;
+skill_zone_radius	2;
+cast_target	enemy;
+game_effect	"nskill_debuff_ini_onattack_around";
+
+
+element	earth;
+info_tag;
+on_attack;
+on_miss;
+//Modifi
+}

@@ -1,0 +1,21 @@
+// Skill profile n_talisman_firearround
+
+skill	"n_talisman_firearround"
+{
+nameid "n_talisman_firearround_nameid";
+effectdescid "n_talisman_firearround_descid";
+
+icon	"Resources\Interface\Icons\skills\n_talisman_firearround.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_talisman_firearround_inactive.t";
+
+skill_range	1;
+cast_type	around;
+cast_target	friendly;
+game_effect	"nskill_talisman_firearround";
+fx_scene	"resources\fx\\Arena_FX\Skills\fx_skill_resist_fire_around.scene";
+
+
+info_tag;
+on_turn;
+//Modifi
+}

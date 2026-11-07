@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_demons_buff_flee_crit_mod_ignorecover";
+
+nameid "NamSp_spell_demons_buff_flee_crit_mod_ignorecover";
+descid "DesSp_spell_demons_buff_flee_crit_mod_ignorecover";
+
+level 5;
+class "runes";
+icon "Resources\items\runes\spell_demons_buff_flee_crit_mod_ignorecover.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Ignore_Cover\spell_ignore_cover_arena.scene";
+
+target ally;
+game_effect "nspell_demons_buff_flee_crit_mod_ignorecover_arena";
+
+gold_cost 1120;
+usage_cost 40;
+race "Demons";

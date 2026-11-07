@@ -1,0 +1,10 @@
+// Effect profile for npotion_heal_small
+
+effect "npotion_heal_small"
+{
+nameid "npotion_heal_small_nameid";
+fx_start	"resources\fx\\Arena_FX\Potions\fx_potion_heal_small.scene";
+buff;
+heal	100;
+//Modifi
+}

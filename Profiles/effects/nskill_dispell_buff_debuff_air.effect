@@ -1,0 +1,15 @@
+// Effect profile for nskill_dispell_buff_debuff_air
+
+effect "nskill_dispell_buff_debuff_air"
+{
+nameid "nskill_dispell_buff_debuff_air_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_n_debuff_resist_air.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_resist.t";
+duration_turns	-1;
+debuff;
+res_air	-25;
+dontdispell;
+dispel_buffs	1;
+banish;
+//Modifi
+}

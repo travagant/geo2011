@@ -1,0 +1,8 @@
+// Effect profile for nskill_defform_Empire
+
+effect "nskill_defform_Empire"
+{
+nameid "nskill_defform_Empire_nameid";
+morph	"empire_livingarmor" "nskill_defform_duration";
+//Modifi
+}

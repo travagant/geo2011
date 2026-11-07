@@ -1,0 +1,11 @@
+// Effect profile for nskill_summon_Elves
+
+effect "nskill_summon_Elves"
+{
+nameid "nskill_summon_Elves_nameid";
+fx_start	"Resources\FX\\Arena_FX\Skills\fx_skills_summon_pet_elves.scene";
+buff;
+summon	"elves_unicorn";
+teleport_target;
+//Modifi
+}

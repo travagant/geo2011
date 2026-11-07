@@ -1,0 +1,11 @@
+// Effect profile for DexMid
+
+effect "DexMid"
+{
+nameid "DexMid_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_attack.t";
+duration_turns	10;
+buff;
+dex	5;
+//Modifi
+}

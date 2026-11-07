@@ -1,0 +1,22 @@
+// Skill profile n_skill_vampire
+
+skill	"n_skill_vampire"
+{
+nameid "n_skill_vampire_nameid";
+effectdescid "n_skill_vampire_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_cannibal.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_cannibal_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_vampire";
+
+
+self_effect	"nskill_heal_buff";
+info_tag;
+vampire	50;
+on_attack;
+//Modifi
+}

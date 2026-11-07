@@ -1,0 +1,16 @@
+//interactive map object for Oremine
+
+id	"map_Oremine";
+
+nameid	"map_OremineN";
+msgid	"map_OremineAD";
+msg_inactiveid	"map_OremineNAD";
+descid	"map_OremineD";
+desc_inactid	"map_OremineND";
+effectid	"map_OremineEff";
+ambient_sound	"$(Sounds)\\Buildings\\oremine.wav";
+
+//destination
+action_class	"resource";
+action_class_script	"resources\\profiles\\actionscript\\resource_gold_stone.acscript";
+respawn	4;

@@ -1,0 +1,11 @@
+// Effect profile for VitMin
+
+effect "VitMin"
+{
+nameid "VitMin_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_defense.t";
+duration_turns	2;
+buff;
+vit	1;
+//Modifi
+}

@@ -1,0 +1,13 @@
+// Effect profile for nskill_rage
+
+effect "nskill_rage"
+{
+nameid "nskill_rage_nameid";
+icon "Resources\Interface\Icons\buffs\icon_buff_attack.t";
+duration_turns	-1;
+buff;
+str	3;
+dex	3;
+dontdispell;
+//Modifi
+}

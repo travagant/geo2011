@@ -1,0 +1,10 @@
+// Effect profile for nskill_spell_demons_dmg_oncrited
+
+effect "nskill_spell_demons_dmg_oncrited"
+{
+nameid "nskill_spell_demons_dmg_oncrited_nameid";
+fx_start	"resources\fx\\Arena_Spells\Demons\Cultist\fx_demons_cultist_spell.scene";
+damage	200;
+element	"fire";
+//Modifi
+}

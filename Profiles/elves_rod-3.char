@@ -1,0 +1,23 @@
+//Unit Profile
+//
+id                       "elves_rod-3";
+unit_scene               "Resources\\Characters\\Elves\\rod-3\\character_elves_rod-3.scene";
+unit_scene_lod		"resources\characters\elves\rod-3\character_elves_rod-3_lod.scene",20;
+icon                     "resources\\Characters\\Elves\\rod-3\\icon_rod-3.t";
+subicon                  "resources\\Characters\\Elves\\rod-3\\icon_rod-3_small.t";
+layout_icon              "resources\\Characters\\Elves\\rod-3\\icon_rod-3_node.t";
+capital_icon             "resources\\Characters\\Elves\\rod-3\\icon_rod-3_capital.t";
+dialog_icon              "resources\\Characters\\Elves\\rod-3\\icon_rod-3_dialog.t";
+leader_icon              "resources\\characters\\elves\\rod-3\\icon_rod-3_ring.t"
+fxproc                   "lighting";
+fxscene                  "resources\\fx\\Arena_Spells\\elves\\Rod-1\\fx_elves_rod-1_spell.scene";
+fxcast                   "resources\\fx\\Attacks\\elves\\rod-3\\fx_elves_rod-3_cast.scene";
+fxscene_ko               "resources\\fx\\Arena_FX\\Death\\fx_die_elves.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_elves_levelup.scene";
+centerbone "mirror_trns";
+move_speed                2;
+nodesx                   1;
+nodesz                   1;
+#include                 "desc\\elves_rod-3_desc.char";
+#include                 "sound\\elves_rod-3_sound.char";
+#include                 "stats\\elves_rod-3_stats.char";

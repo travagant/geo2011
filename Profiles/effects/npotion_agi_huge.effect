@@ -1,0 +1,13 @@
+// Effect profile for npotion_agi_huge
+
+effect "npotion_agi_huge"
+{
+nameid "npotion_agi_huge_nameid";
+fx_start	"resources\fx\\Arena_FX\Potions\fx_potion_agi_huge.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_defense.t";
+duration_days	3;
+buff;
+agi	4;
+dontdispell;
+//Modifi
+}

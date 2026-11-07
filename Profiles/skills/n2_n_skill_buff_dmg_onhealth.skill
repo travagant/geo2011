@@ -1,0 +1,19 @@
+// Skill profile n_skill_buff_dmg_onhealth
+
+skill	"n_skill_buff_dmg_onhealth"
+{
+nameid "n_skill_buff_dmg_onhealth_nameid";
+
+icon	"Resources\Interface\Icons\skills\icon_unitstart.t";
+icon_inactive	"Resources\Interface\Icons\skills\icon_unitstart_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_buff_dmg_onhealth";
+
+
+info_tag;
+on_health	30;
+//Modifi
+}

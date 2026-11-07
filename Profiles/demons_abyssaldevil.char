@@ -1,0 +1,23 @@
+//Unit Profile
+//
+id                       "demons_abyssaldevil";
+unit_scene              "resources\\characters\\demons\\abyssaldevil\\character_demons_abyssaldevil.scene";
+unit_scene_lod		"resources\characters\demons\abyssaldevil\character_demons_abyssaldevil_lod.scene",10;
+icon                     "resources\\characters\\demons\\abyssaldevil\\icon_abyssaldevil.t";
+subicon                  "resources\\characters\\demons\\abyssaldevil\\icon_abyssaldevil_small.t";
+layout_icon              "resources\\characters\\demons\\abyssaldevil\\icon_abyssaldevil_node.t";
+capital_icon             "resources\\characters\\demons\\abyssaldevil\\icon_abyssaldevil_capital.t";
+dialog_icon              "resources\\characters\\demons\\abyssaldevil\\icon_abyssaldevil_dialog.t";
+leader_icon              "resources\\characters\\demons\\abyssaldevil\\icon_abyssaldevil_ring.t";
+fxproc                   "lighting";
+fxscene                  "resources\\fx\\Arena_FX\\Physical_Damage\\fx_small_attack_damage_2x.scene";
+fxcast                   "resources\\fx\\";
+fxscene_ko               "resources\\fx\\Arena_FX\\Death\\fx_die_demons.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_demons_levelup.scene";
+centerbone               "Bip01 Spine1";
+move_speed                1.5;
+nodesx                   1;
+nodesz                   1;
+#include                 "desc\\demons_abyssaldevil_desc.char";
+#include                 "sound\\demons_abyssaldevil_sound.char";
+#include                 "stats\\demons_abyssaldevil_stats.char";

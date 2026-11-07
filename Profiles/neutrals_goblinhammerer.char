@@ -1,0 +1,23 @@
+//Unit Profile
+//
+id                       "neutrals_goblinhammerer";
+unit_scene              "Resources\Characters\Neutrals\GoblinHammerer\character_neutrals_goblinhammerer.scene";
+unit_scene_lod		"resources\characters\Neutrals\GoblinHammerer\character_neutrals_goblinhammerer_lod.scene",10;
+icon                     "Resources\Characters\Neutrals\GoblinHammerer\icon_goblinhammerer.t";
+subicon                  "Resources\Characters\Neutrals\GoblinHammerer\icon_goblinhammerer_small.t";
+layout_icon              "Resources\Characters\Neutrals\GoblinHammerer\icon_goblinhammerer_node.t";
+capital_icon             "Resources\Characters\Neutrals\GoblinHammerer\icon_goblinhammerer_capital.t";
+dialog_icon              "Resources\Characters\Neutrals\GoblinHammerer\icon_goblinhammerer_dialog.t";
+leader_icon              "Resources\Characters\Neutrals\GoblinHammerer\icon_goblinhammerer_ring.t"
+fxproc                   "default";
+fxscene                  "resources\\fx\\Arena_Spells\\neutrals\\goblinhammer\\fx_undeads_goblinhammerer_spell.scene";
+fxcast                   "resources\\fx\\Attacks\\neutrals\\goblinhammer\\fx_undeads_goblinhammerer_cast.scene";
+fxscene_ko               "resources\\fx\\Arena_FX\\Death\\fx_die_neutrals.scene";
+fxlevelup		 "Resources\\FX\\Arena_FX\\LevelUp\\fx_neutrals_levelup.scene";
+centerbone               "spine1";
+move_speed               1.7;
+nodesx                   1;
+nodesz                   1;
+#include                 "desc\\neutrals_goblinhammerer_desc.char";
+#include                 "sound\\neutrals_goblinhammerer_sound.char";
+#include                 "stats\\neutrals_goblinhammerer_stats.char";

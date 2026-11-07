@@ -1,0 +1,20 @@
+// Skill profile n_skill_summon_nightmare
+
+skill	"n_skill_summon_nightmare"
+{
+nameid "n_skill_summon_nightmare_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_summon.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_summon_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	self;
+game_effect	"SummonNightmare";
+fx_scene	"Resources\FX\Arena_FX\Skills\fx_skill_summon_pet_1_cast.scene";
+
+request_ap	1;
+battle;
+
+//Modifi
+}

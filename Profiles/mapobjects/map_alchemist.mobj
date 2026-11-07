@@ -1,0 +1,13 @@
+//interactive map object for Alchemist
+
+id	"map_Alchemist";
+
+nameid	"map_AlchemistN";
+descid	"map_AlchemistD";
+effectdescid "map_AlchemistEff";
+ambient_sound	"$(Sounds)\\Buildings\\alchemist.wav";
+
+//destination
+action_class	"shop";
+action_class_script	"resources\\profiles\\scripts\\shop_alchemist.s";
+respawn	0;

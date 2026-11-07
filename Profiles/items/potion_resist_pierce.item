@@ -1,0 +1,16 @@
+// Potion Profile
+
+id	"potion_resist_pierce";
+
+
+nameid	"ItNPotResPierce";
+descid	"ItDPotResPierce";
+
+class "potion";
+level	2;
+icon "Resources\\Items\\potion\\potion_resist_pierce.t";
+
+game_effect	"npotion_resist_pierce";
+gold_cost	1000;
+usage_cost	10;
+target	"ally";

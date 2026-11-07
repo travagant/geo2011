@@ -1,0 +1,9 @@
+// Effect profile for nspell_undead_heal_arena
+
+effect "nspell_undead_heal_arena"
+{
+nameid "nspell_undead_heal_arena_nameid";
+buff;
+heal	120;
+//Modifi
+}

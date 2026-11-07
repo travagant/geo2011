@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_demons_summon_beliarh";
+
+nameid "NamSp_spell_demons_summon_beliarh";
+descid "DesSp_spell_demons_summon_beliarh";
+
+level 3;
+class "runes";
+icon "Resources\items\runes\spell_demons_summon_beliarh.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Summon\spell_summon_beliarh_arena.scene";
+
+target zone;
+game_effect "nspell_demons_summon_beliarh_arena";
+
+gold_cost 1240;
+usage_cost 30;
+race "Demons";

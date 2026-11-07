@@ -1,0 +1,12 @@
+// Effect profile for nskill_skill_smyatenie_oncrit
+
+effect "nskill_skill_smyatenie_oncrit"
+{
+nameid "nskill_skill_smyatenie_oncrit_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_spell_undead_debuff_vit.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_curse.t";
+duration_turns	3;
+debuff;
+//Modifi
+add_skill	"n_spell_elves_debuff_dmg";
+}

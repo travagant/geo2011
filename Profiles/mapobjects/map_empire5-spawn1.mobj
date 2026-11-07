@@ -1,0 +1,9 @@
+//interactive map object for empire5-spawn1
+
+id	"map_empire5-spawn1";
+
+nameid	"";
+
+//destination
+action_class	"resp";
+action_class_script	"resources\\profiles\\resp\\empire5-spawn1.s";

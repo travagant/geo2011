@@ -1,0 +1,23 @@
+// Spell Profile
+
+id	"spell_undead_buff_debuff_str_onturn";
+
+nameid	"NamSp_spell_undead_buff_debuff_str_onturn";
+descid	"DesSp_spell_undead_buff_debuff_str_onturn";
+
+icon_small "Resources\items\runes\spell_undead_buff_debuff_str_onturn.t";
+icon "Resources\items\cards\spell_undead_buff_debuff_str_onturn.t";
+scene "Resources\FX\Map_Spells\Undead\Spell_undead_Buff_Str\spell_undead_buff_str.scene";
+scene_crop "Resources\FX\Map_Spells\Undead\Spell_undead_Buff_Str\spell_undead_buff_str_arena.scene";
+
+default_nation	"Undead";
+level	1;
+target	ally;
+
+game_effect	"nspell_undead_buff_debuff_str_onturn";
+
+cost_spell "Death mana" 180, 360;
+
+rune	"rune_spell_undead_buff_debuff_str_onturn";
+rune_cost "Death mana", 65;
+rune_cost "Stone", 65;

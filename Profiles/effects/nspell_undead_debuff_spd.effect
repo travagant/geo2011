@@ -1,0 +1,14 @@
+// Effect profile for nspell_undead_debuff_spd
+
+effect "nspell_undead_debuff_spd"
+{
+nameid "nspell_undead_debuff_spd_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_attack.t";
+duration_days	2;
+debuff;
+spd	-4;
+res_mind	-25;
+dispel_buffs	1;
+banish;
+//Modifi
+}

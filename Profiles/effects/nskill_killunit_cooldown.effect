@@ -1,0 +1,14 @@
+// Effect profile for nskill_killunit_cooldown
+
+effect "nskill_killunit_cooldown"
+{
+nameid "nskill_killunit_cooldown_nameid";
+effectdescid "nskill_killunit_cooldown_descid";
+bubleid "nskill_killunit_cooldown_bubleid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_debuff_ap_2_spell.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_curse.t";
+duration_turns	3;
+debuff;
+//Modifi
+suicide;
+}

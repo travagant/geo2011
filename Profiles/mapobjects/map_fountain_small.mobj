@@ -1,0 +1,18 @@
+//interactive map object for Fountain_small
+
+id	"map_Fountain_small";
+
+nameid	"map_Fountain_smallN";
+msgid	"map_Fountain_smallAD";
+msg_inactiveid	"map_Fountain_smallNAD";
+descid	"map_Fountain_smallD";
+desc_inactid	"map_Fountain_smallND";
+effectid	"map_Fountain_smallEff";
+ambient_sound	"$(Sounds)\\Buildings\\fountain_small.wav";
+fx_start	"Resources\\FX\Arena_FX\Sign\fx_sign_heal.scene";
+
+//destination
+action_class	"object";
+game_effect	"HealMin";
+respawn	1;
+allside;

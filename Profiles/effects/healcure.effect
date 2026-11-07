@@ -1,0 +1,11 @@
+// Effect profile for HealCure
+
+effect "HealCure"
+{
+nameid "HealCure_nameid";
+buff;
+heal	80;
+dispel_debuffs	1;
+element	"divine";
+//Modifi
+}

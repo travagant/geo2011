@@ -1,0 +1,1 @@
+//magic zone map object for Pillar_Healid 	"map_Pillar_Heal";nameid	"map_Pillar_HealN";descid	"map_Pillar_HealD";effectdescid "map_Pillar_HealEff";action_class	"magiczone" {	radius 3;	on 		"unit_step";	race 	"owner";	race 	"!neutral";	effect	"npillar_heal";	fx "resources\fx\\LandFX\fx_pillar_heal_map.scene"}

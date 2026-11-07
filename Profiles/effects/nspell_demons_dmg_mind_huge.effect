@@ -1,0 +1,15 @@
+// Effect profile for nspell_demons_dmg_mind_huge
+
+effect "nspell_demons_dmg_mind_huge"
+{
+nameid "nspell_demons_dmg_mind_huge_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_curse.t";
+duration_days	2;
+debuff;
+damage	230;
+dispel_buffs	1;
+banish;
+element	"mind";
+//Modifi
+add_skill	"n_spell_demons_dmg_mind_huge";
+}

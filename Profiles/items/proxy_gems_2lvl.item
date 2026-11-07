@@ -1,0 +1,16 @@
+// Equipment Profile
+
+id	"proxy_gems_2lvl";
+
+nameid "proxy_gems_2lvl_name";
+descid "proxy_gems_2lvl_desc";
+
+
+class	"gems";
+level	2;
+
+icon "resources\Items\gems\proxy_gems_2lvl.t";
+
+proxy;
+
+//Modifi

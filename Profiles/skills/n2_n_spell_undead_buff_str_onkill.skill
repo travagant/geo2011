@@ -1,0 +1,19 @@
+// Skill profile n_spell_undead_buff_str_onkill
+
+skill	"n_spell_undead_buff_str_onkill"
+{
+nameid "n_spell_undead_buff_str_onkill_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_spell_undead_buff_str_onkill.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_spell_undead_buff_str_onkill_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_spell_undead_buff_str_onkill";
+
+
+info_tag;
+on_kill;
+//Modifi
+}

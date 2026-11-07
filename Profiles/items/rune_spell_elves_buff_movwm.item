@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_elves_buff_movwm";
+
+nameid "NamSp_spell_elves_buff_movwm";
+descid "DesSp_spell_elves_buff_movwm";
+
+level 1;
+class "runes";
+icon "Resources\items\runes\spell_elves_buff_movwm.t";
+scene "Resources\FX\Map_Spells\Elves\Spell_Buff_Ap\spell_buff_ap_arena.scene";
+
+target ally;
+game_effect "nspell_elves_buff_movwm_arena";
+
+gold_cost 260;
+usage_cost 20;
+race "Elves";

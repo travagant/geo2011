@@ -1,0 +1,22 @@
+// Skill profile n_book_balance
+
+skill	"n_book_balance"
+{
+nameid "n_book_balance_nameid";
+effectdescid "n_book_balance_descid";
+
+icon	"Resources\Interface\Icons\skills\n_book_balance.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_book_balance_inactive.t";
+
+skill_range	4;
+cast_type	zone;
+cast_target	enemy;
+game_effect	"nskill_book_balance_enemy";
+
+request_ap	1;
+battle;
+
+self_effect	"nskill_book_balance_self";
+element	air;
+//Modifi
+}

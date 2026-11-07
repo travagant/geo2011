@@ -1,0 +1,17 @@
+//interactive map object for Tavern_ruined
+
+id	"map_Tavern_ruined";
+
+nameid	"map_Tavern_ruinedN";
+msgid	"map_Tavern_ruinedAD";
+msg_inactiveid	"map_Tavern_ruinedNAD";
+descid	"map_Tavern_ruinedD";
+desc_inactid	"map_Tavern_ruinedND";
+effectid	"map_Tavern_ruinedEff";
+ambient_sound	"$(Sounds)\\Buildings\\tavern_ruined.wav";
+fx_start	"Resources\\FX\Arena_FX\Sign\fx_sign_statsup.scene";
+
+//destination
+action_class	"dungeon";
+action_class_script	"resources\\profiles\\dungeons\\tavern_ruined.s";
+respawn	4;

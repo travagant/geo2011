@@ -1,0 +1,10 @@
+// Effect profile for npotion_resurrect_huge
+
+effect "npotion_resurrect_huge"
+{
+nameid "npotion_resurrect_huge_nameid";
+fx_start	"resources\fx\\Arena_FX\Potions\fx_potion_revive_huge.scene";
+buff;
+resurrect	30;
+//Modifi
+}

@@ -1,0 +1,23 @@
+// Skill profile n_death_blow
+
+skill	"n_death_blow"
+{
+nameid "n_death_blow_nameid";
+effectdescid "n_death_blow_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_double_damage_I.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_double_damage_i_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_death_blow_damage";
+bones_state	"attack";
+
+request_ap	1;
+battle;
+
+self_effect	"nskill_death_blow_damage_self";
+info_tag;
+//Modifi
+}

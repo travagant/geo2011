@@ -1,0 +1,15 @@
+// Skill profile n_skill_zone_dmg_7_info
+
+skill	"n_skill_zone_dmg_7_info"
+{
+nameid "n_skill_zone_dmg_7_info_nameid";
+effectdescid "n_skill_zone_dmg_7_info_descid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_zone_7.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_zone_7_inactive.t";
+
+
+
+info_tag;
+//Modifi
+}

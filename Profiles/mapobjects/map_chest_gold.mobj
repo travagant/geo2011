@@ -1,0 +1,16 @@
+// Map Object Profile
+//
+
+id 		"map_chest_gold";
+
+nameid	"map_goldchestN";
+descid	"map_goldchestD";
+desc_inactid	"map_goldchestDN";
+
+scene 		"resources\map_objects\chest_gold_closed\map_chest_gold_closed.scene";
+icon 		"resources\map_objects\chest_gold_closed\icon_chest_gold_closed.t";
+script		"No script";
+sound		"No Sound";
+fx_start	"Resources\FX\Arena_FX\Sign\fx_sign_telega.scene";
+default_nation	"Neutral";
+action_class	"item";

@@ -1,0 +1,13 @@
+// Effect profile for npotion_resist_air
+
+effect "npotion_resist_air"
+{
+nameid "npotion_resist_air_nameid";
+fx_start	"resources\fx\\Arena_FX\Potions\fx_potion_resist_wind.scene";
+icon "Resources\Interface\Icons\buffs\Icon_buff_resist.t";
+duration_days	5;
+buff;
+res_air	25;
+dontdispell;
+//Modifi
+}

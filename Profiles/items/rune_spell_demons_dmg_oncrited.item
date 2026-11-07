@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_demons_dmg_oncrited";
+
+nameid "NamSp_spell_demons_dmg_oncrited";
+descid "DesSp_spell_demons_dmg_oncrited";
+
+level 4;
+class "runes";
+icon "Resources\items\runes\spell_demons_dmg_oncrited.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Demons_Resist\spell_demons_resist_3_arena.scene";
+
+target ally;
+game_effect "nspell_demons_dmg_oncrited_arena";
+
+gold_cost 1020;
+usage_cost 30;
+race "Demons";

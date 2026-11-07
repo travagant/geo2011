@@ -1,0 +1,23 @@
+// Spell Profile
+
+id	"spell_elves_debuff_cover";
+
+nameid	"NamSp_spell_elves_debuff_cover";
+descid	"DesSp_spell_elves_debuff_cover";
+
+icon_small "Resources\items\runes\spell_elves_debuff_cover.t";
+icon "Resources\items\cards\spell_elves_debuff_cover.t";
+scene "Resources\FX\Map_Spells\Elves\Spell_Debuff_Mattack\spell_debuff_Mattack_4.scene";
+scene_crop "Resources\FX\Map_Spells\Elves\Spell_Debuff_Mattack\spell_debuff_Mattack_4_arena.scene";
+
+default_nation	"Elves";
+level	1;
+target	enemy;
+
+game_effect	"nspell_elves_debuff_cover";
+
+cost_spell "Grove mana" 120, 240;
+
+rune	"rune_spell_elves_debuff_cover";
+rune_cost "Grove mana", 45;
+rune_cost "Stone", 45;

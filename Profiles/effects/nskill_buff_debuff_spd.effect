@@ -1,0 +1,12 @@
+// Effect profile for nskill_buff_debuff_spd
+
+effect "nskill_buff_debuff_spd"
+{
+nameid "nskill_buff_debuff_spd_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_debuff_ap_map_1_spell.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_attack.t";
+duration_turns	2;
+debuff;
+spd	-4;
+//Modifi
+}

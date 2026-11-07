@@ -1,0 +1,10 @@
+// Effect profile for AllstatsMax
+
+effect "AllstatsMax"
+{
+nameid "AllstatsMax_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_attack.t";
+duration_turns	2;
+buff;
+//Modifi
+}

@@ -1,0 +1,16 @@
+//interactive map object for Mana_hell_small
+
+id	"map_Mana_hell_small";
+
+nameid	"map_manahell_SmallN";
+msgid	"map_manahell_smallAD";
+msg_inactiveid	"";
+descid	"map_manahell_smallD";
+effectid	"map_manahell_smallEff";
+fx_start	"Resources\\FX\Arena_FX\Sign\fx_sign_mana_hell.scene";
+
+//destination
+action_class	"heap_resource";
+heap_resource	infernal_mana 50;
+msg_popup	"map_manahell_smallPopup";
+once;

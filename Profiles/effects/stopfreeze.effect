@@ -1,0 +1,12 @@
+// Effect profile for StopFreeze
+
+effect "StopFreeze"
+{
+nameid "StopFreeze_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_stop.t";
+duration_turns	5;
+debuff;
+stop;
+element	"Water";
+//Modifi
+}

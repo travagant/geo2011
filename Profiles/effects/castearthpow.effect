@@ -1,0 +1,10 @@
+// Effect profile for CastEarthPow
+
+effect "CastEarthPow"
+{
+nameid "CastEarthPow_nameid";
+debuff;
+damage	125;
+element	"Earth";
+//Modifi
+}

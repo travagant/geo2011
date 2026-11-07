@@ -1,0 +1,17 @@
+// Equipment Profile
+
+id	"book_balance";
+
+nameid "book_balance_name";
+descid "book_balance_desc";
+
+
+class	"book";
+level	3;
+
+icon "resources\Items\book\book_balance.t";
+
+add_skill	"n_book_balance";
+
+gold_cost	10000;
+//Modifi

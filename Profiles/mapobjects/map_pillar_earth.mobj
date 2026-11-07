@@ -1,0 +1,1 @@
+//magic zone map object for Pillar_Earthid 	"map_Pillar_Earth";nameid	"map_Pillar_EarthN";descid	"map_Pillar_EarthD";effectdescid "map_Pillar_EarthEff";action_class	"magiczone" {	radius 3;	on 		"unit_step";	race 	"!owner";	race 	"!neutral";	effect	"npillar_earth";	fx "resources\fx\\LandFX\fx_pillar_earth_map.scene"}

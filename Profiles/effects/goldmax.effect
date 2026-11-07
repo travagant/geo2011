@@ -1,0 +1,9 @@
+// Effect profile for Goldmax
+
+effect "Goldmax"
+{
+nameid "Goldmax_nameid";
+buff;
+resource_gold	500;
+//Modifi
+}

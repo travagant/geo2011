@@ -1,0 +1,18 @@
+// Skill profile n_skill_spell_yvyadanie
+
+skill	"n_skill_spell_yvyadanie"
+{
+nameid "n_skill_spell_yvyadanie_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_spell_undead_debuff_vit_onturn.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_spell_undead_debuff_vit_onturn_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_spell_yvyadanie";
+
+
+element	death;
+//Modifi
+}

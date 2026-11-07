@@ -1,0 +1,12 @@
+// Effect profile for BuffVitAgi
+
+effect "BuffVitAgi"
+{
+nameid "BuffVitAgi_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_defense.t";
+duration_turns	5;
+buff;
+agi	4;
+vit	4;
+//Modifi
+}

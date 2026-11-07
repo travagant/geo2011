@@ -1,0 +1,21 @@
+// Skill profile n_wall_Empire
+
+skill	"n_wall_Empire"
+{
+nameid "n_wall_Empire_nameid";
+effectdescid "n_wall_Empire_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_wall.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_wall_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_wall_Empire";
+
+request_ap	1;
+battle;
+
+info_tag;
+//Modifi
+}

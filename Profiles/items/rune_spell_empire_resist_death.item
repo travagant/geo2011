@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_empire_resist_death";
+
+nameid "NamSp_spell_empire_resist_death";
+descid "DesSp_spell_empire_resist_death";
+
+level 5;
+class "runes";
+icon "Resources\items\runes\spell_empire_resist_death.t";
+scene "Resources\FX\Map_Spells\Empire\Spell_Resist_Death\spell_empire_resist_death_arena.scene";
+
+target ally;
+game_effect "nspell_empire_resist_death_arena";
+
+gold_cost 880;
+usage_cost 30;
+race "Empire";

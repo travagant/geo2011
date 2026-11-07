@@ -1,0 +1,10 @@
+// Effect profile for CastAirMax
+
+effect "CastAirMax"
+{
+nameid "CastAirMax_nameid";
+debuff;
+damage	450;
+element	"Air";
+//Modifi
+}

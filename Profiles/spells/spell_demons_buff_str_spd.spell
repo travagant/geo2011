@@ -1,0 +1,23 @@
+// Spell Profile
+
+id	"spell_demons_buff_str_spd";
+
+nameid	"NamSp_spell_demons_buff_str_spd";
+descid	"DesSp_spell_demons_buff_str_spd";
+
+icon_small "Resources\items\runes\spell_demons_buff_str_spd.t";
+icon "Resources\items\cards\spell_demons_buff_str_spd.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Demons_Buff_Str_Spd\spell_demons_buff_str_spd.scene";
+scene_crop "Resources\FX\Map_Spells\Demons\Spell_Demons_Buff_Str_Spd\spell_demons_buff_str_spd_arena.scene";
+
+default_nation	"Demons";
+level	2;
+target	ally;
+
+game_effect	"nspell_demons_buff_str_spd";
+
+cost_spell "Infernal mana" 300, 600;
+
+rune	"rune_spell_demons_buff_str_spd";
+rune_cost "Infernal mana", 105;
+rune_cost "Stone", 105;

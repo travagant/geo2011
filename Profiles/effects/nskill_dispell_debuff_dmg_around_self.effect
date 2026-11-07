@@ -1,0 +1,9 @@
+// Effect profile for nskill_dispell_debuff_dmg_around_self
+
+effect "nskill_dispell_debuff_dmg_around_self"
+{
+nameid "nskill_dispell_debuff_dmg_around_self_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_dmg_oncurse.scene";
+dispel_debuffs	1;
+//Modifi
+}

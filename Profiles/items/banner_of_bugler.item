@@ -1,0 +1,25 @@
+// Equipment Profile
+
+id	"banner_of_bugler";
+
+nameid "banner_of_bugler_name";
+descid "banner_of_bugler_desc";
+effectdescid "banner_of_bugler_efdesc";
+
+
+class	"banner";
+level	2;
+
+icon "resources\Items\banner\banner_of_bugler.t";
+
+
+gold_cost	6000;
+//Modifi
+banner_profile	{
+ //сцена флага
+ banner_scene "Resources\Hexagons\Models\Flags\banner_of_bugler.scene"
+
+ //действия в началае боя
+ // "цель" "накладываемый эффект"
+ start_action "owner" "nbanner_of_bugler"
+};

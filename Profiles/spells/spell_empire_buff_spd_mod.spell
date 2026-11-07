@@ -1,0 +1,25 @@
+// Spell Profile
+
+id	"spell_empire_buff_spd_mod";
+
+nameid	"NamSp_spell_empire_buff_spd_mod";
+descid	"DesSp_spell_empire_buff_spd_mod";
+
+icon_small "Resources\items\runes\spell_empire_buff_spd_mod.t";
+icon "Resources\items\cards\spell_empire_buff_spd_mod.t";
+scene "Resources\FX\Map_Spells\Empire\Spell_Heal_Agi\spell_heal_agi.scene";
+scene_crop "Resources\FX\Map_Spells\Empire\Spell_Heal_Agi\spell_heal_agi_arena.scene";
+
+default_nation	"Empire";
+level	3;
+target	ally;
+
+game_effect	"nspell_empire_buff_spd_mod";
+
+cost_spell "Life mana" 270, 540;
+cost_spell "Infernal mana" 270, 540;
+
+rune	"rune_spell_empire_buff_spd_mod";
+rune_cost "Life mana", 95;
+rune_cost "Infernal mana", 95;
+rune_cost "Stone", 190;

@@ -1,0 +1,21 @@
+// Skill profile n_fireball
+
+skill	"n_fireball"
+{
+nameid "n_fireball_nameid";
+effectdescid "n_fireball_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_fire_damage.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_fire_damage_inactive.t";
+
+skill_range	12;
+cast_type	zone;
+cast_target	enemy;
+game_effect	"nskill_fireball";
+
+request_ap	1;
+battle;
+
+info_tag;
+//Modifi
+}

@@ -1,0 +1,19 @@
+// Skill profile n_skill_heal_oncrit
+
+skill	"n_skill_heal_oncrit"
+{
+nameid "n_skill_heal_oncrit_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_debuff_stop.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_debuff_stop_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_heal_oncrit";
+
+
+info_tag;
+on_crit;
+//Modifi
+}

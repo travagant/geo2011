@@ -1,0 +1,9 @@
+// Effect profile for Stonemax
+
+effect "Stonemax"
+{
+nameid "Stonemax_nameid";
+buff;
+resource_stone	100;
+//Modifi
+}

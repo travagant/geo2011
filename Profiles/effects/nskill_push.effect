@@ -1,0 +1,11 @@
+// Effect profile for nskill_push
+
+effect "nskill_push"
+{
+nameid "nskill_push_nameid";
+fx_start	"Resources\FX\Arena_FX\Skills\fx_skill_push_1_spell.scene";
+debuff;
+push;
+push_collide	"nskill_push_collide";
+//Modifi
+}

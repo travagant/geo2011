@@ -1,0 +1,14 @@
+//interactive map object for magetower
+id	"map_magetower";
+
+nameid	"map_magetowerN";
+descid	"map_magetowerD";
+desc_inactid	"map_magetowerND";
+msg_inactiveid	"map_magetowerNAD";
+ambient_sound	"$(Sounds)\\Buildings\\great_tower.wav";
+
+//destination
+action_class	"dungeon";
+action_class_script	"resources\\profiles\\dungeons\\magetower.s";
+respawn	8;
+allside;

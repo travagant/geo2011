@@ -1,0 +1,13 @@
+// Effect profile for nskill_buff_flee_oncrited
+
+effect "nskill_buff_flee_oncrited"
+{
+nameid "nskill_buff_flee_oncrited_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_armor_map_up_1_cast.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_defense.t";
+duration_turns	-1;
+buff;
+dontdispell;
+//Modifi
+flee_per	75;
+}

@@ -1,0 +1,25 @@
+// Equipment Profile
+
+id	"totem_pillar";
+
+nameid "totem_pillar_name";
+descid "totem_pillar_desc";
+effectdescid "totem_pillar_efdesc";
+
+
+class	"banner";
+level	3;
+
+icon "resources\Items\banner\totem_pillar.t";
+
+
+gold_cost	10000;
+//Modifi
+banner_profile	{
+ //сцена флага
+ banner_scene "Resources\Hexagons\Models\Flags\totem_pillar.scene"
+
+ //действия в началае боя
+ // "цель" "профиль юнита" "сцена спецэффекта"
+ start_action "summon_wall" "neutrals_wall" "Resources\FX\Arena_FX\Skills\fx_skill_stone_wall_spell.scene"
+};

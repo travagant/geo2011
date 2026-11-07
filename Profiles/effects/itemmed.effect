@@ -1,0 +1,11 @@
+// Effect profile for Itemmed
+
+effect "Itemmed"
+{
+nameid "Itemmed_nameid";
+buff;
+resource_item	"proxy_potion_2lvl";
+resource_item	"proxy_rune_2lvl";
+resource_item	"proxy_gems_2lvl";
+//Modifi
+}

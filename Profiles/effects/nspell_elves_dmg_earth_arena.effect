@@ -1,0 +1,13 @@
+// Effect profile for nspell_elves_dmg_earth_arena
+
+effect "nspell_elves_dmg_earth_arena"
+{
+nameid "nspell_elves_dmg_earth_arena_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_resist.t";
+duration_turns	-1;
+debuff;
+damage	120;
+element	"earth";
+res_blunt	-25;
+//Modifi
+}

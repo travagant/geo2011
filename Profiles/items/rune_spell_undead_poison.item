@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_undead_poison";
+
+nameid "NamSp_spell_undead_poison";
+descid "DesSp_spell_undead_poison";
+
+level 1;
+class "runes";
+icon "Resources\items\runes\spell_undead_poison.t";
+scene "Resources\FX\Map_Spells\Undead\Spell_Undead_Death_Poison\Spell_Undead_Death_Poison_arena.scene";
+
+target enemy;
+game_effect "nspell_undead_poison_arena";
+
+gold_cost 180;
+usage_cost 10;
+race "Undead";

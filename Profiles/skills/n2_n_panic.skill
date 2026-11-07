@@ -1,0 +1,22 @@
+// Skill profile n_panic
+
+skill	"n_panic"
+{
+nameid "n_panic_nameid";
+effectdescid "n_panic_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_stats_down.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_stats_down_inactive.t";
+
+skill_range	12;
+cast_type	all;
+cast_target	enemy;
+game_effect	"nskill_panic";
+
+request_ap	1;
+battle;
+
+element	mind;
+info_tag;
+//Modifi
+}

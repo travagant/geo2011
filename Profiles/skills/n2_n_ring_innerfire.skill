@@ -1,0 +1,19 @@
+// Skill profile n_ring_innerfire
+
+skill	"n_ring_innerfire"
+{
+nameid "n_ring_innerfire_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_ring_innerfire.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_ring_innerfire_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_ring_innerfire";
+
+
+info_tag;
+on_turn;
+//Modifi
+}

@@ -1,0 +1,10 @@
+// Effect profile for nskill_Steal_effect
+
+effect "nskill_Steal_effect"
+{
+nameid "nskill_Steal_effect_nameid";
+fx_start	"Resources\FX\Arena_FX\Skills\fx_skill_map_steal_1_cast.scene";
+debuff;
+steal;
+//Modifi
+}

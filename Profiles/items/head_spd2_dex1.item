@@ -1,0 +1,19 @@
+// Equipment Profile
+
+id	"head_spd2_dex1";
+
+nameid "head_spd2_dex1_name";
+descid "head_spd2_dex1_desc";
+
+
+class	"head";
+replace	"head" set 3;
+level	3;
+
+icon "resources\Items\head\head_spd2_dex1.t";
+
+spd	2;
+dex	1;
+
+gold_cost	10000;
+//Modifi

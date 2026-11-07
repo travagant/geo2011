@@ -1,0 +1,21 @@
+// Skill profile n_talisman_mindarround
+
+skill	"n_talisman_mindarround"
+{
+nameid "n_talisman_mindarround_nameid";
+effectdescid "n_talisman_mindarround_descid";
+
+icon	"Resources\Interface\Icons\skills\n_talisman_mindarround.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_talisman_mindarround_inactive.t";
+
+skill_range	1;
+cast_type	around;
+cast_target	friendly;
+game_effect	"nskill_talisman_mindarround";
+fx_scene	"resources\fx\\Arena_FX\Skills\fx_skill_resist_mind_around.scene";
+
+
+info_tag;
+on_turn;
+//Modifi
+}

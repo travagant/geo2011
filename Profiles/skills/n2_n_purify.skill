@@ -1,0 +1,22 @@
+// Skill profile n_purify
+
+skill	"n_purify"
+{
+nameid "n_purify_nameid";
+effectdescid "n_purify_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_dispell_debuff.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_dispell_debuff_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	friendly;
+game_effect	"nskill_dispel_debuff";
+fx_scene	"Resources\FX\Arena_FX\Skills\fx_skill_dispel_buff_cast.scene";
+
+request_ap	1;
+
+info_tag;
+on_attack;
+//Modifi
+}

@@ -1,0 +1,10 @@
+
+
+
+alias "open_dialog" {
+
+
+   sound 100, "$(Sounds)\interface\sound_dialog_open.wav", 100, 3;
+
+
+}  

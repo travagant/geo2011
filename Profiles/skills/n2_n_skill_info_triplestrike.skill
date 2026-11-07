@@ -1,0 +1,15 @@
+// Skill profile n_skill_info_triplestrike
+
+skill	"n_skill_info_triplestrike"
+{
+nameid "n_skill_info_triplestrike_nameid";
+effectdescid "n_skill_info_triplestrike_descid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_info_triplestrike.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_info_triplestrike_inactive.t";
+
+
+
+info_tag;
+//Modifi
+}

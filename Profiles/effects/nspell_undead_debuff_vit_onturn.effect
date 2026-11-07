@@ -1,0 +1,11 @@
+// Effect profile for nspell_undead_debuff_vit_onturn
+
+effect "nspell_undead_debuff_vit_onturn"
+{
+nameid "nspell_undead_debuff_vit_onturn_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_curse.t";
+duration_days	2;
+debuff;
+//Modifi
+add_skill	"n_spell_undead_debuff_vit_onturn";
+}

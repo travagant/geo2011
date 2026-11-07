@@ -1,0 +1,9 @@
+// Effect profile for ResurrectMid
+
+effect "ResurrectMid"
+{
+nameid "ResurrectMid_nameid";
+buff;
+resurrect	30;
+//Modifi
+}

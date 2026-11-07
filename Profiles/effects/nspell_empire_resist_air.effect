@@ -1,0 +1,12 @@
+// Effect profile for nspell_empire_resist_air
+
+effect "nspell_empire_resist_air"
+{
+nameid "nspell_empire_resist_air_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_bless.t";
+duration_days	2;
+buff;
+res_air	25;
+//Modifi
+add_skill	"n_spell_empire_resist_air";
+}

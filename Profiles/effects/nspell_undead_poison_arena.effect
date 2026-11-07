@@ -1,0 +1,13 @@
+// Effect profile for nspell_undead_poison_arena
+
+effect "nspell_undead_poison_arena"
+{
+nameid "nspell_undead_poison_arena_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_poison.t";
+duration_turns	-1;
+debuff;
+curse	15;
+element	"death";
+res_slash	-25;
+//Modifi
+}

@@ -1,0 +1,15 @@
+// Бескомпромиссно херачит все живое вокруг себя в радиусе 3-х клеток
+
+id 			"map_damage_zone_small2";
+name "Ни-хера-се!"
+desc "Даёт в репу каждому юниту пытающемуся пройти мимо"
+
+action_class	"magiczone" 
+{
+	radius 3; // исключая гекс на котором стоит
+	on 		"unit_step"; // на каждый шаг юнита
+	race 	"player"; // только на юнитов игрока
+	effect	"MagicZoneDamage";
+	fx "Resources\FX\LandFX\fx_flakes_red.scene"
+}
+

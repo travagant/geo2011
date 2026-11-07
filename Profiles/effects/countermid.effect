@@ -1,0 +1,11 @@
+// Effect profile for CounterMid
+
+effect "CounterMid"
+{
+nameid "CounterMid_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_attack.t";
+duration_turns	2;
+buff;
+def	50;
+//Modifi
+}

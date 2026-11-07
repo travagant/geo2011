@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_empire_dmg_air_removebuff";
+
+nameid "NamSp_spell_empire_dmg_air_removebuff";
+descid "DesSp_spell_empire_dmg_air_removebuff";
+
+level 3;
+class "runes";
+icon "Resources\items\runes\spell_empire_dmg_air_removebuff.t";
+scene "Resources\FX\Map_Spells\Empire\Spell_Air_Cast_Remove_Buff\spell_air_cast_remove_buff_arena.scene";
+
+target enemy;
+game_effect "nspell_empire_dmg_air_removebuff_arena";
+
+gold_cost 640;
+usage_cost 40;
+race "Empire";

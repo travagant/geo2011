@@ -1,0 +1,21 @@
+// Skill profile n_book_telekinesis
+
+skill	"n_book_telekinesis"
+{
+nameid "n_book_telekinesis_nameid";
+effectdescid "n_book_telekinesis_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_knockback.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_knockback_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_book_telekinesis";
+
+request_ap	1;
+battle;
+
+element	air;
+//Modifi
+}

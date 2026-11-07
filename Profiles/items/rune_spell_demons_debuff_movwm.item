@@ -1,0 +1,19 @@
+// Rune Profile
+
+id "rune_spell_demons_debuff_movwm";
+
+nameid "NamSp_spell_demons_debuff_movwm";
+effectdescid "EffSp_spell_demons_debuff_movwm";
+descid "DesSp_spell_demons_debuff_movwm";
+
+level 4;
+class "runes";
+icon "Resources\items\runes\spell_demons_debuff_movwm.t";
+scene "Resources\FX\Map_Spells\Demons\Spell_Fire_Land_Cast\spell_fire_land_cast_arena.scene";
+
+target enemy;
+game_effect "nspell_demons_debuff_movwm_arena";
+
+gold_cost 840;
+usage_cost 20;
+race "Demons";

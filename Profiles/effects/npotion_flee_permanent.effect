@@ -1,0 +1,13 @@
+// Effect profile for npotion_flee_permanent
+
+effect "npotion_flee_permanent"
+{
+nameid "npotion_flee_permanent_nameid";
+fx_start	"resources\fx\\Arena_FX\Potions\fx_potion_flee_permanent.scene";
+duration_days	-1;
+buff;
+agi	1;
+dontdispell;
+//Modifi
+stackable	1;
+}

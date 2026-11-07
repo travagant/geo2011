@@ -1,0 +1,10 @@
+// Effect profile for CastFireMid
+
+effect "CastFireMid"
+{
+nameid "CastFireMid_nameid";
+debuff;
+damage	100;
+element	"Fire";
+//Modifi
+}

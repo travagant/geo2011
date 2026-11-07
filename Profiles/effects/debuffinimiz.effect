@@ -1,0 +1,11 @@
+// Effect profile for DebuffIniMiz
+
+effect "DebuffIniMiz"
+{
+nameid "DebuffIniMiz_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_attack.t";
+duration_turns	10;
+debuff;
+ini	-5;
+//Modifi
+}

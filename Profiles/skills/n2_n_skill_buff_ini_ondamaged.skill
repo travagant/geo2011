@@ -1,0 +1,19 @@
+// Skill profile n_skill_buff_ini_ondamaged
+
+skill	"n_skill_buff_ini_ondamaged"
+{
+nameid "n_skill_buff_ini_ondamaged_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_rage.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_rage_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_buff_ini_ondamaged";
+
+
+info_tag;
+on_damaged;
+//Modifi
+}

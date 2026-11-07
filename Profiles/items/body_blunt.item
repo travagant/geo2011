@@ -1,0 +1,19 @@
+// Equipment Profile
+
+id	"body_blunt";
+
+nameid "body_blunt_name";
+descid "body_blunt_desc";
+
+
+class	"body";
+replace	"body" set 2;
+level	2;
+
+icon "resources\Items\body\body_blunt.t";
+
+vit	1;
+res_blunt	25;
+
+gold_cost	6000;
+//Modifi

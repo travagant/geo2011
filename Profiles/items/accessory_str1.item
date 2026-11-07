@@ -1,0 +1,19 @@
+// Equipment Profile
+
+id	"accessory_str1";
+
+nameid "accessory_str1_name";
+descid "accessory_str1_desc";
+
+
+class	"accessory";
+replace	"hands" set 1;
+replace	"arms" set 1;
+level	1;
+
+icon "resources\Items\accessory\accessory_str1.t";
+
+str	1;
+
+gold_cost	2300;
+//Modifi

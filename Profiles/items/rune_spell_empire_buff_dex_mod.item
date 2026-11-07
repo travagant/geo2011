@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_empire_buff_dex_mod";
+
+nameid "NamSp_spell_empire_buff_dex_mod";
+descid "DesSp_spell_empire_buff_dex_mod";
+
+level 1;
+class "runes";
+icon "Resources\items\runes\spell_empire_buff_dex_mod.t";
+scene "Resources\FX\Map_Spells\Empire\Spell_Buff_Dex\spell_buff_dex_arena.scene";
+
+target ally;
+game_effect "nspell_empire_buff_dex_mod_arena";
+
+gold_cost 220;
+usage_cost 20;
+race "Empire";

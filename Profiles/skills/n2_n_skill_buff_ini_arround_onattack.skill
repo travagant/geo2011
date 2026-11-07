@@ -1,0 +1,19 @@
+// Skill profile n_skill_buff_ini_arround_onattack
+
+skill	"n_skill_buff_ini_arround_onattack"
+{
+nameid "n_skill_buff_ini_arround_onattack_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_fly.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_fly_inactive.t";
+
+skill_range	1;
+cast_type	around;
+cast_target	friendly;
+game_effect	"nskill_buff_ini_arround_onattack";
+
+
+info_tag;
+on_crit;
+//Modifi
+}

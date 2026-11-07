@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_elves_summon_verdant";
+
+nameid "NamSp_spell_elves_summon_verdant";
+descid "DesSp_spell_elves_summon_verdant";
+
+level 5;
+class "runes";
+icon "Resources\items\runes\spell_elves_summon_verdant.t";
+scene "Resources\FX\Map_Spells\Elves\Spell_Summon\spell_summon_verdant_arena.scene";
+
+target zone;
+game_effect "nspell_elves_summon_verdant_arena";
+
+gold_cost 2240;
+usage_cost 50;
+race "Elves";

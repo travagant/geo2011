@@ -1,0 +1,16 @@
+// Skill profile n_skill_nighthunter
+
+skill	"n_skill_nighthunter"
+{
+nameid "n_skill_nighthunter_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_nighthunter.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_nighthunter_inactive.t";
+
+
+
+dex	3;
+info_tag;
+activity_cycle	"night";
+//Modifi
+}

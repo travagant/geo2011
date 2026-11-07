@@ -1,0 +1,12 @@
+// Effect profile for nskill_book_balance_curse
+
+effect "nskill_book_balance_curse"
+{
+nameid "nskill_book_balance_curse_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_book_balance_curse.scene";
+duration_turns	3;
+debuff;
+curse	60;
+element	"air";
+//Modifi
+}

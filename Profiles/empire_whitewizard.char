@@ -1,0 +1,23 @@
+// Unit Profile
+//
+id 		"empire_whitewizard";
+unit_scene 	"resources\\characters\\empire\\whitewizard\\character_empire_whitewizard.scene";
+unit_scene_lod		"resources\characters\empire\whitewizard\character_empire_whitewizard_lod.scene",15;
+icon 		"resources\\characters\\empire\\whitewizard\\icon_whitewizard.t";
+subicon 	"resources\\characters\\empire\\whitewizard\\icon_whitewizard_small.t";
+layout_icon	"resources\characters\\empire\\whitewizard\\icon_whitewizard_node.t";
+fxproc 		"default";
+fxcast 		"Resources\FX\Attacks\Empire\Whitewizard\fx_empire_whitewizard_cast.scene";
+fxscene 	"Resources\FX\Arena_Spells\Empire\Whitewizard\fx_empire_whitewizard_spell.scene";
+fxscene_ko 	"Resources\FX\Arena_FX\Death\fx_die_empire.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_empires_levelup.scene";
+centerbone "Spine1";
+#include      	"desc\\empire_whitewizard_desc.char";
+#include	"stats\\empire_whitewizard_stats.char";
+#include      	"sound\\empire_whitewizard_sound.char";
+move_speed 	3;
+nodesx 		1;
+nodesz 		1;
+capital_icon 	 "resources\characters\empire\whitewizard\icon_whitewizard_capital.t";
+dialog_icon 	 "resources\characters\empire\whitewizard\icon_whitewizard_dialog.t";
+leader_icon      "resources\characters\empire\whitewizard\icon_whitewizard_ring.t"

@@ -1,0 +1,15 @@
+// Effect profile for nspell_undead_dmg_water
+
+effect "nspell_undead_dmg_water"
+{
+nameid "nspell_undead_dmg_water_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_attack.t";
+duration_days	2;
+debuff;
+agi	-2;
+dex	-2;
+res_air	-25;
+damage	150;
+element	"water";
+//Modifi
+}

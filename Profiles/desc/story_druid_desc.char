@@ -1,0 +1,4 @@
+//story_druid's description
+nameid "StoryDruidName";
+descid "StoryDruidDesc";
+minidesc "StoryDruid_MD";

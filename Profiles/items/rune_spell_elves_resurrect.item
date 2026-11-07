@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_elves_resurrect";
+
+nameid "NamSp_spell_elves_resurrect";
+descid "DesSp_spell_elves_resurrect";
+
+level 5;
+class "runes";
+icon "Resources\items\runes\spell_elves_resurrect.t";
+scene "Resources\FX\Map_Spells\Elves\Spell_Elves_Revive\spell_elves_revive_arena.scene";
+
+target ally;
+game_effect "nspell_elves_resurrect_arena";
+
+gold_cost 1040;
+usage_cost 40;
+race "Elves";

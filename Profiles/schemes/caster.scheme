@@ -1,0 +1,11 @@
+//caster.scheme
+// Caster unit progress scheme file.
+
+scheme "caster"
+{
+	str 10;
+	dex 20;
+	int 60;
+	agi 10;
+	vit 20;
+};

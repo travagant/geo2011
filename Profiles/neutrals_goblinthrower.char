@@ -1,0 +1,23 @@
+//Unit Profile
+//
+id                       "neutrals_goblinthrower";
+unit_scene              "Resources\Characters\Neutrals\Goblinthrower\character_neutrals_goblinthrower.scene";
+unit_scene_lod		"Resources\Characters\Neutrals\Goblinthrower\character_neutrals_goblinthrower.scene",10;
+icon                     "Resources\Characters\Neutrals\Goblinthrower\icon_goblinthrower.t";
+subicon                  "Resources\Characters\Neutrals\Goblinthrower\icon_goblinthrower_small.t";
+layout_icon              "Resources\Characters\Neutrals\Goblinthrower\icon_goblinthrower_node.t";
+capital_icon             "Resources\Characters\Neutrals\Goblinthrower\icon_goblinthrower_capital.t";
+dialog_icon              "Resources\Characters\Neutrals\Goblinthrower\icon_goblinthrower_dialog.t";
+leader_icon              "Resources\Characters\Neutrals\Goblinthrower\icon_goblinthrower_ring.t"
+fxproc                   "arrow";
+fxscene                  "resources\\fx\\Arena_FX\\Physical_Damage\\fx_small_attack_damage.scene";
+fxcast                   "Resources\FX\Attacks\Elves\goblinthrower\fx_elves_goblinthrower_cast.scene"
+fxscene_ko               "resources\\fx\\Arena_FX\\Death\\fx_die_neutrals.scene";
+fxlevelup		 "Resources\\FX\\Arena_FX\\LevelUp\\fx_neutrals_levelup.scene";
+centerbone "Spine1";
+move_speed               3.5;
+nodesx                   1;
+nodesz                   1;
+#include                 "desc\\neutrals_Goblinthrower_desc.char";
+#include                 "sound\\neutrals_Goblinthrower_sound.char";
+#include                 "stats\\neutrals_Goblinthrower_stats.char";

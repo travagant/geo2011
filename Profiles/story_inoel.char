@@ -1,0 +1,23 @@
+// Unit Profile
+//
+id 		"story_inoel";
+unit_scene 	"Resources\\characters\\story\\inoel\\character_story_inoel.scene"
+unit_scene_lod		"resources\characters\story\inoel\character_story_inoel_lod.scene",10;
+icon		"resources\\characters\\story\\inoel\\icon_inoel.t";
+subicon 	"resources\\characters\\story\\inoel\\icon_inoel_small.t";
+layout_icon	"resources\\characters\\story\\inoel\\icon_inoel_node.t";
+fxproc 		"default";
+fxcast 		"Resources\\FX\\Attacks\\Story\\Inoel\\fx_story_inoel_cast.scene";
+fxscene 	"Resources\\FX\\Arena_Spells\\Story\\Inoel\\fx_story_inoel_spell.scene";
+fxscene_ko 	"resources\\fx\\Arena_FX\\Death\\fx_die_empire_2x.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_empires_levelup.scene";
+centerbone "Spine1";
+#include 	"desc\\story_inoel_desc.char";
+#include 	"stats\\story_inoel_stats.char";
+#include      	"sound\\story_inoel_sound.char";
+move_speed 	4.5;
+nodesx 		1; 
+nodesz 		1;
+capital_icon 	 "resources\characters\story\inoel\icon_inoel_capital.t";
+dialog_icon 	 "resources\characters\story\inoel\icon_inoel_dialog.t";
+leader_icon 	 "resources\characters\story\inoel\icon_inoel_ring.t";

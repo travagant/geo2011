@@ -1,0 +1,14 @@
+//interactive map object for neutrals_town01
+
+id	"map_neutrals_town01";
+
+nameid	"map_neutrals_town01N";
+descid	"map_neutrals_town01D";
+desc_inactid	"map_neutrals_town01ND";
+
+//destination
+action_class	"town";
+action_class_script	"resources\\profiles\\scripts\\town_neutral01.s";
+default_unit	"";
+arena	"Resources\\Hexagons\\Models\\Arena\\resources\scenes\arena_neutrals_town_01.scene.scene";
+landguardian    32.0;

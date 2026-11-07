@@ -1,0 +1,4 @@
+//empire_archer's description
+nameid "EmpireArcherName";
+descid "EmpireArcherDesc";
+minidesc "EmpireArcher_MD";

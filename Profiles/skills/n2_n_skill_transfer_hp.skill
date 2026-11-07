@@ -1,0 +1,21 @@
+// Skill profile n_skill_transfer_hp
+
+skill	"n_skill_transfer_hp"
+{
+nameid "n_skill_transfer_hp_nameid";
+effectdescid "n_skill_transfer_hp_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_selfheal.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_selfheal_inactive.t";
+
+skill_range	3;
+cast_type	single;
+cast_target	friendly;
+game_effect	"nskill_transfer_hp";
+
+request_ap	1;
+battle;
+
+self_effect	"nskill_transfer_hp_self";
+//Modifi
+}

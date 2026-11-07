@@ -1,0 +1,21 @@
+// Skill profile n_petrify
+
+skill	"n_petrify"
+{
+nameid "n_petrify_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_debuff_stop_i.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_debuff_stop_i_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_petrify";
+
+request_ap	1;
+
+element	earth;
+info_tag;
+on_attack;
+//Modifi
+}

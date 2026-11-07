@@ -1,0 +1,11 @@
+// Effect profile for potion_effect_agi
+
+effect "potion_effect_agi"
+{
+nameid "potion_effect_agi_nameid";
+icon "Resources\Interface\Icons\buffs\icon_buff_defense.t";
+duration_turns	10;
+buff;
+agi	3;
+//Modifi
+}

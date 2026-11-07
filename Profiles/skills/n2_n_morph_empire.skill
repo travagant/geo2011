@@ -1,0 +1,22 @@
+// Skill profile n_morph_Empire
+
+skill	"n_morph_Empire"
+{
+nameid "n_morph_Empire_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_morf_bad.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_morf_bad_inactive.t";
+
+skill_range	30;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_morph_Empire";
+fx_scene	"Resources\FX\Arena_FX\Skills\fx_skill_morf_bad_1_cast.scene";
+
+request_ap	1;
+
+element	mind;
+info_tag;
+on_attack;
+//Modifi
+}

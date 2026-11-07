@@ -1,0 +1,8 @@
+// Effect profile for nspell_empire_summon_livingarmor_arena
+
+effect "nspell_empire_summon_livingarmor_arena"
+{
+nameid "nspell_empire_summon_livingarmor_arena_nameid";
+summon	"empire_livingarmor";
+//Modifi
+}

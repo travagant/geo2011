@@ -1,0 +1,18 @@
+// Equipment Profile
+
+id	"talisman_fire";
+
+nameid "talisman_fire_name";
+descid "talisman_fire_desc";
+
+
+class	"talisman";
+level	2;
+
+icon "resources\Items\talisman\talisman_fire.t";
+
+dex	1;
+res_fire	25;
+
+gold_cost	6000;
+//Modifi

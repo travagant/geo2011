@@ -1,0 +1,11 @@
+// Effect profile for nskill_fireball
+
+effect "nskill_fireball"
+{
+nameid "nskill_fireball_nameid";
+fx_start	"Resources\FX\Arena_spells\demons\Modeus\fx_demons_modeus_spell.scene";
+debuff;
+attack_pow	150;
+element	"fire";
+//Modifi
+}

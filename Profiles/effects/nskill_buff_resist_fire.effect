@@ -1,0 +1,13 @@
+// Effect profile for nskill_buff_resist_fire
+
+effect "nskill_buff_resist_fire"
+{
+nameid "nskill_buff_resist_fire_nameid";
+fx_start	"resources\fx\\Arena_FX\Potions\fx_potion_resist_fire.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_resist.t";
+duration_turns	1;
+buff;
+res_fire	25;
+//Modifi
+dmg_per	10;
+}

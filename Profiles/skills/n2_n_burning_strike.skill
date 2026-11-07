@@ -1,0 +1,21 @@
+// Skill profile n_burning_strike
+
+skill	"n_burning_strike"
+{
+nameid "n_burning_strike_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_fire_sword.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_fire_sword_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_burning_strike";
+
+request_ap	1;
+
+element	fire;
+info_tag;
+on_attack;
+//Modifi
+}

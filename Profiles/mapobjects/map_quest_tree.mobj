@@ -1,0 +1,11 @@
+//interactive map object for Quest_tree
+
+id	"map_Quest_tree";
+
+nameid	"map_Quest_treeN";
+descid	"map_Quest_treeD";
+desc_inactid	"map_Quest_treeND";
+
+//destination
+action_class	"quest";
+once;

@@ -1,0 +1,14 @@
+//interactive map object for Merchant_Raft
+
+id	"map_Merchant_Raft";
+
+nameid	"map_Merchant_RaftN";
+descid	"map_Merchant_RaftD";
+effectdescid "map_Merchant_RaftEff";
+ambient_sound	"$(Sounds)\\Buildings\\merchenary_camp.wav";
+
+//destination
+action_class	"shop";
+action_class_script	"resources\\profiles\\scripts\\shop_weapon.s";
+respawn	0;
+allside;

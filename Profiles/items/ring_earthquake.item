@@ -1,0 +1,17 @@
+// Equipment Profile
+
+id	"ring_earthquake";
+
+nameid "ring_earthquake_name";
+descid "ring_earthquake_desc";
+
+
+class	"rings";
+level	3;
+
+icon "resources\Items\rings\ring_earthquake.t";
+
+add_skill	"n_ring_earthquake";
+
+gold_cost	10000;
+//Modifi

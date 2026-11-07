@@ -1,0 +1,14 @@
+// Skill profile n_skill_vit
+
+skill	"n_skill_vit"
+{
+nameid "n_skill_vit_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_vit_i.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_vit_i_inactive.t";
+
+
+
+vit	1;
+//Modifi
+}

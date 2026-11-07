@@ -1,0 +1,11 @@
+// Effect profile for ResAirDecMin
+
+effect "ResAirDecMin"
+{
+nameid "ResAirDecMin_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_resist.t";
+duration_turns	3;
+debuff;
+res_air	-25;
+//Modifi
+}

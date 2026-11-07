@@ -1,0 +1,14 @@
+//interactive map object for Merchant_Ship
+
+id	"map_Merchant_ship";
+
+nameid	"map_Merchant_ShipN";
+descid	"map_Merchant_ShipD";
+effectdescid "map_Merchant_ShipEff";
+ambient_sound	"$(Sounds)\\Buildings\\merchant_magic_items.wav";
+
+//destination
+action_class	"shop";
+action_class_script	"resources\\profiles\\scripts\\shop_weapon.s";
+respawn	0;
+allside;

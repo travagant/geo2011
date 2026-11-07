@@ -1,0 +1,4 @@
+//empire_golem's description
+nameid "EmpireGolemName";
+descid "EmpireGolemDesc";
+minidesc "EmpireGolem_MD";

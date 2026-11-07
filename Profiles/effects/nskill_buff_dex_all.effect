@@ -1,0 +1,14 @@
+// Effect profile for nskill_buff_dex_all
+
+effect "nskill_buff_dex_all"
+{
+nameid "nskill_buff_dex_all_nameid";
+fx_start	"Resources\FX\ArenaFX\skills\fx_skill_n_buff_dex_all";
+icon "Resources\Interface\Icons\buffs\Icon_buff_attack.t";
+duration_turns	2;
+buff;
+mov	1;
+//Modifi
+crit_per	50;
+ini_per	15;
+}

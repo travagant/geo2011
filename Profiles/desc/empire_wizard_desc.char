@@ -1,0 +1,4 @@
+//empire_wizard's description
+nameid "EmpireWizardName";
+descid "EmpireWizardDesc";
+minidesc "EmpireWizard_MD";

@@ -1,0 +1,23 @@
+//Unit Profile
+//
+id                       "elves_adept";
+unit_scene              "resources\\characters\\elves\\adept\\character_elves_adept.scene";
+unit_scene_lod          "resources\\characters\\elves\\adept\\character_elves_adept_lod.scene",10;
+icon                     "resources\\characters\\elves\\adept\\icon_adept.t";
+subicon                  "resources\\characters\\elves\\adept\\icon_adept_small.t";
+layout_icon              "resources\\characters\\elves\\adept\\icon_adept_node.t";
+capital_icon             "resources\\characters\\elves\\adept\\icon_adept_capital.t";
+dialog_icon              "resources\\characters\\elves\\adept\\icon_adept_dialog.t";
+leader_icon              "resources\\characters\\elves\\adept\\icon_adept_ring.t"
+fxproc                   "lighting";
+fxscene                  "resources\\fx\\Arena_Spells\\elves\\adept\\fx_elves_adept_spell.scene";
+fxcast                   "resources\\fx\\Attacks\\elves\\adept\\fx_elves_adept_cast.scene";
+fxscene_ko               "resources\\fx\\Arena_FX\\Death\\fx_die_elves.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_elves_levelup.scene";
+centerbone               "Spine1";
+move_speed                3;
+nodesx                   1;
+nodesz                   1;
+#include                 "desc\\elves_adept_desc.char";
+#include                 "sound\\elves_adept_sound.char";
+#include                 "stats\\elves_adept_stats.char";

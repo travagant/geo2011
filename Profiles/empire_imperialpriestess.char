@@ -1,0 +1,23 @@
+// Unit Profile
+//
+id 		"empire_imperialpriestess";
+unit_scene 	"resources\\characters\\empire\\imperialpriestess\\character_empire_imperialpriestess.scene";
+unit_scene_lod		"resources\characters\empire\imperialpriestess\character_empire_imperialpriestess_lod.scene",10;
+icon 		"resources\\characters\\empire\\imperialpriestess\\icon_imperialpriestess.t";
+subicon 	"resources\\characters\\empire\\imperialpriestess\\icon_imperialpriestess_small.t";
+layout_icon 	"resources\\characters\\empire\\imperialpriestess\\icon_imperialpriestess_node.t";
+fxproc 		"default";
+fxcast 		"Resources\FX\Attacks\Empire\Imperialpriestess\fx_empire_imperialpriestess_cast.scene";
+fxscene 	"Resources\FX\Arena_Spells\Empire\Imperialpriestess\fx_empire_imperialpriestess_spell.scene";
+fxscene_ko 	"Resources\FX\Arena_FX\Death\fx_die_empire.scene";
+fxlevelup				"Resources\\FX\\Arena_FX\\LevelUp\\fx_empires_levelup.scene";
+centerbone "Spine1";
+#include      	"desc\\empire_imperialpriestess_desc.char";
+#include 	"stats\\empire_imperialpriestess_stats.char";
+#include      	"sound\\empire_imperialpriestess_sound.char";
+move_speed 	2.9;
+nodesx 		1;
+nodesz 		1;
+capital_icon 	 "resources\characters\empire\imperialpriestess\icon_imperialpriestess_capital.t";
+dialog_icon 	 "resources\characters\empire\imperialpriestess\icon_imperialpriestess_dialog.t";
+leader_icon      "resources\characters\empire\imperialpriestess\icon_imperialpriestess_ring.t"

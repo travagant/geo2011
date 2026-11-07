@@ -1,0 +1,20 @@
+// Skill profile n_spell_demons_dmg_mind_huge
+
+skill	"n_spell_demons_dmg_mind_huge"
+{
+nameid "n_spell_demons_dmg_mind_huge_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_spell_demons_dmg_mind_huge.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_spell_demons_dmg_mind_huge_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_spell_demons_dmg_mind_huge";
+
+
+element	mind;
+info_tag;
+on_damaged;
+//Modifi
+}

@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_empire_resist_air";
+
+nameid "NamSp_spell_empire_resist_air";
+descid "DesSp_spell_empire_resist_air";
+
+level 1;
+class "runes";
+icon "Resources\items\runes\spell_empire_resist_air.t";
+scene "Resources\FX\Map_Spells\Empire\Spell_Resist_Air\spell_resist_air_arena.scene";
+
+target ally;
+game_effect "nspell_empire_resist_air_arena";
+
+gold_cost 220;
+usage_cost 20;
+race "Empire";

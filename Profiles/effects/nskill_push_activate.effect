@@ -1,0 +1,14 @@
+// Effect profile for nskill_push_activate
+
+effect "nskill_push_activate"
+{
+nameid "nskill_push_activate_nameid";
+fx_start	"resources\fx\\Arena_FX\Sign\fx_sign_weapon.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_bless.t";
+duration_turns	1;
+buff;
+ap	1;
+//Modifi
+add_skill	"n_skill_push_onattack";
+remove_immediately;
+}

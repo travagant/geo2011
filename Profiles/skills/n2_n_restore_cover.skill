@@ -1,0 +1,21 @@
+// Skill profile n_restore_cover
+
+skill	"n_restore_cover"
+{
+nameid "n_restore_cover_nameid";
+effectdescid "n_restore_cover_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_cover_I.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_cover_I_inactive.t";
+
+skill_range	3;
+cast_type	single;
+cast_target	friendly;
+game_effect	"nskill_restore_cover";
+
+request_ap	1;
+battle;
+
+info_tag;
+//Modifi
+}

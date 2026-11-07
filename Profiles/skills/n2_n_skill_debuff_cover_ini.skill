@@ -1,0 +1,21 @@
+// Skill profile n_skill_debuff_cover_ini
+
+skill	"n_skill_debuff_cover_ini"
+{
+nameid "n_skill_debuff_cover_ini_nameid";
+effectdescid "n_skill_debuff_cover_ini_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_del_wall.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_del_wall_inactive.t";
+
+skill_range	3;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_debuff_cover_ini";
+
+request_ap	1;
+battle;
+
+element	mind;
+//Modifi
+}

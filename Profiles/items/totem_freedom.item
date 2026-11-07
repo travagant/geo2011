@@ -1,0 +1,25 @@
+// Equipment Profile
+
+id	"totem_freedom";
+
+nameid "totem_freedom_name";
+descid "totem_freedom_desc";
+effectdescid "totem_freedom_efdesc";
+
+
+class	"banner";
+level	3;
+
+icon "resources\Items\banner\totem_freedom.t";
+
+
+gold_cost	10000;
+//Modifi
+banner_profile	{
+ //сцена флага
+ banner_scene "Resources\Hexagons\Models\Flags\totem_freedom.scene"
+
+ //действия в началае боя
+ // "цель" "накладываемый эффект"
+ start_action "all" "ntotem_freedom"
+};

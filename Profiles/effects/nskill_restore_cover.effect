@@ -1,0 +1,12 @@
+// Effect profile for nskill_restore_cover
+
+effect "nskill_restore_cover"
+{
+nameid "nskill_restore_cover_nameid";
+bubleid "nskill_restore_cover_bubleid";
+fx_start	"Resources\FX\Arena_FX\Skills\fx_skill_cover_1_spell.scene";
+duration_turns	-1;
+buff;
+//Modifi
+c_cover	999;
+}

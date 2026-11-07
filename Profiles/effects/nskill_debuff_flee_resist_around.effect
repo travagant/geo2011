@@ -1,0 +1,13 @@
+// Effect profile for nskill_debuff_flee_resist_around
+
+effect "nskill_debuff_flee_resist_around"
+{
+nameid "nskill_debuff_flee_resist_around_nameid";
+fx_start	"resources\fx\\Arena_FX\Rune\Fear\fx_fear.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_defense.t";
+duration_turns	2;
+debuff;
+res_mind	-25;
+//Modifi
+flee_per	-50;
+}

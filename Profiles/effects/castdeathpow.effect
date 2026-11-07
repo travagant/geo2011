@@ -1,0 +1,10 @@
+// Effect profile for CastDeathPow
+
+effect "CastDeathPow"
+{
+nameid "CastDeathPow_nameid";
+debuff;
+damage	150;
+element	"death";
+//Modifi
+}

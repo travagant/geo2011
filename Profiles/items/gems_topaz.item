@@ -1,0 +1,13 @@
+// Gem Profile
+
+id	"gems_topaz";
+
+
+nameid	"ItNGeTopaz";
+descid	"ItDGeTopaz";
+
+class "gems";
+level	4;
+icon "Resources\\Items\\gems\\gems_topaz.t";
+
+gold_cost	9200;

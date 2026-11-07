@@ -1,0 +1,26 @@
+// Spell Profile
+
+id	"spell_undead_debuff_all_stats";
+
+nameid	"NamSp_spell_undead_debuff_all_stats";
+effectdescid	"EffSp_spell_undead_debuff_all_stats";
+descid	"DesSp_spell_undead_debuff_all_stats";
+
+icon_small "Resources\items\runes\spell_undead_debuff_all_stats.t";
+icon "Resources\items\cards\spell_undead_debuff_all_stats.t";
+scene "Resources\FX\Map_Spells\Undead\Spell_undead_Debuff_All\spell_undead_debuff_all.scene";
+scene_crop "Resources\FX\Map_Spells\Undead\Spell_undead_Debuff_All\spell_undead_debuff_all_arena.scene";
+
+default_nation	"Undead";
+level	3;
+target	enemy;
+
+game_effect	"nspell_undead_debuff_all_stats";
+
+cost_spell "Infernal mana" 180, 360;
+cost_spell "Death mana" 180, 360;
+
+rune	"rune_spell_undead_debuff_all_stats";
+rune_cost "Infernal mana", 65;
+rune_cost "Death mana", 65;
+rune_cost "Stone", 130;

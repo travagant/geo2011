@@ -1,0 +1,16 @@
+// Potion Profile
+
+id	"potion_crit_permanent";
+
+
+nameid	"ItNPotCritP";
+descid	"ItDPotCritP";
+
+class "potion";
+level	4;
+icon "Resources\\Items\\potion\\potion_crit_permanent.t";
+
+game_effect	"npotion_crit_permanent";
+gold_cost	10000;
+usage_cost	10;
+target	"ally";

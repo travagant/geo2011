@@ -1,0 +1,10 @@
+
+
+
+alias "move_object" {
+
+
+   sound 100, "$(Sounds)\interface\move_object.wav", 100, 3;
+
+
+}  

@@ -1,0 +1,10 @@
+// Effect profile for nskill_spell_elves_debuff_cover
+
+effect "nskill_spell_elves_debuff_cover"
+{
+nameid "nskill_spell_elves_debuff_cover_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_book_balance_curse.scene";
+damage	80;
+element	"air";
+//Modifi
+}

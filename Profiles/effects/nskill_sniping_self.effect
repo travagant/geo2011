@@ -1,0 +1,11 @@
+// Effect profile for nskill_sniping_self
+
+effect "nskill_sniping_self"
+{
+nameid "nskill_sniping_self_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_attack.t";
+duration_turns	1;
+debuff;
+//Modifi
+ini_per	-50;
+}

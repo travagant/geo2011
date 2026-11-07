@@ -1,0 +1,14 @@
+// Effect profile for nbanner_of_fortitude
+
+effect "nbanner_of_fortitude"
+{
+nameid "nbanner_of_fortitude_nameid";
+icon "Resources\Interface\Icons\buffs\icon_buff_defense.t";
+duration_turns	-1;
+buff;
+dontdispell;
+res_slash	25;
+res_pierce	25;
+res_blunt	25;
+//Modifi
+}

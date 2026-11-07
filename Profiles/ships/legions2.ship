@@ -1,0 +1,5 @@
+id "legions2";
+race "legions";
+scene "Resources\Characters\Demons\Ship\character_demons_ship.scene";
+morph_fx "Resources\FX\Arena_FX\Skills\fx_skill_morf_defform_1_cast.scene";
+offset -0.2;

@@ -1,0 +1,60 @@
+// Characters stats profile
+
+unit_class	caster;
+unit_side	"elves";
+ship	"elves2";
+attack_type	"earth";
+level	5;
+side	elves;
+exp_base	210;
+
+//stats
+str	4;
+spd	3;
+dex	1;
+agi	3;
+vit	5;
+
+
+ap	1;
+up	100;
+mov	0;
+movwm	0;
+
+atck_range	15;
+zone_radius	2;
+atck_zone;
+
+//resists
+res_pierce	25;
+res_earth	25;
+res_mind	25;
+
+no_retreat;
+no_rotate;
+Leadership	3;
+leadership_cost	1;
+cost	2370;
+skill_grid	"elves_rod-1";
+viewradius	8;
+
+//Modifi
+dmg_str_mod	 600;
+dmg_agi_mod	 300;
+crit_dex_mod	 400;
+crit_vit_mod	 200;
+flee_agi_mod	 300;
+flee_spd_mod	 100;
+hp_vit_mod	 5000;
+hp_str_mod	 2000;
+ini_spd_mod	 150;
+ini_dex_mod	 100;
+mov_mod	 0;
+movwm_mod	 0;
+cover_mod	 0;
+viewradius_mod	 0;
+Discount_Mod	 0;
+Bonusexp_Mod	 0;
+level_cap	17;
+levels_to_up	3;
+Landguardian;

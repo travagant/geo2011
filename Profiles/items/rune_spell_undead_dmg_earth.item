@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_undead_dmg_earth";
+
+nameid "NamSp_spell_undead_dmg_earth";
+descid "DesSp_spell_undead_dmg_earth";
+
+level 5;
+class "runes";
+icon "Resources\items\runes\spell_undead_dmg_earth.t";
+scene "Resources\FX\Map_Spells\Map_Worm\fx_worm_arena.scene";
+
+target enemy;
+game_effect "nspell_undead_dmg_earth_arena";
+
+gold_cost 960;
+usage_cost 40;
+race "Undead";

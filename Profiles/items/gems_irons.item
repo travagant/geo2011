@@ -1,0 +1,13 @@
+// Gem Profile
+
+id	"gems_irons";
+
+
+nameid	"ItNGeIrons";
+descid	"ItDGeIrons";
+
+class "gems";
+level	1;
+icon "Resources\\Items\\gems\\gems_irons.t";
+
+gold_cost	2400;

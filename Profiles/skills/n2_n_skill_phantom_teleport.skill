@@ -1,0 +1,19 @@
+// Skill profile n_skill_phantom_teleport
+
+skill	"n_skill_phantom_teleport"
+{
+nameid "n_skill_phantom_teleport_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_teleport_me.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_teleport_me_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_phantom_teleport";
+
+request_ap	1;
+battle;
+
+//Modifi
+}

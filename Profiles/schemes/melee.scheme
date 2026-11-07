@@ -1,0 +1,11 @@
+//melee.scheme
+// Melee unit progress scheme file.
+
+scheme "melee"
+{
+	str 60;
+	dex 20;
+	int 20;
+	agi 10;
+	vit 20;
+};

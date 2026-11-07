@@ -1,0 +1,15 @@
+//interactive map object for Rickety_Tower
+
+id	"map_Rickety_Tower";
+
+nameid	"map_Rickety_TowerN";
+descid	"map_Rickety_TowerD";
+desc_inactid	"map_Rickety_TowerND";
+msg_inactiveid	"map_Rickety_TowerNAD";
+ambient_sound	"$(Sounds)\\Buildings\\rickety_tower.wav";
+
+//destination
+action_class	"dungeon";
+action_class_script	"resources\\profiles\\dungeons\\rickety_tower.s";
+respawn	8;
+allside;

@@ -1,0 +1,20 @@
+// Equipment Profile
+
+id	"footgears_spd2_vit1";
+
+nameid "footgears_spd2_vit1_name";
+descid "footgears_spd2_vit1_desc";
+
+
+class	"footgears";
+replace	"feet" set 3;
+replace	"legs" set 3;
+level	3;
+
+icon "resources\Items\footgears\footgears_spd2_vit1.t";
+
+spd	2;
+vit	1;
+
+gold_cost	10000;
+//Modifi

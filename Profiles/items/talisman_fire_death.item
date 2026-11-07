@@ -1,0 +1,20 @@
+// Equipment Profile
+
+id	"talisman_fire_death";
+
+nameid "talisman_fire_death_name";
+descid "talisman_fire_death_desc";
+
+
+class	"talisman";
+level	3;
+
+icon "resources\Items\talisman\talisman_fire_death.t";
+
+str	1;
+dex	1;
+res_fire	25;
+res_death	25;
+
+gold_cost	10000;
+//Modifi

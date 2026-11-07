@@ -1,0 +1,18 @@
+// Skill profile n_ring_vampire
+
+skill	"n_ring_vampire"
+{
+nameid "n_ring_vampire_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_cannibal.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_cannibal_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	self;
+
+
+info_tag;
+vampire	25;
+//Modifi
+}

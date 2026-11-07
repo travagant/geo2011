@@ -1,0 +1,14 @@
+//interactive map object for magetower_sea
+id	"map_magetower_sea";
+
+nameid	"map_magetower_seaN";
+descid	"map_magetower_seaD";
+desc_inactid	"map_magetower_seaND";
+msg_inactiveid	"map_magetower_seaNAD";
+ambient_sound	"$(Sounds)\\Buildings\\great_tower.wav";
+
+//destination
+action_class	"dungeon";
+action_class_script	"resources\\profiles\\dungeons\\magetower_sea.s";
+respawn	8;
+allside;

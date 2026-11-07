@@ -1,0 +1,18 @@
+// Map Object Profile
+//
+
+id 		"map_sack_02";
+
+nameid	"map_sackN";
+descid	"map_sackD";
+desc_inactid	"map_sackDN";
+
+scene 		"resources\map_objects\Sack_02\map_sack_02.scene";
+icon 		"resources\map_objects\Sack_02\icon_map_sack_02.t";
+script		"No script";
+sound		"No Sound";
+fx_start	"Resources\FX\Arena_FX\Sign\fx_sign_telega.scene";
+default_nation	"Neutral";
+
+resource "gold" 100;
+action_class	"item";

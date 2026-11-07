@@ -1,0 +1,13 @@
+// Effect profile for nspell_spell_empire_resist_earth
+
+effect "nspell_spell_empire_resist_earth"
+{
+nameid "nspell_spell_empire_resist_earth_nameid";
+icon "Resources\Interface\Icons\buffs\Icon_buff_resist.t";
+duration_days	1;
+buff;
+res_earth	50;
+//Modifi
+immune_push;
+immune_teleport;
+}

@@ -1,0 +1,17 @@
+// Equipment Profile
+
+id	"book_anger";
+
+nameid "book_anger_name";
+descid "book_anger_desc";
+
+
+class	"book";
+level	3;
+
+icon "resources\Items\book\book_anger.t";
+
+add_skill	"n_book_anger";
+
+gold_cost	10000;
+//Modifi

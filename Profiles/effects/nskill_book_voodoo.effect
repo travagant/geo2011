@@ -1,0 +1,14 @@
+// Effect profile for nskill_book_voodoo
+
+effect "nskill_book_voodoo"
+{
+nameid "nskill_book_voodoo_nameid";
+fx_start	"resources\fx\\Arena_Spells\Demons\Rod-1\fx_demons_rod-1_spell.scene";
+icon "Resources\Interface\Icons\buffs\Icon_debuff_defense.t";
+duration_turns	2;
+debuff;
+dex	-3;
+damage	100;
+element	"fire";
+//Modifi
+}

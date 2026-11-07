@@ -1,0 +1,12 @@
+// Effect profile for nskill_book_folly_enemy
+
+effect "nskill_book_folly_enemy"
+{
+nameid "nskill_book_folly_enemy_nameid";
+fx_start	"resources\fx\\Arena_FX\Potions\fx_skill_book_folly.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_curse.t";
+duration_turns	2;
+debuff;
+//Modifi
+add_skill	"n_book_folly_enemy";
+}

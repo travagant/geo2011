@@ -1,0 +1,17 @@
+//magic zone map object for Pillar_Runes
+
+id 	"map_Pillar_Runes";
+
+nameid	"map_Pillar_RunesN";
+descid	"map_Pillar_RunesD";
+effectdescid "map_Pillar_RunesEff";
+
+action_class	"magiczone" 
+{
+	radius 3;
+	on 		"unit_step";
+	race 	"!owner";
+	race 	"!neutral";
+	effect	"npillar_runes";
+	fx "resources\fx\\LandFX\fx_pillar_runes_map.scene"
+}

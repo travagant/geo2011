@@ -1,0 +1,8 @@
+// Effect profile for nskill_resurrect_20
+
+effect "nskill_resurrect_20"
+{
+nameid "nskill_resurrect_20_nameid";
+resurrect_mode	"nskill_resurrect_20_effect";
+//Modifi
+}

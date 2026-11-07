@@ -1,0 +1,12 @@
+// Effect profile for nskill_debuff_mov_oncurse
+
+effect "nskill_debuff_mov_oncurse"
+{
+nameid "nskill_debuff_mov_oncurse_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_debuff_ini_oncover.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_attack.t";
+duration_turns	2;
+debuff;
+mov	-1;
+//Modifi
+}

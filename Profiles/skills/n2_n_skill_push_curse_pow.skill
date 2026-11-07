@@ -1,0 +1,21 @@
+// Skill profile n_skill_push_curse_pow
+
+skill	"n_skill_push_curse_pow"
+{
+nameid "n_skill_push_curse_pow_nameid";
+effectdescid "n_skill_push_curse_pow_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_knockback.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_knockback_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_push_curse_pow";
+
+
+element	air;
+info_tag;
+on_attack;
+//Modifi
+}

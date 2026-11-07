@@ -1,0 +1,16 @@
+//interactive map object for Mana_hell_big
+
+id	"map_Mana_hell_big";
+
+nameid	"map_manahell_bigN";
+msgid	"map_manahell_bigAD";
+msg_inactiveid	"";
+descid	"map_manahell_bigD";
+effectid	"map_manahell_bigEff";
+fx_start	"Resources\\FX\Arena_FX\Sign\fx_sign_mana_hell.scene";
+
+//destination
+action_class	"heap_resource";
+heap_resource	infernal_mana 100;
+msg_popup	"map_manahell_bigPopup";
+once;

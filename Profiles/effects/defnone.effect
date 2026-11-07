@@ -1,0 +1,10 @@
+// Effect profile for DefNone
+
+effect "DefNone"
+{
+nameid "DefNone_nameid";
+duration_turns	1;
+buff;
+def	0;
+//Modifi
+}

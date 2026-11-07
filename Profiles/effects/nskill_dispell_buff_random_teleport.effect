@@ -1,0 +1,16 @@
+// Effect profile for nskill_dispell_buff_random_teleport
+
+effect "nskill_dispell_buff_random_teleport"
+{
+nameid "nskill_dispell_buff_random_teleport_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_dispell_buff_random_teleport.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_resist.t";
+duration_turns	3;
+debuff;
+res_mind	-25;
+teleport;
+dispel_buffs	1;
+banish;
+//Modifi
+fx_teleport	"resources\fx\\Arena_FX\Skills\fx_skill_dispell_buff_random_teleport.scene";
+}

@@ -1,0 +1,22 @@
+// Skill profile n_summon_plagues
+
+skill	"n_summon_plagues"
+{
+nameid "n_summon_plagues_nameid";
+effectdescid "n_summon_plagues_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_summon.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_summon_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_summon_plagues";
+fx_scene	"Resources\FX\Arena_FX\Skills\fx_skill_summon_pet_1_cast.scene";
+
+request_ap	1;
+battle;
+
+info_tag;
+//Modifi
+}

@@ -1,0 +1,13 @@
+// Effect profile for nMerchant_Fisher
+
+effect "nMerchant_Fisher"
+{
+nameid "nMerchant_Fisher_nameid";
+icon "Resources\Interface\Icons\buffs\icon_buff_defense.t";
+duration_days	3;
+buff;
+dontdispell;
+//Modifi
+hp_vit_mod	 600;
+hp_str_mod	 400;
+}

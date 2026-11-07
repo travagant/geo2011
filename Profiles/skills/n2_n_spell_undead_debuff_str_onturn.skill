@@ -1,0 +1,22 @@
+// Skill profile n_spell_undead_debuff_str_onturn
+
+skill	"n_spell_undead_debuff_str_onturn"
+{
+nameid "n_spell_undead_debuff_str_onturn_nameid";
+effectdescid "n_spell_undead_debuff_str_onturn_descid";
+
+icon	"Resources\Interface\Icons\skills\n_spell_undead_debuff_str_onturn.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_spell_undead_debuff_str_onturn_inactive.t";
+
+skill_range	1;
+cast_type	around;
+cast_target	friendly;
+game_effect	"nskill_spell_undead_buff_debuff_str_onturn";
+
+
+self_effect	"nskill_spell_undead_debuff_str_onturn_self";
+element	earth;
+info_tag;
+on_turn;
+//Modifi
+}

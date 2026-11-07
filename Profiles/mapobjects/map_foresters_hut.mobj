@@ -1,0 +1,18 @@
+//interactive map object for Foresters_Hut
+
+id	"map_Foresters_Hut";
+
+nameid	"map_Foresters_HutN";
+msgid	"map_Foresters_HutAD";
+msg_inactiveid	"map_Foresters_HutNAD";
+descid	"map_Foresters_HutD";
+desc_inactid	"map_Foresters_HutND";
+effectid	"map_Foresters_HutEff";
+ambient_sound	"$(Sounds)\\Buildings\\hut_forester.wav";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_skill_n_buff_dex.scene";
+
+//destination
+action_class	"object";
+game_effect	"OpenFogMin";
+respawn	1;
+allside;

@@ -1,0 +1,19 @@
+// Map Object Profile
+//
+
+id 		"map_box_01";
+
+nameid	"map_treasureboxN";
+descid	"map_treasureboxD";
+desc_inactid	"map_treasureboxDN";
+
+scene 		"resources\map_objects\Box_01\map_box_01.scene";
+icon 		"resources\map_objects\Box_01\icon_map_box_01.t";
+script		"No script";
+sound		"No Sound";
+fx_start	"Resources\FX\Arena_FX\Sign\fx_sign_telega.scene";
+default_nation	"Neutral";
+action_class	"item";
+
+item_id	"card_dragon";
+interact_type "take";

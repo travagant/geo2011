@@ -1,0 +1,29 @@
+// Spell Profile
+
+id	"spell_elves_dmg_water";
+
+nameid	"NamSp_spell_elves_dmg_water";
+descid	"DesSp_spell_elves_dmg_water";
+
+icon_small "Resources\items\runes\spell_elves_dmg_water.t";
+icon "Resources\items\cards\spell_elves_dmg_water.t";
+scene "Resources\FX\Map_Spells\Elves\Spell_Elves_Dmg_Water\spell_elves_dmg_water.scene";
+scene_crop "Resources\FX\Map_Spells\Elves\Spell_Elves_Dmg_Water\spell_elves_dmg_water_arena.scene";
+
+default_nation	"Elves";
+level	5;
+target	enemy;
+
+game_effect	"nspell_elves_dmg_water";
+
+cost_spell "Life mana" 225, 450;
+cost_spell "Grove mana" 225, 450;
+cost_spell "Death mana" 225, 450;
+cost_spell "Runstone mana" 225, 450;
+
+rune	"rune_spell_elves_dmg_water";
+rune_cost "Life mana", 80;
+rune_cost "Grove mana", 80;
+rune_cost "Death mana", 80;
+rune_cost "Runstone mana", 80;
+rune_cost "Stone", 320;

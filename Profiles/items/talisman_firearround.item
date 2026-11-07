@@ -1,0 +1,18 @@
+// Equipment Profile
+
+id	"talisman_firearround";
+
+nameid "talisman_firearround_name";
+descid "talisman_firearround_desc";
+
+
+class	"talisman";
+level	3;
+
+icon "resources\Items\talisman\talisman_firearround.t";
+
+add_skill	"n_talisman_firearround";
+res_fire	25;
+
+gold_cost	10000;
+//Modifi

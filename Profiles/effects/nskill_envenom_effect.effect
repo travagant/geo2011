@@ -1,0 +1,9 @@
+// Effect profile for nskill_Envenom_effect
+
+effect "nskill_Envenom_effect"
+{
+nameid "nskill_Envenom_effect_nameid";
+fx_start	"Resources\FX\Arena_FX\Skills\fx_skill_map_steal_1_cast.scene";
+attack_pow	100;
+//Modifi
+}

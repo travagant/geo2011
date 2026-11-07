@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_empire_debuff_ini";
+
+nameid "NamSp_spell_empire_debuff_ini";
+descid "DesSp_spell_empire_debuff_ini";
+
+level 2;
+class "runes";
+icon "Resources\items\runes\spell_empire_debuff_ini.t";
+scene "Resources\FX\Map_Spells\Empire\Spell_Debuff_Crit\spell_debuff_crit_1_arena.scene";
+
+target enemy;
+game_effect "nspell_empire_debuff_ini_arena";
+
+gold_cost 260;
+usage_cost 20;
+race "Empire";

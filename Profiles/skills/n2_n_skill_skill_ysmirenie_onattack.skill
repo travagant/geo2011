@@ -1,0 +1,20 @@
+// Skill profile n_skill_skill_ysmirenie_onattack
+
+skill	"n_skill_skill_ysmirenie_onattack"
+{
+nameid "n_skill_skill_ysmirenie_onattack_nameid";
+
+icon	"Resources\Interface\Icons\skills\n_skill_viewradius_mod.t";
+icon_inactive	"Resources\Interface\Icons\skills\n_skill_viewradius_mod_inactive.t";
+
+skill_range	12;
+cast_type	single;
+cast_target	enemy;
+game_effect	"nskill_skill_ysmirenie_onattack";
+
+
+element	mind;
+info_tag;
+on_attack;
+//Modifi
+}

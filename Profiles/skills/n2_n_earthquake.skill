@@ -1,0 +1,23 @@
+// Skill profile n_earthquake
+
+skill	"n_earthquake"
+{
+nameid "n_earthquake_nameid";
+effectdescid "n_earthquake_descid";
+
+icon	"Resources\Interface\Icons\skills\skill_earth_damage.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_earth_damage_inactive.t";
+
+skill_range	12;
+cast_type	all;
+cast_target	enemy;
+game_effect	"nskill_earthquake";
+fx_scene	"Resources\FX\Arena_Spells\Demons\came_shake.scene";
+bones_state	"attack";
+
+request_ap	1;
+battle;
+
+info_tag;
+//Modifi
+}

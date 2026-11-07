@@ -1,0 +1,14 @@
+name "Чумная могила"
+desc "скверна, распространяемая этим захоронением высасывает здоровье на каждом шагу"
+
+id 			"map_damage_zone_plaguegrave";
+
+action_class	"magiczone" 
+{
+	radius 5; // исключая гекс на котором стоит
+	on 		"unit_step"; // на каждый шаг юнита только на этого юнита
+	race 	"all";
+	effect	"ToxicSwampDamage";
+	fx "Resources\FX\LandFX\map_cloud_green.scene"
+}
+

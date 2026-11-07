@@ -1,0 +1,4 @@
+//elves_ent's description
+nameid "ElvesEntName";
+descid "ElvesEntDesc";
+minidesc "ElvesEnt_MD";

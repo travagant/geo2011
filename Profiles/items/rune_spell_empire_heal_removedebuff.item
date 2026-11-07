@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_empire_heal_removedebuff";
+
+nameid "NamSp_spell_empire_heal_removedebuff";
+descid "DesSp_spell_empire_heal_removedebuff";
+
+level 3;
+class "runes";
+icon "Resources\items\runes\spell_empire_heal_removedebuff.t";
+scene "Resources\FX\Map_Spells\Empire\Spell_Empire_Heal_Remove_Buff\spell_empire_heal_remove_buff_arena.scene";
+
+target ally;
+game_effect "nspell_empire_heal_removedebuff_arena";
+
+gold_cost 640;
+usage_cost 30;
+race "Empire";

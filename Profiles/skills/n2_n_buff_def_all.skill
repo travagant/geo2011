@@ -1,0 +1,21 @@
+// Skill profile n_buff_def_all
+
+skill	"n_buff_def_all"
+{
+nameid "n_buff_def_all_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_armor_up_I.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_armor_up_I_inactive.t";
+
+skill_range	1;
+cast_type	around;
+cast_target	friendly;
+game_effect	"nskill_buff_def_all";
+fx_scene	"resources\fx\\Arena_FX\Rune\fx_effect_defence.scene";
+
+request_ap	1;
+battle;
+
+info_tag;
+//Modifi
+}

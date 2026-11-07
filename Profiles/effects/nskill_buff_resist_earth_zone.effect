@@ -1,0 +1,12 @@
+// Effect profile for nskill_buff_resist_earth_zone
+
+effect "nskill_buff_resist_earth_zone"
+{
+nameid "nskill_buff_resist_earth_zone_nameid";
+fx_start	"resources\fx\\Arena_FX\Potions\fx_potion_resist_earth.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_resist.t";
+duration_turns	1;
+buff;
+res_earth	25;
+//Modifi
+}

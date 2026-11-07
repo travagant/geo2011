@@ -1,0 +1,17 @@
+// Equipment Profile
+
+id	"ring_spd";
+
+nameid "ring_spd_name";
+descid "ring_spd_desc";
+
+
+class	"rings";
+level	2;
+
+icon "resources\Items\rings\ring_spd.t";
+
+add_skill	"n_ring_spd";
+
+gold_cost	6000;
+//Modifi

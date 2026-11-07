@@ -1,0 +1,13 @@
+// Effect profile for nspell_demons_dmg_earth
+
+effect "nspell_demons_dmg_earth"
+{
+nameid "nspell_demons_dmg_earth_nameid";
+icon "Resources\Interface\Icons\buffs\icon_debuff_curse.t";
+duration_days	2;
+debuff;
+damage	140;
+element	"earth";
+//Modifi
+add_skill	"n_spell_demons_dmg_earth";
+}

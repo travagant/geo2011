@@ -1,0 +1,5 @@
+id "undead2";
+race "undead";
+scene "Resources\Characters\Undead\Ship\character_large_undead_ship.scene";
+morph_fx "Resources\FX\Arena_FX\Skills\fx_skill_morf_defform_1_cast.scene";
+offset -0.1;

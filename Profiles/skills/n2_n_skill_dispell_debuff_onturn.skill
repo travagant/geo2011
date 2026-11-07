@@ -1,0 +1,19 @@
+// Skill profile n_skill_dispell_debuff_onturn
+
+skill	"n_skill_dispell_debuff_onturn"
+{
+nameid "n_skill_dispell_debuff_onturn_nameid";
+
+icon	"Resources\Interface\Icons\skills\skill_buff_statsparty.t";
+icon_inactive	"Resources\Interface\Icons\skills\skill_buff_statsparty_inactive.t";
+
+skill_range	1;
+cast_type	single;
+cast_target	self;
+game_effect	"nskill_dispell_debuff_onturn";
+
+
+info_tag;
+on_turn;
+//Modifi
+}

@@ -1,0 +1,12 @@
+// Effect profile for nskill_spell_empire_resist_mind
+
+effect "nskill_spell_empire_resist_mind"
+{
+nameid "nskill_spell_empire_resist_mind_nameid";
+fx_start	"resources\fx\\Arena_FX\Skills\fx_spell_empire_resist_mind.scene";
+icon "Resources\Interface\Icons\buffs\icon_buff_defense.t";
+duration_turns	2;
+buff;
+//Modifi
+hp_per	40;
+}

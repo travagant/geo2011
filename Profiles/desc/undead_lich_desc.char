@@ -1,0 +1,4 @@
+//undead_Lich's description
+nameid "UndeadLichName";
+descid "UndeadLichDesc";
+minidesc "UndeadLich_MD";

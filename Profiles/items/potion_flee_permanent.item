@@ -1,0 +1,16 @@
+// Potion Profile
+
+id	"potion_flee_permanent";
+
+
+nameid	"ItNPotFleeP";
+descid	"ItDPotFleeP";
+
+class "potion";
+level	4;
+icon "Resources\\Items\\potion\\potion_flee_permanent.t";
+
+game_effect	"npotion_flee_permanent";
+gold_cost	10000;
+usage_cost	10;
+target	"ally";

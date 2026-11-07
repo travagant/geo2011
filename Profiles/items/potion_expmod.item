@@ -1,0 +1,16 @@
+// Potion Profile
+
+id	"potion_expmod";
+
+
+nameid	"ItNPotExpmod";
+descid	"ItDPotExpmod";
+
+class "potion";
+level	2;
+icon "Resources\\Items\\potion\\potion_expmod.t";
+
+game_effect	"npotion_expmod";
+gold_cost	1000;
+usage_cost	10;
+target	"ally";

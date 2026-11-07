@@ -1,0 +1,17 @@
+//interactive map object for Tomb
+
+id	"map_Tomb";
+
+nameid	"map_TombN";
+msgid	"map_TombAD";
+msg_inactiveid	"map_TombNAD";
+descid	"map_TombD";
+desc_inactid	"map_TombND";
+effectid	"map_TombEff";
+fx_start	"Resources\\FX\Arena_FX\Sign\fx_sign_arrow.scene";
+
+//destination
+action_class	"object";
+game_effect	"ExpMin";
+once;
+allside;

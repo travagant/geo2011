@@ -1,0 +1,18 @@
+// Rune Profile
+
+id "rune_spell_empire_buff_spd_mod";
+
+nameid "NamSp_spell_empire_buff_spd_mod";
+descid "DesSp_spell_empire_buff_spd_mod";
+
+level 3;
+class "runes";
+icon "Resources\items\runes\spell_empire_buff_spd_mod.t";
+scene "Resources\FX\Map_Spells\Empire\Spell_Heal_Agi\spell_heal_agi_arena.scene";
+
+target ally;
+game_effect "nspell_empire_buff_spd_mod_arena";
+
+gold_cost 760;
+usage_cost 20;
+race "Empire";

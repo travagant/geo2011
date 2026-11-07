@@ -1,0 +1,13 @@
+// Effect profile for nskill_spell_elves_debuff_dmg
+
+effect "nskill_spell_elves_debuff_dmg"
+{
+nameid "nskill_spell_elves_debuff_dmg_nameid";
+fx_start	"resources\fx\\Arena_FX\Rune\Fear\fx_fear.scene";
+icon "Resources\Interface\Icons\buffs\icon_debuff_attack.t";
+duration_turns	-1;
+debuff;
+ini	-3;
+//Modifi
+stackable	1;
+}
