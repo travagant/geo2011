@@ -95,7 +95,7 @@ python3 -m d3tool char find Empire/Angel             # folder -> profile
 python3 -m d3tool char validate Profiles --root .    # every reference present?
 # rename the browser entry (the port's way of adding a unit; keeps every byte)
 python3 -m d3tool char set-id Profiles/empire_angel.char empire_angel_v2 \
-  --scene "resources\\characters\\empire\\angel\\character_empire_angel_v2.scene" -o new.char
+  --scene "resources\characters\empire\angel\character_empire_angel_v2.scene" -o new.char
 
 # convert the native .t texture to a .dds (or back)
 python3 -m d3tool texture convert Neutrals/AirElemental/character_neutrals_airelemental.t \
