@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import struct
 import sys
 import tempfile
 import traceback
@@ -700,6 +701,13 @@ def test_edited_mesh_reaches_the_file():
             f"exported .g does not parse: {dst.parse_error}")
     part = [p for p in dst.parts if p.name == body_name][0]
     eq(live_tri_count(part), edited_tris, "triangles after deleting 4 faces")
+    # the header every sub-mesh carries must advertise those counts: the
+    # engine's loader believes it, and a stale pair desynchronises the vertex
+    # and index blocks behind it (that is a crash on load, not a visual bug)
+    header = struct.unpack_from("<7I", part.part_prefix, 0)
+    eq(header[3], len(part.vertices), "header vertices")
+    eq(header[4], len(part.indices) // 3, "header triangles")
+    eq(gfile.count_mismatches(dst), [], "no stale container counts")
 
     # the .g lives in the game's own space, so the nudged vertices are
     # compared with the donor's geometry

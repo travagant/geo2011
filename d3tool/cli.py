@@ -69,6 +69,7 @@ def _analyze_unit(path: str) -> int:
     had_error = 0
 
     g_rows, a_rows, ac_rows, gltf_rows = [], [], [], []
+    count_warnings: List[str] = []
 
     for g in g_files:
         try:
@@ -86,6 +87,11 @@ def _analyze_unit(path: str) -> int:
             flag = " (compound)" if mesh.parts else ""
             if mesh.form == "stub":
                 flag = " (node helper)"
+            stale = gfile.count_mismatches(mesh)
+            for line in stale:
+                count_warnings.append(f"{os.path.basename(g)}: {line} "
+                                      f"(the engine reads these, `d3tool "
+                                      f"repair` fixes it)")
             g_rows.append((os.path.basename(g),
                            str(mesh.vertex_count),
                            str(mesh.tri_count),
@@ -95,6 +101,9 @@ def _analyze_unit(path: str) -> int:
         except Exception as exc:  # noqa: BLE001
             ui.fail(f"{os.path.basename(g)}: parse error {exc}")
             had_error = 1
+
+    for line in count_warnings:
+        ui.warn(line)
 
     for a in a_files:
         try:
@@ -654,6 +663,12 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
         fh.write(g_bytes)
     if not quiet:
         ui.wrote(out_g, f"{len(g_bytes)} bytes")
+    try:
+        written = gfile.parse_geometry_file(g_bytes)
+        for line in gfile.count_mismatches(written):
+            ui.warn(f"{base}.g: {line} — the engine will crash loading it")
+    except Exception:  # noqa: BLE001 - the re-read is a diagnostic only
+        pass
 
     # scene (reuse the original if present to keep particle emitters)
     out_scene = os.path.join(out_dir, base + ".scene")
@@ -1625,6 +1640,13 @@ def _build_parser() -> argparse.ArgumentParser:
     p_w.add_argument("--lot", type=int, default=10, metavar="N",
                      help="how many changed vertices to list (default 10)")
     p_w.add_argument("--json", action="store_true", help="machine output")
+    p_rep = sub.add_parser(
+        "repair",
+        help="fix a .g whose headers advertise stale vertex/triangle counts")
+    p_rep.add_argument("file")
+    p_rep.add_argument("-i", "--in-place", action="store_true",
+                       help="rewrite the file itself (default: report only)")
+    p_rep.add_argument("-o", "--out", help="write the fixed file here")
     p_dump = sub.add_parser("dump", help="dump a parsed .g as JSON")
     p_dump.add_argument("gfile")
 
@@ -1756,6 +1778,8 @@ def main(argv=None) -> int:
         return 1 if errors else 0
     elif args.cmd == "weights":
         return _weights(args)
+    elif args.cmd == "repair":
+        return _repair(args)
     elif args.cmd == "dump":
         data = open(args.gfile, "rb").read()
         mesh = gfile.parse_geometry_file(data)
@@ -1864,6 +1888,53 @@ def _weights(args) -> int:
     else:
         ui.warn("the weights are identical — nothing you painted reached "
                 "this file")
+    return 0
+
+
+def _repair(args) -> int:
+    """`repair` — recompute the container counts a `.g`'s headers advertise.
+
+    The engine trusts the vertex/triangle pair in every sub-mesh header, so an
+    edited mesh written with the donor's old counts makes it read the vertex,
+    index and bone blocks out of step: the unit crashes the game (and any tool
+    that loads it) instead of looking wrong.  `d3tool repair` fixes a file that
+    is already out there; a fresh export is fixed by the writer itself.
+    """
+    path = args.file
+    if not os.path.exists(path):
+        ui.section("repair")
+        ui.fail(f"no such file: {path}")
+        return 1
+    raw = open(path, "rb").read()
+    ui.section(f"repair {os.path.basename(path)}")
+    try:
+        mesh = gfile.parse_geometry_file(raw)
+        fixes = gfile.count_mismatches(mesh)
+    except Exception as exc:  # noqa: BLE001
+        ui.fail(f"could not read {path}: {exc}")
+        return 1
+    if mesh.parse_error and not fixes:
+        ui.warn(f"{path} does not fully parse: {mesh.parse_error}")
+    if not fixes:
+        ui.ok("every container header agrees with the data — nothing to fix")
+        return 0
+    for line in fixes:
+        ui.warn(line)
+    fixed, _ = gfile.repair_counts(raw)
+    out = args.out or (path if args.in_place else "")
+    if not out:
+        ui.info("nothing was written: pass --in-place (or -o FILE) to apply "
+                "the fix")
+        return 0
+    with open(out, "wb") as fh:
+        fh.write(fixed)
+    ui.wrote(out, f"{len(fixed)} bytes")
+    again = gfile.count_mismatches(gfile.parse_geometry_file(fixed))
+    if again:
+        for line in again:
+            ui.fail(line)
+        return 1
+    ui.ok(f"fixed {len(fixes)} header(s) — the data and the counts now agree")
     return 0
 
 

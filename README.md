@@ -197,7 +197,7 @@ runs six such scenarios, all battle-ready):
 ### Did my edit actually reach the game?
 
 Weights are invisible until the unit moves, and a file that the game never
-loads looks exactly like a file with nothing wrong in it.  Three checks settle
+loads looks exactly like a file with nothing wrong in it.  Four checks settle
 it, in this order:
 
 0. **Is this the model the camera actually draws?** Every unit ships two of
@@ -229,7 +229,24 @@ it, in this order:
    before→after lines.  Zero changed means nothing you painted reached the
    `.g` — stop here and re-export rather than hunting in the game.
 
-2. **Does the game read that file at all?** Make an *obvious* geometry edit
+2. **Does the unit crash the game on load?** Then the file's own counts are
+   the first suspect: every sub-mesh header advertises a vertex/triangle pair
+   and the engine's loader trusts it, so a stale pair desynchronises the
+   vertex, index and bone blocks behind it and takes the process down — the
+   unit never gets drawn, so there is nothing to look at.  Check and fix an
+   existing file with
+
+   ```bash
+   python3 -m d3tool repair path/to/character_empire_angel.g        # report
+   python3 -m d3tool repair path/to/character_empire_angel.g -i     # fix
+   ```
+
+   `d3tool analyze <unit folder>` and the add-on's export report warn about it
+   now, and `repair` is only for files an older export already wrote — a
+   current export keeps the header in step with whatever Blender did to the
+   mesh.
+
+3. **Does the game read that file at all?** Make an *obvious* geometry edit
    (move a whole limb, scale the mesh), export, restart the game and enter a
    battle.  If the silhouette is unchanged, the weights were never the
    question: the game is loading a different file.  Things worth checking:

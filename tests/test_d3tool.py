@@ -2323,6 +2323,87 @@ def test_weights_cli_reports_and_compares():
     assert doc["diff"]["changed"] == 0 and doc["diff"]["compared"] > 4000
 
 
+def test_writer_keeps_a_grown_part_header_in_step():
+    """The engine reads the vertex/triangle pair in every sub-mesh header, so a
+    rebuilt part has to carry the counts of the data behind it.  A parsed
+    prefix is 28 bytes of header + the 56-byte scene block, and the writer used
+    to patch only a bare 28-byte prefix — an edited mesh then shipped the
+    donor's counts and crashed the game on load."""
+    import copy
+    mesh = gfile.parse_geometry_file(open(ANGEL_G, "rb").read())
+    mesh.raw = b""
+    part = mesh.parts[1]
+    part.raw = b""
+    part.part_tail = b""
+    part.vertices.append(copy.deepcopy(part.vertices[-1]))
+    grown = len(part.vertices) - 1
+    part.indices.extend([part.indices[-3], part.indices[-2], grown])
+    data = gfile.write_geometry_file(mesh, dict(mesh.attrs))
+    again = gfile.parse_geometry_file(data)
+    body = again.parts[1]
+    header = struct.unpack_from("<7I", body.part_prefix, 0)
+    assert header[3] == len(body.vertices) == 4166, header
+    assert header[4] == len(body.indices) // 3 == 5063, header
+    assert gfile.count_mismatches(again) == []
+
+
+def test_repair_fixes_a_header_that_lies_about_its_counts():
+    """A file an older export wrote is beyond the writer's reach, so
+    `d3tool repair` recomputes the counts in place.  The fixture is the real
+    one the Angel came back with: the header still says 4165/5062 while the
+    data holds 4171/5050."""
+    data = open(ANGEL_G, "rb").read()
+    mesh = gfile.parse_geometry_file(data)
+    body = mesh.parts[1]
+    stale = bytearray(data)
+    at = gfile._locate_prefix(data, body.part_prefix)
+    assert at > 0
+    struct.pack_into("<I", stale, at + 12, len(body.vertices) - 6)
+    struct.pack_into("<I", stale, at + 16, len(body.indices) // 3 + 12)
+    broken = bytes(stale)
+    findings = gfile.count_mismatches(gfile.parse_geometry_file(broken))
+    assert len(findings) == 1 and "header says" in findings[0], findings
+    fixed, fixes = gfile.repair_counts(broken)
+    assert fixes == findings
+    assert len(fixed) == len(broken), "repair must not move anything else"
+    assert gfile.count_mismatches(gfile.parse_geometry_file(fixed)) == []
+    # a clean file comes back untouched
+    same, none = gfile.repair_counts(data)
+    assert none == [] and same == data
+    # and a shipped donor passes the check
+    assert gfile.count_mismatches(gfile.parse_geometry_file(data)) == []
+
+
+def test_repair_cli_reports_and_writes():
+    import contextlib
+    import io
+    data = bytearray(open(ANGEL_G, "rb").read())
+    mesh = gfile.parse_geometry_file(bytes(data))
+    body = mesh.parts[1]
+    at = gfile._locate_prefix(bytes(data), body.part_prefix)
+    struct.pack_into("<I", data, at + 16, len(body.indices) // 3 + 12)
+    td = tempfile.mkdtemp(prefix="d3tool_repair_")
+    try:
+        broken = os.path.join(td, "character_empire_angel.g")
+        open(broken, "wb").write(bytes(data))
+        # a report-only run writes nothing
+        with contextlib.redirect_stdout(io.StringIO()) as buf:
+            assert climod._run(["repair", broken]) == 0
+        assert "header says" in buf.getvalue()
+        assert open(broken, "rb").read() == bytes(data)
+        # --in-place fixes it and says so
+        with contextlib.redirect_stdout(io.StringIO()) as buf:
+            assert climod._run(["repair", broken, "--in-place"]) == 0
+        assert "fixed 1 header" in buf.getvalue()
+        fixed = gfile.parse_geometry_file(open(broken, "rb").read())
+        assert gfile.count_mismatches(fixed) == []
+        with contextlib.redirect_stdout(io.StringIO()) as buf:
+            assert climod._run(["repair", broken]) == 0
+        assert "agree" in buf.getvalue()
+    finally:
+        shutil.rmtree(td, ignore_errors=True)
+
+
 def test_resource_root_finds_the_unit_folder_for_a_lod_export():
     """A ``*_lod`` model has no ``.ac``/``.scene`` of its own, so the main stem
     is what names the resource folder.  Guessing from the stem wrote
