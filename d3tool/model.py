@@ -245,6 +245,12 @@ class SkinnedMesh:
     # verification, appended part bones, slots without a glTF mesh) — the
     # caller prints them as warnings next to the export result
     blender_warnings: List[str] = field(default_factory=list)
+    # how many mesh blocks the container header declares (the ``[1][4][count]``
+    # terminator of the node chain); ``None`` when the file was not readable
+    # that far.  It has to equal ``1 + len(parts)`` or the engine stops
+    # reading one block early -- a weapon appended by a tool then sits in the
+    # file and never reaches the model.
+    declared_mesh_count: Optional[int] = None
 
 
 @dataclass

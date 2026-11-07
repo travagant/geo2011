@@ -285,6 +285,10 @@ def _parse_geometry_file(data: bytes) -> SkinnedMesh:
     # ("BaseMesh" on the Leader stubs) is the only label it has.
     default_name = (name1.rstrip(b"\x00").decode("latin1")
                     or attrs.get("name", ""))
+    try:
+        declared = mesh_count(data)[1]
+    except ValueError:
+        declared = None
     mesh = SkinnedMesh(
         name=default_name,
         unit_name=attrs.get("name", default_name),
@@ -306,6 +310,7 @@ def _parse_geometry_file(data: bytes) -> SkinnedMesh:
         trailing=data[o:],
         attrs=attrs,
         attr_items=attr_items,
+        declared_mesh_count=declared,
     )
 
     # compound containers (Empire characters etc.) stack further sub-meshes in
@@ -653,6 +658,54 @@ def _vertex_record(magic: bytes, v: Vertex, w: int, morph: bool) -> bytes:
     return bytes(rec)
 
 
+def _patch_preamble_mesh_count(preamble: bytes, blocks: int) -> bytes:
+    """Set the mesh-count field that closes the prelude's node chain.
+
+    The prelude carries the tail of the container header: the ``[1][4][count]``
+    terminator followed by the 84-byte prefix of the first mesh block, so the
+    count sits 88 bytes before the end of the prelude.  Anything that does not
+    match that shape is left untouched (header-less node stubs).
+    """
+    if len(preamble) < 96:
+        return preamble
+    marker = struct.unpack_from("<II", preamble, len(preamble) - 96)
+    if marker != (1, 4):
+        return preamble
+    out = bytearray(preamble)
+    struct.pack_into("<I", out, len(out) - 88, blocks)
+    return bytes(out)
+
+
+def mesh_count(data: bytes) -> Tuple[int, int]:
+    """``(offset, count)`` of a `.g` container's mesh-count field.
+
+    The container opens with a chain of ``[kind 3][length][payload]`` node
+    chunks and terminates it with ``[kind 1][length 4][count]``; ``count`` is
+    the number of *mesh blocks* that follow (the first mesh plus every
+    compound part).  The engine walks the chain and reads exactly that many
+    blocks, so a file whose count is one short silently loses its last mesh —
+    the defect a weapon appended by a tool leaves behind (the mesh is in the
+    file, byte-perfect, and the game never reads it).
+    """
+    o = 0
+    while o + 12 <= len(data):
+        kind, length = struct.unpack_from("<II", data, o)
+        if kind == 1 and length == 4:
+            return o + 8, struct.unpack_from("<I", data, o + 8)[0]
+        if kind != 3 or length == 0 or o + 8 + length > len(data):
+            break
+        o += 8 + length
+    raise ValueError("no mesh-count field in this .g")
+
+
+def set_mesh_count(data: bytes, count: int) -> bytes:
+    """Return ``data`` with the container's mesh-count field rewritten."""
+    offset, _ = mesh_count(data)
+    out = bytearray(data)
+    struct.pack_into("<I", out, offset, count)
+    return bytes(out)
+
+
 def patch_header_counts(prefix: bytes, vertex_count: int,
                         tri_count: int) -> bytes:
     """Return a part container header with its vertex/triangle counts fixed.
@@ -689,6 +742,12 @@ def count_mismatches(mesh) -> List[str]:
         if (have[3], have[4]) != (vc, tc):
             out.append(f"{block.name}: header says {have[3]} vertices / "
                        f"{have[4]} triangles, the data holds {vc} / {tc}")
+    declared = getattr(mesh, "declared_mesh_count", None)
+    blocks = len([mesh] + list(getattr(mesh, "parts", []) or []))
+    if declared is not None and declared != blocks:
+        out.append(f"container: header says {declared} mesh block(s), the "
+                   f"file carries {blocks} — the engine reads only the "
+                   f"declared number and never parses the rest")
     return out
 
 
@@ -703,6 +762,10 @@ def repair_counts(data: bytes) -> Tuple[bytes, List[str]]:
     fixes = count_mismatches(mesh)
     if not fixes:
         return data, []
+    declared = getattr(mesh, "declared_mesh_count", None)
+    blocks = len([mesh] + list(getattr(mesh, "parts", []) or []))
+    if declared is not None and declared != blocks:
+        data = set_mesh_count(data, blocks)
     out = bytearray(data)
     for block in [mesh] + list(getattr(mesh, "parts", []) or []):
         prefix = getattr(block, "part_prefix", b"") or b""
@@ -896,6 +959,7 @@ def write_geometry_file(mesh: SkinnedMesh, attrs: Dict[str, str]) -> bytes:
         preamble = mesh.preamble
     else:
         preamble = _prelude_block(vc, tc) + _scene_matrix()
+    preamble = _patch_preamble_mesh_count(preamble, 1 + len(mesh.parts))
 
     chunks = [header, names]
     chunks.append(preamble)
@@ -970,9 +1034,10 @@ def append_parts(base: bytes, parts) -> bytes:
     so a part lifted from another `.g` can be appended byte for byte — this is
     how a weapon mesh joins a unit's LOD model, which ships without it.  Every
     part must have been parsed from a `.g` (its ``raw`` bytes are required);
-    nothing else in ``base`` is touched.  The block carries its own attributes,
-    ``attr "name"`` included, so renaming the part object does not rename what
-    lands in the file.
+    nothing else in ``base`` is touched **except the container's mesh count**,
+    which has to grow with the blocks: the engine reads exactly that many
+    blocks, so an unpatched count leaves the appended part in the file and
+    out of the model.
     """
     out = bytearray(base)
     for part in parts:
@@ -982,6 +1047,10 @@ def append_parts(base: bytes, parts) -> bytes:
                 f"part {getattr(part, 'name', '?')!r} has no raw bytes; a "
                 "part can only be appended straight from a parsed .g")
         out += raw
+    appended = len(out) - len(base)
+    if appended:
+        _, declared = mesh_count(base)
+        out = bytearray(set_mesh_count(bytes(out), declared + len(parts)))
     return bytes(out)
 
 

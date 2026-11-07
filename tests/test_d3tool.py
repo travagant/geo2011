@@ -2110,6 +2110,55 @@ def test_every_shipped_scene_already_binds_one_gobj_per_part():
     assert checked > 50, checked
 
 
+def test_container_mesh_count_follows_the_blocks():
+    """A `.g` closes its node chain with the number of mesh blocks.
+
+    The writer used to copy the donor prelude verbatim -- count included -- so
+    every export that grew a compound model (the Angel with a weapon appended)
+    declared one block fewer than the file carries.  Nothing in the parser
+    notices (it walks the blocks), the whole retail corpus has the two numbers
+    equal (247/247), and a reader that trusts the header simply never sees the
+    last block: the mesh is in the file and out of the model.
+    """
+    from d3tool import gfile as gmod
+    for path in ("Empire/Knight/character_empire_knight.g",
+                 "Empire/Knight/character_empire_knight_lod.g",
+                 "Empire/Angel/character_empire_angel.g",
+                 "Empire/Angel/character_empire_angel_lod.g"):
+        data = open(os.path.join(REPO, path), "rb").read()
+        mesh = gmod.parse_geometry_file(data)
+        offset, count = gmod.mesh_count(data)
+        assert count == len(gmod.iter_parts(mesh)), path
+        # a parsed `.g` round-trips, and the count field stays where it was
+        rebuilt = gmod.write_geometry_file(mesh, mesh.attrs)
+        assert rebuilt == data, path
+        assert gmod.mesh_count(rebuilt) == (offset, count)
+
+    # a file whose count was left one short is *not* detectable by the parser,
+    # and the writer (which knows how many blocks it emitted) restores it
+    stale = bytearray(open(os.path.join(
+        REPO, "Empire/Knight/character_empire_knight.g"), "rb").read())
+    offset, count = gmod.mesh_count(bytes(stale))
+    stale[offset:offset + 4] = (count - 1).to_bytes(4, "little")
+    mesh = gmod.parse_geometry_file(bytes(stale))
+    assert len(gmod.iter_parts(mesh)) == count
+    assert mesh.declared_mesh_count == count - 1
+    assert gmod.mesh_count(bytes(stale))[1] == count - 1
+    # the check an export prints, and the repair that rescues an old file
+    findings = gmod.count_mismatches(mesh)
+    assert len(findings) == 1 and "mesh block" in findings[0], findings
+    repaired, fixes = gmod.repair_counts(bytes(stale))
+    assert repaired == open(os.path.join(
+        REPO, "Empire/Knight/character_empire_knight.g"), "rb").read()
+    assert fixes == findings
+    # and the writer knows how many blocks it emitted, whatever the donor said
+    mesh.raw = b""
+    fixed = gmod.write_geometry_file(mesh, mesh.attrs)
+    assert gmod.mesh_count(fixed)[1] == count
+    assert fixed == bytes(stale[:offset]) + count.to_bytes(4, "little") \
+        + bytes(stale[offset + 4:])
+
+
 def test_lod_mesh_takes_the_parts_its_main_mesh_gained():
     """The profile swaps to `unit_scene_lod` beyond a draw distance (10 for
     nearly every unit), and the LOD is a separate, lower-poly `.g`: a weapon
@@ -2123,7 +2172,17 @@ def test_lod_mesh_takes_the_parts_its_main_mesh_gained():
     extra = list(gmod.iter_parts(main))[-1]     # raw bytes, name included
 
     grown = gmod.append_parts(lod_bytes, [extra])
-    assert grown[:len(lod_bytes)] == lod_bytes      # nothing else moves
+    # nothing else moves -- except the container's mesh count, which is the
+    # whole point: the engine reads exactly that many blocks
+    assert len(grown) == len(lod_bytes) + len(extra.raw)
+    prefix_offset, before = gmod.mesh_count(lod_bytes)
+    after_offset, after = gmod.mesh_count(grown)
+    assert (prefix_offset, after_offset) == (prefix_offset, prefix_offset)
+    assert after == before + 1
+    head, old_head = bytearray(grown[:len(lod_bytes)]), bytearray(lod_bytes)
+    head[prefix_offset:prefix_offset + 4] = b"\0\0\0\0"
+    old_head[prefix_offset:prefix_offset + 4] = b"\0\0\0\0"
+    assert bytes(head) == bytes(old_head)
     regrown = gmod.parse_geometry_file(grown)
     assert [p.name for p in gmod.iter_parts(regrown)] == \
         [p.name for p in gmod.iter_parts(lod)] + [extra.name]

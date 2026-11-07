@@ -197,6 +197,11 @@ runs six such scenarios, all battle-ready):
   `extras.d3unit_bone` (else the nearest joint above them).  Bone-parented
   props are re-parented to the armature for the glTF write and re-bound via
   that custom property, because glTF cannot express Blender's bone parenting.
+  A part added that way also has to be *announced*: the container header closes
+  its node chain with the number of mesh blocks, and an export that appends a
+  fifth block while leaving the donor prelude at four leaves the mesh in the
+  file and out of the model — see `docs/FORMATS.md` ("How many mesh blocks the
+  container declares").
 * **Every export ends with a battle-readiness check**: each `.ac` state's
   file present, `frame1` within that `.a`'s real frame count, meshfile
   and `.scene` references resolvable, a `.t` behind every
@@ -256,7 +261,24 @@ it, in this order:
    current export keeps the header in step with whatever Blender did to the
    mesh.
 
-3. **Does the game read that file at all?** Make an *obvious* geometry edit
+3. **Does the header count the block you added?** A `.g` closes its node chain
+   with the number of mesh blocks, and the engine reads exactly that many — a
+   weapon appended as block five under a header that still says four is in the
+   file and not in the model, with nothing else wrong with it.  Compare:
+
+   ```bash
+   python3 -c "from d3tool import gfile as g;\
+   d=open('character_empire_angel.g','rb').read();\
+   print(g.mesh_count(d), len(g.iter_parts(g.parse_geometry_file(d))))"
+   ```
+
+   The two numbers must be equal (every retail file in the corpus is).
+   `python3 -m d3tool lod <unit folder>` appends a missing part to the LOD
+   model *and* the gobj that binds it, and both the writer and
+   `gfile.append_parts` keep the count in step now; a file an older export
+   already wrote is fixed by `python3 -m d3tool repair … -i`.
+
+4. **Does the game read that file at all?** Make an *obvious* geometry edit
    (move a whole limb, scale the mesh), export, restart the game and enter a
    battle.  If the silhouette is unchanged, the weights were never the
    question: the game is loading a different file.  Things worth checking:

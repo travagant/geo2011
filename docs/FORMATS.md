@@ -173,6 +173,24 @@ block: `vertexs_weights_num` (vertex count), `material0_triangles_num`
 (triangle count), `weights_on_vertex` (`w`), `bones_num`.  `dwNode` is the
 first attribute key and makes the attribute block trivial to locate.
 
+### How many mesh blocks the container declares
+The file opens with a chain of `[u32 kind 3][u32 length][payload]` node chunks
+(the 120-byte header, the two name strings and the prelude/scene-node block are
+three of them) and the chain is terminated by `[u32 1][u32 4][u32 count]`.  The
+first mesh block follows immediately, and **`count` is the number of mesh
+blocks in the file** — the first mesh plus every compound part.  Every retail
+`.g` in the corpus satisfies `count == len(iter_parts(mesh))` (247/247), and
+nothing else in the format repeats the number: the attribute blocks carry
+per-part vertex and triangle counts, not how many parts there are.
+
+A tool that appends a part has to bump it.  The reverse export appended the
+Angel's weapon as a fifth block while the donor prelude said four, and the
+engine read exactly four: the mesh was in the file, byte-perfect, and simply
+never parsed — "the add-on exports the mesh but the game does not read the
+sword out of the model".  `gfile.write_geometry_file` now rewrites the field
+from the blocks it emits, `gfile.append_parts` bumps it, and `gfile.mesh_count`
+/ `set_mesh_count` read and write it.
+
 ### Vertex record
 ```
 [0:4]   per-vertex prefix magic (asset specific, e.g. 5ce6ac0b / 28e7ce19)
@@ -187,6 +205,7 @@ Record size `= 40 + 4*(w-1) + w`:
 
 | `w` (weights_on_vertex) | stride |
 |---|---|
+| 1 (`bones_num 1`) | 40 |
 | 2  | 46 |
 | 3  | 51 |
 | 4  | 56 |
@@ -195,6 +214,12 @@ A declared `w = 1` on a mesh that references **several** bones actually stores
 the full two-influence record (46 bytes) — the attribute keeps `1`, readers
 derive the width from `w` + `bones_num` (independently confirmed on the
 Heroes VII port corpus, see `docs/PORT_ANALYSIS_COMPARE_RU.md`).
+
+`w = 1` with a *single* bone is the rigid weapon layout: no weight tail, no
+per-vertex joint bytes, one bone descriptor.  Every retail weapon part is
+written that way (`empire_knight_sword`, `paladin_sword`, ... — 111 parts over
+the corpus), so a weapon that arrives as a two-influence skin is not shaped
+like anything the engine ships.
 
 The leading 4-byte magic is constant *within* a file but differs between files;
 it must be preserved for round-trips.
