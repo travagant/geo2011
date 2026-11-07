@@ -2105,6 +2105,103 @@ def test_vdpack_validate_cli_reports_and_exits():
         assert climod._run(["vdpack", "validate", damaged]) == 1
 
 
+def test_vdpack_warns_about_a_reference_in_the_wrong_folder():
+    """A `.ac` written with the wrong resource root names a folder the pack
+    does not have, while the model it wants sits in another one.  Nothing can
+    resolve that — and it is how a generated `_lod.ac` shipped: the pack
+    validated clean (`every reference resolves inside`) and the game asked for
+    a file that was never there, so the two kinds of out-of-tree reference
+    have to be told apart."""
+    from d3tool import vdpack
+    folder = os.path.join(REPO, "Neutrals", "AirElemental")
+    root = "resources\\Characters\\Neutrals\\AirElemental\\"
+
+    def as_pack():
+        return {(root + name.replace("/", "\\")): data
+                for name, data in vdpack.pack_folder(folder)}
+
+    wrong = acmod.default_ac(
+        "resources\\characters\\character_neutrals_airelemental_lod\\"
+        "character_neutrals_airelemental.g",
+        "resources\\characters\\character_neutrals_airelemental_lod\\"
+        "character_neutrals_airelemental")
+    files = as_pack()
+    files[root + "character_neutrals_airelemental_lod.ac"] = \
+        acmod.write_ac(wrong).encode()
+    report = vdpack.reference_findings(files)
+    assert not report.problems, report.problems
+    assert report.warnings, "a wrong resource root was accepted"
+    assert any("character_neutrals_airelemental.g" in w
+               and "AirElemental" in w for w in report.warnings), \
+        report.warnings
+
+    # the same states pointing at the folder the pack really has are clean
+    right = acmod.default_ac(
+        "resources\\characters\\neutrals\\airelemental\\"
+        "character_neutrals_airelemental.g",
+        "resources\\characters\\neutrals\\airelemental\\"
+        "character_neutrals_airelemental")
+    files[root + "character_neutrals_airelemental_lod.ac"] = \
+        acmod.write_ac(right).encode()
+    report = vdpack.reference_findings(files)
+    assert not report.warnings and not report.problems, \
+        (report.warnings, report.problems)
+
+    # a reference to a folder this pack does not carry at all stays a note:
+    # retail units name their template's animation, which the game mounts
+    other = acmod.default_ac("resources\\characters\\other\\x.g",
+                             "resources\\characters\\other\\x")
+    files[root + "character_neutrals_airelemental_lod.ac"] = \
+        acmod.write_ac(other).encode()
+    report = vdpack.reference_findings(files)
+    assert not report.warnings, report.warnings
+    assert any("x.g" in n for n in report.notes), report.notes
+
+
+def test_vdpack_validate_is_strict_about_wrong_folders():
+    """`--strict` turns the warning into a non-zero exit, so a build script can
+    refuse to ship a pack whose paths were written with the wrong root."""
+    import contextlib
+    import io
+    import shutil as shmod
+    folder = os.path.join(REPO, "Neutrals", "AirElemental")
+    wrong = acmod.default_ac(
+        "resources\\characters\\character_neutrals_airelemental_lod\\"
+        "character_neutrals_airelemental.g",
+        "resources\\characters\\character_neutrals_airelemental_lod\\"
+        "character_neutrals_airelemental")
+    with tempfile.TemporaryDirectory() as d:
+        # the bundle has to be namespaced for the folder to be judgeable: one
+        # rooted at the unit folder mounts there and names its files by path
+        bundle = os.path.join(d, "AirElemental")
+        tree = os.path.join(bundle, "resources", "Characters", "Neutrals",
+                            "AirElemental")
+        shutil.copytree(folder, tree)
+        open(os.path.join(tree, "character_neutrals_airelemental_lod.ac"), "w",
+             encoding="utf-8").write(acmod.write_ac(wrong))
+        with contextlib.redirect_stdout(io.StringIO()) as buf:
+            assert climod._run(["vdpack", "validate", bundle]) == 0
+            out = buf.getvalue()
+            assert "wrong folder" in out, out[-600:]
+            assert climod._run(["vdpack", "validate", bundle,
+                                "--strict"]) == 1
+
+
+def test_vdpack_stored_names_carry_one_separator():
+    """An archive name is one backslash per level; a doubled separator makes a
+    path the engine cannot match against its own resource table."""
+    from d3tool import vdpack
+    blob = vdpack.build_vdpack([("resources/Characters/Empire/Angel/x.g",
+                                 b"payload")])
+    pack = vdpack.parse_vdpack(blob)
+    assert not pack.parse_error, pack.parse_error
+    assert [e.name for e in pack.entries] == \
+        ["resources\\Characters\\Empire\\Angel\\x.g"], \
+        [e.name for e in pack.entries]
+    assert pack.files()["resources\\Characters\\Empire\\Angel\\x.g"] == \
+        b"payload"
+
+
 def test_vdpack_manifest_of_folder_and_archive_match():
     """A pack has to carry exactly what the folder has; the manifest is the
     proof (the Heroes-VII port kept one `manifest.json` per pack)."""
@@ -2240,6 +2337,211 @@ def test_vdpack_manifest_cli_writes_json():
         broken = os.path.join(d, "broken.json")
         assert climod._run(["vdpack", "manifest", partial, "-o", broken]) == 1
         assert json.load(open(broken, encoding="utf-8"))["files"] == 1
+
+
+# --------------------------------------------------------------------------- #
+#  skin weights (what a .g carries, and whether an export kept them)
+# --------------------------------------------------------------------------- #
+ANGEL_G = os.path.join(REPO, "Empire", "Angel", "character_empire_angel.g")
+
+
+def test_weights_summary_of_a_real_unit():
+    from d3tool import weights
+    mesh = gfile.parse_geometry_file(open(ANGEL_G, "rb").read())
+    parts = weights.summarise(mesh)
+    assert [p.name for p in parts] == ["Myzrael_alpha", "empire_angel_wing",
+                                       "empire_angel", "empire_angel_cloth"]
+    body = [p for p in parts if p.name == "empire_angel"][0]
+    assert body.influences == 3
+    assert body.max_influences <= body.influences <= 4
+    assert body.unweighted == 0
+    assert abs(body.min_sum - 1.0) < 1e-6 and abs(body.max_sum - 1.0) < 1e-6
+    # the head and the spine carry most of the body
+    top = sorted(body.dominant.items(), key=lambda kv: -kv[1])[:2]
+    assert [n for n, _c in top] == ["Bip01 Head", "Bip01 Spine1"]
+
+
+def test_weights_diff_reports_nothing_for_an_untouched_file():
+    from d3tool import weights
+    mesh = gfile.parse_geometry_file(open(ANGEL_G, "rb").read())
+    diff = weights.diff_weights(mesh, mesh)
+    assert diff.compared and not diff.changed
+    assert diff.samples == []
+
+
+def test_weights_diff_finds_a_swapped_pair():
+    """Flipping one vertex's two lanes must show up as exactly one changed
+    vertex whose dominant bone moved — this is the check a modder runs on the
+    `.g` Blender just wrote, with the game's own file as the baseline."""
+    import copy
+    from d3tool import weights
+    donor = gfile.parse_geometry_file(open(ANGEL_G, "rb").read())
+    edited = copy.deepcopy(donor)
+    edited.raw = b""          # a parsed donor is otherwise re-emitted verbatim
+    part = [p for p in edited.parts if p.name == "empire_angel"][0]
+    bone_names = [b.name for b in part.bones]
+    was = now = None
+    for vertex in part.vertices:
+        stored = list(vertex.stored_weights)
+        # two real lanes on two different bones, or the swap is a no-op
+        if (len(stored) >= 2 and stored[0] > 0.3 and stored[1] > 0.05
+                and vertex.bones[0] != vertex.bones[1]):
+            was = bone_names[vertex.bones[0]]
+            now = bone_names[vertex.bones[1]]
+            # swap the weights only: swapping the bones with them would just
+            # re-order the same (bone, weight) pairs
+            vertex.stored_weights = tuple([stored[1], stored[0]]
+                                          + stored[2:])
+            break
+    assert was is not None, "no vertex with two distinct lanes"
+    diff = weights.diff_weights(donor, edited, limit=5)
+    assert diff.changed == 1, diff.changed
+    assert diff.moved_bone == 1
+    change = diff.samples[0]
+    assert change.part == "empire_angel"
+    assert change.old_dominant == was and change.new_dominant == now
+    assert "->" in weights.describe_change(change)
+    # and an untouched copy is reported as identical
+    assert not weights.diff_weights(donor, copy.deepcopy(donor)).changed
+
+
+def test_weights_cli_reports_and_compares():
+    import contextlib
+    import io
+    with contextlib.redirect_stdout(io.StringIO()) as buf:
+        assert climod._run(["weights", ANGEL_G, "--json"]) == 0
+    doc = json.loads(buf.getvalue())
+    assert [p["name"] for p in doc["parts"]][0] == "Myzrael_alpha"
+    assert doc["parts"][2]["weights_on_vertex"] == 3
+    with contextlib.redirect_stdout(io.StringIO()) as buf:
+        assert climod._run(["weights", ANGEL_G, "--against", ANGEL_G,
+                            "--json"]) == 0
+    doc = json.loads(buf.getvalue())
+    assert doc["diff"]["changed"] == 0 and doc["diff"]["compared"] > 4000
+
+
+def test_writer_keeps_a_grown_part_header_in_step():
+    """The engine reads the vertex/triangle pair in every sub-mesh header, so a
+    rebuilt part has to carry the counts of the data behind it.  A parsed
+    prefix is 28 bytes of header + the 56-byte scene block, and the writer used
+    to patch only a bare 28-byte prefix — an edited mesh then shipped the
+    donor's counts and crashed the game on load."""
+    import copy
+    mesh = gfile.parse_geometry_file(open(ANGEL_G, "rb").read())
+    mesh.raw = b""
+    part = mesh.parts[1]
+    part.raw = b""
+    part.part_tail = b""
+    part.vertices.append(copy.deepcopy(part.vertices[-1]))
+    grown = len(part.vertices) - 1
+    part.indices.extend([part.indices[-3], part.indices[-2], grown])
+    data = gfile.write_geometry_file(mesh, dict(mesh.attrs))
+    again = gfile.parse_geometry_file(data)
+    body = again.parts[1]
+    header = struct.unpack_from("<7I", body.part_prefix, 0)
+    assert header[3] == len(body.vertices) == 4166, header
+    assert header[4] == len(body.indices) // 3 == 5063, header
+    assert gfile.count_mismatches(again) == []
+
+
+def test_repair_fixes_a_header_that_lies_about_its_counts():
+    """A file an older export wrote is beyond the writer's reach, so
+    `d3tool repair` recomputes the counts in place.  The fixture is the real
+    one the Angel came back with: the header still says 4165/5062 while the
+    data holds 4171/5050."""
+    data = open(ANGEL_G, "rb").read()
+    mesh = gfile.parse_geometry_file(data)
+    body = mesh.parts[1]
+    stale = bytearray(data)
+    at = gfile._locate_prefix(data, body.part_prefix)
+    assert at > 0
+    struct.pack_into("<I", stale, at + 12, len(body.vertices) - 6)
+    struct.pack_into("<I", stale, at + 16, len(body.indices) // 3 + 12)
+    broken = bytes(stale)
+    findings = gfile.count_mismatches(gfile.parse_geometry_file(broken))
+    assert len(findings) == 1 and "header says" in findings[0], findings
+    fixed, fixes = gfile.repair_counts(broken)
+    assert fixes == findings
+    assert len(fixed) == len(broken), "repair must not move anything else"
+    assert gfile.count_mismatches(gfile.parse_geometry_file(fixed)) == []
+    # a clean file comes back untouched
+    same, none = gfile.repair_counts(data)
+    assert none == [] and same == data
+    # and a shipped donor passes the check
+    assert gfile.count_mismatches(gfile.parse_geometry_file(data)) == []
+
+
+def test_repair_cli_reports_and_writes():
+    import contextlib
+    import io
+    data = bytearray(open(ANGEL_G, "rb").read())
+    mesh = gfile.parse_geometry_file(bytes(data))
+    body = mesh.parts[1]
+    at = gfile._locate_prefix(bytes(data), body.part_prefix)
+    struct.pack_into("<I", data, at + 16, len(body.indices) // 3 + 12)
+    td = tempfile.mkdtemp(prefix="d3tool_repair_")
+    try:
+        broken = os.path.join(td, "character_empire_angel.g")
+        open(broken, "wb").write(bytes(data))
+        # a report-only run writes nothing
+        with contextlib.redirect_stdout(io.StringIO()) as buf:
+            assert climod._run(["repair", broken]) == 0
+        assert "header says" in buf.getvalue()
+        assert open(broken, "rb").read() == bytes(data)
+        # --in-place fixes it and says so
+        with contextlib.redirect_stdout(io.StringIO()) as buf:
+            assert climod._run(["repair", broken, "--in-place"]) == 0
+        assert "fixed 1 header" in buf.getvalue()
+        fixed = gfile.parse_geometry_file(open(broken, "rb").read())
+        assert gfile.count_mismatches(fixed) == []
+        with contextlib.redirect_stdout(io.StringIO()) as buf:
+            assert climod._run(["repair", broken]) == 0
+        assert "agree" in buf.getvalue()
+    finally:
+        shutil.rmtree(td, ignore_errors=True)
+
+
+def test_resource_root_finds_the_unit_folder_for_a_lod_export():
+    """A ``*_lod`` model has no ``.ac``/``.scene`` of its own, so the main stem
+    is what names the resource folder.  Guessing from the stem wrote
+    ``resources\\characters\\character_empire_angel_lod`` into a generated
+    ``_lod.ac`` — a folder that does not exist, so the engine could never
+    resolve the model or its animations."""
+    angel = os.path.join(REPO, "Empire", "Angel")
+    scratch = os.path.join(tempfile.gettempdir(), "no_scene_here.gltf")
+    assert climod._resource_root(scratch, "character_empire_angel_lod",
+                                 (angel,)) == "resources\\characters\\empire\\angel"
+    # the near model resolves the same directory
+    assert climod._resource_root(scratch, "character_empire_angel",
+                                 (angel,)) == "resources\\characters\\empire\\angel"
+    # a scene that names several meshes still picks the one being exported
+    assert climod._resource_dir_from_file(
+        os.path.join(angel, "character_empire_angel.scene"),
+        "character_empire_angel_lod") == "resources\\characters\\empire\\angel"
+    # with nothing to look at the historical guess stays (a new asset)
+    assert climod._resource_root(scratch, "character_empire_angel_lod") == \
+        "resources\\characters\\character_empire_angel_lod"
+
+
+def test_lod_export_writes_a_config_that_resolves():
+    """End to end: exporting the Angel's lod model must not emit an `.ac` that
+    points into a folder of its own making."""
+    angel = os.path.join(REPO, "Empire", "Angel")
+    lod = os.path.join(angel, "character_empire_angel_lod.g")
+    out = tempfile.mkdtemp(prefix="d3tool_lod_")
+    try:
+        gltf = os.path.join(out, "character_empire_angel_lod.gltf")
+        climod._export_gl(lod, None, gltf, None, quiet=True)
+        climod._export(gltf, out, 0, quiet=True, donor_dir=angel)
+        text = open(os.path.join(out, "character_empire_angel_lod.ac"),
+                    encoding="utf-8").read()
+        assert "resources\\characters\\empire\\angel\\character_empire_angel_lod.g" \
+            in text, text[:400]
+        scene = open(os.path.join(out, "character_empire_angel_lod.scene"),
+                     encoding="utf-8").read()
+        assert "resources\\characters\\character_empire_angel_lod" not in scene
+    finally:
+        shutil.rmtree(out, ignore_errors=True)
 
 
 # --------------------------------------------------------------------------- #

@@ -528,6 +528,11 @@ includes and `characters\…` references like every other unit-local reference.
   none.
 * `d3tool/alias.py` — parse & write `.alias` (byte-exact for all 1294 bundled
   files, including the CP1251 one; empty "muted" blocks preserved).
+* `d3tool/weights.py` — read the skin weights of a `.g` back out: the
+  influence width per part, the bones each part is bound to, the per-vertex
+  weight sum, and a donor-vs-export diff (`weights changed` / `dominant bone
+  moved`).  Comparisons ignore the sub-byte residue lanes the donor keeps, so
+  an untouched round trip reports zero changes.
 * `d3tool/char.py` — parse & write `.char` unit profiles (byte-exact for all
   874 shipped files); `ReferenceIndex` resolves a profile's `resources\…`
   paths against the game folder or the donor corpus; `set_id`/`set_value`
@@ -687,6 +692,17 @@ has no `index`, and `--keep-index <existing.vdpack>` copies the resource from
 a proven pack into the new one (same paths, new payloads: the shape that is
 confirmed to load).  `vdpack manifest` records `index: {bytes, sha256}` (or
 `null`), so a manifest says which of the two you are looking at.
+
+Confirmed later on one real unit pack (the Empire Angel, 24 entries, the
+original 4100-byte `index`, both `.g` payloads replaced in place): loading is
+fine, the rebuilt geometry is what the battle shows, and **removing** a path —
+a generated `*_lod.ac` — did not break the mount, unlike adding one.  That pack
+also carried neither the unit's `.dds` diffuses nor its six icons, and both
+still resolved from the vanilla tree, so a unit pack does not have to mirror
+its folder.  What the engine will not fall back for is a reference its own
+`.ac`/`.scene` makes into a folder the pack lacks: the load stops with a
+missing-file dialog naming `<pack>.vdpack:resources\characters\...` — hence
+the wrong-folder warning `vdpack validate` prints.
 
 `vdpack manifest <archive|folder>` writes the sha256 inventory of a bundle —
 one `{path, bytes, sha256}` per file, in archive naming and case-insensitive

@@ -23,10 +23,11 @@ The point is to support a future program that, like dis3tool, exports glTF but
 | `docs/FORMATS.md` | reverse-engineering notes for `.g`, `.gltf`, `.ac`, `.scene`. |
 | `d3tool/vdpack.py` | the `.vdpack` mod archive (one file = a whole unit folder): `vdpack list/extract/validate/manifest/pack`. |
 | `d3tool/char.py` | the `.char` unit profile: `char show/list/find/validate/set-id`. |
+| `d3tool/weights.py` | skin weights of a `.g`: `weights <g> [--against <g>]`. |
 | `Profiles/` | the retail unit profiles (874 `.char`: 214 units + their `desc`/`stats`/`sound` fragments). |
 | `docs/PORT_ANALYSIS_COMPARE_RU.md` | cross-check of the Heroes-VII `Port` archive against this toolkit (the `.a` grammar taken from the official Max exporter, `.g` bind conventions, what was adopted). |
 | `blender/io_scene_d3unit/` | the Blender add-on (import `.g`/`.a`/`.scene` → armature + animation, export back). |
-| `tests/blender_addon_test.py` | headless Blender suite (19 scenarios, operator-driven). |
+| `tests/blender_addon_test.py` | headless Blender suite (21 scenarios, operator-driven). |
 | `tests/blender_corpus_test.py` | every shipped unit through import → export in Blender, re-parsed and compared with its donor (~5 s per unit). |
 | `d3tool/` | the Python toolkit (bidirectional: glTF↔original format). |
 | `tests/test_d3tool.py` | unit tests for the individual readers/writers. |
@@ -84,6 +85,7 @@ python3 -m d3tool vdpack pack Empire/Hierophant -o hierophant.vdpack
 python3 -m d3tool vdpack list hierophant.vdpack
 python3 -m d3tool vdpack extract hierophant.vdpack -o hierophant/
 python3 -m d3tool vdpack validate hierophant.vdpack   # every internal reference inside?
+python3 -m d3tool vdpack validate hierophant.vdpack --strict   # ... and no wrong folder
 python3 -m d3tool vdpack manifest hierophant/ -o manifest.json  # sha256 per file
 # build on the only game-confirmed pack shape: keep the opaque `index`
 python3 -m d3tool vdpack pack hierophant/ -o my.vdpack --keep-index NewUnit.vdpack
@@ -139,7 +141,15 @@ runs six such scenarios, all battle-ready):
   glTF **into the unit folder** to get the byte-faithful path.
 * **An extra `Armature` node appears** and the four weight lanes re-sort —
   both are absorbed; donor verification still gates every adoption, so
-  painted weights always win over the donor `.g`.
+  painted weights always win over the donor `.g`.  Repainting a vertex keeps
+  its dominant bone, the magnitude of its weights and their sum (the `.g`
+  stores `w-1` of them as bytes and implies the last, so the file carries at
+  most 4 influences summing to 1.0) — `tests/blender_addon_test.py` swaps
+  weight pairs on a dozen vertices and reads the file back to prove it.
+* **Moving vertices and deleting faces is a normal edit**: the `.g` is
+  rebuilt from the Blender mesh (triangle counts follow the polygons, the
+  vertex count follows the mesh), and the nudged geometry lands in the file
+  `~0.03` away from the donor's own vertices — not silently reverted.
 * **A compound unit imports as several armatures.**  Every part of a `.g`
   compound carries its own skin, so Blender builds one armature per skin
   (Rod-1: the body's `Reference` and the alpha part's
@@ -184,6 +194,87 @@ runs six such scenarios, all battle-ready):
   `material0_diffuse`.  Findings print as loud warnings — the classes of
   defect that used to surface only as an in-game crash on entering
   battle.
+
+### Did my edit actually reach the game?
+
+Weights are invisible until the unit moves, and a file that the game never
+loads looks exactly like a file with nothing wrong in it.  Four checks settle
+it, in this order:
+
+0. **Is this the model the camera actually draws?** Every unit ships two of
+   them, and its `.char` names both:
+
+   ```
+   unit_scene      "…\character_empire_angel.scene"       # what you see
+   unit_scene_lod  "…\character_empire_angel_lod.scene",10 # only past 10 units
+   ```
+
+   Painting `character_empire_angel_lod.g` and packing it changes the angel you
+   look at *from far away* and nothing else, so the battle model stays
+   untouched and the report reads "my weights never reached the game".  The
+   importer now warns when the file you picked is the `_lod` one; check with
+   `python3 -m d3tool char show Profiles/empire_angel.char` (or
+   `d3tool analyze <unit folder>`) before you paint.
+
+1. **Does the file carry what you painted?** Compare what Blender wrote with
+   the file the game ships:
+
+   ```bash
+   python3 -m d3tool weights path/to/character_empire_angel.g \
+       --against Empire/Angel/character_empire_angel.g
+   ```
+
+   It prints the influence width of every part, the bones each part is bound
+   to and the weight sum per vertex (`1.000..1.000` is what the engine
+   wants), then `weights changed` / `dominant bone moved` counts and a few
+   before→after lines.  Zero changed means nothing you painted reached the
+   `.g` — stop here and re-export rather than hunting in the game.
+
+2. **Does the unit crash the game on load?** Then the file's own counts are
+   the first suspect: every sub-mesh header advertises a vertex/triangle pair
+   and the engine's loader trusts it, so a stale pair desynchronises the
+   vertex, index and bone blocks behind it and takes the process down — the
+   unit never gets drawn, so there is nothing to look at.  Check and fix an
+   existing file with
+
+   ```bash
+   python3 -m d3tool repair path/to/character_empire_angel.g        # report
+   python3 -m d3tool repair path/to/character_empire_angel.g -i     # fix
+   ```
+
+   `d3tool analyze <unit folder>` and the add-on's export report warn about it
+   now, and `repair` is only for files an older export already wrote — a
+   current export keeps the header in step with whatever Blender did to the
+   mesh.
+
+3. **Does the game read that file at all?** Make an *obvious* geometry edit
+   (move a whole limb, scale the mesh), export, restart the game and enter a
+   battle.  If the silhouette is unchanged, the weights were never the
+   question: the game is loading a different file.  Things worth checking:
+
+   * the unit folder the game uses is `resources\characters\<faction>\<unit>\`
+     and the `.scene` there names the `.g` you replaced;
+   * a `.vdpack` (or a mod archive) in the game folder can carry the same
+     `character_*.g` — list the candidates with
+     `python3 -m d3tool vdpack list <archive>`; a unit shipped inside a pack
+     has to be rebuilt into that pack (`vdpack pack … --keep-index`, the only
+     pack shape confirmed to load), a loose file next to it may simply be
+     ignored;
+   * a pack whose own `.ac`/`.scene` names the right file in the wrong folder
+     is the crash that looks like a missing file: `vdpack validate` prints
+     those as warnings (and `--strict` exits 1).  A generated `_lod.ac` used
+     to be written with the model's *object name* as its resource root, so
+     `resources\characters\character_x_lod\…` was asked for while the pack
+     held `resources\characters\<faction>\<unit>\…`; drop such a file or
+     re-export it with a current add-on.  This exact case is settled in game:
+     with that one file removed and both `.g` payloads replaced in place
+     (`index` untouched) the Angel loads and the edited wing is what the
+     battle shows — the pack keeps no `.dds` and no icons and does not need
+     them;
+   * leaders draw several `.g` parts through `set 1|2|3` equipment scenes — a
+     weight change in the body shows only if that body is the part on screen;
+   * weights show up while the unit animates (idle/attack), and an id from a
+     save may restore a unit that was already loaded — start a fresh battle.
 
 ### The add-on zip (what you install in Blender)
 

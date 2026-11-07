@@ -16,6 +16,9 @@ writers:
   (what a mod ships; see ``d3tool/vdpack.py``).
 * ``char show|list|find|validate|set-id`` — the ``.char`` unit profile that
   names a unit's scene, icons and sounds (see ``d3tool/char.py``).
+* ``weights <g> [--against <g>]`` — what a `.g` carries weight-wise, and
+  whether an export still holds the weights you painted (see
+  ``d3tool/weights.py``).
 """
 from __future__ import annotations
 
@@ -27,7 +30,7 @@ import struct
 import sys
 import textwrap
 import traceback
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from . import __version__
 from . import ac as acmod
@@ -41,6 +44,7 @@ from . import scene as scenemod
 from . import texture as texmod
 from . import ui as ui
 from . import vdpack as vdmod
+from . import weights as weightsmod
 
 
 # --------------------------------------------------------------------------- #
@@ -65,6 +69,7 @@ def _analyze_unit(path: str) -> int:
     had_error = 0
 
     g_rows, a_rows, ac_rows, gltf_rows = [], [], [], []
+    count_warnings: List[str] = []
 
     for g in g_files:
         try:
@@ -82,6 +87,11 @@ def _analyze_unit(path: str) -> int:
             flag = " (compound)" if mesh.parts else ""
             if mesh.form == "stub":
                 flag = " (node helper)"
+            stale = gfile.count_mismatches(mesh)
+            for line in stale:
+                count_warnings.append(f"{os.path.basename(g)}: {line} "
+                                      f"(the engine reads these, `d3tool "
+                                      f"repair` fixes it)")
             g_rows.append((os.path.basename(g),
                            str(mesh.vertex_count),
                            str(mesh.tri_count),
@@ -91,6 +101,9 @@ def _analyze_unit(path: str) -> int:
         except Exception as exc:  # noqa: BLE001
             ui.fail(f"{os.path.basename(g)}: parse error {exc}")
             had_error = 1
+
+    for line in count_warnings:
+        ui.warn(line)
 
     for a in a_files:
         try:
@@ -257,53 +270,75 @@ def _main_image_uri(gltf_path: str) -> str:
     return ""
 
 
-def _resource_root(gltf_path: str, base: str) -> str:
+def _resource_root(gltf_path: str, base: str,
+                   search_dirs: Sequence[str] = ()) -> str:
     """Derive the game resource directory (backslash path) for a glTF.
 
     The engine resolves character assets via a lowercase resource directory
     (e.g. ``resources\\characters\\neutrals\\airelemental``).  That name does
     *not* always match the on-disk unit folder (``Wildboar`` -> ``werewolf``),
-    so we prefer the directory referenced by the sibling ``.scene`` across the
-    actual geometry files (``<base>.g`` / ``<base>.ac``); only then fall back
-    to a lowercase guess.
+    so we prefer the directory referenced by the sibling ``.scene``/``.ac``
+    across the actual geometry files; only then fall back to a lowercase guess.
+
+    ``search_dirs`` are extra places to look for those siblings — the donor
+    folder of an export, since the glTF itself usually lives in a temp dir.
+    A ``*_lod`` stem has no ``.ac``/``.scene`` of its own (the games that ship
+    both models keep one folder, so only the main stem has them), and the
+    main stem is the one that names the real resource folder.  Without this
+    the guess below invents a directory that does not exist
+    (``resources\\characters\\character_empire_angel_lod``), which leaves a
+    generated ``_lod.ac`` pointing at files the engine can never find.
     """
-    import re
     gltf_dir = os.path.dirname(os.path.abspath(gltf_path))
-    for ext in (".scene", ".ac"):
-        p = os.path.join(gltf_dir, base + ext)
-        if not os.path.exists(p):
-            continue
-        try:
-            text = open(p, "r", encoding="utf-8", errors="replace").read()
-        except OSError:
-            continue
-        # Prefer the resource path that references the actual geometry, not
-        # e.g. an Alias/particle resource living elsewhere.
-        best = None
-        for m in re.finditer(r'resources[^"]*', text, re.IGNORECASE):
-            cand = m.group(0).strip()
-            if not cand.lower().endswith(('.g', '.ac', '.a')):
-                continue
-            if base.lower() in cand.lower():
-                best = cand
-                break
-        if best is None:
-            for m in re.finditer(r'resources[^"]*', text, re.IGNORECASE):
-                cand = m.group(0).strip()
-                if cand.lower().endswith(('.g', '.ac', '.a')):
-                    best = cand
-                    break
-        if best:
-            d = best.rsplit('\\', 1)[0].replace('/', '\\')
-            if 'characters' in d.lower():
-                return d
+    stems = [base]
+    if base.lower().endswith("_lod"):
+        stems.append(base[:-4])
+    for folder in [gltf_dir] + [d for d in search_dirs if d]:
+        for stem in stems:
+            for ext in (".scene", ".ac"):
+                found = _resource_dir_from_file(
+                    os.path.join(folder, stem + ext), base)
+                if found:
+                    return found
     rel = gltf_path.replace("\\", "/")
     parts = rel.split("/")
     if "Neutrals" in parts and len(parts) >= 2:
-        res = "\\".join(["resources", "characters", "neutrals", parts[-2].lower()])
+        res = "\\".join(["resources", "characters", "neutrals",
+                          parts[-2].lower()])
     else:
         res = f"resources\\characters\\{base.lower()}"
     return res.replace("/", "\\")
+
+
+def _resource_dir_from_file(path: str, base: str) -> str:
+    """The ``resources\\characters\\...`` directory a `.scene`/`.ac` names.
+
+    Empty when the file is absent or names no geometry at all.  The path that
+    mentions ``base`` wins, so a scene mentioning several meshes resolves to
+    the one this export is about.
+    """
+    import re
+    if not os.path.exists(path):
+        return ""
+    try:
+        text = open(path, "r", encoding="utf-8", errors="replace").read()
+    except OSError:
+        return ""
+    refs = [m.group(0).strip()
+            for m in re.finditer(r'resources[^"]*', text, re.IGNORECASE)]
+    refs = [r for r in refs if r.lower().endswith((".g", ".ac", ".a"))]
+    best = None
+    for cand in refs:
+        if base.lower() in cand.lower():
+            best = cand
+            break
+    if best is None and refs:
+        best = refs[0]
+    if not best:
+        return ""
+    directory = best.rsplit("\\", 1)[0].replace("/", "\\")
+    return directory if "characters" in directory.lower() else ""
+
 
 def _export_textures(gltf_path: str, out_dir: str, base: str,
                      quiet: bool, src_dir: Optional[str] = None) -> Optional[str]:
@@ -590,7 +625,7 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
         # original asset's own label and may differ from the file base
         sm.geometry_file = base
     os.makedirs(out_dir, exist_ok=True)
-    res = _resource_root(gltf_path, base)
+    res = _resource_root(gltf_path, base, (src_dir,))
     if donor is not None and donor.attrs:
         # donated attribute block: keeps the historical `.tga` material
         # name, dwNode/dwParent, tech/vdshader and any extra keys
@@ -628,6 +663,12 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
         fh.write(g_bytes)
     if not quiet:
         ui.wrote(out_g, f"{len(g_bytes)} bytes")
+    try:
+        written = gfile.parse_geometry_file(g_bytes)
+        for line in gfile.count_mismatches(written):
+            ui.warn(f"{base}.g: {line} — the engine will crash loading it")
+    except Exception:  # noqa: BLE001 - the re-read is a diagnostic only
+        pass
 
     # scene (reuse the original if present to keep particle emitters)
     out_scene = os.path.join(out_dir, base + ".scene")
@@ -1399,6 +1440,14 @@ def _vdpack(args) -> int:
         report = vdmod.reference_findings(files)
         for line in report.notes:
             ui.info("outside the pack: " + line)
+        for line in report.warnings:
+            ui.warn("  " + line)
+        if report.warnings and not report:
+            ui.warn(f"{len(files)} file(s): every reference resolves, but "
+                    f"{len(report.warnings)} reference path(s) point at the "
+                    f"wrong folder — the pack can load in a viewer and fail "
+                    f"in the game")
+            return 1 if args.strict else 0
         if not report:
             ui.ok(f"{len(files)} file(s), every reference resolves inside")
             return 0
@@ -1453,6 +1502,15 @@ def _vdpack(args) -> int:
     if len(files) > 20:
         ui.info(f"... and {len(files) - 20} more")
     ui.wrote(out, f"{len(files)} file(s), {len(blob)} bytes")
+    # the same reference audit `vdpack validate` runs, on what was just written:
+    # a pack whose `.ac` names a folder it does not carry loads in a viewer and
+    # fails in the game, so say it here rather than after the crash
+    audit = vdmod.reference_findings(dict(files))
+    for line in audit.warnings:
+        ui.warn("  " + line)
+    if audit.problems:
+        ui.warn(f"{len(audit.problems)} reference(s) would not resolve inside "
+                f"the pack (see `vdpack validate`)")
     return 0
 
 
@@ -1591,6 +1649,21 @@ def _build_parser() -> argparse.ArgumentParser:
     p_validate = sub.add_parser("validate", help="structural glTF self-check")
     p_validate.add_argument("gltf")
 
+    p_w = sub.add_parser(
+        "weights", help="inspect (or diff) the skin weights of a .g")
+    p_w.add_argument("file")
+    p_w.add_argument("--against", metavar="OTHER",
+                     help="compare with another .g (e.g. the game's donor)")
+    p_w.add_argument("--lot", type=int, default=10, metavar="N",
+                     help="how many changed vertices to list (default 10)")
+    p_w.add_argument("--json", action="store_true", help="machine output")
+    p_rep = sub.add_parser(
+        "repair",
+        help="fix a .g whose headers advertise stale vertex/triangle counts")
+    p_rep.add_argument("file")
+    p_rep.add_argument("-i", "--in-place", action="store_true",
+                       help="rewrite the file itself (default: report only)")
+    p_rep.add_argument("-o", "--out", help="write the fixed file here")
     p_dump = sub.add_parser("dump", help="dump a parsed .g as JSON")
     p_dump.add_argument("gfile")
 
@@ -1620,6 +1693,10 @@ def _build_parser() -> argparse.ArgumentParser:
     p_vv = p_vd_sub.add_parser(
         "validate", help="check that every internal reference is inside")
     p_vv.add_argument("target", help="a .vdpack file or a unit folder")
+    p_vv.add_argument("--strict", action="store_true",
+                      help="exit 1 on warnings as well (a reference whose "
+                           "folder is not in the pack while the file it names "
+                           "is)")
     p_vm = p_vd_sub.add_parser(
         "manifest", help="sha256 inventory of a folder or an archive")
     p_vm.add_argument("target", help="a .vdpack file or a unit folder")
@@ -1720,6 +1797,10 @@ def main(argv=None) -> int:
         ui.table([("errors", str(errors)), ("warnings", str(warnings)),
                   ("accessors", str(infos))])
         return 1 if errors else 0
+    elif args.cmd == "weights":
+        return _weights(args)
+    elif args.cmd == "repair":
+        return _repair(args)
     elif args.cmd == "dump":
         data = open(args.gfile, "rb").read()
         mesh = gfile.parse_geometry_file(data)
@@ -1749,6 +1830,132 @@ def main(argv=None) -> int:
         return _vdpack(args)
     elif args.cmd == "char":
         return _char(args)
+    return 0
+
+
+def _weights(args) -> int:
+    """`weights <g>` — what a `.g` carries, optionally diffed against another."""
+    for path in [args.file] + ([args.against] if args.against else []):
+        if not os.path.exists(path):
+            ui.section("weights")
+            ui.fail(f"no such file: {path}")
+            return 1
+    mesh = gfile.parse_geometry_file(open(args.file, "rb").read())
+    if mesh.parse_error:
+        ui.section("weights")
+        ui.fail(f"{os.path.basename(args.file)}: unparsed "
+                f"({mesh.parse_error})")
+        return 1
+    doc = {
+        "file": args.file,
+        "parts": [
+            {"name": info.name, "vertices": info.vertex_count,
+             "weights_on_vertex": info.influences,
+             "max_influences": info.max_influences,
+             "bones": info.bone_count, "bones_used": info.bones_used,
+             "dominant": info.dominant, "unweighted": info.unweighted,
+             "sum": [round(info.min_sum, 4), round(info.max_sum, 4)]}
+            for info in weightsmod.summarise(mesh)
+        ],
+    }
+    diff = None
+    if args.against:
+        other = gfile.parse_geometry_file(open(args.against, "rb").read())
+        if other.parse_error:
+            ui.section("weights")
+            ui.fail(f"{os.path.basename(args.against)}: unparsed "
+                    f"({other.parse_error})")
+            return 1
+        diff = weightsmod.diff_weights(other, mesh, limit=args.lot)
+        doc["against"] = args.against
+        doc["diff"] = {
+            "parts": diff.parts, "compared": diff.compared,
+            "changed": diff.changed, "moved_bone": diff.moved_bone,
+            "unmatched": diff.unmatched, "notes": diff.notes,
+            "samples": [
+                {"part": c.part, "index": c.index,
+                 "position": [round(v, 4) for v in c.position],
+                 "was": [[n, round(w, 4)] for n, w in c.was],
+                 "now": [[n, round(w, 4)] for n, w in c.now],
+                 "was_dominant": c.old_dominant,
+                 "now_dominant": c.new_dominant}
+                for c in diff.samples],
+        }
+    if args.json:
+        print(json.dumps(doc, ensure_ascii=False, indent=2))
+        return 0
+
+    ui.section(f"weights {os.path.basename(args.file)}")
+    ui.table(weightsmod.weight_report(mesh),
+             headers=(".g part", "slots (max used)", "dominant bones",
+                      "weight sum"))
+    if diff is None:
+        return 0
+    ui.section(f"against {os.path.basename(args.against)}")
+    for line in diff.notes:
+        ui.info(line)
+    if not diff.compared:
+        ui.fail("nothing comparable: the two files share no part")
+        return 1
+    ui.table([("vertices compared", str(diff.compared)),
+              ("weights changed", str(diff.changed)),
+              ("dominant bone moved", str(diff.moved_bone)),
+              ("unmatched vertices", str(diff.unmatched))])
+    for change in diff.samples:
+        ui.info(weightsmod.describe_change(change))
+    if diff.changed:
+        ui.ok(f"{diff.changed} of {diff.compared} vertices carry different "
+              f"weights than {os.path.basename(args.against)}")
+    else:
+        ui.warn("the weights are identical — nothing you painted reached "
+                "this file")
+    return 0
+
+
+def _repair(args) -> int:
+    """`repair` — recompute the container counts a `.g`'s headers advertise.
+
+    The engine trusts the vertex/triangle pair in every sub-mesh header, so an
+    edited mesh written with the donor's old counts makes it read the vertex,
+    index and bone blocks out of step: the unit crashes the game (and any tool
+    that loads it) instead of looking wrong.  `d3tool repair` fixes a file that
+    is already out there; a fresh export is fixed by the writer itself.
+    """
+    path = args.file
+    if not os.path.exists(path):
+        ui.section("repair")
+        ui.fail(f"no such file: {path}")
+        return 1
+    raw = open(path, "rb").read()
+    ui.section(f"repair {os.path.basename(path)}")
+    try:
+        mesh = gfile.parse_geometry_file(raw)
+        fixes = gfile.count_mismatches(mesh)
+    except Exception as exc:  # noqa: BLE001
+        ui.fail(f"could not read {path}: {exc}")
+        return 1
+    if mesh.parse_error and not fixes:
+        ui.warn(f"{path} does not fully parse: {mesh.parse_error}")
+    if not fixes:
+        ui.ok("every container header agrees with the data — nothing to fix")
+        return 0
+    for line in fixes:
+        ui.warn(line)
+    fixed, _ = gfile.repair_counts(raw)
+    out = args.out or (path if args.in_place else "")
+    if not out:
+        ui.info("nothing was written: pass --in-place (or -o FILE) to apply "
+                "the fix")
+        return 0
+    with open(out, "wb") as fh:
+        fh.write(fixed)
+    ui.wrote(out, f"{len(fixed)} bytes")
+    again = gfile.count_mismatches(gfile.parse_geometry_file(fixed))
+    if again:
+        for line in again:
+            ui.fail(line)
+        return 1
+    ui.ok(f"fixed {len(fixes)} header(s) — the data and the counts now agree")
     return 0
 
 

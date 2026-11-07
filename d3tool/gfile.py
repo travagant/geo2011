@@ -611,6 +611,89 @@ def _vertex_record(magic: bytes, v: Vertex, w: int, morph: bool) -> bytes:
     return bytes(rec)
 
 
+def patch_header_counts(prefix: bytes, vertex_count: int,
+                        tri_count: int) -> bytes:
+    """Return a part container header with its vertex/triangle counts fixed.
+
+    The 28-byte standard header stores ``[tag 2, id, 0, vertices, triangles,
+    ?, 6]``; anything behind it (the 56-byte scene block, for one) is left
+    alone.  Idempotent: a header that already agrees comes back unchanged.
+    """
+    if len(prefix) < 28 or struct.unpack_from("<I", prefix, 0)[0] != 2:
+        return prefix
+    have = struct.unpack_from("<7I", prefix, 0)
+    if (have[3], have[4]) == (vertex_count, tri_count):
+        return prefix
+    patched = bytearray(prefix)
+    struct.pack_into("<I", patched, 12, vertex_count)
+    struct.pack_into("<I", patched, 16, tri_count)
+    return bytes(patched)
+
+
+def count_mismatches(mesh) -> List[str]:
+    """Headers of a parsed `.g` whose declared counts disagree with the data.
+
+    An independent reader (the game, the toolkit) trusts those u32s, so a
+    mismatch is a crash rather than a cosmetic defect — it is reported here so
+    an export can be checked *before* it reaches the game.
+    """
+    out: List[str] = []
+    for block in [mesh] + list(getattr(mesh, "parts", []) or []):
+        prefix = getattr(block, "part_prefix", b"") or b""
+        if len(prefix) < 28 or struct.unpack_from("<I", prefix, 0)[0] != 2:
+            continue
+        have = struct.unpack_from("<7I", prefix, 0)
+        vc, tc = len(block.vertices), len(block.indices) // 3
+        if (have[3], have[4]) != (vc, tc):
+            out.append(f"{block.name}: header says {have[3]} vertices / "
+                       f"{have[4]} triangles, the data holds {vc} / {tc}")
+    return out
+
+
+def repair_counts(data: bytes) -> Tuple[bytes, List[str]]:
+    """Rewrite every stale container count in a `.g`'s bytes.
+
+    Returns ``(bytes, fixes)``; the bytes come back unchanged when there is
+    nothing to fix.  ``d3tool repair`` uses it to rescue a file an older export
+    wrote, without re-exporting it.
+    """
+    mesh = parse_geometry_file(data)
+    fixes = count_mismatches(mesh)
+    if not fixes:
+        return data, []
+    out = bytearray(data)
+    for block in [mesh] + list(getattr(mesh, "parts", []) or []):
+        prefix = getattr(block, "part_prefix", b"") or b""
+        if len(prefix) < 28 or struct.unpack_from("<I", prefix, 0)[0] != 2:
+            continue
+        vc, tc = len(block.vertices), len(block.indices) // 3
+        have = struct.unpack_from("<7I", prefix, 0)
+        if (have[3], have[4]) == (vc, tc):
+            continue
+        start = _locate_prefix(data, prefix)
+        if start < 0:
+            continue
+        struct.pack_into("<I", out, start + 12, vc)
+        struct.pack_into("<I", out, start + 16, tc)
+    return bytes(out), fixes
+
+
+def _locate_prefix(data: bytes, prefix: bytes) -> int:
+    """Byte offset of a part's container header inside the whole file.
+
+    The 84-byte prefix (header + scene block) is unique in practice; a repeat
+    is disambiguated by the counts it carries.
+    """
+    want = struct.unpack_from("<7I", prefix, 0)
+    at = data.find(prefix)
+    while at >= 0:
+        if at + 28 <= len(data) and \
+                struct.unpack_from("<7I", data, at) == want:
+            return at
+        at = data.find(prefix, at + 1)
+    return -1
+
+
 def _part_block(part: MeshPart) -> bytes:
     """Serialize one compound sub-mesh whose ``raw`` bytes are unknown.
 
@@ -629,12 +712,16 @@ def _part_block(part: MeshPart) -> bytes:
         w_rec = 2
 
     prefix = part.part_prefix
-    if len(prefix) == 28 and struct.unpack_from("<I", prefix, 0)[0] == 2:
-        # a standard header carries the counts at u32 slots 12/16
-        patched = bytearray(prefix)
-        struct.pack_into("<I", patched, 12, vc)
-        struct.pack_into("<I", patched, 16, tc)
-        prefix = bytes(patched)
+    if prefix and len(prefix) >= 28 and struct.unpack_from("<I", prefix, 0)[0] == 2:
+        # A standard header carries the counts at byte offsets 12/16 and the
+        # engine's reader believes it: a stale pair desynchronises every block
+        # behind it (vertices, indices, bone descriptors) and the unit crashes
+        # the game and the toolkit on load.  The condition used to demand a
+        # bare 28-byte prefix, but a parsed one is 28 + the 56-byte scene
+        # block (84), so an *edited* mesh kept the donor's counts while the
+        # data below it moved -- weights-only edits never showed it, a
+        # vertex/triangle edit always did.
+        prefix = patch_header_counts(prefix, vc, tc)
     elif not prefix:
         # a part rebuilt without a donor: synthesize the standard container
         # block — the 28-byte header [tag 2, id, 0, vc, tc, 0, 6] plus the

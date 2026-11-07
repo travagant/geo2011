@@ -17,3 +17,8 @@ release/d3tool-dist-exe/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+
+# connector downloads / scratch copies of user assets
+/google_drive/
+/bug-report/
+/deliver/

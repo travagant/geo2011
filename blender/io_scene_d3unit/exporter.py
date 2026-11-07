@@ -432,6 +432,15 @@ def _verify(out_dir, base):
         if mesh.parse_error:
             out["warnings"].append(f"{base}.g does not re-parse: "
                                    f"{mesh.parse_error}")
+        # The engine's loader trusts the vertex/triangle pair every sub-mesh
+        # header advertises; when it disagrees with the data behind it, the
+        # unit crashes the game (and the toolkit) on load instead of looking
+        # wrong.  Cheap to check here, impossible to notice afterwards.
+        check = getattr(gfile, "count_mismatches", None)
+        if check is not None:
+            for line in check(mesh):
+                out["warnings"].append(
+                    f"{base}.g: {line} — the game will crash loading it")
     except Exception as exc:  # noqa: BLE001
         out["warnings"].append(f"could not re-read {base}.g: {exc}")
     return out
