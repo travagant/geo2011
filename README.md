@@ -26,7 +26,7 @@ The point is to support a future program that, like dis3tool, exports glTF but
 | `Profiles/` | the retail unit profiles (874 `.char`: 214 units + their `desc`/`stats`/`sound` fragments). |
 | `docs/PORT_ANALYSIS_COMPARE_RU.md` | cross-check of the Heroes-VII `Port` archive against this toolkit (the `.a` grammar taken from the official Max exporter, `.g` bind conventions, what was adopted). |
 | `blender/io_scene_d3unit/` | the Blender add-on (import `.g`/`.a`/`.scene` → armature + animation, export back). |
-| `tests/blender_addon_test.py` | headless Blender suite (19 scenarios, operator-driven). |
+| `tests/blender_addon_test.py` | headless Blender suite (21 scenarios, operator-driven). |
 | `tests/blender_corpus_test.py` | every shipped unit through import → export in Blender, re-parsed and compared with its donor (~5 s per unit). |
 | `d3tool/` | the Python toolkit (bidirectional: glTF↔original format). |
 | `tests/test_d3tool.py` | unit tests for the individual readers/writers. |
@@ -139,7 +139,15 @@ runs six such scenarios, all battle-ready):
   glTF **into the unit folder** to get the byte-faithful path.
 * **An extra `Armature` node appears** and the four weight lanes re-sort —
   both are absorbed; donor verification still gates every adoption, so
-  painted weights always win over the donor `.g`.
+  painted weights always win over the donor `.g`.  Repainting a vertex keeps
+  its dominant bone, the magnitude of its weights and their sum (the `.g`
+  stores `w-1` of them as bytes and implies the last, so the file carries at
+  most 4 influences summing to 1.0) — `tests/blender_addon_test.py` swaps
+  weight pairs on a dozen vertices and reads the file back to prove it.
+* **Moving vertices and deleting faces is a normal edit**: the `.g` is
+  rebuilt from the Blender mesh (triangle counts follow the polygons, the
+  vertex count follows the mesh), and the nudged geometry lands in the file
+  `~0.03` away from the donor's own vertices — not silently reverted.
 * **A compound unit imports as several armatures.**  Every part of a `.g`
   compound carries its own skin, so Blender builds one armature per skin
   (Rod-1: the body's `Reference` and the alpha part's

@@ -553,6 +553,169 @@ def test_morph_unit_roundtrip():
     assert_(b.vertex_count > 0, "geometry written")
 
 
+def _dominant_signature(ob):
+    """(dominant bone name, weight rounded to 1/100) per vertex."""
+    names = {g.index: g.name for g in ob.vertex_groups}
+    out = []
+    for v in ob.data.vertices:
+        inf = sorted([g for g in v.groups if g.weight > 1e-6],
+                     key=lambda g: -g.weight)
+        out.append((names[inf[0].group], round(inf[0].weight, 2))
+                   if inf else (None, 0.0))
+    return out
+
+
+def _file_signatures(part):
+    """The same signatures read straight out of a `.g` part."""
+    bone_names = [b.name for b in part.bones]
+    out = []
+    for v in part.vertices:
+        w = v.influence_weights()
+        if not w:
+            out.append((None, 0.0))
+            continue
+        top = max(range(len(w)), key=lambda i: w[i])
+        name = bone_names[v.bones[top]] if top < len(v.bones) else None
+        out.append((name, round(w[top], 2)))
+    return out
+
+
+def test_edited_weights_reach_the_file():
+    """Repainting weights is the whole point of the round trip: the export
+    must follow the Blender data, not replay the donor.
+
+    The dominant influence of every vertex is collected as a multiset of
+    ``(bone, weight)`` signatures; a score of vertices whose signature is
+    unique gets its two weight lanes swapped, and the file must then carry
+    exactly the swapped multiset — no more, no less.  Every vertex also has
+    to keep at most 4 influences summing to 1.0."""
+    import collections
+
+    arm = import_unit(ANGEL)
+    body = max([o for o in bpy.context.scene.objects if o.type == "MESH"],
+               key=lambda o: len(o.data.vertices))
+    body_name = body.name
+    names = {g.index: g.name for g in body.vertex_groups}
+
+    def clear_of_rounding(w):
+        return abs(w * 100 - round(w * 100)) < 0.4
+
+    before = collections.Counter(_dominant_signature(body))
+    swapped = {}
+    for v in body.data.vertices:
+        inf = sorted([g for g in v.groups if g.weight > 1e-6],
+                     key=lambda g: -g.weight)
+        # exactly two influences and a wide gap: no third lane, and 8-bit
+        # quantisation cannot flip the order
+        if len(inf) != 2 or inf[0].weight - inf[1].weight < 0.3:
+            continue
+        # the larger lane moves onto the second bone: (A, w) -> (B, w)
+        here = (names[inf[0].group], round(inf[0].weight, 2))
+        there = (names[inf[1].group], round(inf[0].weight, 2))
+        # unique signatures, so the multiset difference is unambiguous
+        if before[here] != 1 or before[there] != 0:
+            continue
+        if not (clear_of_rounding(inf[0].weight)
+                and clear_of_rounding(inf[1].weight)):
+            continue
+        # read both weights first: a VertexGroupElement is a live proxy, so
+        # the second `.add` would otherwise see the value the first one wrote
+        wa, wb = inf[0].weight, inf[1].weight
+        body.vertex_groups[inf[0].group].add([v.index], wb, "REPLACE")
+        body.vertex_groups[inf[1].group].add([v.index], wa, "REPLACE")
+        swapped[v.index] = (here, there)
+        if len(swapped) >= 12:
+            break
+    assert_(len(swapped) >= 6,
+            f"only {len(swapped)} usable two-influence vertices")
+
+    out = out_dir("weights")
+    g_path = os.path.join(out, os.path.basename(ANGEL))
+    export_unit(g_path)
+    dst = read_g(g_path)
+    assert_(dst.parse_error is None,
+            f"exported .g does not parse: {dst.parse_error}")
+    for blk in all_blocks(dst):
+        for v in blk.vertices:
+            w = v.influence_weights()
+            assert_(len(w) <= 4,
+                    f"{blk.name}: {len(w)} influences on one vertex")
+            near(sum(w), 1.0, 1e-6, f"{blk.name}: weights must sum to 1")
+
+    want = collections.Counter(before)
+    for was, now in swapped.values():
+        want[was] -= 1
+        want[now] += 1
+    part = [p for p in dst.parts if p.name == body_name][0]
+    got = collections.Counter(_file_signatures(part))
+    missing = {k: n for k, n in (want - got).items() if n}
+    extra = {k: n for k, n in (got - want).items() if n}
+    eq(missing, {}, "signatures the swap should have added")
+    # the export may split a vertex at a UV/normal seam, which adds copies
+    # (`got` is then larger than the Blender mesh) — but a signature the swap
+    # took away must not survive anywhere
+    removed = {was for was, _now in swapped.values()}
+    survivors = {k: n for k, n in extra.items() if k in removed}
+    eq(survivors, {}, "the old dominant influence survived the round trip")
+
+
+def test_edited_mesh_reaches_the_file():
+    """Moving vertices and deleting faces must show up in the `.g`: it is
+    rebuilt from the Blender mesh, not copied from the donor.  Ten vertices
+    are nudged by 0.01/0.02/0.03 and four faces deleted; the file must lose
+    exactly those faces (its triangle count is computed from the Blender
+    polygons) and gain exactly ten vertices that sit ~0.03 away from the
+    donor's own geometry."""
+    import bmesh
+
+    arm = import_unit(ANGEL)
+    body = max([o for o in bpy.context.scene.objects if o.type == "MESH"],
+               key=lambda o: len(o.data.vertices))
+    body_name = body.name
+    me = body.data
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    bm.verts.ensure_lookup_table()
+    bm.faces.ensure_lookup_table()
+    moved = {}
+    for v in bm.verts[:10]:
+        v.co.x += 0.01
+        v.co.y += 0.02
+        v.co.z += 0.03
+        moved[v.index] = tuple(v.co)
+    for f in list(bm.faces[:4]):
+        bm.faces.remove(f)
+    bm.to_mesh(me)
+    bm.free()
+    me.update()
+    edited_tris = sum(len(p.vertices) - 2 for p in me.polygons)
+
+    out = out_dir("mesh")
+    g_path = os.path.join(out, os.path.basename(ANGEL))
+    export_unit(g_path)
+    dst = read_g(g_path)
+    assert_(dst.parse_error is None,
+            f"exported .g does not parse: {dst.parse_error}")
+    part = [p for p in dst.parts if p.name == body_name][0]
+    eq(live_tri_count(part), edited_tris, "triangles after deleting 4 faces")
+
+    # the .g lives in the game's own space, so the nudged vertices are
+    # compared with the donor's geometry
+    donor = [p for p in read_g(ANGEL).parts if p.name == body_name][0]
+    donor_pos = [v.position for v in donor.vertices]
+
+    def distance(p, pts):
+        return min(max(abs(p[i] - q[i]) for i in range(3)) for q in pts)
+
+    far = [v.position for v in part.vertices
+           if distance(v.position, donor_pos) > 1e-3]
+    eq(len(far), len(moved), "vertices displaced from the donor geometry")
+    for p in far:
+        d = distance(p, donor_pos)
+        assert_(0.01 <= d <= 0.06,
+                f"a nudged vertex sits {d:.3f} from the donor geometry")
+
+
 def test_second_unit_in_the_scene_is_left_alone():
     import_unit(ANGEL)
     first = addon.unitprops.find_armature(bpy.context)
@@ -631,6 +794,8 @@ TESTS = [
     ("morph unit round trip", test_morph_unit_roundtrip),
     ("other units in the scene keep out of the export",
      test_second_unit_in_the_scene_is_left_alone),
+    ("edited weights reach the file", test_edited_weights_reach_the_file),
+    ("edited mesh reaches the file", test_edited_mesh_reaches_the_file),
 ]
 
 
