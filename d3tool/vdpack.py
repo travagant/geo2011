@@ -342,6 +342,17 @@ def index_entry(files) -> Optional[Tuple[str, bytes]]:
     (and kept the old `index`) did not show its units in game.  So the only
     game-confirmed way to ship new content is a pack that keeps the original
     `index` — which is why `vdpack pack --keep-index` exists.
+
+    Two more things are confirmed on the Angel unit pack (24 entries, original
+    4100-byte `index`, both `.g` payloads replaced in place and one path — a
+    generated `*_lod.ac` — dropped): the battle loads and the rebuilt geometry
+    is the geometry on screen, so removing a path is survivable where adding
+    one is not; and a unit pack does not have to mirror the unit folder, since
+    the `.dds` diffuses and the six icons it did not carry still resolved from
+    the mounted vanilla tree.  What the engine does *not* fall back for is a
+    path its own `.ac`/`.scene` names into a folder the pack lacks: that is a
+    missing-file dialog naming ``<pack>.vdpack:resources\characters\...``,
+    which is what `reference_findings` warns about.
     """
     pairs = files.items() if isinstance(files, dict) else files
     for name, data in pairs:

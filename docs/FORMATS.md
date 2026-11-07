@@ -693,6 +693,17 @@ a proven pack into the new one (same paths, new payloads: the shape that is
 confirmed to load).  `vdpack manifest` records `index: {bytes, sha256}` (or
 `null`), so a manifest says which of the two you are looking at.
 
+Confirmed later on one real unit pack (the Empire Angel, 24 entries, the
+original 4100-byte `index`, both `.g` payloads replaced in place): loading is
+fine, the rebuilt geometry is what the battle shows, and **removing** a path —
+a generated `*_lod.ac` — did not break the mount, unlike adding one.  That pack
+also carried neither the unit's `.dds` diffuses nor its six icons, and both
+still resolved from the vanilla tree, so a unit pack does not have to mirror
+its folder.  What the engine will not fall back for is a reference its own
+`.ac`/`.scene` makes into a folder the pack lacks: the load stops with a
+missing-file dialog naming `<pack>.vdpack:resources\characters\...` — hence
+the wrong-folder warning `vdpack validate` prints.
+
 `vdpack manifest <archive|folder>` writes the sha256 inventory of a bundle —
 one `{path, bytes, sha256}` per file, in archive naming and case-insensitive
 order, plus the reference report.  The document is identical for a folder and

@@ -266,7 +266,11 @@ it, in this order:
      to be written with the model's *object name* as its resource root, so
      `resources\characters\character_x_lod\…` was asked for while the pack
      held `resources\characters\<faction>\<unit>\…`; drop such a file or
-     re-export it with a current add-on;
+     re-export it with a current add-on.  This exact case is settled in game:
+     with that one file removed and both `.g` payloads replaced in place
+     (`index` untouched) the Angel loads and the edited wing is what the
+     battle shows — the pack keeps no `.dds` and no icons and does not need
+     them;
    * leaders draw several `.g` parts through `set 1|2|3` equipment scenes — a
      weight change in the body shows only if that body is the part on screen;
    * weights show up while the unit animates (idle/attack), and an id from a
