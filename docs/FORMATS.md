@@ -121,6 +121,16 @@ export is **byte-identical** to the reference (`tests/corpus_parity.py`:
 * `validate_gltf` reports the two reference quirk classes above as
   warnings, not errors, so a faithful export still validates with 0 errors.
 
+A reader that resolves channels by *name* never notices the dangling
+targets; one that indexes the node list without a bound check rejects the
+whole document.  Blender's importer is the latter (`IndexError` in
+`pre_compute`), so the add-on prunes the dangling channels out of the glTF
+it hands over (`importer._prune_dangling_channels`) — they name no joint, so
+nothing is lost.  The same import pass repairs Blender's own reading of a
+multi-skin compound: the node tree is shared between the skins, Blender
+builds one armature per skin, and a node hanging under a joint of *another*
+skin comes back bone-parented to a bone its armature does not have.
+
 ---
 
 ## 2. The GM `.g` geometry file

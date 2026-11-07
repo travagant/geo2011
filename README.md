@@ -126,6 +126,14 @@ runs six such scenarios, all battle-ready):
 * **An extra `Armature` node appears** and the four weight lanes re-sort —
   both are absorbed; donor verification still gates every adoption, so
   painted weights always win over the donor `.g`.
+* **A compound unit imports as several armatures.**  Every part of a `.g`
+  compound carries its own skin, so Blender builds one armature per skin
+  (Rod-1: the body's `Reference` and the alpha part's
+  `Head`/`Neck`/`Spine1`, with the second armature hanging under an empty
+  that follows the first's bone).  The export gathers **all** of them, plus
+  the empties on the way down — leaving one behind used to re-hang its
+  meshes under a bone with no parent bone recorded, which crashed Blender's
+  own glTF exporter.
 * **A renamed file** (`angel_edit.gltf`) generates its `.ac` from the
   folder's real animation streams (sibling `.ac` fallback in
   `detect_anim_files`), each state's frame range inside the file it

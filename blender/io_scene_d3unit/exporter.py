@@ -81,6 +81,30 @@ def _collect_unit(arm, owner=None):
                 objects.append(ob)
                 seen.add(ob)
                 changed = True
+    # A compound unit ships one skin per part, so Blender builds one armature
+    # per skin (Rod-1: the body's skin holds `Reference`, the alpha part's
+    # skin holds `Head`/`Neck`/`Spine1`).  Every one of those armatures, and
+    # every empty on the way down to it, has to go into the glTF too: an
+    # object whose parent stays behind is re-hung under the nearest exported
+    # bone without a parent bone recorded, and Blender's own exporter then
+    # dies while sampling the armature action (`KeyError: None`, Rod-1 and
+    # Nosferatu).
+    extra = {mod.object for ob in objects for mod in ob.modifiers
+             if mod.type == "ARMATURE" and mod.object is not None
+             and mod.object not in seen}
+    pending = list(objects) + list(extra)
+    while pending:
+        ob = pending.pop()
+        parent = ob.parent
+        # meshes are never added here: one would become an extra part
+        if parent is not None and parent not in seen and parent.type in (
+                "ARMATURE", "EMPTY"):
+            pending.append(parent)
+            extra.add(parent)
+    for ob in extra:
+        if ob not in seen:
+            objects.append(ob)
+            seen.add(ob)
     return objects
 
 

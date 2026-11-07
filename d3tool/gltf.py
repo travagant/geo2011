@@ -1144,9 +1144,9 @@ def _mesh_to_skinned_blender(m: GltfModel, weights_on_vertex: int,
               + ", ".join(f"{s.name!r}{('/' + repr(s.attr_name)) if s.attr_name and s.attr_name != s.name else ''}"
                           for s in slots))
         print("[d3tool] glTF meshes: " + ", ".join(nm for nm, _ in meshes))
-        print("[d3tool] pairing: " + ", ".join(
-            f"{slots[si].name!r} <- {nm!r}" for si, (nm, _) in sorted(
-                pair_of_slot.items())) or "[d3tool] pairing: none")
+        pairs = ", ".join(f"{slots[si].name!r} <- {nm!r}"
+                          for si, (nm, _) in sorted(pair_of_slot.items()))
+        print("[d3tool] pairing: " + (pairs or "nothing matched"))
 
     warns = list(qwarns)
     # -- rebuild every slot -- #

@@ -194,6 +194,7 @@ def import_unit(context, path: str, use_anim: bool = True,
                 _strip_images(gltf_path)
             else:
                 _prune_missing_images(gltf_path)
+            _prune_dangling_channels(gltf_path)
 
         _set_fps(context)
         kwargs = {"filepath": gltf_path}
@@ -217,6 +218,7 @@ def import_unit(context, path: str, use_anim: bool = True,
             raise RuntimeError(f"the glTF importer returned {result!r}")
 
         created = _new_objects(before)
+        _repair_bone_parents(created)
         armatures = [o for o in created if o.type == "ARMATURE"]
         meshes = [o for o in created if o.type == "MESH"]
         if not meshes:
@@ -398,6 +400,85 @@ def _prune_missing_images(gltf_path):
             json.dump(doc, fh)
     except OSError:
         pass
+
+
+def _prune_dangling_channels(gltf_path):
+    """Drop animation channels that target a node the document does not have.
+
+    dis3tool numbers channel targets by *record position*
+    (``gltf_out._animation_targets``), so a unit whose `.a` lists a bone name
+    twice emits channels for the duplicate's would-be node: Wildboar's last
+    bone targets node 37 of 0..36 and WaterSnake's last four target 47..50.
+    Every reference glTF carries them — they are harmless to a reader that
+    resolves channels by name — but Blender indexes its node list without a
+    bound check and refuses the whole file (`IndexError` in ``pre_compute``).
+    A channel for a joint that does not exist has nothing to drive either
+    way, so drop it, together with the samplers it leaves unreferenced.
+    """
+    import json
+
+    try:
+        with open(gltf_path, "r", encoding="utf-8") as fh:
+            doc = json.load(fh)
+    except (OSError, ValueError):
+        return
+    count = len(doc.get("nodes") or [])
+    changed = False
+    for anim in doc.get("animations") or []:
+        channels = anim.get("channels") or []
+        keep = [c for c in channels
+                if isinstance(c.get("target"), dict)
+                and isinstance(c["target"].get("node"), int)
+                and 0 <= c["target"]["node"] < count]
+        if len(keep) == len(channels):
+            continue
+        changed = True
+        used = {c.get("sampler") for c in keep}
+        samplers, remap = [], {}
+        for i, sampler in enumerate(anim.get("samplers") or []):
+            if i in used:
+                remap[i] = len(samplers)
+                samplers.append(sampler)
+        anim["samplers"] = samplers
+        anim["channels"] = [
+            dict(c, sampler=remap[c["sampler"]])
+            if c.get("sampler") in remap else c
+            for c in keep]
+    if not changed:
+        return
+    try:
+        with open(gltf_path, "w", encoding="utf-8") as fh:
+            json.dump(doc, fh)
+    except OSError:
+        pass
+
+
+def _repair_bone_parents(objects):
+    """Detach objects Blender bone-parented to a bone that does not exist.
+
+    A compound unit ships one skin per part, and the skins share the joint
+    hierarchy nodes (Rod-1: the body's skin holds `Reference`, the alpha
+    part's skin holds `Head`/`Neck`/`Spine1`).  Blender builds one armature
+    per skin, so a node hanging under a joint of *another* skin gets
+    ``parent_type='BONE'`` with the parent armature that owns it — and that
+    armature has no such bone (Rod-1's `Hips` and `Sword` are bone-parented
+    to `Reference`, which only the other armature has).  The dangling parent
+    breaks Blender's own glTF exporter (`KeyError: None` while sampling the
+    armature action), so drop it; the node is a scene root in the source
+    glTF, so keeping its world transform is exactly where it belongs.
+    """
+    for ob in objects:
+        if ob.parent_type != "BONE":
+            continue
+        arm, bone = ob.parent, ob.parent_bone
+        data = getattr(arm, "data", None)
+        if bone and data is not None and bone in data.bones:
+            continue
+        world = ob.matrix_world.copy()
+        ob.parent = None
+        ob.parent_type = "OBJECT"
+        ob.parent_bone = ""
+        ob.matrix_world = world
 
 
 def _gltf_import_props():
