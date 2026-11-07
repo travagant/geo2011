@@ -1,4 +1,5 @@
 """Self-contained tests for the d3tool package (run with `python3 tests/`)."""
+import copy
 import hashlib
 import json
 import glob
@@ -3015,6 +3016,94 @@ def test_added_gobj_keeps_the_scene_line_endings_and_one_material():
     assert any("material0_diffuse" in line for line in attrs), attrs
     assert not any("material1_" in line for line in attrs), attrs
     assert scenemod.node_attr(block, "materials_num") == "1"
+
+
+
+def test_scene_node_block_is_the_meshs_own_bounding_volume():
+    """The 56-byte record before a part's attributes is derived geometry.
+
+    Fourteen floats: box centre, three zeros, box max, box min, the radius
+    to the far corner and -1.  Measured over the corpus every non-morph part
+    reproduces from its own vertices, which is what makes it safe to
+    recompute for a part that was appended from another `.g` instead of
+    keeping the donor's box -- the Angel's sword carried a record from a
+    completely different model (centre 2.83 m up, radius 4.45), so the engine
+    had nothing sensible to place or cull it by.
+    """
+    from d3tool import gfile as gmod
+    checked = 0
+    morph_checked = 0
+    for rel in (os.path.join("Empire", "Angel", "character_empire_angel.g"),
+                os.path.join("Empire", "Knight", "character_empire_knight.g"),
+                os.path.join("Empire", "Paladin", "character_empire_paladin.g")):
+        data = open(os.path.join(REPO, rel), "rb").read()
+        for part in gmod.iter_parts(gmod.parse_geometry_file(data)):
+            prefix = getattr(part, "part_prefix", b"") or b""
+            if len(prefix) < 84:
+                continue
+            stored = prefix[28:84]
+            got = gmod.scene_node_block(part, stored)
+            gotf = struct.unpack("<14f", got)
+            wantf = struct.unpack("<14f", stored)
+            # box and radius are exact; the centre can differ in the last
+            # bit (the corpus stores a 2e-07 residue where the box is
+            # symmetric, this formula produces 0.0)
+            if part.morph:
+                # the centre of a morph part is its animated extent, which
+                # the writer keeps from the donor; box and radius still match
+                assert gotf[6:12] == wantf[6:12], (rel, part.name)
+                assert abs(gotf[12] - wantf[12]) <= 1e-5 * max(1.0, wantf[12])
+                morph_checked += 1
+            else:
+                assert gotf[3:12] == wantf[3:12], (rel, part.name, got.hex(" "), stored.hex(" "))
+                assert abs(gotf[12] - wantf[12]) <= 1e-5 * max(1.0, wantf[12])
+                assert all(abs(a - b) < 1e-5 for a, b in zip(gotf[:3], wantf[:3])), \
+                    (rel, part.name, gotf[:3], wantf[:3])
+                checked += 1
+    assert checked >= 10, checked
+    assert morph_checked >= 1, morph_checked
+
+
+def test_a_part_without_a_donor_block_gets_its_own_box_and_weights_key():
+    """Rebuilding a part re-derives the box and declares the weight format.
+
+    A mesh appended from another unit used to keep the donor's bounding
+    record and the donor's attribute keys.  Both are what the engine reads
+    before it draws anything: without `new_vertex_weights_format` the weight
+    block is read five bytes short apiece and the part is drawn as nothing,
+    and with a box from another model the part has no volume of its own.
+    """
+    from d3tool import gfile as gmod
+    kn = open(os.path.join(REPO, "Empire", "Knight",
+                           "character_empire_knight.g"), "rb").read()
+    donor = list(gmod.iter_parts(gmod.parse_geometry_file(kn)))[1]
+    assert "new_vertex_weights_format" in donor.attrs
+
+    block = gmod._part_block(donor)
+    assert block[:4] == struct.pack("<I", 2)
+    assert b"new_vertex_weights_format\x00" in block
+    # the box in the emitted block is the sword's own, not a donor's
+    assert block[28:84] == gmod.scene_node_block(donor, b"")
+
+    # a part whose block never carried the key gets it back
+    stripped = copy.copy(donor)
+    stripped.raw = b""
+    stripped.attr_items = [(k, v) for k, v in donor.attr_items
+                           if k != "new_vertex_weights_format"]
+    stripped.attrs = {k: v for k, v in donor.attrs.items()
+                      if k != "new_vertex_weights_format"}
+    fixed = gmod._part_block(stripped)
+    assert b"new_vertex_weights_format\x00" in fixed
+    # ... and it is ordered the way the corpus writes it: before the counts
+    assert fixed.index(b"new_vertex_weights_format") < fixed.index(b"vertexs_weights_num")
+    # a morph part keeps the donor centre (its box is the animated extent)
+    morph = [pt for pt in gmod.iter_parts(gmod.parse_geometry_file(
+        open(os.path.join(REPO, "Empire", "Paladin",
+                          "character_empire_paladin.g"), "rb").read()))
+        if pt.morph and len(getattr(pt, "part_prefix", b"") or b"") >= 84]
+    if morph:
+        pt = morph[0]
+        assert gmod.scene_node_block(pt, pt.part_prefix[28:84])[:12] == pt.part_prefix[28:40]
 
 
 if __name__ == "__main__":

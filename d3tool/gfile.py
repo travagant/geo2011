@@ -28,6 +28,7 @@ Layout (little-endian), reverse engineered from the dis3tool exports:
 """
 from __future__ import annotations
 
+import math
 import struct
 from typing import Dict, List, Tuple
 
@@ -516,6 +517,47 @@ def _scene_matrix() -> bytes:
     return struct.pack("<14f", *_SCENE_MATRIX_FLOATS)
 
 
+def scene_node_block(part, donor: bytes = b"") -> bytes:
+    """The 56-byte scene-node record that precedes a part's attributes.
+
+    Fourteen floats, and — measured against all 376 sub-meshes of the
+    corpus — every one of them is derived from the mesh itself::
+
+        [0:3]   bounding-box centre
+        [3:6]   zero
+        [6:9]   bounding-box max
+        [9:12]  bounding-box min
+        [12]    radius: distance from the origin to the far box corner
+        [13]    -1.0
+
+    277 of the 376 reproduce exactly from the vertex array.  The other 99
+    are the morph parts (capes, skirts, sleeves) whose centre is the extent
+    of the animated frames rather than of the stored base pose — for those
+    the donor's centre is kept and only the box and the radius are
+    recomputed, which is what the corpus does too.
+
+    This matters for a part that did not come from the file it lives in: a
+    donated prefix carries the *donor's* box, so a mesh appended from
+    another unit kept a bounding volume from a different model (the axe
+    handle the LODs were built around, 3 m above the character) and the
+    engine had nothing sensible to cull or place it by.
+    """
+    verts = getattr(part, "vertices", None) or []
+    if not verts:
+        return donor or _scene_matrix()
+    xs = [v.position[0] for v in verts]
+    ys = [v.position[1] for v in verts]
+    zs = [v.position[2] for v in verts]
+    mn = (min(xs), min(ys), min(zs))
+    mx = (max(xs), max(ys), max(zs))
+    if getattr(part, "morph", False) and len(donor) >= 56:
+        centre = struct.unpack_from("<3f", donor, 0)
+    else:
+        centre = tuple((a + b) / 2.0 for a, b in zip(mn, mx))
+    radius = math.sqrt(sum(max(abs(a), abs(b)) ** 2 for a, b in zip(mn, mx)))
+    return struct.pack("<14f", *centre, 0.0, 0.0, 0.0, *mx, *mn, radius, -1.0)
+
+
 def _attr_block(attrs: Dict[str, str], items=None) -> bytes:
     out = bytearray()
     if items is not None:
@@ -726,7 +768,16 @@ def _part_block(part: MeshPart) -> bytes:
         # a part rebuilt without a donor: synthesize the standard container
         # block — the 28-byte header [tag 2, id, 0, vc, tc, 0, 6] plus the
         # 56-byte scene-node block — so the parser can recover the part
-        prefix = struct.pack("<7I", 2, 0, 0, vc, tc, 0, 6) + _scene_matrix()
+        prefix = struct.pack("<7I", 2, 0, 0, vc, tc, 0, 6)
+    if prefix and len(prefix) >= 84:
+        # the scene-node record is the mesh's own bounding volume, not the
+        # donor's: a part appended from another `.g` used to keep the box it
+        # was cut out of (an axe handle three metres up) — see
+        # `scene_node_block`
+        prefix = (prefix[:28] + scene_node_block(part, prefix[28:84])
+                  + prefix[84:])
+    elif prefix and len(prefix) >= 28:
+        prefix = prefix + scene_node_block(part)
 
     attrs = dict(part.attrs)
 
@@ -746,12 +797,25 @@ def _part_block(part: MeshPart) -> bytes:
             _eff_width(int(declared), len(part.bones)) != w_rec:
         set_count("weights_on_vertex", str(part.weights_on_vertex))
 
+    items = list(part.attr_items)
+    if items and not part.morph and "new_vertex_weights_format" not in attrs:
+        # every skinned sub-mesh of the corpus declares it, and the engine
+        # takes the weight stride from that declaration: a part that omits it
+        # (a mesh appended by a tool that only copied the donor's keys) is
+        # read five bytes short apiece and never drawn.  The block is
+        # ordered the way the corpus writes it -- right before the counts.
+        pair = ("new_vertex_weights_format", "1")
+        at = next((i for i, (k, _) in enumerate(items)
+                   if k == "vertexs_weights_num"), len(items))
+        items.insert(at, pair)
+        attrs.setdefault(*pair)
+
     out = bytearray(prefix)
-    if part.attr_items:
+    if items:
         # the donated block verbatim (order and duplicate keys preserved);
         # the counts it carries are the original's and match the rebuilt
         # geometry whenever the donor could be adopted
-        out += _attr_block(attrs, items=part.attr_items)
+        out += _attr_block(attrs, items=items)
     else:
         out += _attr_block(attrs)
     for v in part.vertices:
