@@ -506,8 +506,9 @@ corpus, where the same unit lives at `<Faction>/<Unit>/`: **86 of the 214
 profiles resolve their `unit_scene` here** (all of Empire and the Neutrals;
 Demons, Elves, Undead and Story are not in the corpus), and 85 of those have
 the `.g` next to the scene.  `d3tool char show|list|find|validate|set-id`
-exposes that, and `vdpack validate` now checks a packed profile's includes and
-`characters\…` references like every other unit-local reference.
+exposes that, `d3tool analyze <unit folder>` prints the profile that points at
+the folder when one is present, and `vdpack validate` checks a packed profile's
+includes and `characters\…` references like every other unit-local reference.
 
 ---
 

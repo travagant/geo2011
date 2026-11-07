@@ -27,7 +27,7 @@ import struct
 import sys
 import textwrap
 import traceback
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from . import __version__
 from . import ac as acmod
@@ -182,6 +182,17 @@ def _analyze_unit(path: str) -> int:
     if gltf_rows:
         ui.table(gltf_rows, headers=[".gltf export", "verts", "tris", "bones",
                                      "frames"])
+    # the retail unit profile that points at this folder, when one is around
+    for folder in ("Profiles", "profiles"):
+        if not os.path.isdir(folder):
+            continue
+        hit = charmod.profile_for_scene(charmod.find_profiles(folder), path)
+        if hit:
+            profile_path, profile = hit
+            ui.info(f"profile: {profile.id}  ({profile_path})")
+            ui.info("  unit_scene: "
+                    + charmod.normalize_reference(profile.unit_scene or ""))
+        break
     return had_error
 
 

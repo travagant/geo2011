@@ -41,7 +41,7 @@ from __future__ import annotations
 import os
 import re
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 #: profile keys whose value is a game resource path
 RESOURCE_KEYS: Tuple[str, ...] = (
@@ -260,7 +260,6 @@ def _split_values(text: str) -> Tuple[List[str], List[bool]]:
     values: List[str] = []
     quoted: List[bool] = []
     current = ""
-    was_quoted = False
     i, n = 0, len(text)
     while i < n:
         ch = text[i]
@@ -286,7 +285,6 @@ def _split_values(text: str) -> Tuple[List[str], List[bool]]:
             # must compare or resolve a path goes through normalize_reference
             values.append("".join(buf))
             quoted.append(True)
-            was_quoted = True
             continue
         if ch in ",;":
             if current.strip():
@@ -307,7 +305,6 @@ def _split_values(text: str) -> Tuple[List[str], List[bool]]:
     if current.strip():
         values.append(current.strip())
         quoted.append(False)
-    del was_quoted
     return values, quoted
 
 
@@ -376,12 +373,10 @@ def parse_char(data) -> CharProfile:
         values, quoted = _split_values(tail)
         st = CharStatement(key=key, values=values, quoted=quoted, line=index,
                            block=current_block)
+        # a statement that lost its `;` is normal in this corpus (212 of the
+        # 214 root profiles lose one) and nothing needs repairing: the line
+        # ended, which is all the game needs
         prof.statements.append(st)
-        if semi < 0 and index > 0:
-            # a statement without its `;` is normal in this corpus (every
-            # leader profile loses one); nothing to repair, just note it in
-            # the parse error channel only when the line looks truncated
-            pass
     if current_block >= 0:
         prof.blocks[current_block].close_line = len(prof.lines) - 1
     return prof
