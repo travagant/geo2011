@@ -2039,66 +2039,104 @@ def test_vdpack_cli_pack_list_extract():
         assert climod._run(["vdpack", "list", damaged]) == 1
 
 
-def test_scene_gains_a_gobj_for_a_part_it_does_not_name():
-    """The engine instantiates what a `.scene` `gobj` names.  A part added to
-    the `.g` — the Angel's sword, 136 verts / 124 triangles — is in the
-    geometry and invisible until the scene has a block for it, and the export
-    reuses the shipped scene verbatim, so it never gets one."""
+def test_scene_gains_a_gobj_for_a_part_it_cannot_bind():
+    """The engine binds the i-th mesh part to the i-th `gobj`, in order — the
+    LOD scenes prove it, since their gobj names (`empire_angel_wing`) never
+    match their part names (`lod_empire_angel_wing`) and the game draws them
+    anyway.  A part past the last block is invisible, which is exactly the
+    Angel's sword: five meshes, four gobjs."""
+    import copy as copymod
     from d3tool import gfile as gmod
     from d3tool import scene as scenemod
-    unit = os.path.join(REPO, "Neutrals", "Zombie", "character_neutrals_zombie")
+    unit = os.path.join(REPO, "Empire", "Angel", "character_empire_angel")
     text = open(unit + ".scene", encoding="latin-1").read()
-    parts = gmod.parse_geometry_file(open(unit + ".g", "rb").read()).parts
-    named = {(scenemod.node_attr(n, "name") or n.name).lower()
-             for n in scenemod.parse_scene(text).find_all("gobj")}
-    missing = [p.name for p in parts if p.name.lower() not in named]
-    assert missing, "the fixture unit no longer has an unnamed part"
+    mesh = gmod.parse_geometry_file(open(unit + ".g", "rb").read())
+    parts = list(gmod.iter_parts(mesh))
+    assert len(parts) == len(scenemod.parse_scene(text).find_all("gobj")) == 4
 
-    patched, added = scenemod.ensure_part_gobjs(text, parts)
-    assert added == missing, (added, missing)
+    extra = copymod.copy(parts[-1])
+    extra.name = "test_extra_part"
+    patched, added = scenemod.ensure_part_gobjs(text, parts + [extra])
+    assert added == ["test_extra_part"], added
     doc = scenemod.parse_scene(patched)
-    want = [p for p in parts if p.name == missing[0]][0]
-    block = [n for n in doc.find_all("gobj")
-             if (scenemod.node_attr(n, "name") or n.name) == missing[0]][0]
+    gobjs = doc.find_all("gobj")
+    assert len(gobjs) == 5
+    block = gobjs[-1]
+    assert scenemod.node_attr(block, "name") == "test_extra_part"
     assert scenemod.node_attr(block, "material0_diffuse") == \
-        want.material_diffuse
+        extra.material_diffuse
     assert scenemod.node_attr(block, "material0_triangles_num") == \
-        str(want.tri_count)
+        str(extra.tri_count)
     assert scenemod.node_attr(block, "vertexs_weights_num") == \
-        str(want.vertex_count)
+        str(extra.vertex_count)
     assert scenemod.node_attr(block, "weights_on_vertex") == \
-        str(want.weights_on_vertex)
-    assert scenemod.node_attr(block, "bones_num") == str(len(want.bones))
-    # the block points at the unit's own .g and hangs on the same bones node
-    assert block.props.get("bonesuid") == \
-        [n for n in doc.find_all("gobj") if n is not block][0].props.get(
-            "bonesuid")
-    # fresh identifiers: two nodes must not share a uid, dwNode or slot
-    for key, values in (("uid", [n.props.get("uid") for n in doc.find_all("gobj")]),
+        str(extra.weights_on_vertex)
+    assert scenemod.node_attr(block, "bones_num") == str(len(extra.bones))
+    # the block hangs inside the same node as the parts it joins
+    assert block.props.get("bonesuid") == gobjs[0].props.get("bonesuid")
+    for key, values in (("uid", [n.props.get("uid") for n in gobjs]),
                         ("dwNode", [scenemod.node_attr(n, "dwNode")
-                                    for n in doc.find_all("gobj")]),
+                                    for n in gobjs]),
                         ("slot", [scenemod.node_mesh_index(n)
-                                  for n in doc.find_all("gobj")])):
+                                  for n in gobjs])):
         assert len(set(values)) == len(values), (key, values)
     # and it is stable: a second pass changes nothing
-    again, added2 = scenemod.ensure_part_gobjs(patched, parts)
+    again, added2 = scenemod.ensure_part_gobjs(patched, parts + [extra])
     assert again == patched and added2 == []
 
 
-def test_scene_is_untouched_when_it_names_every_part():
-    """Where every part is already named the file has to come back byte for
-    byte — the particle emitters and the GUI camera ride on that."""
+def test_every_shipped_scene_already_binds_one_gobj_per_part():
+    """The corpus sets the rule and must stay untouched by it: 159 of the 160
+    scenes carry exactly one `gobj` per mesh part (the Cyclop carries a spare),
+    so a correct unit comes back byte for byte."""
     from d3tool import gfile as gmod
     from d3tool import scene as scenemod
-    for unit in ("Empire/Angel/character_empire_angel",
-                 "Empire/Hierophant/character_empire_hierophant",
-                 "Neutrals/AirElemental/character_neutrals_airelemental"):
-        path = os.path.join(REPO, unit)
-        text = open(path + ".scene", encoding="latin-1").read()
-        parts = gmod.parse_geometry_file(open(path + ".g", "rb").read()).parts
-        patched, added = scenemod.ensure_part_gobjs(text, parts)
-        assert patched == text, f"{unit}: the scene was rewritten"
-        assert added == [], (unit, added)
+    checked = 0
+    for group in ("Empire", "Neutrals"):
+        for gpath in sorted(glob.glob(os.path.join(REPO, group, "*", "*.g"))):
+            if gpath.endswith("_lod.g"):
+                continue
+            spath = gpath[:-2] + ".scene"
+            if not os.path.isfile(spath):
+                continue
+            mesh = gmod.parse_geometry_file(open(gpath, "rb").read())
+            text = open(spath, encoding="latin-1").read()
+            patched, added = scenemod.ensure_part_gobjs(
+                text, list(gmod.iter_parts(mesh)))
+            assert patched == text, f"{spath} was rewritten"
+            assert added == [], (spath, added)
+            checked += 1
+    assert checked > 50, checked
+
+
+def test_lod_mesh_takes_the_parts_its_main_mesh_gained():
+    """The profile swaps to `unit_scene_lod` beyond a draw distance (10 for
+    nearly every unit), and the LOD is a separate, lower-poly `.g`: a weapon
+    has to be appended there too or the battlefield never shows it."""
+    from d3tool import gfile as gmod
+    from d3tool import scene as scenemod
+    unit = os.path.join(REPO, "Empire", "Angel", "character_empire_angel")
+    lod_bytes = open(unit + "_lod.g", "rb").read()
+    lod = gmod.parse_geometry_file(lod_bytes)
+    main = gmod.parse_geometry_file(open(unit + ".g", "rb").read())
+    extra = list(gmod.iter_parts(main))[-1]     # raw bytes, name included
+
+    grown = gmod.append_parts(lod_bytes, [extra])
+    assert grown[:len(lod_bytes)] == lod_bytes      # nothing else moves
+    regrown = gmod.parse_geometry_file(grown)
+    assert [p.name for p in gmod.iter_parts(regrown)] == \
+        [p.name for p in gmod.iter_parts(lod)] + [extra.name]
+    assert gmod.count_mismatches(regrown) == []
+
+    # the LOD scene spells its own parts `lod_<name>`, so only the count
+    # decides how many blocks are missing
+    text = open(unit + "_lod.scene", encoding="latin-1").read()
+    lod_parts = list(gmod.iter_parts(regrown))
+    patched, added = scenemod.ensure_part_gobjs(text, lod_parts)
+    assert added == [extra.name], added
+    gobjs = scenemod.parse_scene(patched).find_all("gobj")
+    assert len(gobjs) == len(lod_parts)
+    assert scenemod.node_mesh_index(gobjs[-1]) == len(lod_parts) - 1
 
 
 def test_vdpack_validate_finds_dangling_references():

@@ -433,19 +433,19 @@ def _parents(doc: SceneDoc) -> Dict[int, SceneNode]:
 def ensure_part_gobjs(text: str, parts) -> Tuple[str, List[str]]:
     """Give every part in the `.g` a `gobj` the engine will instantiate.
 
-    A `.g` can carry more parts than the unit's shipped `.scene` names.  The
-    export reuses that scene verbatim (it holds the particle emitters and the
-    GUI camera, which no glTF can express), so a part the user added — the
-    Angel's sword, 136 verts and 124 triangles — sits inside the geometry and
-    is never drawn: the scene simply has no `child gobj` for it.
+    The engine attaches the i-th mesh part to the i-th `gobj`, in document
+    order: every shipped unit carries exactly one gobj per part (84 of 85
+    scenes), and the LOD scenes settle that it is *position*, not the
+    ``attr "name"``, that binds — their gobj names (`empire_angel_wing`) never
+    match their part names (`lod_empire_angel_wing`) and the game draws them
+    anyway.  So a `.g` with more parts than the scene has gobjs leaves the
+    *trailing* parts without a node and invisible — exactly the Angel's sword,
+    the fifth mesh with four gobjs to bind it.
 
-    Missing parts get a clone of the unit's largest *opaque* `gobj`: same
-    tech, shaders, flags and `.g` path, a fresh `uid`/`dwNode`, the next free
-    mesh slot number, and the attribute block re-stated for that part (name,
-    diffuse, triangle/vertex/weight/bone counts).  Geometry is matched by
-    ``attr "name"``, not by slot number, so appending is safe — the corpus
-    proves it, since a scene may name gobjs the `.g` does not carry (the
-    Angel's `empire_angel_hairs`) and the game still draws the rest.
+    Each unbound trailing part gets a clone of the unit's largest *opaque*
+    `gobj`: same tech, shaders, flags and `.g` path, a fresh `uid`/`dwNode`,
+    the next mesh slot number, and the attribute block re-stated for that part
+    (name, diffuse, triangle/vertex/weight/bone counts).
 
     ``parts`` are objects (or mappings) with ``name``, ``material_diffuse``,
     ``tri_count``, ``vertex_count``, ``weights_on_vertex`` and ``bones``.
@@ -460,9 +460,10 @@ def ensure_part_gobjs(text: str, parts) -> Tuple[str, List[str]]:
     def field(part, key: str):
         return part.get(key) if isinstance(part, dict) else getattr(part, key)
 
-    have = {(node_attr(n, "name") or n.name).lower() for n in gobjs}
-    missing = [p for p in parts if str(field(p, "name")).lower() not in have]
-    if not missing:
+    ordered = list(parts)
+    # one gobj per mesh part, in file order
+    unbound = ordered[len(gobjs):]
+    if not unbound:
         return text, []
 
     opaque = [n for n in gobjs if "alpha" not in (n.props.get("tech") or "")]
@@ -491,7 +492,7 @@ def ensure_part_gobjs(text: str, parts) -> Tuple[str, List[str]]:
     slot = max([s for s in slots if s is not None] or [len(gobjs) - 1]) + 1
 
     added: List[str] = []
-    for i, part in enumerate(missing):
+    for i, part in enumerate(unbound):
         name = str(field(part, "name"))
         items: List[str] = []
         for item in template.items:

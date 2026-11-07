@@ -352,12 +352,18 @@ For `character_neutrals_airelemental.gltf` the exporter writes:
 * `character_neutrals_airelemental.scene` — scene tree referencing the `.g` and
   `.ac`.  When the source unit folder already has a `.scene`, the exporter
   reuses it verbatim (so its particle emitters and GUI camera are preserved);
-  otherwise a faithful, particle-free scene is generated.  Either way, a part
-  of the `.g` that the scene has no `gobj` for is **invisible in game** (the
-  engine instantiates only what the scene names), so the exporter appends one
-  block per such part and warns.  Ten shipped units need this — they carry an
-  unnamed weapon in the `.g` (`weapon_zombie`, the Angel's
-  `empire_knight_sword`, …); adding a sword to a unit the same way now draws.
+  otherwise a faithful, particle-free scene is generated.  Either way the
+  engine binds the i-th mesh part to the i-th `gobj` **in document order** — a
+  scene carries one block per part, and a part past the last block is
+  invisible, because nothing draws it.  Adding a mesh in Blender (the Angel's
+  sword is the fifth part) therefore needs a fifth block, which the exporter
+  appends and warns about.
+* the same part has to reach the **LOD model** too: the `.char` profile swaps
+  to `unit_scene_lod` beyond a draw distance (`10` for nearly every unit), and
+  `<base>_lod.g` is a separate, lower-poly mesh.  `d3tool lod <unit folder>`
+  appends the added parts to the LOD mesh (byte for byte — a `.g` is a
+  sequence of self-contained part blocks) and gives `<base>_lod.scene` the
+  matching `gobj`.
 * `character_neutrals_airelemental.ac` — animation config.  When the source
   unit folder already has an `.ac`, the exporter reuses it verbatim so its
   `event2` entries survive (the attack/damage/death sound aliases and the

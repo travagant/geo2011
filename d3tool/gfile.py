@@ -884,6 +884,43 @@ def write_geometry_file(mesh: SkinnedMesh, attrs: Dict[str, str]) -> bytes:
     return b"".join(chunks)
 
 
+def iter_parts(mesh) -> list:
+    """Every mesh part of a parsed `.g`, in file order.
+
+    The first block of a `.g` is itself a mesh part (`empire_angel_hairs` for
+    the Angel) while the rest live in :attr:`SkinnedMesh.parts`, so "how many
+    parts does this file have" is ``len(iter_parts(mesh))`` — the count a
+    `.scene` has to bind one `gobj` per part.
+    """
+    first = mesh if (getattr(mesh, "vertices", None) or
+                     getattr(mesh, "indices", None)) else None
+    return ([first] if first is not None else []) + list(
+        getattr(mesh, "parts", ()) or [])
+
+
+def append_parts(base: bytes, parts) -> bytes:
+    """Concatenate whole part blocks onto an existing `.g`.
+
+    A `.g` is a sequence of self-contained part blocks (each carries its own
+    84-byte prefix, attribute block, vertices, indices and bone descriptors),
+    so a part lifted from another `.g` can be appended byte for byte — this is
+    how a weapon mesh joins a unit's LOD model, which ships without it.  Every
+    part must have been parsed from a `.g` (its ``raw`` bytes are required);
+    nothing else in ``base`` is touched.  The block carries its own attributes,
+    ``attr "name"`` included, so renaming the part object does not rename what
+    lands in the file.
+    """
+    out = bytearray(base)
+    for part in parts:
+        raw = getattr(part, "raw", b"") or b""
+        if not raw:
+            raise ValueError(
+                f"part {getattr(part, 'name', '?')!r} has no raw bytes; a "
+                "part can only be appended straight from a parsed .g")
+        out += raw
+    return bytes(out)
+
+
 def parse_attributes(data: bytes) -> Tuple[Dict[str, str], int]:
     """Parse only the attribute block; returns (attrs, offset after block).
 

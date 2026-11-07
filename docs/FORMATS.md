@@ -380,19 +380,32 @@ them.  `d3tool/scene.py` therefore does two things:
   it verbatim (preserving every particle emitter and the camera);
 * otherwise it generates a faithful, particle-free scene (correct
   `bones`/`gobj` node names, full `globalsettings`, attribute block);
-* in both cases it then calls `ensure_part_gobjs`: the engine draws a part only
-  when some `gobj` names it (`attr "name"`, **not** the slot number after the
-  `.g` path — a scene may name gobjs the `.g` does not carry, e.g.
-  `empire_angel_hairs`), so every part of the `.g` the scene does not name
-  gets a `gobj` cloned from the largest opaque sibling — same `tech`, shaders,
-  `.g` path and `bonesuid`, with the name, `material0_diffuse`,
-  `material0_triangles_num`, `vertexs_weights_num`, `weights_on_vertex` and
-  `bones_num` of that part, a fresh `uid`/`dwNode` and the next free mesh slot.
-  Ten shipped units are affected (Zombie's `weapon_zombie`, the Angel's
-  `empire_knight_sword`, the Archer's `empire_archer01`, …): their geometry
-  already carries the part, the shipped scene just never names it.  The
-  function is idempotent and returns the text unchanged when nothing is
-  missing, so a scene that already names every part is copied byte for byte.
+* in both cases it then calls `ensure_part_gobjs`: **the engine binds the
+  i-th mesh part to the i-th `gobj`, in document order**, and `attr "name"` is
+  decoration — the LOD scenes prove it, since their gobjs are named
+  `empire_angel_wing` while the parts they draw are `lod_empire_angel_wing`.
+  Every shipped scene carries one `gobj` per mesh part (159 of 160 exactly;
+  the Cyclop keeps a spare), where "one part" counts the file's own first
+  block — `iter_parts(mesh)` — not just `mesh.parts`.  A `.g` with more parts
+  than the scene has gobjs leaves the *trailing* parts unbound and invisible,
+  so each one gets a `gobj` cloned from the largest opaque sibling: same
+  `tech`, shaders, flags, `.g` path and `bonesuid`, the next free mesh slot,
+  and the attribute block re-stated for that part (`attr "name"`,
+  `material0_diffuse`, `material0_triangles_num`, `vertexs_weights_num`,
+  `weights_on_vertex`, `bones_num`) with a fresh `uid`/`dwNode`.  The function
+  is idempotent and returns the text unchanged when every part is bound,
+  which is the whole bundled corpus — the reverse-export parity bench stays at
+  84/84 byte-exact with the fix in place.
+* a part added to `<base>.g` must also reach `<base>_lod.g`, because a unit's
+  profile names a second scene for distance: `unit_scene_lod
+  "…\character_empire_angel_lod.scene",10;` — beyond 10 the engine swaps to
+  the LOD mesh, which is a separate, lower-poly `.g` (`lod_empire_angel*`,
+  1869 verts against 4165).  `d3tool lod <unit folder>` appends the parts the
+  LOD lacks (its parts are the main mesh's, in the same order, so the added
+  ones are the trailing tail) with `gfile.append_parts` — a `.g` is a sequence
+  of self-contained part blocks, so the new part is concatenated byte for byte
+  and not one byte of the original file moves — and then binds it in
+  `<base>_lod.scene` the same way.
 
 ### Parsing `.scene`
 

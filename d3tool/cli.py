@@ -690,12 +690,12 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
         note = "generated (no particles)"
     # A `.g` can carry parts the scene never names — anything the donor's
     # scene had no `gobj` for, e.g. a weapon added in Blender.  The engine
-    # instantiates what a `gobj` names, so such a part sits in the geometry
-    # and is never drawn; give it a block, cloned from an opaque sibling.
+    # one `gobj` per mesh part, in order — a part past the last block sits in
+    # the geometry with no node to draw it; give it one, cloned from a sibling.
     if written is not None:
         try:
             patched, added = scenemod.ensure_part_gobjs(
-                scene_bytes.decode("latin-1"), written.parts)
+                scene_bytes.decode("latin-1"), gfile.iter_parts(written))
         except Exception as exc:  # noqa: BLE001 - a scene we cannot patch
             patched, added = None, []
             ui.warn(f"{base}.scene: could not add the parts it does not name "
@@ -1603,6 +1603,7 @@ def _build_parser() -> argparse.ArgumentParser:
               d3tool export-all Neutrals -o gltf
               d3tool bundle Neutrals/AirElemental -o bundle
               d3tool validate out/unit.gltf
+              d3tool lod out/     # LOD mesh takes the parts the main one gained
         """),
     )
     parser.add_argument("--version", action="version",
@@ -1747,6 +1748,13 @@ def _build_parser() -> argparse.ArgumentParser:
     p_ci.add_argument("--scene", help="also point unit_scene at this scene")
     p_ci.add_argument("-o", "--out", help="write here instead of in place")
 
+    p_lod = sub.add_parser(
+        "lod", help="give a unit's LOD mesh the parts its main mesh gained")
+    p_lod.add_argument("unit_dir", help="folder holding <stem>.g and "
+                                        "<stem>_lod.g")
+    p_lod.add_argument("-o", "--out", default=None,
+                       help="write the patched files here instead of in place")
+
     p_vp = p_vd_sub.add_parser("pack", help="pack a folder into an archive")
     p_vp.add_argument("folder")
     p_vp.add_argument("-o", "--out",
@@ -1847,6 +1855,72 @@ def main(argv=None) -> int:
         return _vdpack(args)
     elif args.cmd == "char":
         return _char(args)
+    elif args.cmd == "lod":
+        return _lod_sync(args.unit_dir, args.out)
+    return 0
+
+
+def _lod_sync(unit_dir: str, out_dir: Optional[str] = None) -> int:
+    """`lod <unit folder>` — make a unit's LOD model carry its added parts.
+
+    The engine swaps to `unit_scene_lod` (marked in the `.char` profile with a
+    draw distance, `10` for nearly every unit) as soon as a squad is further
+    away than that, and the LOD `.g` is a separate, lower-poly mesh.  A part
+    added to the main `.g` — a weapon — is therefore invisible on the
+    battlefield until it is appended to the LOD mesh and the LOD scene has the
+    `gobj` for it.
+    """
+    ui.section("LOD sync")
+    if not os.path.isdir(unit_dir):
+        ui.fail(f"no such folder: {unit_dir}")
+        return 1
+    stems = [os.path.join(unit_dir, fn[:-2])
+             for fn in sorted(os.listdir(unit_dir))
+             if fn.endswith(".g") and not fn[:-2].endswith("_lod")]
+    if not stems:
+        ui.fail(f"no .g in {unit_dir}")
+        return 1
+    changed = 0
+    for stem in stems:
+        lod_g = stem + "_lod.g"
+        if not os.path.isfile(lod_g):
+            ui.info(f"{os.path.basename(stem)}: no LOD model, nothing to do")
+            continue
+        main_parts = gfile.parse_geometry_file(open(stem + ".g", "rb").read())
+        lod_bytes = open(lod_g, "rb").read()
+        lod_mesh = gfile.parse_geometry_file(lod_bytes)
+        lod_parts = gfile.iter_parts(lod_mesh)
+        main_all = gfile.iter_parts(main_parts)
+        # the LOD mesh is the same unit at lower detail: its parts are the
+        # main mesh's, in the same order (and spelled `lod_<name>`, so a name
+        # is no guide) — whatever trails them was added after the fact
+        names = {p.name for p in lod_parts}
+        missing = [p for p in main_all[len(lod_parts):] if p.name not in names]
+        if missing:
+            lod_bytes = gfile.append_parts(lod_bytes, missing)
+            lod_parts += missing
+            target = (os.path.join(out_dir, os.path.basename(lod_g))
+                      if out_dir else lod_g)
+            os.makedirs(os.path.dirname(target) or ".", exist_ok=True)
+            open(target, "wb").write(lod_bytes)
+            ui.ok(f"{os.path.basename(lod_g)}: +{len(missing)} part(s) — "
+                  + ", ".join(p.name for p in missing))
+            changed += 1
+        else:
+            ui.info(f"{os.path.basename(lod_g)}: already carries every part")
+        lod_scene = stem + "_lod.scene"
+        if not os.path.isfile(lod_scene):
+            continue
+        text = open(lod_scene, encoding="latin-1").read()
+        new_text, added = scenemod.ensure_part_gobjs(text, lod_parts)
+        if added:
+            target = (os.path.join(out_dir, os.path.basename(lod_scene))
+                      if out_dir else lod_scene)
+            open(target, "w", encoding="latin-1", newline="").write(new_text)
+            ui.ok(f"{os.path.basename(lod_scene)}: +{len(added)} gobj — "
+                  + ", ".join(added))
+            changed += 1
+    ui.info(f"{changed} file(s) rewritten")
     return 0
 
 
