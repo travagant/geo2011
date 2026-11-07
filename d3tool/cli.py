@@ -1791,6 +1791,20 @@ def _build_parser() -> argparse.ArgumentParser:
     p_lod.add_argument("-o", "--out", default=None,
                        help="write the patched files here instead of in place")
 
+    p_ga = sub.add_parser(
+        "gattr", help="insert or replace one attribute in a .g part")
+    p_ga.add_argument("file", help="the .g to edit")
+    p_ga.add_argument("--part", type=int, action="append", default=[],
+                      metavar="N",
+                      help="part index, in file order (repeatable; default: "
+                           "every part)")
+    p_ga.add_argument("--insert", action="append", default=[],
+                      metavar="KEY=VALUE",
+                      help="add an attribute the part does not carry")
+    p_ga.add_argument("--set", action="append", default=[], metavar="KEY=VALUE",
+                      help="rewrite an attribute the part already carries")
+    p_ga.add_argument("-o", "--out", help="write here instead of in place")
+
     p_vp = p_vd_sub.add_parser("pack", help="pack a folder into an archive")
     p_vp.add_argument("folder")
     p_vp.add_argument("-o", "--out",
@@ -1903,6 +1917,79 @@ def main(argv=None) -> int:
         return _char(args)
     elif args.cmd == "lod":
         return _lod_sync(args.unit_dir, args.out)
+    elif args.cmd == "gattr":
+        return _gattr(args)
+    return 0
+
+
+def _gattr(args) -> int:
+    """`gattr <g>` — insert or replace one attribute in a `.g` part.
+
+    The whole reason this exists: a `.g` part that a tool wrote without the
+    attributes the engine reads its vertex block by is drawn as nothing at
+    all, while every reader that takes the layout from ``weights_on_vertex``
+    (this package included) sees a perfectly good mesh.  The Angel's appended
+    sword part was exactly that — no ``new_vertex_weights_format`` — and the
+    game never drew it.
+    """
+    ui.section("g attribute")
+    if not os.path.isfile(args.file):
+        ui.fail(f"no such file: {args.file}")
+        return 1
+    wanted = []
+    for spec in list(args.insert) + list(args.set):
+        if "=" not in spec:
+            ui.fail(f"expected KEY=VALUE, got {spec!r}")
+            return 1
+        key, _, value = spec.partition("=")
+        wanted.append((key, value))
+    if not wanted:
+        ui.fail("nothing to do: pass --insert and/or --set")
+        return 1
+
+    data = open(args.file, "rb").read()
+    mesh = gfile.parse_geometry_file(data)
+    if mesh.parse_error:
+        ui.fail(f"{os.path.basename(args.file)}: unparsed ({mesh.parse_error})")
+        return 1
+    parts = gfile.iter_parts(mesh)
+    indexes = args.part or list(range(len(parts)))
+    for index in indexes:
+        if not 0 <= index < len(parts):
+            ui.fail(f"no part {index}; the file has {len(parts)}")
+            return 1
+
+    before = len(data)
+    changed = 0
+    for index in indexes:
+        part = parts[index]
+        for key, value in wanted:
+            carries = key in dict(part.attr_items or ())
+            if key in args.set or carries and key not in args.insert:
+                if not carries:
+                    ui.warn(f"part {index} ({part.name}): no {key!r} to set")
+                    continue
+                data = gfile.replace_part_attr(data, part, key, value)
+            else:
+                if carries:
+                    ui.info(f"part {index} ({part.name}): already has {key!r}")
+                    continue
+                data = gfile.insert_part_attr(data, part, key, value)
+            ui.ok(f"part {index} ({part.name}): {key} = {value}")
+            changed += 1
+            # re-parse: offsets moved, later parts are at new positions
+            mesh = gfile.parse_geometry_file(data)
+            parts = gfile.iter_parts(mesh)
+    if not changed:
+        return 0
+    target = args.out or args.file
+    with open(target, "wb") as fh:
+        fh.write(data)
+    ui.wrote(target, f"{len(data) - before:+d} bytes")
+    check = gfile.parse_geometry_file(data)
+    if check.parse_error:
+        ui.fail(f"the result no longer parses: {check.parse_error}")
+        return 1
     return 0
 
 
@@ -1957,7 +2044,11 @@ def _lod_sync(unit_dir: str, out_dir: Optional[str] = None) -> int:
         lod_scene = stem + "_lod.scene"
         if not os.path.isfile(lod_scene):
             continue
-        text = open(lod_scene, encoding="latin-1").read()
+        # newline="" keeps the file's own terminators: a scene read with
+        # universal newlines loses every \r and the whole payload changes
+        # even though one `gobj` was added
+        with open(lod_scene, encoding="latin-1", newline="") as fh:
+            text = fh.read()
         new_text, added = scenemod.ensure_part_gobjs(text, lod_parts)
         if added:
             target = (os.path.join(out_dir, os.path.basename(lod_scene))

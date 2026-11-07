@@ -564,7 +564,8 @@ includes and `characters\…` references like every other unit-local reference.
   paths against the game folder or the donor corpus; `set_id`/`set_value`
   patch a single value without touching the layout.
 * `d3tool/cli.py` — `analyze`, `export` (glTF → original), `export-gl`
-  (original → glTF), `validate`, `import`, `texture`, `vdpack`, `char`.
+  (original → glTF), `validate`, `import`, `texture`, `vdpack`, `char`,
+  `lod`, `gattr`.
 
 ### Reverse-export fidelity
 For the AirElemental unit the exported `.g` matches the original in:
@@ -748,6 +749,46 @@ its folder.  What the engine will not fall back for is a reference its own
 `.ac`/`.scene` makes into a folder the pack lacks: the load stops with a
 missing-file dialog naming `<pack>.vdpack:resources\characters\...` — hence
 the wrong-folder warning `vdpack validate` prints.
+
+Repathing that `*_lod.ac` in game changed nothing: the dialog came back with
+the same prefix, so the reference was never the thing the engine was opening.
+What did keep coming back was the pack *containing a payload that differs from
+its source*, and that is where the loop stopped being productive.  It is worth
+recording what the container itself cannot be blamed for: a folder packed back
+`--like` the working archive with every payload left alone reproduces that
+archive **byte for byte** (md5 equal), so the writer, the header, the name
+spelling, the flags and the opaque `index` are all carried exactly; only a
+changed payload can make the engine complain.
+
+The sword that never appeared was a payload problem of a different kind, and
+the `.g` attribute block says so.  The pack ships the Empire Angel with a fifth
+part appended (`empire_knight_sword`, lifted from
+`Empire/Knight/character_empire_knight.g`: 124 triangles, 136 vertices, bound
+1.0 to `Bip01 R Hand`), and the `.scene` already carries its `gobj` — so the
+mesh, the node and the texture are all there, and the battle still shows no
+sword.  The difference is one attribute: the appended block does not declare
+`new_vertex_weights_format`.  Every skinned part in the corpus declares it
+(`test_every_corpus_weapon_part_declares_its_weight_format`), and the engine
+takes the vertex-weight stride from that declaration, not from
+`weights_on_vertex` — so it reads the sword's 136 vertices five bytes short
+apiece, the index block goes out of alignment and the part draws as nothing,
+while every reader that derives the stride from the counts (this package
+included) sees a perfectly good mesh.  The block is length-prefixed, so the
+attribute can simply be inserted:
+
+```bash
+python3 -m d3tool gattr Empire/Angel/character_empire_angel.g \
+    --part 4 --insert new_vertex_weights_format=1     # +36 bytes, nothing else
+python3 -m d3tool lod Empire/Angel                     # the LOD mesh + scene too
+python3 -m d3tool vdpack pack Empire/Angel -o angel.vdpack --like ruru.vdpack
+```
+
+`gattr` reads the block, rewrites the count and appends `(u32 len, "key\0")`
+`(u32 len, "value\0")`; `--set` replaces a value in place (same length keeps
+the payload's size, a different length shifts the rest of the file).  A part
+appended by other tooling usually copied its neighbours' *data* and not their
+*format* declaration — that is the shape to look for before blaming the
+archive.
 
 `vdpack manifest <archive|folder>` writes the sha256 inventory of a bundle —
 one `{path, bytes, sha256}` per file, in archive naming and case-insensitive

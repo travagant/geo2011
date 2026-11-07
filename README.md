@@ -95,6 +95,15 @@ python3 -m d3tool char show Profiles/empire_angel.char
 python3 -m d3tool char list --root .                 # 214 units, scene? column
 python3 -m d3tool char find Empire/Angel             # folder -> profile
 python3 -m d3tool char validate Profiles --root .    # every reference present?
+# one attribute at a time: a part the engine refuses to draw gets it back
+# (the Angel's appended sword had no `new_vertex_weights_format`, so the game
+# read its weight block with the old stride and drew nothing)
+python3 -m d3tool gattr Empire/Angel/character_empire_angel.g \
+  --part 4 --insert new_vertex_weights_format=1
+
+# give the LOD mesh the parts the main mesh gained (and the scene its gobjs)
+python3 -m d3tool lod Empire/Angel
+
 # rename the browser entry (the port's way of adding a unit; keeps every byte)
 python3 -m d3tool char set-id Profiles/empire_angel.char empire_angel_v2 \
   --scene "resources\characters\empire\angel\character_empire_angel_v2.scene" -o new.char

@@ -377,6 +377,8 @@ def write_scene(
 # --------------------------------------------------------------------------- #
 
 _ATTR_LINE_RE = re.compile(r'^(\s*)attr\s+"([^"]+)"\s+"([^"]*)"\s*$')
+#: A per-material attribute line, e.g. ``attr "material1_diffuse" "…"``.
+_MATERIAL_ATTR_RE = re.compile(r'^\s*attr\s+"material\d+_')
 _MESH_LINE_RE = re.compile(r'^(\s*)"([^"]*)"\s+(\d+)\s+([0-9.]+)\s*$')
 _UID_LINE_RE = re.compile(r'^(\s*)uid\s+(\d+)\s+(\d+)\s*$')
 
@@ -412,7 +414,7 @@ def _set_attr(items: List[str], key: str, value: str) -> bool:
     for i, line in enumerate(items):
         m = _ATTR_LINE_RE.match(line)
         if m and m.group(2) == key:
-            items[i] = f'{m.group(1)}attr "{key}" "{value}"'
+            items[i] = f'{m.group(1)}attr "{key}" "{value}"' + _eol(line)
             return True
     return False
 
@@ -428,6 +430,18 @@ def _parents(doc: SceneDoc) -> Dict[int, SceneNode]:
     for block in doc.blocks:
         walk(block)
     return out
+
+
+def _eol(line: str) -> str:
+    """The line terminator ``line`` carries (``"\\r"`` or ``""``).
+
+    A scene is read with ``newline=""`` and rendered by joining on ``"\\n"``,
+    so the carriage return is part of the line.  A block cloned out of the
+    file keeps its neighbours' endings only if every line this module
+    *rewrites* puts its `\\r` back — otherwise one inserted `gobj` converts
+    the whole file, which shows up as a payload that differs everywhere.
+    """
+    return "\r" if line.endswith("\r") else ""
 
 
 def ensure_part_gobjs(text: str, parts) -> Tuple[str, List[str]]:
@@ -491,6 +505,14 @@ def ensure_part_gobjs(text: str, parts) -> Tuple[str, List[str]]:
     slots = [node_mesh_index(n) for n in gobjs]
     slot = max([s for s in slots if s is not None] or [len(gobjs) - 1]) + 1
 
+    eol = _eol(template.items[-1]) if template.items else _eol(template.header)
+    # ... and so do the attribute lines this module appends: take the
+    # template's own indentation rather than assuming one level deeper
+    attr_indent = indent + "\t"
+    for line in template.items:
+        if isinstance(line, str) and _ATTR_LINE_RE.match(line):
+            attr_indent = line[:len(line) - len(line.lstrip())]
+            break
     added: List[str] = []
     for i, part in enumerate(unbound):
         name = str(field(part, "name"))
@@ -498,14 +520,24 @@ def ensure_part_gobjs(text: str, parts) -> Tuple[str, List[str]]:
         for item in template.items:
             if not isinstance(item, str):
                 continue            # a clone must not duplicate FX/children
+            if _MATERIAL_ATTR_RE.match(item):
+                # the clone is re-stated for the part it draws: one material
+                # (`materials_num 1`, the part's diffuse and triangle count).
+                # A template that carries two materials — the LOD body always
+                # does — would otherwise hand the new part the *donor's*
+                # second diffuse, which the engine then tries to resolve for a
+                # mesh that has no such range.
+                continue
             m = _UID_LINE_RE.match(item)
             if m:
                 next_uid = (next_uid[0] + 1, next_uid[1] + 1_048_576)
-                items.append(f"{m.group(1)}uid {next_uid[0]} {next_uid[1]}")
+                items.append(f"{m.group(1)}uid {next_uid[0]} {next_uid[1]}"
+                             + _eol(item))
                 continue
             m = _MESH_LINE_RE.match(item)
             if m:
-                items.append(f'{m.group(1)}"{m.group(2)}" {slot} {m.group(4)}')
+                items.append(f'{m.group(1)}"{m.group(2)}" {slot} {m.group(4)}'
+                             + _eol(item))
                 continue
             items.append(item)
         for key, value in (("name", name),
@@ -520,12 +552,12 @@ def ensure_part_gobjs(text: str, parts) -> Tuple[str, List[str]]:
                            ("bones_num", str(len(field(part, "bones") or ()))),
                            ("materials_num", "1")):
             if not _set_attr(items, key, value):
-                items.append(f'{indent}\tattr "{key}" "{value}"')
+                items.append(f'{attr_indent}attr "{key}" "{value}"' + eol)
         next_dw += 8_000_000 + i
         if not _set_attr(items, "dwNode", str(next_dw)):
-            items.append(f'{indent}\tattr "dwNode" "{next_dw}"')
+            items.append(f'{attr_indent}attr "dwNode" "{next_dw}"' + eol)
         node = SceneNode(kind="gobj", name=name,
-                         header=f'{indent}child gobj "{name}" ',
+                         header=f'{indent}child gobj "{name}" ' + eol,
                          open_line=template.open_line,
                          close_line=template.close_line, items=items)
         node.props = {}
@@ -537,7 +569,7 @@ def ensure_part_gobjs(text: str, parts) -> Tuple[str, List[str]]:
                       if isinstance(it, SceneNode) and it.kind == "gobj"]
         at = (slots_used[-1] + 1) if slots_used else len(parent.items)
         if at and isinstance(parent.items[at - 1], SceneNode):
-            parent.items.insert(at, "")
+            parent.items.insert(at, "" + eol)   # the blank separator line
             at += 1
         parent.items.insert(at, node)
         parent.children.append(node)

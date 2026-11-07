@@ -921,6 +921,92 @@ def append_parts(base: bytes, parts) -> bytes:
     return bytes(out)
 
 
+def attr_block_bounds(data: bytes, part) -> Tuple[int, int, int]:
+    """``(start, end, count)`` of one sub-mesh's attribute block in ``data``.
+
+    The block is a ``u32`` count followed by that many
+    ``(u32 length, "key\\0")`` / ``(u32 length, "value\\0")`` pairs — the
+    lengths *include* the NUL, so a pair can be inserted without touching
+    anything else.  ``start`` points at the count, ``end`` just past the last
+    value (where the vertex block begins).
+
+    The part must carry its own bytes (:func:`parse_geometry_file` keeps them
+    in ``part.raw``) and must occur exactly once in ``data``, otherwise there
+    is no safe place to write.
+    """
+    raw = getattr(part, "raw", b"") or b""
+    if not raw:
+        raise ValueError(
+            f"part {getattr(part, 'name', '?')!r} has no raw bytes; parse it "
+            "from a .g first")
+    at = data.find(raw)
+    if at < 0:
+        raise ValueError("the part's bytes are not in this file")
+    if data.find(raw, at + 1) >= 0:
+        raise ValueError("the part's bytes occur more than once in this file")
+    start = at + len(getattr(part, "part_prefix", b"") or b"")
+    count = struct.unpack_from("<I", data, start)[0]
+    o = start + 4
+    for _ in range(count):
+        key_len = struct.unpack_from("<I", data, o)[0]
+        o += 4 + key_len
+        value_len = struct.unpack_from("<I", data, o)[0]
+        o += 4 + value_len
+    if o > at + len(raw):
+        raise ValueError("the attribute block runs past the part's own bytes")
+    return start, o, count
+
+
+def _attr_pair(key: str, value: str) -> bytes:
+    k = latin1(key) + b"\0"
+    v = latin1(value) + b"\0"
+    return (struct.pack("<I", len(k)) + k
+            + struct.pack("<I", len(v)) + v)
+
+
+def insert_part_attr(data: bytes, part, key: str, value: str) -> bytes:
+    """Add one attribute to a sub-mesh, bumping the block's count.
+
+    This is how a part that lost an attribute gets it back: the engine reads
+    the vertex-weight block by the *format* the block declares, and a skinned
+    part that does not say ``new_vertex_weights_format 1`` is read with the
+    old stride — every vertex lands a few bytes off, so the part parses as
+    garbage and the engine draws nothing.  Retail parts all carry it; a part
+    appended by a tool that dropped the attribute is invisible in game even
+    though every reader that takes the stride from ``weights_on_vertex``
+    (this package included) sees it fine.
+
+    The block is length-prefixed, so this shifts every following byte of the
+    file: the part's own data stays intact, the file just grows.
+    """
+    if key in dict(getattr(part, "attr_items", ()) or ()):
+        raise ValueError(f"part already carries {key!r}; replace it instead")
+    start, end, count = attr_block_bounds(data, part)
+    return (data[:start] + struct.pack("<I", count + 1) + data[start + 4:end]
+            + _attr_pair(key, value) + data[end:])
+
+
+def replace_part_attr(data: bytes, part, key: str, value: str) -> bytes:
+    """Rewrite the value of an attribute a part already carries.
+
+    Values are length-prefixed, so a replacement of a *different* length is
+    accepted and shifts the rest of the file.  Same-length replacements are
+    the way to patch a value without changing the archive payload's size.
+    """
+    start, end, count = attr_block_bounds(data, part)
+    o = start + 4
+    for _ in range(count):
+        key_len = struct.unpack_from("<I", data, o)[0]
+        found = data[o + 4:o + 4 + key_len - 1].decode("latin-1")
+        o += 4 + key_len
+        value_len = struct.unpack_from("<I", data, o)[0]
+        if found == key:
+            return (data[:o + 4] + latin1(value) + b"\0"
+                    + data[o + 4 + value_len:])
+        o += 4 + value_len
+    raise KeyError(f"part {getattr(part, 'name', '?')!r} has no {key!r}")
+
+
 def parse_attributes(data: bytes) -> Tuple[Dict[str, str], int]:
     """Parse only the attribute block; returns (attrs, offset after block).
 

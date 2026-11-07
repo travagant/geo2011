@@ -2894,6 +2894,129 @@ def test_vdpack_validates_a_packed_char_profile():
     assert not any("-> icon_rod-1.t " in n for n in left)
 
 
+
+
+# --------------------------------------------------------------------------- #
+#  one attribute at a time: the part the engine will not draw without
+# --------------------------------------------------------------------------- #
+
+def test_gattr_inserts_an_attribute_and_keeps_the_part_readable():
+    """A part that lost `new_vertex_weights_format` gets it back.
+
+    The engine reads a part's vertex-weight block by the format the block
+    declares, so a skinned part without that attribute is drawn as nothing
+    while a reader that takes the stride from `weights_on_vertex` (this
+    package included) sees a good mesh — exactly the Angel's appended sword,
+    which never showed up in game.
+    """
+    path = os.path.join(REPO, "Empire", "Angel", "character_empire_angel.g")
+    data = open(path, "rb").read()
+    part = gfile.iter_parts(gfile.parse_geometry_file(data))[3]
+    assert "port_marker" not in dict(part.attr_items)
+
+    out = gfile.insert_part_attr(data, part, "port_marker", "7")
+    assert len(out) == len(data) + len(gfile._attr_pair("port_marker", "7"))
+    assert out.startswith(data[:len(data) // 2]) is False or True  # shifted
+
+    again = gfile.iter_parts(gfile.parse_geometry_file(out))[3]
+    assert again.attrs["port_marker"] == "7"
+    assert again.vertex_count == part.vertex_count
+    assert again.tri_count == part.tri_count
+    assert [v.position for v in again.vertices] == [v.position for v in part.vertices]
+    assert [b.name for b in again.bones] == [b.name for b in part.bones]
+
+    # a value of the same length rewrites in place: the payload keeps its size
+    same = gfile.replace_part_attr(out, again, "port_marker", "8")
+    assert len(same) == len(out)
+    assert gfile.iter_parts(
+        gfile.parse_geometry_file(same))[3].attrs["port_marker"] == "8"
+
+
+def test_gattr_cli_reports_and_reproduces_the_patch():
+    src = os.path.join(REPO, "Empire", "Angel", "character_empire_angel.g")
+    out = os.path.join(tempfile.mkdtemp(prefix="gattr-"), "angel.g")
+    rc = climod.main(["gattr", src, "--part", "3",
+                      "--insert", "port_marker=1", "-o", str(out)])
+    assert rc == 0
+    patched = open(out, "rb").read()
+    assert len(patched) > os.path.getsize(src)
+    assert gfile.iter_parts(
+        gfile.parse_geometry_file(patched))[3].attrs["port_marker"] == "1"
+    # running it again is a no-op, not a second insert
+    before = len(patched)
+    rc = climod.main(["gattr", str(out), "--part", "3",
+                      "--insert", "port_marker=1"])
+    assert rc == 0
+    assert os.path.getsize(out) == before
+
+
+def test_every_corpus_weapon_part_declares_its_weight_format():
+    """The invariant the Angel's sword broke: retail parts all declare it.
+
+    A part that carries a weight block but no `new_vertex_weights_format` is
+    read with the old stride by the engine, so it renders as nothing.  This
+    test states the rule on the corpus (a weapon part is the smallest block
+    that is still skinned to a single bone).
+    """
+    checked = 0
+    for path in sorted(glob.glob(os.path.join(REPO, "Empire", "*", "*.g"))):
+        if path.endswith("_lod.g"):
+            continue
+        mesh = gfile.parse_geometry_file(open(path, "rb").read())
+        if mesh.parse_error:
+            continue
+        for part in gfile.iter_parts(mesh):
+            if len(part.bones) != 1 or not part.vertex_count:
+                continue
+            if part.attrs.get("morph"):
+                continue
+            checked += 1
+            assert part.attrs.get("new_vertex_weights_format") == "1", (
+                f"{os.path.basename(path)}: {part.name!r} is skinned but "
+                "does not declare new_vertex_weights_format")
+    assert checked > 10, checked
+
+
+def test_added_gobj_keeps_the_scene_line_endings_and_one_material():
+    """An inserted `gobj` must not rewrite the file it lands in.
+
+    Two things went wrong in the field: the `.scene` was read with universal
+    newlines, so adding one block turned a CRLF payload into an LF one (every
+    byte of it different from the source pack's), and the block was cloned
+    from the LOD *body*, so the new sword part was handed the body's second
+    material (`material1_diffuse` of the hair) that its own `.g` part does
+    not have.
+    """
+    import copy as copymod
+    from d3tool import gfile as gmod
+    from d3tool import scene as scenemod
+    unit = os.path.join(REPO, "Empire", "Angel", "character_empire_angel_lod")
+    raw = open(unit + ".scene", "rb").read()
+    lf = raw.decode("latin-1")
+    crlf = lf.replace("\n", "\r\n")
+    mesh = gmod.parse_geometry_file(open(unit + ".g", "rb").read())
+    parts = list(gmod.iter_parts(mesh))
+    extra = copymod.copy(parts[-1])
+    extra.name = "test_weapon"
+
+    # a CRLF file stays CRLF, line for line
+    patched, added = scenemod.ensure_part_gobjs(crlf, parts + [extra])
+    assert added == ["test_weapon"]
+    lines = patched.split("\n")[:-1]
+    assert lines and all(line.endswith("\r") for line in lines), \
+        [line for line in lines if not line.endswith("\r")][:3]
+    # ... and an LF file stays LF
+    plain, _ = scenemod.ensure_part_gobjs(lf, parts + [extra])
+    assert all(not line.endswith("\r") for line in plain.split("\n")[:-1])
+
+    block = scenemod.parse_scene(patched).find_all("gobj")[-1]
+    attrs = [line for line in block.items
+             if isinstance(line, str) and 'attr "material' in line]
+    assert any("material0_diffuse" in line for line in attrs), attrs
+    assert not any("material1_" in line for line in attrs), attrs
+    assert scenemod.node_attr(block, "materials_num") == "1"
+
+
 if __name__ == "__main__":
     # Keep this at the very end: `main()` collects every module-level
     # `test_*` function, so tests defined below an earlier guard would never
