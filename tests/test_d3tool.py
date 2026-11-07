@@ -1769,7 +1769,9 @@ def test_reverse_export_splits_concatenated_angel_streams():
                                 "-o", gltf]) == 0, "import must succeed"
             assert os.path.isfile(os.path.join(d, stem + ".bin"))
         rev = os.path.join(d, "rev")
-        climod._export(gltf, rev, 0, anim=True, quiet=True)
+        # the donor folder is named explicitly: discovering it by walking up
+        # from the temp dir depends on what else happens to live in /tmp
+        climod._export(gltf, rev, 0, anim=True, quiet=True, donor_dir=folder)
         got = open(os.path.join(rev, stem + "_idle.a"), "rb").read()
     want = open(os.path.join(folder, stem + "_idle.a"), "rb").read()
     assert got == want, f"angel idle: {len(got)}B != {len(want)}B"
@@ -1855,7 +1857,9 @@ def test_import_auto_detects_animation_without_minus_a():
             # back byte-identically.
             assert os.path.getsize(os.path.join(d, stem + ".bin")) > 0
             rev = os.path.join(d, "rev")
-            climod._export(out, rev, 0, anim=True, quiet=True)
+            # explicit donor: guessing it by walking up from the temp dir
+            # depends on unrelated contents of /tmp
+            climod._export(out, rev, 0, anim=True, quiet=True, donor_dir=unit)
             for name in sorted(os.listdir(unit)):
                 if not name.endswith(".a"):
                     continue
@@ -2236,6 +2240,225 @@ def test_vdpack_manifest_cli_writes_json():
         broken = os.path.join(d, "broken.json")
         assert climod._run(["vdpack", "manifest", partial, "-o", broken]) == 1
         assert json.load(open(broken, encoding="utf-8"))["files"] == 1
+
+
+# --------------------------------------------------------------------------- #
+#  .char unit profiles
+# --------------------------------------------------------------------------- #
+_CHAR_SAMPLE = """// Unit Profile
+//
+id\t\t"test_leader";
+unit_scene \t"Resources\\\\Characters\\\\test\\\\leader\\\\character_test_leader.scene"
+unit_scene_lod "resources\\characters\\test\\leader\\character_test_leader_lod.scene",10;
+icon "resources\\characters\\test\\leader\\icon_leader.t";
+leader_icon "resources\\characters\\test\\\\leader\\\\icon_leader_ring.t"
+/*
+atck_zone 10 10 {
+    0 0 0 0
+}
+*/
+set 1 {
+    weapon "resources\\Characters\\test\\leader\\weapon\\leader_set1_weapon.scene";
+    hands  "resources\\Characters\\test\\leader\\hands\\leader_set1_hands.scene";
+}
+#include "desc\\test_leader_desc.char";
+#include "stats\\test_leader_stats.char";
+"""
+
+
+def test_char_parses_the_corpus_quirks():
+    """Indented block slots, statements that lost their `;`, a `/* … */`
+    region that must stay dead, a flag with no value and a draw distance
+    trailing the lod path — all of them are in the shipped Profiles."""
+    from d3tool import char
+    prof = char.parse_char(_CHAR_SAMPLE.encode("utf-8"))
+    assert prof.id == "test_leader"
+    assert char.scene_basename(prof.unit_scene) == "character_test_leader.scene"
+    # the draw distance after the lod path is a value, not a second path
+    assert prof.statement("unit_scene_lod").values[1] == "10"
+    assert dict(prof.resources())["unit_scene_lod"].endswith("_lod.scene")
+    # a key that lost its `;` still yields its value
+    assert char.normalize_reference(prof.get("leader_icon")).endswith(
+        "icon_leader_ring.t")
+    # the commented-out attack zone produced nothing
+    assert prof.statement("atck_zone") is None
+    # blocks keep their slots, indentation notwithstanding
+    assert len(prof.blocks) == 1
+    assert prof.slots(0) == {
+        "weapon": "resources\\Characters\\test\\leader\\weapon\\leader_set1_weapon.scene",
+        "hands": "resources\\Characters\\test\\leader\\hands\\leader_set1_hands.scene",
+    }
+    assert [char.scene_basename(p) for p in prof.includes] == [
+        "test_leader_desc.char", "test_leader_stats.char"]
+
+
+def test_char_round_trips_bytes_with_cp1251_and_bom():
+    from d3tool import char
+    for raw in (_CHAR_SAMPLE.encode("utf-8"),
+                _CHAR_SAMPLE.replace("\n", "\r\n").encode("utf-8"),
+                "\ufeff".encode("utf-8") + _CHAR_SAMPLE.encode("utf-8"),
+                "// \u041e\u043f\u0438\u0441\u0430\u043d\u0438\u0435\n"
+                "id \"x\";\n".encode("cp1251")):
+        prof = char.parse_char(raw)
+        assert char.encode_char(prof) == raw
+
+
+def test_char_set_id_or_scene_rewrites_one_line_only():
+    from d3tool import char
+    prof = char.parse_char(_CHAR_SAMPLE.encode("utf-8"))
+    before = char.write_char(prof).splitlines()
+    assert prof.set_id("test_leader_v2")
+    assert prof.set_value("unit_scene",
+                          "resources\\characters\\test\\leader\\other.scene")
+    after = char.write_char(prof).splitlines()
+    changed = [(a, b) for a, b in zip(before, after) if a != b]
+    assert len(changed) == 2, changed
+    # the key, its tabs and the terminator survive the patch
+    assert changed[0][1] == 'id\t\t"test_leader_v2";'
+    assert changed[1][1].startswith('unit_scene \t"resources\\characters')
+
+
+def test_char_reference_index_maps_resources_onto_the_corpus():
+    """`resources\\characters\\empire\\angel\\…` is `Empire/Angel/…` here, and
+    the same file is written with one, two or four separators."""
+    from d3tool import char
+    profile = os.path.join(REPO, "Profiles", "empire_angel.char")
+    assert os.path.exists(profile), "the shipped Profiles/ tree is missing"
+    prof = char.parse_char(open(profile, "rb").read())
+    index = char.ReferenceIndex(REPO)
+    scene = index.resolve(prof.unit_scene)
+    assert scene and scene.endswith(
+        os.path.join("Empire", "Angel", "character_empire_angel.scene"))
+    for spelling in (prof.unit_scene,
+                     prof.unit_scene.replace("\\\\", "\\"),
+                     prof.unit_scene.replace("\\", "/")):
+        assert index.resolve(spelling) == scene
+    report = char.check_profile(prof, index)
+    # the fx/ scenes are not part of the donor corpus
+    assert all("fx" in line for line in report.problems), report.problems
+
+
+def test_char_profile_for_scene_finds_the_profile_of_a_unit_folder():
+    from d3tool import char
+    folder = os.path.join(REPO, "Profiles")
+    hit = char.profile_for_scene(char.find_profiles(folder),
+                                 os.path.join(REPO, "Empire", "Angel"))
+    assert hit is not None
+    path, prof = hit
+    assert os.path.basename(path) == "empire_angel.char"
+    assert prof.id == "empire_angel"
+
+
+def test_char_cli_show_list_find_and_validate():
+    import contextlib
+    import io
+    from d3tool import char
+    folder = os.path.join(REPO, "Profiles")
+    with tempfile.TemporaryDirectory() as d, \
+            contextlib.redirect_stdout(io.StringIO()) as buf:
+        # show
+        assert climod._run(["char", "show",
+                            os.path.join(folder, "empire_angel.char"),
+                            "--json"]) == 0
+        doc = json.loads(buf.getvalue())
+        assert doc["id"] == "empire_angel"
+        assert doc["scene_file"] == "character_empire_angel.scene"
+        assert doc["blocks"] == []
+        # list, with the repo as the resolution root
+        buf.seek(0)
+        buf.truncate()
+        assert climod._run(["char", "list", "--profiles", folder,
+                            "--root", REPO, "--json"]) == 0
+        listed = json.loads(buf.getvalue())
+        assert len(listed) == 214
+        angel = [e for e in listed if e["id"] == "empire_angel"][0]
+        assert angel["resolved"] == "ok"
+        assert any(e["resolved"] == "-" for e in listed)   # absent factions
+        # find, by unit folder
+        buf.seek(0)
+        buf.truncate()
+        assert climod._run(["char", "find",
+                            os.path.join(REPO, "Empire", "Angel"),
+                            "--profiles", folder]) == 0
+        assert "empire_angel" in buf.getvalue()
+        # set-id writes a new file and leaves the original alone
+        original = open(os.path.join(folder, "empire_angel.char"),
+                        "rb").read()
+        out = os.path.join(d, "renamed.char")
+        buf.seek(0)
+        buf.truncate()
+        assert climod._run(["char", "set-id",
+                            os.path.join(folder, "empire_angel.char"),
+                            "empire_angel_mod", "-o", out]) == 0
+        patched = open(out, "rb").read()
+        assert open(os.path.join(folder, "empire_angel.char"),
+                    "rb").read() == original
+        assert patched != original
+        assert char.parse_char(patched).id == "empire_angel_mod"
+        assert char.parse_char(patched).unit_scene == \
+            char.parse_char(original).unit_scene
+
+
+def test_char_shipped_corpus_round_trips_and_ids_match():
+    """Every one of the 874 shipped profiles must come back byte for byte,
+    and the 214 that carry an `id` must be exactly the top-level ones."""
+    from d3tool import char
+    folder = os.path.join(REPO, "Profiles")
+    if not os.path.isdir(folder):
+        return
+    files = char.find_profiles(folder)
+    assert len(files) == 874
+    top, mismatched = 0, []
+    for path in files:
+        raw = open(path, "rb").read()
+        prof = char.parse_char(raw)
+        assert char.encode_char(prof) == raw, path
+        if not prof.id:
+            continue
+        top += 1
+        if prof.id != os.path.splitext(os.path.basename(path))[0]:
+            mismatched.append(os.path.basename(path))
+    assert top == 214
+    # the engine resolves a profile by its `id`, not by the file name, and
+    # three shipped files prove it (one of them even has a space in its name)
+    assert sorted(mismatched) == ["story_berthrezen.char",
+                                  "story_myzrael_undead.char",
+                                  "undead_templar .char"]
+
+
+def test_vdpack_validates_a_packed_char_profile():
+    """A `.char` names its includes, its scene and its icons: inside a pack
+    those are unit-local, so a missing one is a finding, while the engine's
+    global `fx/` tree is only a note."""
+    from d3tool import char, vdpack
+    prof = open(os.path.join(REPO, "Profiles", "elves_rod-1.char"),
+                "rb").read()
+    parsed = char.parse_char(prof)
+    # a Profiles-only pack: the scenes and includes sit elsewhere -> notes
+    report = vdpack.reference_findings({"Profiles/elves_rod-1.char": prof})
+    assert report.problems == []
+    assert len([n for n in report.notes if " includes " in n]) == 3
+    # 8 unit-local paths: the scene, its lod, and the six icons
+    assert len([n for n in report.notes if "->" in n]) == 8
+    assert all("outside the packed tree" in n for n in report.notes)
+    # with the includes and the scene inside, only the icons are left over
+    files = {"Profiles/elves_rod-1.char": prof,
+             "Profiles/characters/elves/rod-1/character_elves_rod-1.scene":
+                 b'node "root" {}\n'}
+    for inc in parsed.includes:
+        files["Profiles/" + inc.replace("\\", "/")] = b'id "";\n'
+    report = vdpack.reference_findings(files)
+    assert report.problems == []
+    assert not any(" includes " in n for n in report.notes)
+    assert not any("-> character_elves_rod-1.scene" in n
+                   for n in report.notes)
+    assert len([n for n in report.notes if "icon" in n]) == 6
+    # one icon inside the pack is one icon less to complain about
+    files["Profiles/characters/elves/rod-1/icon_rod-1.t"] = b""
+    report = vdpack.reference_findings(files)
+    left = [n for n in report.notes if "icon" in n]
+    assert len(left) == 5
+    assert not any("-> icon_rod-1.t " in n for n in left)
 
 
 if __name__ == "__main__":

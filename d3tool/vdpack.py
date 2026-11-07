@@ -461,6 +461,38 @@ def reference_findings(files: Dict[str, bytes]) -> ReferenceReport:
                 else:
                     findings.append(f"{base}: references {ref}, which is not "
                                     f"in the pack")
+        elif low.endswith(".char"):
+            from . import char as charmod
+            prof = charmod.parse_char(blob)
+            prof.path = base
+            # the `desc`/`stats`/`sound` fragments a unit profile includes are
+            # its own; the scenes, icons and fx it names may live elsewhere
+            for ref in prof.includes:
+                want = os.path.basename(ref.replace("\\", "/"))
+                if not present(want):
+                    if outside(ref):
+                        report.notes.append(f"{base}: includes {want} outside "
+                                            f"the packed tree")
+                    else:
+                        findings.append(f"{base}: includes {want}, which is "
+                                        f"not in the pack")
+            for key, ref in prof.resources():
+                if key == "#include" or ref.startswith("$("):
+                    continue
+                norm = charmod.normalize_reference(ref)
+                if norm.startswith("resources" + chr(92)):
+                    norm = norm.split(chr(92), 1)[1]
+                if not norm.startswith("characters" + chr(92)):
+                    continue          # fx/… and other engine-global trees
+                want = os.path.basename(norm.replace("\\", "/"))
+                if present(want):
+                    continue
+                if outside(ref):
+                    report.notes.append(f"{base}: {key} -> {want} is outside "
+                                        f"the packed tree")
+                else:
+                    findings.append(f"{base}: {key} -> {want} is not in the "
+                                    f"pack")
         elif low.endswith(".g"):
             try:
                 mesh = gfile.parse_geometry_file(blob)

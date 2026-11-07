@@ -14,6 +14,8 @@ writers:
 * ``texture convert|info`` — native `.t` <-> `.dds`.
 * ``vdpack list|extract|validate|manifest|pack`` — the one-file form of a unit bundle
   (what a mod ships; see ``d3tool/vdpack.py``).
+* ``char show|list|find|validate|set-id`` — the ``.char`` unit profile that
+  names a unit's scene, icons and sounds (see ``d3tool/char.py``).
 """
 from __future__ import annotations
 
@@ -30,6 +32,7 @@ from typing import List, Optional, Tuple
 from . import __version__
 from . import ac as acmod
 from . import alias as aliasmod
+from . import char as charmod
 from . import anim as animmod
 from . import gfile
 from . import gltf as gltfmod
@@ -1610,6 +1613,35 @@ def _build_parser() -> argparse.ArgumentParser:
         "manifest", help="sha256 inventory of a folder or an archive")
     p_vm.add_argument("target", help="a .vdpack file or a unit folder")
     p_vm.add_argument("-o", "--out", help="write JSON here instead of stdout")
+    p_ch = sub.add_parser(
+        "char", help="read / relink a .char unit profile")
+    p_ch_sub = p_ch.add_subparsers(dest="char_cmd", required=True)
+    p_cs = p_ch_sub.add_parser("show", help="print what a profile declares")
+    p_cs.add_argument("file")
+    p_cs.add_argument("--json", action="store_true", help="machine output")
+    p_cl = p_ch_sub.add_parser("list", help="every profile and its scene")
+    p_cl.add_argument("--profiles", help="folder of .char files "
+                                         "(default: ./Profiles)")
+    p_cl.add_argument("--root", help="resolve unit_scene under this folder")
+    p_cl.add_argument("--json", action="store_true", help="machine output")
+    p_cf = p_ch_sub.add_parser(
+        "find", help="find the profile of a scene, a unit folder or an id")
+    p_cf.add_argument("target", help=".scene path, unit folder, or profile id")
+    p_cf.add_argument("--profiles", help="folder of .char files "
+                                         "(default: ./Profiles)")
+    p_cv = p_ch_sub.add_parser(
+        "validate", help="check that every reference a profile makes exists")
+    p_cv.add_argument("target", help="a .char file or a folder of them")
+    p_cv.add_argument("--root", help="folder to resolve references against "
+                                     "(default: the repository root)")
+    p_cv.add_argument("--json", action="store_true", help="machine output")
+    p_ci = p_ch_sub.add_parser(
+        "set-id", help="rename a profile's `id` (how the port adds a unit)")
+    p_ci.add_argument("file")
+    p_ci.add_argument("new_id")
+    p_ci.add_argument("--scene", help="also point unit_scene at this scene")
+    p_ci.add_argument("-o", "--out", help="write here instead of in place")
+
     p_vp = p_vd_sub.add_parser("pack", help="pack a folder into an archive")
     p_vp.add_argument("folder")
     p_vp.add_argument("-o", "--out",
@@ -1704,7 +1736,209 @@ def main(argv=None) -> int:
             _texture_info(args.file)
     elif args.cmd == "vdpack":
         return _vdpack(args)
+    elif args.cmd == "char":
+        return _char(args)
     return 0
+
+
+def _profiles_dir(given: Optional[str]) -> str:
+    """The folder of `.char` profiles: what was asked for, else ``Profiles``."""
+    if given:
+        return given
+    for candidate in ("Profiles", "profiles"):
+        if os.path.isdir(candidate):
+            return candidate
+    raise ValueError("no --profiles folder given and no ./Profiles here")
+
+
+def _char_json(prof: "charmod.CharProfile", path: str) -> dict:
+    return {
+        "file": path,
+        "id": prof.id,
+        "encoding": prof.encoding,
+        "unit_scene": prof.unit_scene,
+        "unit_scene_lod": prof.get("unit_scene_lod"),
+        "scene_file": (charmod.scene_basename(prof.unit_scene)
+                       if prof.unit_scene else None),
+        "includes": prof.includes,
+        "blocks": [{"name": b.name, "index": b.argument,
+                    "slots": prof.slots(i)}
+                   for i, b in enumerate(prof.blocks)],
+        "keys": prof.keys(),
+        "resources": [{"key": k, "path": v} for k, v in prof.resources()],
+    }
+
+
+def _char(args) -> int:
+    """`char show|list|find|validate|set-id` — the `.char` unit profile."""
+    if args.char_cmd == "show":
+        path = args.file
+        if not os.path.exists(path):
+            ui.section("char show")
+            ui.fail(f"no such file: {path}")
+            return 1
+        prof = charmod.parse_char(open(path, "rb").read())
+        prof.path = path
+        if args.json:
+            print(json.dumps(_char_json(prof, path), ensure_ascii=False,
+                             indent=2))
+            return 0
+        ui.section(f"char {os.path.basename(path)}")
+        rows = [("id", prof.id or "-"),
+                ("encoding", prof.encoding + (" + BOM" if prof.bom else "")),
+                ("unit_scene", charmod.normalize_reference(prof.unit_scene)
+                 if prof.unit_scene else "-"),
+                ("unit_scene_lod",
+                 charmod.normalize_reference(prof.get("unit_scene_lod"))
+                 if prof.get("unit_scene_lod") else "-"),
+                ("statements", str(len(prof.statements))),
+                ("keys", str(len(prof.keys())))]
+        for index, block in enumerate(prof.blocks):
+            slots = prof.slots(index)
+            rows.append((f"set {block.argument}",
+                         ", ".join(f"{k}={os.path.basename(v)}"
+                                   for k, v in slots.items())))
+        for key, ref in prof.resources():
+            if key in charmod.RESOURCE_KEYS and key not in (
+                    "unit_scene", "unit_scene_lod"):
+                rows.append((key, charmod.normalize_reference(ref)))
+        ui.table(rows, headers=("key", "value"))
+        if prof.includes:
+            ui.info("includes: " + ", ".join(prof.includes))
+        if prof.parse_error:
+            ui.warn(prof.parse_error)
+        return 0
+
+    if args.char_cmd == "list":
+        folder = _profiles_dir(args.profiles)
+        files = charmod.find_profiles(folder)
+        index = charmod.ReferenceIndex(args.root) if args.root else None
+        rows = []
+        doc = []
+        for path in files:
+            prof = charmod.parse_char(open(path, "rb").read())
+            if not prof.id:
+                continue                     # a desc/stats/sound fragment
+            scene = charmod.scene_basename(prof.unit_scene or "")
+            state = ""
+            if index is not None:
+                state = "ok" if index.resolve(prof.unit_scene or "") else "-"
+            rows.append((prof.id, scene, prof.encoding, state,
+                         os.path.basename(path)))
+            doc.append({"id": prof.id, "scene": scene, "file": path,
+                        "resolved": state})
+        if args.json:
+            print(json.dumps(doc, ensure_ascii=False, indent=2))
+            return 0
+        ui.section(f"char list {folder}")
+        ui.table(rows, headers=("id", "scene", "encoding", "scene?", "file"))
+        ui.info(f"{len(rows)} profile(s) with an id")
+        if index is not None:
+            missing = sum(1 for r in rows if r[3] == "-")
+            if missing:
+                ui.warn(f"{missing} profile(s) name a scene that is not "
+                        f"under {args.root}")
+        return 0
+
+    if args.char_cmd == "find":
+        folder = _profiles_dir(args.profiles)
+        target = args.target
+        if os.path.isdir(target):
+            scenes = [os.path.join(target, n) for n in sorted(os.listdir(target))
+                      if n.lower().endswith(".scene")]
+            scenes.sort(key=lambda p: ("_lod" in os.path.basename(p).lower(),
+                                       len(p)))
+            if not scenes:
+                ui.section("char find")
+                ui.fail(f"no .scene in {target}")
+                return 1
+            target = scenes[0]
+        files = charmod.find_profiles(folder)
+        hit = charmod.profile_for_scene(files, target)
+        ui.section(f"char find {os.path.basename(target)}")
+        if hit is None:
+            # fall back to an id match, which is what the browser uses
+            want = target.lower()
+            for path in files:
+                prof = charmod.parse_char(open(path, "rb").read())
+                if prof.id and prof.id.lower() in (want,
+                                                   os.path.basename(want)):
+                    hit = (path, prof)
+                    break
+        if hit is None:
+            ui.fail(f"no profile in {folder} points at {target}")
+            return 1
+        path, prof = hit
+        ui.ok(f"{prof.id}  ({path})")
+        ui.info(f"unit_scene: {prof.unit_scene}")
+        return 0
+
+    if args.char_cmd == "validate":
+        if os.path.isdir(args.target):
+            files = charmod.find_profiles(args.target)
+            label = os.path.basename(os.path.normpath(args.target))
+        else:
+            files = [args.target]
+            label = os.path.basename(args.target)
+        root = args.root or os.getcwd()
+        index = charmod.ReferenceIndex(root)
+        ui.section(f"char validate {label}")
+        problems: List[str] = []
+        notes: List[str] = []
+        checked = 0
+        for path in files:
+            prof = charmod.parse_char(open(path, "rb").read())
+            prof.path = path
+            if not prof.id:
+                continue                     # an include fragment
+            checked += 1
+            report = charmod.check_profile(prof, index)
+            problems.extend(report.problems)
+            notes.extend(report.notes)
+        if args.json:
+            print(json.dumps({"profiles": checked, "problems": problems,
+                              "notes": notes}, ensure_ascii=False, indent=2))
+            return 1 if problems else 0
+        for line in notes[:20]:
+            ui.info(line)
+        if len(notes) > 20:
+            ui.info(f"… {len(notes) - 20} more note(s)")
+        if not problems:
+            ui.ok(f"{checked} profile(s), every reference resolves under "
+                  f"{os.path.abspath(root)}")
+            return 0
+        for line in problems[:40]:
+            ui.warn(line)
+        if len(problems) > 40:
+            ui.warn(f"… {len(problems) - 40} more")
+        ui.fail(f"{len(problems)} unresolved reference(s) in {checked} "
+                f"profile(s)")
+        return 1
+
+    if args.char_cmd == "set-id":
+        path = args.file
+        if not os.path.exists(path):
+            ui.section("char set-id")
+            ui.fail(f"no such file: {path}")
+            return 1
+        prof = charmod.parse_char(open(path, "rb").read())
+        prof.path = path
+        old = prof.id
+        ui.section(f"char set-id {os.path.basename(path)}")
+        if not prof.set_id(args.new_id):
+            ui.fail("this profile has no `id` statement")
+            return 1
+        if args.scene and not prof.set_value("unit_scene", args.scene):
+            ui.fail("this profile has no `unit_scene` statement to relink")
+            return 1
+        out = args.out or path
+        with open(out, "wb") as fh:
+            fh.write(charmod.encode_char(prof))
+        ui.wrote(out, f"id {old!r} -> {args.new_id!r}")
+        if args.scene:
+            ui.info(f"unit_scene -> {args.scene}")
+        return 0
+    return 1
 
 
 def _run(argv=None) -> int:

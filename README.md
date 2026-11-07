@@ -22,6 +22,8 @@ The point is to support a future program that, like dis3tool, exports glTF but
 | `Neutrals/*` | bundled units: `character_*.g` (geometry), `*.gltf`/`*.bin` (dis3tool export), `*.scene`, `*.ac`, `Aliases/*`, textures. |
 | `docs/FORMATS.md` | reverse-engineering notes for `.g`, `.gltf`, `.ac`, `.scene`. |
 | `d3tool/vdpack.py` | the `.vdpack` mod archive (one file = a whole unit folder): `vdpack list/extract/validate/manifest/pack`. |
+| `d3tool/char.py` | the `.char` unit profile: `char show/list/find/validate/set-id`. |
+| `Profiles/` | the retail unit profiles (874 `.char`: 214 units + their `desc`/`stats`/`sound` fragments). |
 | `docs/PORT_ANALYSIS_COMPARE_RU.md` | cross-check of the Heroes-VII `Port` archive against this toolkit (the `.a` grammar taken from the official Max exporter, `.g` bind conventions, what was adopted). |
 | `blender/io_scene_d3unit/` | the Blender add-on (import `.g`/`.a`/`.scene` → armature + animation, export back). |
 | `tests/blender_addon_test.py` | headless Blender suite (19 scenarios, operator-driven). |
@@ -85,6 +87,15 @@ python3 -m d3tool vdpack validate hierophant.vdpack   # every internal reference
 python3 -m d3tool vdpack manifest hierophant/ -o manifest.json  # sha256 per file
 # build on the only game-confirmed pack shape: keep the opaque `index`
 python3 -m d3tool vdpack pack hierophant/ -o my.vdpack --keep-index NewUnit.vdpack
+
+# the .char unit profile: what a unit declares, and which profile is whose
+python3 -m d3tool char show Profiles/empire_angel.char
+python3 -m d3tool char list --root .                 # 214 units, scene? column
+python3 -m d3tool char find Empire/Angel             # folder -> profile
+python3 -m d3tool char validate Profiles --root .    # every reference present?
+# rename the browser entry (the port's way of adding a unit; keeps every byte)
+python3 -m d3tool char set-id Profiles/empire_angel.char empire_angel_v2 \
+  --scene "resources\\characters\\empire\\angel\\character_empire_angel_v2.scene" -o new.char
 
 # convert the native .t texture to a .dds (or back)
 python3 -m d3tool texture convert Neutrals/AirElemental/character_neutrals_airelemental.t \
