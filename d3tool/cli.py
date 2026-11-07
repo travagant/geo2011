@@ -16,6 +16,9 @@ writers:
   (what a mod ships; see ``d3tool/vdpack.py``).
 * ``char show|list|find|validate|set-id`` — the ``.char`` unit profile that
   names a unit's scene, icons and sounds (see ``d3tool/char.py``).
+* ``weights <g> [--against <g>]`` — what a `.g` carries weight-wise, and
+  whether an export still holds the weights you painted (see
+  ``d3tool/weights.py``).
 """
 from __future__ import annotations
 
@@ -41,6 +44,7 @@ from . import scene as scenemod
 from . import texture as texmod
 from . import ui as ui
 from . import vdpack as vdmod
+from . import weights as weightsmod
 
 
 # --------------------------------------------------------------------------- #
@@ -1591,6 +1595,14 @@ def _build_parser() -> argparse.ArgumentParser:
     p_validate = sub.add_parser("validate", help="structural glTF self-check")
     p_validate.add_argument("gltf")
 
+    p_w = sub.add_parser(
+        "weights", help="inspect (or diff) the skin weights of a .g")
+    p_w.add_argument("file")
+    p_w.add_argument("--against", metavar="OTHER",
+                     help="compare with another .g (e.g. the game's donor)")
+    p_w.add_argument("--lot", type=int, default=10, metavar="N",
+                     help="how many changed vertices to list (default 10)")
+    p_w.add_argument("--json", action="store_true", help="machine output")
     p_dump = sub.add_parser("dump", help="dump a parsed .g as JSON")
     p_dump.add_argument("gfile")
 
@@ -1720,6 +1732,8 @@ def main(argv=None) -> int:
         ui.table([("errors", str(errors)), ("warnings", str(warnings)),
                   ("accessors", str(infos))])
         return 1 if errors else 0
+    elif args.cmd == "weights":
+        return _weights(args)
     elif args.cmd == "dump":
         data = open(args.gfile, "rb").read()
         mesh = gfile.parse_geometry_file(data)
@@ -1749,6 +1763,85 @@ def main(argv=None) -> int:
         return _vdpack(args)
     elif args.cmd == "char":
         return _char(args)
+    return 0
+
+
+def _weights(args) -> int:
+    """`weights <g>` — what a `.g` carries, optionally diffed against another."""
+    for path in [args.file] + ([args.against] if args.against else []):
+        if not os.path.exists(path):
+            ui.section("weights")
+            ui.fail(f"no such file: {path}")
+            return 1
+    mesh = gfile.parse_geometry_file(open(args.file, "rb").read())
+    if mesh.parse_error:
+        ui.section("weights")
+        ui.fail(f"{os.path.basename(args.file)}: unparsed "
+                f"({mesh.parse_error})")
+        return 1
+    doc = {
+        "file": args.file,
+        "parts": [
+            {"name": info.name, "vertices": info.vertex_count,
+             "weights_on_vertex": info.influences,
+             "max_influences": info.max_influences,
+             "bones": info.bone_count, "bones_used": info.bones_used,
+             "dominant": info.dominant, "unweighted": info.unweighted,
+             "sum": [round(info.min_sum, 4), round(info.max_sum, 4)]}
+            for info in weightsmod.summarise(mesh)
+        ],
+    }
+    diff = None
+    if args.against:
+        other = gfile.parse_geometry_file(open(args.against, "rb").read())
+        if other.parse_error:
+            ui.section("weights")
+            ui.fail(f"{os.path.basename(args.against)}: unparsed "
+                    f"({other.parse_error})")
+            return 1
+        diff = weightsmod.diff_weights(other, mesh, limit=args.lot)
+        doc["against"] = args.against
+        doc["diff"] = {
+            "parts": diff.parts, "compared": diff.compared,
+            "changed": diff.changed, "moved_bone": diff.moved_bone,
+            "unmatched": diff.unmatched, "notes": diff.notes,
+            "samples": [
+                {"part": c.part, "index": c.index,
+                 "position": [round(v, 4) for v in c.position],
+                 "was": [[n, round(w, 4)] for n, w in c.was],
+                 "now": [[n, round(w, 4)] for n, w in c.now],
+                 "was_dominant": c.old_dominant,
+                 "now_dominant": c.new_dominant}
+                for c in diff.samples],
+        }
+    if args.json:
+        print(json.dumps(doc, ensure_ascii=False, indent=2))
+        return 0
+
+    ui.section(f"weights {os.path.basename(args.file)}")
+    ui.table(weightsmod.weight_report(mesh),
+             headers=(".g part", "slots (max used)", "dominant bones",
+                      "weight sum"))
+    if diff is None:
+        return 0
+    ui.section(f"against {os.path.basename(args.against)}")
+    for line in diff.notes:
+        ui.info(line)
+    if not diff.compared:
+        ui.fail("nothing comparable: the two files share no part")
+        return 1
+    ui.table([("vertices compared", str(diff.compared)),
+              ("weights changed", str(diff.changed)),
+              ("dominant bone moved", str(diff.moved_bone)),
+              ("unmatched vertices", str(diff.unmatched))])
+    for change in diff.samples:
+        ui.info(weightsmod.describe_change(change))
+    if diff.changed:
+        ui.ok(f"{diff.changed} of {diff.compared} vertices carry different "
+              f"weights than {os.path.basename(args.against)}")
+    else:
+        ui.warn("the weights are identical — nothing you painted reached "
+                "this file")
     return 0
 
 

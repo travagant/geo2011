@@ -2243,6 +2243,87 @@ def test_vdpack_manifest_cli_writes_json():
 
 
 # --------------------------------------------------------------------------- #
+#  skin weights (what a .g carries, and whether an export kept them)
+# --------------------------------------------------------------------------- #
+ANGEL_G = os.path.join(REPO, "Empire", "Angel", "character_empire_angel.g")
+
+
+def test_weights_summary_of_a_real_unit():
+    from d3tool import weights
+    mesh = gfile.parse_geometry_file(open(ANGEL_G, "rb").read())
+    parts = weights.summarise(mesh)
+    assert [p.name for p in parts] == ["Myzrael_alpha", "empire_angel_wing",
+                                       "empire_angel", "empire_angel_cloth"]
+    body = [p for p in parts if p.name == "empire_angel"][0]
+    assert body.influences == 3
+    assert body.max_influences <= body.influences <= 4
+    assert body.unweighted == 0
+    assert abs(body.min_sum - 1.0) < 1e-6 and abs(body.max_sum - 1.0) < 1e-6
+    # the head and the spine carry most of the body
+    top = sorted(body.dominant.items(), key=lambda kv: -kv[1])[:2]
+    assert [n for n, _c in top] == ["Bip01 Head", "Bip01 Spine1"]
+
+
+def test_weights_diff_reports_nothing_for_an_untouched_file():
+    from d3tool import weights
+    mesh = gfile.parse_geometry_file(open(ANGEL_G, "rb").read())
+    diff = weights.diff_weights(mesh, mesh)
+    assert diff.compared and not diff.changed
+    assert diff.samples == []
+
+
+def test_weights_diff_finds_a_swapped_pair():
+    """Flipping one vertex's two lanes must show up as exactly one changed
+    vertex whose dominant bone moved — this is the check a modder runs on the
+    `.g` Blender just wrote, with the game's own file as the baseline."""
+    import copy
+    from d3tool import weights
+    donor = gfile.parse_geometry_file(open(ANGEL_G, "rb").read())
+    edited = copy.deepcopy(donor)
+    edited.raw = b""          # a parsed donor is otherwise re-emitted verbatim
+    part = [p for p in edited.parts if p.name == "empire_angel"][0]
+    bone_names = [b.name for b in part.bones]
+    was = now = None
+    for vertex in part.vertices:
+        stored = list(vertex.stored_weights)
+        # two real lanes on two different bones, or the swap is a no-op
+        if (len(stored) >= 2 and stored[0] > 0.3 and stored[1] > 0.05
+                and vertex.bones[0] != vertex.bones[1]):
+            was = bone_names[vertex.bones[0]]
+            now = bone_names[vertex.bones[1]]
+            # swap the weights only: swapping the bones with them would just
+            # re-order the same (bone, weight) pairs
+            vertex.stored_weights = tuple([stored[1], stored[0]]
+                                          + stored[2:])
+            break
+    assert was is not None, "no vertex with two distinct lanes"
+    diff = weights.diff_weights(donor, edited, limit=5)
+    assert diff.changed == 1, diff.changed
+    assert diff.moved_bone == 1
+    change = diff.samples[0]
+    assert change.part == "empire_angel"
+    assert change.old_dominant == was and change.new_dominant == now
+    assert "->" in weights.describe_change(change)
+    # and an untouched copy is reported as identical
+    assert not weights.diff_weights(donor, copy.deepcopy(donor)).changed
+
+
+def test_weights_cli_reports_and_compares():
+    import contextlib
+    import io
+    with contextlib.redirect_stdout(io.StringIO()) as buf:
+        assert climod._run(["weights", ANGEL_G, "--json"]) == 0
+    doc = json.loads(buf.getvalue())
+    assert [p["name"] for p in doc["parts"]][0] == "Myzrael_alpha"
+    assert doc["parts"][2]["weights_on_vertex"] == 3
+    with contextlib.redirect_stdout(io.StringIO()) as buf:
+        assert climod._run(["weights", ANGEL_G, "--against", ANGEL_G,
+                            "--json"]) == 0
+    doc = json.loads(buf.getvalue())
+    assert doc["diff"]["changed"] == 0 and doc["diff"]["compared"] > 4000
+
+
+# --------------------------------------------------------------------------- #
 #  .char unit profiles
 # --------------------------------------------------------------------------- #
 _CHAR_SAMPLE = """// Unit Profile

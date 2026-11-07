@@ -23,6 +23,7 @@ The point is to support a future program that, like dis3tool, exports glTF but
 | `docs/FORMATS.md` | reverse-engineering notes for `.g`, `.gltf`, `.ac`, `.scene`. |
 | `d3tool/vdpack.py` | the `.vdpack` mod archive (one file = a whole unit folder): `vdpack list/extract/validate/manifest/pack`. |
 | `d3tool/char.py` | the `.char` unit profile: `char show/list/find/validate/set-id`. |
+| `d3tool/weights.py` | skin weights of a `.g`: `weights <g> [--against <g>]`. |
 | `Profiles/` | the retail unit profiles (874 `.char`: 214 units + their `desc`/`stats`/`sound` fragments). |
 | `docs/PORT_ANALYSIS_COMPARE_RU.md` | cross-check of the Heroes-VII `Port` archive against this toolkit (the `.a` grammar taken from the official Max exporter, `.g` bind conventions, what was adopted). |
 | `blender/io_scene_d3unit/` | the Blender add-on (import `.g`/`.a`/`.scene` → armature + animation, export back). |
@@ -192,6 +193,44 @@ runs six such scenarios, all battle-ready):
   `material0_diffuse`.  Findings print as loud warnings — the classes of
   defect that used to surface only as an in-game crash on entering
   battle.
+
+### Did my edit actually reach the game?
+
+Weights are invisible until the unit moves, and a file that the game never
+loads looks exactly like a file with nothing wrong in it.  Two checks settle
+it, in this order:
+
+1. **Does the file carry what you painted?** Compare what Blender wrote with
+   the file the game ships:
+
+   ```bash
+   python3 -m d3tool weights path/to/character_empire_angel.g \
+       --against Empire/Angel/character_empire_angel.g
+   ```
+
+   It prints the influence width of every part, the bones each part is bound
+   to and the weight sum per vertex (`1.000..1.000` is what the engine
+   wants), then `weights changed` / `dominant bone moved` counts and a few
+   before→after lines.  Zero changed means nothing you painted reached the
+   `.g` — stop here and re-export rather than hunting in the game.
+
+2. **Does the game read that file at all?** Make an *obvious* geometry edit
+   (move a whole limb, scale the mesh), export, restart the game and enter a
+   battle.  If the silhouette is unchanged, the weights were never the
+   question: the game is loading a different file.  Things worth checking:
+
+   * the unit folder the game uses is `resources\characters\<faction>\<unit>\`
+     and the `.scene` there names the `.g` you replaced;
+   * a `.vdpack` (or a mod archive) in the game folder can carry the same
+     `character_*.g` — list the candidates with
+     `python3 -m d3tool vdpack list <archive>`; a unit shipped inside a pack
+     has to be rebuilt into that pack (`vdpack pack … --keep-index`, the only
+     pack shape confirmed to load), a loose file next to it may simply be
+     ignored;
+   * leaders draw several `.g` parts through `set 1|2|3` equipment scenes — a
+     weight change in the body shows only if that body is the part on screen;
+   * weights show up while the unit animates (idle/attack), and an id from a
+     save may restore a unit that was already loaded — start a fresh battle.
 
 ### The add-on zip (what you install in Blender)
 

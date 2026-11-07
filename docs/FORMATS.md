@@ -528,6 +528,11 @@ includes and `characters\…` references like every other unit-local reference.
   none.
 * `d3tool/alias.py` — parse & write `.alias` (byte-exact for all 1294 bundled
   files, including the CP1251 one; empty "muted" blocks preserved).
+* `d3tool/weights.py` — read the skin weights of a `.g` back out: the
+  influence width per part, the bones each part is bound to, the per-vertex
+  weight sum, and a donor-vs-export diff (`weights changed` / `dominant bone
+  moved`).  Comparisons ignore the sub-byte residue lanes the donor keeps, so
+  an untouched round trip reports zero changes.
 * `d3tool/char.py` — parse & write `.char` unit profiles (byte-exact for all
   874 shipped files); `ReferenceIndex` resolves a profile's `resources\…`
   paths against the game folder or the donor corpus; `set_id`/`set_value`
