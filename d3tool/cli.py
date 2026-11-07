@@ -30,7 +30,7 @@ import struct
 import sys
 import textwrap
 import traceback
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from . import __version__
 from . import ac as acmod
@@ -261,53 +261,75 @@ def _main_image_uri(gltf_path: str) -> str:
     return ""
 
 
-def _resource_root(gltf_path: str, base: str) -> str:
+def _resource_root(gltf_path: str, base: str,
+                   search_dirs: Sequence[str] = ()) -> str:
     """Derive the game resource directory (backslash path) for a glTF.
 
     The engine resolves character assets via a lowercase resource directory
     (e.g. ``resources\\characters\\neutrals\\airelemental``).  That name does
     *not* always match the on-disk unit folder (``Wildboar`` -> ``werewolf``),
-    so we prefer the directory referenced by the sibling ``.scene`` across the
-    actual geometry files (``<base>.g`` / ``<base>.ac``); only then fall back
-    to a lowercase guess.
+    so we prefer the directory referenced by the sibling ``.scene``/``.ac``
+    across the actual geometry files; only then fall back to a lowercase guess.
+
+    ``search_dirs`` are extra places to look for those siblings — the donor
+    folder of an export, since the glTF itself usually lives in a temp dir.
+    A ``*_lod`` stem has no ``.ac``/``.scene`` of its own (the games that ship
+    both models keep one folder, so only the main stem has them), and the
+    main stem is the one that names the real resource folder.  Without this
+    the guess below invents a directory that does not exist
+    (``resources\\characters\\character_empire_angel_lod``), which leaves a
+    generated ``_lod.ac`` pointing at files the engine can never find.
     """
-    import re
     gltf_dir = os.path.dirname(os.path.abspath(gltf_path))
-    for ext in (".scene", ".ac"):
-        p = os.path.join(gltf_dir, base + ext)
-        if not os.path.exists(p):
-            continue
-        try:
-            text = open(p, "r", encoding="utf-8", errors="replace").read()
-        except OSError:
-            continue
-        # Prefer the resource path that references the actual geometry, not
-        # e.g. an Alias/particle resource living elsewhere.
-        best = None
-        for m in re.finditer(r'resources[^"]*', text, re.IGNORECASE):
-            cand = m.group(0).strip()
-            if not cand.lower().endswith(('.g', '.ac', '.a')):
-                continue
-            if base.lower() in cand.lower():
-                best = cand
-                break
-        if best is None:
-            for m in re.finditer(r'resources[^"]*', text, re.IGNORECASE):
-                cand = m.group(0).strip()
-                if cand.lower().endswith(('.g', '.ac', '.a')):
-                    best = cand
-                    break
-        if best:
-            d = best.rsplit('\\', 1)[0].replace('/', '\\')
-            if 'characters' in d.lower():
-                return d
+    stems = [base]
+    if base.lower().endswith("_lod"):
+        stems.append(base[:-4])
+    for folder in [gltf_dir] + [d for d in search_dirs if d]:
+        for stem in stems:
+            for ext in (".scene", ".ac"):
+                found = _resource_dir_from_file(
+                    os.path.join(folder, stem + ext), base)
+                if found:
+                    return found
     rel = gltf_path.replace("\\", "/")
     parts = rel.split("/")
     if "Neutrals" in parts and len(parts) >= 2:
-        res = "\\".join(["resources", "characters", "neutrals", parts[-2].lower()])
+        res = "\\".join(["resources", "characters", "neutrals",
+                          parts[-2].lower()])
     else:
         res = f"resources\\characters\\{base.lower()}"
     return res.replace("/", "\\")
+
+
+def _resource_dir_from_file(path: str, base: str) -> str:
+    """The ``resources\\characters\\...`` directory a `.scene`/`.ac` names.
+
+    Empty when the file is absent or names no geometry at all.  The path that
+    mentions ``base`` wins, so a scene mentioning several meshes resolves to
+    the one this export is about.
+    """
+    import re
+    if not os.path.exists(path):
+        return ""
+    try:
+        text = open(path, "r", encoding="utf-8", errors="replace").read()
+    except OSError:
+        return ""
+    refs = [m.group(0).strip()
+            for m in re.finditer(r'resources[^"]*', text, re.IGNORECASE)]
+    refs = [r for r in refs if r.lower().endswith((".g", ".ac", ".a"))]
+    best = None
+    for cand in refs:
+        if base.lower() in cand.lower():
+            best = cand
+            break
+    if best is None and refs:
+        best = refs[0]
+    if not best:
+        return ""
+    directory = best.rsplit("\\", 1)[0].replace("/", "\\")
+    return directory if "characters" in directory.lower() else ""
+
 
 def _export_textures(gltf_path: str, out_dir: str, base: str,
                      quiet: bool, src_dir: Optional[str] = None) -> Optional[str]:
@@ -594,7 +616,7 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
         # original asset's own label and may differ from the file base
         sm.geometry_file = base
     os.makedirs(out_dir, exist_ok=True)
-    res = _resource_root(gltf_path, base)
+    res = _resource_root(gltf_path, base, (src_dir,))
     if donor is not None and donor.attrs:
         # donated attribute block: keeps the historical `.tga` material
         # name, dwNode/dwParent, tech/vdshader and any extra keys

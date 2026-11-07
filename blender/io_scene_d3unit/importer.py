@@ -53,6 +53,31 @@ def _unit_from_pick(path: str) -> str:
         f"pick the unit's .g file instead")
 
 
+def lod_notice(base: str, folder: str) -> str:
+    """A warning when the picked model is the far/LOD copy of the unit.
+
+    A unit ships two meshes out of one folder.  The profile's ``unit_scene``
+    draws ``<unit>.g`` and its ``unit_scene_lod`` swaps in ``<unit>_lod.g``
+    once the camera is past the profile's lod distance, so painting the lod
+    copy changes nothing up close — the trap that made a whole "my weights did
+    not reach the game" report look like a broken export.
+    """
+    if not base.lower().endswith("_lod"):
+        return ""
+    main = base[:-4]
+    try:
+        names = os.listdir(folder)
+    except OSError:
+        names = []
+    for name in names:
+        if name.lower() == (main + ".g").lower():
+            return (f"{base}.g is the far/LOD model: the game keeps drawing "
+                    f"{name} up close and only swaps to this one past the "
+                    f"profile's lod distance. Edit {name} instead if the "
+                    f"change has to show in battle.")
+    return ""
+
+
 def _new_objects(before):
     return [o for o in bpy.data.objects if o not in before]
 
@@ -241,6 +266,14 @@ def import_unit(context, path: str, use_anim: bool = True,
         info["textures"] = packed
         info["frames"] = frames
         info["meshes"] = len(meshes)
+        # before the tagging below: the metadata is what the exporter and the
+        # UI read back, so a warning has to be in it, not just in the log
+        notice = lod_notice(base, folder)
+        if notice:
+            info.setdefault("warnings", []).append(notice)
+            log.write("WARNING " + notice + "\n")
+            if not quiet:
+                print(f"[d3unit] WARNING {notice}")
         if armatures:
             for arm in armatures:
                 own = [m for m in meshes
@@ -533,6 +566,8 @@ class D3UNIT_OT_import(bpy.types.Operator, ImportHelper):
                     f"{len(out['meshes'])} mesh(es), "
                     f"{len(info.get('anims') or [])} animation stream(s)")
         self.report({"INFO"}, f"{info.get('frames', 0)} animation frames")
+        for text in info.get("warnings") or []:
+            self.report({"WARNING"}, text)
         return {"FINISHED"}
 
 

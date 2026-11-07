@@ -197,8 +197,23 @@ runs six such scenarios, all battle-ready):
 ### Did my edit actually reach the game?
 
 Weights are invisible until the unit moves, and a file that the game never
-loads looks exactly like a file with nothing wrong in it.  Two checks settle
+loads looks exactly like a file with nothing wrong in it.  Three checks settle
 it, in this order:
+
+0. **Is this the model the camera actually draws?** Every unit ships two of
+   them, and its `.char` names both:
+
+   ```
+   unit_scene      "…\character_empire_angel.scene"       # what you see
+   unit_scene_lod  "…\character_empire_angel_lod.scene",10 # only past 10 units
+   ```
+
+   Painting `character_empire_angel_lod.g` and packing it changes the angel you
+   look at *from far away* and nothing else, so the battle model stays
+   untouched and the report reads "my weights never reached the game".  The
+   importer now warns when the file you picked is the `_lod` one; check with
+   `python3 -m d3tool char show Profiles/empire_angel.char` (or
+   `d3tool analyze <unit folder>`) before you paint.
 
 1. **Does the file carry what you painted?** Compare what Blender wrote with
    the file the game ships:

@@ -37,6 +37,8 @@ texmod = addon.bridge.module("texture")
 frm = addon.bridge.module("frame")
 
 ANGEL = os.path.join(REPO, "Empire", "Angel", "character_empire_angel.g")
+ANGEL_LOD = os.path.join(REPO, "Empire", "Angel",
+                         "character_empire_angel_lod.g")
 RIGID = os.path.join(REPO, "Neutrals", "Blacknaga",
                      "character_neutrals_blacknaga.g")
 MORPH = os.path.join(REPO, "Empire", "Hierophant",
@@ -763,6 +765,25 @@ def test_second_unit_in_the_scene_is_left_alone():
 # --------------------------------------------------------------------------- #
 #  main
 # --------------------------------------------------------------------------- #
+def test_lod_import_says_it_is_the_far_model():
+    """The unit ships two meshes out of one folder and the game draws the
+    non-lod one up close, so editing the lod copy changes nothing in battle.
+    Importing it has to say so — that mistake already cost a full report
+    ("my weights never reached the game") that was in fact a correct export
+    of a model the camera only switches to at range."""
+    root = import_unit(ANGEL_LOD)
+    info = addon.unitprops.get_info(root) or {}
+    warnings = info.get("warnings") or []
+    assert_(any("far/LOD model" in w for w in warnings), warnings)
+    assert_(any("character_empire_angel.g" in w for w in warnings), warnings)
+    # the near model is the unit itself: nothing to warn about
+    reset()
+    root = import_unit(ANGEL)
+    info = addon.unitprops.get_info(root) or {}
+    assert_(not any("far/LOD" in w for w in (info.get("warnings") or [])),
+            info.get("warnings"))
+
+
 TESTS = [
     ("import builds armature, meshes and metadata", test_import_structure),
     ("import restores 30 fps animation", test_import_animation_and_fps),
@@ -796,6 +817,8 @@ TESTS = [
      test_second_unit_in_the_scene_is_left_alone),
     ("edited weights reach the file", test_edited_weights_reach_the_file),
     ("edited mesh reaches the file", test_edited_mesh_reaches_the_file),
+    ("a lod import says it is the far model",
+     test_lod_import_says_it_is_the_far_model),
 ]
 
 

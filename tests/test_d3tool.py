@@ -2323,6 +2323,49 @@ def test_weights_cli_reports_and_compares():
     assert doc["diff"]["changed"] == 0 and doc["diff"]["compared"] > 4000
 
 
+def test_resource_root_finds_the_unit_folder_for_a_lod_export():
+    """A ``*_lod`` model has no ``.ac``/``.scene`` of its own, so the main stem
+    is what names the resource folder.  Guessing from the stem wrote
+    ``resources\\characters\\character_empire_angel_lod`` into a generated
+    ``_lod.ac`` — a folder that does not exist, so the engine could never
+    resolve the model or its animations."""
+    angel = os.path.join(REPO, "Empire", "Angel")
+    scratch = os.path.join(tempfile.gettempdir(), "no_scene_here.gltf")
+    assert climod._resource_root(scratch, "character_empire_angel_lod",
+                                 (angel,)) == "resources\\characters\\empire\\angel"
+    # the near model resolves the same directory
+    assert climod._resource_root(scratch, "character_empire_angel",
+                                 (angel,)) == "resources\\characters\\empire\\angel"
+    # a scene that names several meshes still picks the one being exported
+    assert climod._resource_dir_from_file(
+        os.path.join(angel, "character_empire_angel.scene"),
+        "character_empire_angel_lod") == "resources\\characters\\empire\\angel"
+    # with nothing to look at the historical guess stays (a new asset)
+    assert climod._resource_root(scratch, "character_empire_angel_lod") == \
+        "resources\\characters\\character_empire_angel_lod"
+
+
+def test_lod_export_writes_a_config_that_resolves():
+    """End to end: exporting the Angel's lod model must not emit an `.ac` that
+    points into a folder of its own making."""
+    angel = os.path.join(REPO, "Empire", "Angel")
+    lod = os.path.join(angel, "character_empire_angel_lod.g")
+    out = tempfile.mkdtemp(prefix="d3tool_lod_")
+    try:
+        gltf = os.path.join(out, "character_empire_angel_lod.gltf")
+        climod._export_gl(lod, None, gltf, None, quiet=True)
+        climod._export(gltf, out, 0, quiet=True, donor_dir=angel)
+        text = open(os.path.join(out, "character_empire_angel_lod.ac"),
+                    encoding="utf-8").read()
+        assert "resources\\characters\\empire\\angel\\character_empire_angel_lod.g" \
+            in text, text[:400]
+        scene = open(os.path.join(out, "character_empire_angel_lod.scene"),
+                     encoding="utf-8").read()
+        assert "resources\\characters\\character_empire_angel_lod" not in scene
+    finally:
+        shutil.rmtree(out, ignore_errors=True)
+
+
 # --------------------------------------------------------------------------- #
 #  .char unit profiles
 # --------------------------------------------------------------------------- #
