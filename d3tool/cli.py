@@ -12,7 +12,7 @@ writers:
 * ``validate <gltf>``   — structural self-check of a glTF.
 * ``import <g>``        — dump the parsed `.g` as JSON.
 * ``texture convert|info`` — native `.t` <-> `.dds`.
-* ``vdpack list|extract|validate|pack`` — the one-file form of a unit bundle
+* ``vdpack list|extract|validate|manifest|pack`` — the one-file form of a unit bundle
   (what a mod ships; see ``d3tool/vdpack.py``).
 """
 from __future__ import annotations
@@ -1337,6 +1337,34 @@ def _vdpack(args) -> int:
             ui.wrote(os.path.relpath(path, dest))
         return 0
 
+    if args.vd_cmd == "manifest":
+        if os.path.isdir(args.target):
+            files = vdmod.pack_folder(args.target)
+            label = os.path.basename(os.path.normpath(args.target))
+        else:
+            pack = vdmod.read_vdpack(args.target)
+            if pack.parse_error:
+                ui.section("vdpack manifest")
+                ui.fail(f"{pack.parse_error}")
+                return 1
+            files = list(pack.files().items())
+            label = os.path.basename(args.target)
+        doc = vdmod.manifest(files, label)
+        text = json.dumps(doc, ensure_ascii=False, indent=2) + "\n"
+        if args.out:
+            with open(args.out, "w", encoding="utf-8", newline="\n") as fh:
+                fh.write(text)
+            ui.section(f"vdpack manifest {label}")
+            ui.wrote(args.out, f"{doc['files']} file(s), {doc['bytes']} bytes")
+        else:
+            sys.stdout.write(text)
+        problems = doc["references"]["problems"]
+        if problems:
+            ui.warn(f"{len(problems)} reference(s) would not resolve inside "
+                    f"the bundle (see `vdpack validate`)")
+            return 1
+        return 0
+
     if args.vd_cmd == "validate":
         if os.path.isdir(args.target):
             files = dict(vdmod.pack_folder(args.target))
@@ -1552,6 +1580,10 @@ def _build_parser() -> argparse.ArgumentParser:
     p_vv = p_vd_sub.add_parser(
         "validate", help="check that every internal reference is inside")
     p_vv.add_argument("target", help="a .vdpack file or a unit folder")
+    p_vm = p_vd_sub.add_parser(
+        "manifest", help="sha256 inventory of a folder or an archive")
+    p_vm.add_argument("target", help="a .vdpack file or a unit folder")
+    p_vm.add_argument("-o", "--out", help="write JSON here instead of stdout")
     p_vp = p_vd_sub.add_parser("pack", help="pack a folder into an archive")
     p_vp.add_argument("folder")
     p_vp.add_argument("-o", "--out",

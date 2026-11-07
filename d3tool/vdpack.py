@@ -30,6 +30,7 @@ archives and against the *layout* the port used, not against a retail pack.
 """
 from __future__ import annotations
 
+import hashlib
 import os
 import struct
 from dataclasses import dataclass, field
@@ -308,6 +309,38 @@ class ReferenceReport:
 
     def __bool__(self) -> bool:
         return bool(self.problems)
+
+
+def manifest(files, source: str = "") -> dict:
+    """``files`` is either ``{name: bytes}`` or ``[(name, bytes), ...]``."""
+    """A reproducible inventory of a bundle: one sha256 per file.
+
+    A `.vdpack` is what a mod ships, so there has to be a way to prove that
+    the archive carries exactly what the working folder has — and to compare
+    two builds without unpacking them.  The manifest has the same shape for
+    a folder and for the archive built from it, so
+    ``vdpack manifest my_unit`` and
+    ``vdpack manifest my_unit.vdpack`` diff to nothing (the workflow the
+    Heroes-VII port used, keeping a `manifest.json` next to each pack).
+
+    Paths are written in archive form (backslash separated) for both
+    sources, entries are sorted case-insensitively, and the reference check
+    runs along so a manifest doubles as the "would it load?" report.
+    """
+    pairs = list(files.items()) if isinstance(files, dict) else list(files)
+    pairs.sort(key=lambda kv: kv[0].lower())
+    entries = [{"path": name.replace("/", "\\"),
+                "bytes": len(data),
+                "sha256": hashlib.sha256(data).hexdigest()}
+               for name, data in pairs]
+    report = reference_findings(dict(pairs))
+    return {
+        "source": source,
+        "files": len(entries),
+        "bytes": sum(entry["bytes"] for entry in entries),
+        "entries": entries,
+        "references": {"problems": report.problems, "notes": report.notes},
+    }
 
 
 def reference_findings(files: Dict[str, bytes]) -> ReferenceReport:

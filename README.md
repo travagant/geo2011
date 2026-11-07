@@ -21,7 +21,7 @@ The point is to support a future program that, like dis3tool, exports glTF but
 | `geo2011.dle` | the original 3ds Max plugin (binary). Strings reveal it is the `GM (R) File Exporter` / `GM MAX (R) File Format Exporter`. |
 | `Neutrals/*` | bundled units: `character_*.g` (geometry), `*.gltf`/`*.bin` (dis3tool export), `*.scene`, `*.ac`, `Aliases/*`, textures. |
 | `docs/FORMATS.md` | reverse-engineering notes for `.g`, `.gltf`, `.ac`, `.scene`. |
-| `d3tool/vdpack.py` | the `.vdpack` mod archive (one file = a whole unit folder): `vdpack list/extract/pack`. |
+| `d3tool/vdpack.py` | the `.vdpack` mod archive (one file = a whole unit folder): `vdpack list/extract/validate/manifest/pack`. |
 | `docs/PORT_ANALYSIS_COMPARE_RU.md` | cross-check of the Heroes-VII `Port` archive against this toolkit (the `.a` grammar taken from the official Max exporter, `.g` bind conventions, what was adopted). |
 | `blender/io_scene_d3unit/` | the Blender add-on (import `.g`/`.a`/`.scene` → armature + animation, export back). |
 | `tests/blender_addon_test.py` | headless Blender suite (19 scenarios, operator-driven). |
@@ -82,6 +82,7 @@ python3 -m d3tool vdpack pack Empire/Hierophant -o hierophant.vdpack
 python3 -m d3tool vdpack list hierophant.vdpack
 python3 -m d3tool vdpack extract hierophant.vdpack -o hierophant/
 python3 -m d3tool vdpack validate hierophant.vdpack   # every internal reference inside?
+python3 -m d3tool vdpack manifest hierophant/ -o manifest.json  # sha256 per file
 
 # convert the native .t texture to a .dds (or back)
 python3 -m d3tool texture convert Neutrals/AirElemental/character_neutrals_airelemental.t \

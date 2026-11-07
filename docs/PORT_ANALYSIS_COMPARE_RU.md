@@ -263,6 +263,42 @@ encoded = struct.pack('<16f', *inverse.T.reshape(-1))
    DXT5, осталось бы только сопоставление material slots (C = ColorMask,
    D = DiffMap) — актуально лишь для модов.
 
+## 8b. Второй проход по архиву (что добрано позже)
+
+1. ~~`vdpack validate`~~ — **сделано**: `reference_findings()` разбирает
+   `.ac`, `.scene` и `.g` (материалы → `.t`, дубли имён частей), а не только
+   текстовые ссылки, как `validate_tree` у Port. Их исключение «внешняя
+   ссылка» сохранено как *note*, а не ошибка.
+2. **`manifest`** — **сделано** в этом раунде по образцу их `d3model.py
+   manifest` / `manifest.json` рядом с каждым паком: `vdpack manifest
+   <folder|archive>` печатает `{path, bytes, sha256}` на файл плюс отчёт о
+   ссылках. Документ для папки и для собранного из неё архива совпадает
+   побайтово (сортировка без учёта регистра, имена в форме архива), тесты —
+   `test_vdpack_manifest_of_folder_and_archive_match` и
+   `test_vdpack_manifest_cli_writes_json`.
+3. **`.char` — не сделано, и без образца сделать нельзя.** В `NewUnit.vdpack`
+   их 21; Port пишет «профили и статистика юнитов» и что правка строки-ID
+   внутри payload даёт отдельную строку в Character Browser (runtime
+   подтверждён). В нашем корпусе `.char` нет вообще, поэтому мы только
+   переносим их как обычный payload и считаем unit-local ссылкой; формата не
+   знаем. Нужен хотя бы один файл (например `neutrals_blackbear.char`), чтобы
+   описать его так же, как `.g`/`.a`.
+4. **Непрозрачная запись `index`** (20 362 байта) внутри архива: у нас она —
+   обычный файл, `extract → pack` переносит её дословно, но архив, собранный
+   из папки без неё, игры не проверялся. Это записано в `docs/FORMATS.md` §6
+   как предупреждение, а не как гарантия.
+
+Что Port оставил открытым, а наш корпус закрывает (полезно, если сверка
+пойдёт в обратную сторону):
+
+| открытый вопрос Port | ответ у нас |
+|---|---|
+| «неизвестно назначение opaque header/service полей» `.g` | прелюдия разобрана, `_prelude_block` + `docs/FORMATS.md` §2 |
+| «BlackBear tail / N=2 неизвестны» | запись `w=2` (46 байт) встречается в корпусе (паук, броня) — `_eff_width` |
+| «local-матрицы Priestess ошибочны» | bind-матрица `.g` = glTF IBM, читается column-major, 84/84 `reverse_parity` EXACT |
+| «multi-material parts» (в их отчётах нет) | диапазоны одного index-буфера; сумма объявляется, разница уходит в `material0` |
+| «`.t` mip-цепочка» | правило GM (без выравнивания субмипов до 4×4) + все коды 6/7/8/16/A1R5G5B5 |
+
 ## 9. Как воспроизвести
 
 ```bash
@@ -278,4 +314,5 @@ python3 tests/corpus_parity.py && python3 tests/reverse_parity.py
 python3 tests/test_corpus.py && python3 tests/anim_audit.py
 # аддон (нужен bpy 4.2)
 python3 tests/blender_addon_test.py
+python3 tests/blender_corpus_test.py     # все 158 юнитов через Blender
 ```

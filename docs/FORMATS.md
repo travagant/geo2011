@@ -572,6 +572,13 @@ past the end of the file, and two entries sharing bytes.  On extraction the
 stored name is re-validated, so an archive cannot write outside the target
 folder (`..`, absolute paths and drive letters are refused).
 
+`vdpack manifest <archive|folder>` writes the sha256 inventory of a bundle —
+one `{path, bytes, sha256}` per file, in archive naming and case-insensitive
+order, plus the reference report.  The document is identical for a folder and
+for the archive packed from it, so packing can be proven rather than trusted
+(the port kept a `manifest.json` per pack for exactly this) and two builds can
+be diffed without unpacking them.
+
 `vdpack validate <archive|folder>` re-checks what the exporter's
 battle-readiness pass checks on a folder, against the payloads themselves: a
 `.ac` state naming an `.a`/meshfile the pack does not contain, a `.g` material
@@ -585,3 +592,16 @@ from retail data:
   still names `resources\characters\neutrals\mermaid\…baseanims.a`, the
   template it was cloned from) is reported as a note, not a failure: the game
   mounts those folders separately.
+
+A unit bundle is not only geometry and animation.  The port's archive carries,
+per seven model kits: `.g`, `.a`, `.ac`, `.scene`, `.t`, and **`.char`** —
+21 of those, described there as unit *profiles and stats* (the string inside a
+`.char` payload is the profile ID the character browser lists, and patching it
+alone produced a working second entry).  This toolkit packs and extracts
+`.char` like any other payload and treats it as a unit-local reference in
+`.scene`/`validate`, but it does **not** parse the format: the bundled corpus
+ships none.  Likewise the port's archive holds one opaque entry named
+`index` (20 362 bytes) that no tool has decoded — here it is an ordinary file,
+so `extract` → `pack` preserves it verbatim, but a pack assembled from loose
+folder content simply has none (unverified in game).  Keep that in mind before
+promising a runtime-clean mod archive.

@@ -1,4 +1,5 @@
 """Self-contained tests for the d3tool package (run with `python3 tests/`)."""
+import hashlib
 import json
 import glob
 import os
@@ -2095,6 +2096,75 @@ def test_vdpack_validate_cli_reports_and_exits():
         raw[4:8] = struct.pack("<I", 1)
         open(damaged, "wb").write(bytes(raw))
         assert climod._run(["vdpack", "validate", damaged]) == 1
+
+
+def test_vdpack_manifest_of_folder_and_archive_match():
+    """A pack has to carry exactly what the folder has; the manifest is the
+    proof (the Heroes-VII port kept one `manifest.json` per pack)."""
+    from d3tool import vdpack
+    folder = os.path.join(REPO, "Neutrals", "AirElemental")
+    files = vdpack.pack_folder(folder)
+    doc = vdpack.manifest(files, "AirElemental")
+    assert doc["files"] == len(files) >= 10
+    assert doc["bytes"] == sum(len(d) for _, d in files)
+    assert doc["source"] == "AirElemental"
+    first = doc["entries"][0]
+    assert set(first) == {"path", "bytes", "sha256"}
+    # archive naming (backslashes) and a stable, case-insensitive order
+    assert all("\\" in e["path"] or "/" not in e["path"] for e in doc["entries"])
+    order = [e["path"].lower() for e in doc["entries"]]
+    assert order == sorted(order)
+    # every digest is the file's own
+    for entry in doc["entries"]:
+        data = dict((n.replace("/", "\\"), d) for n, d in files)[entry["path"]]
+        assert entry["bytes"] == len(data)
+        assert entry["sha256"] == hashlib.sha256(data).hexdigest()
+    # the same document for the archive built from the folder
+    pack = vdpack.parse_vdpack(vdpack.build_vdpack(files))
+    assert not pack.parse_error
+    back = vdpack.manifest(pack.files(), "AirElemental.vdpack")
+    assert back["entries"] == doc["entries"]
+    assert back["bytes"] == doc["bytes"]
+    # ... and a manifest reports a bundle that would not load on its own
+    no_tex = [(n, d) for n, d in files if not n.endswith(".t")]
+    assert vdpack.manifest(no_tex)["references"]["problems"]
+
+
+def test_vdpack_manifest_cli_writes_json():
+    import contextlib
+    import io
+    import json
+    folder = os.path.join(REPO, "Neutrals", "AirElemental")
+    with tempfile.TemporaryDirectory() as d, \
+            contextlib.redirect_stdout(io.StringIO()) as buf:
+        # stdout form
+        assert climod._run(["vdpack", "manifest", folder]) == 0
+        doc = json.loads(buf.getvalue())
+        assert doc["files"] >= 10 and doc["entries"]
+        assert not doc["references"]["problems"]
+        # file form, from the archive this time
+        archive = os.path.join(d, "air.vdpack")
+        assert climod._run(["vdpack", "pack", folder, "-o", archive]) == 0
+        out = os.path.join(d, "manifest.json")
+        assert climod._run(["vdpack", "manifest", archive, "-o", out]) == 0
+        written = json.load(open(out, encoding="utf-8"))
+        assert written["entries"] == doc["entries"]
+        assert written["source"] == "air.vdpack"
+        # a damaged archive is refused, not half-reported
+        damaged = os.path.join(d, "damaged.vdpack")
+        raw = bytearray(open(archive, "rb").read())
+        raw[4:8] = struct.pack("<I", 1)
+        open(damaged, "wb").write(bytes(raw))
+        assert climod._run(["vdpack", "manifest", damaged]) == 1
+        # a bundle whose references dangle exits 1 but still writes the JSON
+        partial = os.path.join(d, "partial")
+        os.makedirs(partial)
+        open(os.path.join(partial, "character_neutrals_airelemental.g"),
+             "wb").write(open(os.path.join(
+                 folder, "character_neutrals_airelemental.g"), "rb").read())
+        broken = os.path.join(d, "broken.json")
+        assert climod._run(["vdpack", "manifest", partial, "-o", broken]) == 1
+        assert json.load(open(broken, encoding="utf-8"))["files"] == 1
 
 
 if __name__ == "__main__":
