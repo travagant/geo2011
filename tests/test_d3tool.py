@@ -3706,6 +3706,76 @@ def test_vdpack_cli_pack_list_extract():
         assert climod._run(["vdpack", "list", damaged]) == 1
 
 
+def test_vdpack_diff_names_what_separates_two_packs():
+    """The one thing a modder needs before shipping a pack: which paths it
+    adds, which it drops, and which payloads it replaces — the three answers
+    `pack_like` acts on, readable without unpacking either archive."""
+    from d3tool import vdpack as vmod
+    base = vmod.build_vdpack([
+        ("index", b"opaque"),
+        ("resources\\Unit\\a.g", b"old geometry"),
+        ("resources\\Unit\\a.scene", b"scene"),
+        ("resources\\Unit\\a.t", b"atlas"),
+    ])
+    other = vmod.build_vdpack([
+        ("index", b"opaque"),
+        ("resources\\Unit\\a.g", b"new geometry"),
+        ("resources\\Unit\\a.scene", b"scene"),
+        ("resources\\Unit\\b.t", b"atlas"),
+    ])
+    result = vmod.diff_entries(
+        list(vmod.parse_vdpack(base).files().items()),
+        list(vmod.parse_vdpack(other).files().items()))
+    assert result["added"] == ["resources\\Unit\\b.t"]
+    assert result["removed"] == ["resources\\Unit\\a.t"]
+    assert result["changed"] == ["resources\\Unit\\a.g"]
+    assert result["unchanged"] == 2
+    assert result["reordered"] is False
+    grades = [grade for grade, _ in vmod.shape_verdict(result)]
+    assert "bad" in grades          # an added path is the unconfirmed shape
+    assert "warn" in grades         # the removal, and it names each path
+
+
+def test_vdpack_diff_grades_the_confirmed_shape_as_ok():
+    """Same paths, different payloads, same order: the one shape with a
+    runtime confirmation behind it, and the only one that may read `ok`."""
+    from d3tool import vdpack as vmod
+    entries = [("resources\\Unit\\a.g", b"x"), ("resources\\Unit\\a.t", b"y")]
+    result = vmod.diff_entries(entries, [("resources\\Unit\\a.g", b"xx"),
+                                         ("resources\\Unit\\a.t", b"y")])
+    verdict = vmod.shape_verdict(result)
+    assert verdict and verdict[0][0] == "ok"
+    assert result["added"] == [] and result["removed"] == []
+    assert result["reordered"] is False
+    # a folder and the pack built from it compare clean, separators aside
+    folder = [("resources/Unit/a.g", b"xx"), ("resources/Unit/a.t", b"y")]
+    same = vmod.diff_entries(entries, folder)
+    assert same["added"] == [] and same["removed"] == []
+
+
+def test_vdpack_diff_cli_reports_and_exits():
+    import contextlib
+    import io
+    from d3tool import vdpack as vmod
+    good = vmod.build_vdpack([("index", b"i"), ("resources\\U\\a.g", b"1")])
+    bad = vmod.build_vdpack([("index", b"i"), ("resources\\U\\a.g", b"2"),
+                             ("resources\\U\\b.g", b"3")])
+    with tempfile.TemporaryDirectory() as d:
+        one = os.path.join(d, "one.vdpack")
+        two = os.path.join(d, "two.vdpack")
+        open(one, "wb").write(good)
+        open(two, "wb").write(bad)
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            assert climod._run(["vdpack", "diff", one, two]) == 0
+        text = buf.getvalue()
+        assert "resources\\U\\b.g" in text
+        assert "added" in text
+        with contextlib.redirect_stdout(io.StringIO()):
+            assert climod._run(["vdpack", "diff", one, two, "--strict"]) == 1
+            assert climod._run(["vdpack", "diff", one, one]) == 0
+
+
 def test_scene_gains_a_gobj_for_a_part_it_cannot_bind():
     """The engine binds the i-th mesh part to the i-th `gobj`, in order — the
     LOD scenes prove it, since their gobj names (`empire_angel_wing`) never

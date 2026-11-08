@@ -406,6 +406,105 @@ def index_entry(files) -> Optional[Tuple[str, bytes]]:
     return None
 
 
+def _pairs(files) -> List[Tuple[str, bytes]]:
+    return list(files.items()) if isinstance(files, dict) else list(files)
+
+
+def _norm_name(name: str) -> str:
+    return name.replace("/", "\\").strip("\\")
+
+
+def diff_entries(base, other) -> Dict[str, object]:
+    """What separates two bundles of the same unit, entry by entry.
+
+    ``base`` is normally the pack the game already loads and ``other`` the one
+    a mod is about to ship, so the answer reads as "what did I change": the
+    paths only in one of them, the paths whose payload differs, and whether
+    the *order* of the shared paths moved.
+
+    The order matters because the opaque ``index`` resource of a retail pack
+    is a table nobody has decoded; ``pack_like`` therefore refuses to re-sort
+    an archive, and a diff that reports ``reordered`` is telling the modder the
+    same thing `vdpack pack --like` enforces.
+
+    Names are compared in archive form (backslash separated, no leading
+    separator), so a folder and the pack built from it compare clean.
+    """
+    left = _pairs(base)
+    right = _pairs(other)
+    lmap = {_norm_name(n): d for n, d in left}
+    rmap = {_norm_name(n): d for n, d in right}
+    added = sorted(set(rmap) - set(lmap))
+    removed = sorted(set(lmap) - set(rmap))
+    changed = sorted(n for n in set(lmap) & set(rmap) if lmap[n] != rmap[n])
+    order_left = [_norm_name(n) for n, _ in left if _norm_name(n) in rmap]
+    order_right = [_norm_name(n) for n, _ in right if _norm_name(n) in lmap]
+    return {
+        "base": len(left),
+        "other": len(right),
+        "added": added,
+        "removed": removed,
+        "changed": changed,
+        "unchanged": len(order_left) - len(changed),
+        "reordered": order_left != order_right,
+        "bytes": (sum(len(d) for _, d in left), sum(len(d) for _, d in right)),
+    }
+
+
+def shape_verdict(result: Dict[str, object]) -> List[Tuple[str, str]]:
+    """Turn a :func:`diff_entries` result into the "will it load" reading.
+
+    Three grades, all of them measured against the one pack shape with a
+    runtime confirmation behind it (the Heroes-VII port, see
+    ``docs/PORT_ANALYSIS_COMPARE_RU.md`` §4): **same paths, different
+    payloads**.
+
+    * ``ok``   — the archive adds nothing and drops nothing;
+    * ``warn`` — a path went away (the Angel pack dropped a generated
+      ``*_lod.ac`` and its battle still loaded, so removal is survivable) or
+      the shared paths changed places (the `index` may be order-dependent);
+    * ``bad``  — a path was added.  The port tried exactly that (six new
+      entries, original `index`) and the game showed no units at all.
+
+    A ``bad`` grade is not a claim that the pack cannot work; it is a claim
+    that it is not the shape anything has been confirmed to load in.
+    """
+    lines: List[Tuple[str, str]] = []
+    added = result.get("added") or []
+    removed = result.get("removed") or []
+    if added:
+        lines.append((
+            "bad",
+            f"{len(added)} path(s) added — the only shape confirmed to load "
+            f"in game is the same paths with different payloads. An added "
+            f"path needs an `index` entry nothing can write yet, so the "
+            f"loader may not see it at all; name the file after one the pack "
+            f"already carries (`texture add --name`) instead."))
+        for name in added:
+            lines.append(("bad", f"  + {name}"))
+    if removed:
+        lines.append((
+            "warn",
+            f"{len(removed)} path(s) removed — survivable (the Angel pack "
+            f"dropped a path and its battle loaded), but every reference "
+            f"that names one of them now ends in a missing-file dialog."))
+        for name in removed:
+            lines.append(("warn", f"  - {name}"))
+    if result.get("reordered"):
+        lines.append((
+            "warn",
+            "the shared paths changed order — rebuild with "
+            "`vdpack pack <folder> --like <this pack>` so the entry order and "
+            "the opaque `index` stay on the confirmed shape"))
+    if not added and not removed and not result.get("reordered"):
+        lines.append((
+            "ok",
+            f"same {result.get('other', 0)} path(s) in the same order, "
+            f"{len(result.get('changed') or [])} payload(s) replaced — the "
+            f"confirmed shape"))
+    return lines
+
+
 def manifest(files, source: str = "") -> dict:
     """``files`` is either ``{name: bytes}`` or ``[(name, bytes), ...]``."""
     """A reproducible inventory of a bundle: one sha256 per file.

@@ -286,6 +286,35 @@ A part exported with tangents enabled additionally carries a tangent stream
 right after its bone table: 8 opaque bytes then `vertex_count * 24` bytes
 (`gfile._parse_compound_parts` keeps it in `part_tail`).
 
+### What a Blender round-trip costs, measured (Inquisitor, 2026-11)
+
+Re-exporting `Empire/Inquisitor` through the add-on and diffing the result
+against the folder it came from leaves exactly three differences, none of them
+a defect of the writer, and all three worth recognising before hunting a
+phantom bug:
+
+* **the body comes back with 6 more vertices and 4 fewer triangles**
+  (`3693 v / 4664 tri` → `3699 / 4660`) although nobody touched the body.
+  The four lost triangles are *degenerate* — every index equal — which retail
+  ships and the glTF form cannot carry back through Blender; the six extra
+  vertices are seam splits.  The surface is the same: 2392 distinct positions
+  on both sides.  `audit --against <original>` prints the counts, so a delta of
+  this shape is the trip, not an edit;
+* **the `.a` differs in the last bits** if the donor stream was not beside the
+  glTF at export time (max measured delta `4.7e-06` on `Left_Pola`).  An export
+  that *does* see the donor keeps its bytes (`cli._anim_bytes` /
+  `anim.same_motion`), so a noisy stream means the donor was missing — the
+  first export of a folder, typically, which then donates to all later ones;
+* **the `.ac` came back with CRLF line endings** on a machine where the `.ac`
+  had to be *generated* (a plain `open(..., "w")` is CRLF on Windows while
+  every retail `.ac` is LF).  Survivable — the parser tokenises whitespace —
+  but it rewrites 96 of 96 lines and hides real edits in a diff, so the writer
+  now passes `newline="\n"`.
+
+Anything *else* that moves between the original folder and the export is a real
+difference: the `.g`'s attribute counts, the two `.scene` attribute blocks and
+the LOD pair must all agree with the mesh, and `audit` says so part by part.
+
 Two more invariants of the block a rebuilt file must honour, both found by
 round-tripping the whole corpus through Blender:
 
@@ -854,8 +883,8 @@ format are always correct; only this flag may differ from a specific source
 
 A retail install keeps a unit as a loose folder; mods ship the whole tree as
 **one file**, a `.vdpack`, which the game mounts by name.  Implemented in
-`d3tool/vdpack.py` (`vdpack list|extract|pack`), layout documented from the
-Heroes-VII → Disciples III porting corpus (see
+`d3tool/vdpack.py` (`vdpack list|extract|pack|diff|manifest|validate`), layout
+documented from the Heroes-VII → Disciples III porting corpus (see
 `docs/PORT_ANALYSIS_COMPARE_RU.md`) — the bundled corpus ships no `.vdpack`,
 so the reader is validated against synthetic archives and the port's own
 writer, not against a retail pack.
@@ -983,6 +1012,18 @@ untouched, and the near `.ac` stayed byte-identical to retail.  The one item
 `validate` still reports is the generated `*_lod.ac`, which retail never ships
 and which the runtime experiments above say the engine never opens — it is left
 alone rather than repathed.
+
+`vdpack diff <pack-that-loads> <new-pack|folder>` answers the question a
+modder actually ships on: *what did I change, and is it still the shape that
+loads?*  It lists the paths added, the paths removed, the paths whose payload
+differs, and whether the shared paths kept their order, then grades the result
+against the single runtime-confirmed shape (same paths, different payloads):
+`ok` when nothing but payloads moved, `warn` for a removal or a re-order, and
+**added for any new path** — the case the port tried in game and saw no units
+at all.  `--strict` exits 1 on that grade, which is the check worth putting in
+front of the "pack and test" step; `--json` emits the same comparison for a
+script.  A pack and the folder it was built from compare clean, separators
+aside, so the tool doubles as "is this folder what the pack carries".
 
 `vdpack manifest <archive|folder>` writes the sha256 inventory of a bundle —
 one `{path, bytes, sha256}` per file, in archive naming and case-insensitive

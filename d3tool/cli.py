@@ -889,7 +889,11 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
             counts[idle_guess] = len(m.frames)
         cfg = acmod.default_ac(f'{res}\\{base}.g', f'{res}\\{base}',
                                anim_files, frame_counts=counts)
-        with open(out_ac, "w", encoding="utf-8") as fh:
+        # newline="\n": the engine reads these as text and every retail
+        # `.ac` is LF.  A plain "w" is CRLF on Windows, so an export there
+        # rewrote a file it had no reason to touch (96 of 96 lines), which no
+        # diff can then tell apart from a real edit.
+        with open(out_ac, "w", encoding="utf-8", newline="\n") as fh:
             fh.write(acmod.write_ac(cfg))
         if not quiet:
             ui.wrote(out_ac, "generated (no source .ac to preserve)")
@@ -1904,6 +1908,45 @@ def _vdpack(args) -> int:
             return 1
         return 0
 
+    if args.vd_cmd == "diff":
+        loaded = []
+        for path in (args.base, args.other):
+            if os.path.isdir(path):
+                loaded.append((vdmod.pack_folder(path),
+                               os.path.basename(os.path.normpath(path))))
+                continue
+            pack = vdmod.read_vdpack(path)
+            if pack.parse_error:
+                ui.section("vdpack diff")
+                ui.fail(f"{path}: {pack.parse_error}")
+                return 1
+            loaded.append((list(pack.files().items()), os.path.basename(path)))
+        (base_files, base_label), (other_files, other_label) = loaded
+        result = vdmod.diff_entries(base_files, other_files)
+        ui.section(f"vdpack diff  {base_label} -> {other_label}")
+        before, after = result["bytes"]
+        ui.info(f"{base_label}: {result['base']} file(s), {before} bytes")
+        ui.info(f"{other_label}: {result['other']} file(s), {after} bytes")
+        for name in result["changed"]:
+            ui.info(f"replaced  {name}")
+        verdict = vdmod.shape_verdict(result)
+        worst = "ok"
+        for grade, line in verdict:
+            if grade == "ok":
+                ui.ok(line)
+            elif grade == "bad":
+                ui.warn(line)
+                worst = "bad"
+            else:
+                ui.warn(line)
+                if worst == "ok":
+                    worst = "warn"
+        if args.json:
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        if worst == "bad" and args.strict:
+            return 1
+        return 0
+
     if args.vd_cmd == "validate":
         if os.path.isdir(args.target):
             files = dict(vdmod.pack_folder(args.target))
@@ -2259,6 +2302,18 @@ def _build_parser() -> argparse.ArgumentParser:
         "manifest", help="sha256 inventory of a folder or an archive")
     p_vm.add_argument("target", help="a .vdpack file or a unit folder")
     p_vm.add_argument("-o", "--out", help="write JSON here instead of stdout")
+    p_vdf = p_vd_sub.add_parser(
+        "diff",
+        help="what separates two packs: added / removed / replaced paths",
+        description="Compare the pack the game already loads with the one a "
+                    "mod is about to ship, path by path, and grade the result "
+                    "against the only shape confirmed to load in game: the "
+                    "same paths, different payloads.")
+    p_vdf.add_argument("base", help="the pack that already loads (or its folder)")
+    p_vdf.add_argument("other", help="the new pack (or the folder to pack)")
+    p_vdf.add_argument("--json", action="store_true", help="machine output")
+    p_vdf.add_argument("--strict", action="store_true",
+                       help="exit 1 when the pack adds a path")
     p_ch = sub.add_parser(
         "char", help="read / relink a .char unit profile")
     p_ch_sub = p_ch.add_subparsers(dest="char_cmd", required=True)
