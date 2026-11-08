@@ -3072,6 +3072,153 @@ def test_png_to_t_roundtrip():
     assert ti_a.fourcc == b"DXT5" and ti_a.gm_format == 8, ti_a.fourcc
 
 
+def _a_painted_tga(width=16, height=16, bpp=24, name="order_helmet.tga"):
+    """A texture the way an artist hands one over: an uncompressed TGA.
+
+    TGA is what the `.g` itself spells its material as, so it is the format a
+    new atlas most often arrives in — and the one the engine cannot read.
+    """
+    px = bytearray()
+    for y in range(height):
+        for x in range(width):
+            px += bytes(((x * 16) % 256, (y * 16) % 256, 96))
+            if bpp == 32:
+                px += b"\xff"
+    header = struct.pack("<BBBHHBHHHHBB", 0, 0, 2, 0, 0, 0, 0, 0,
+                         width, height, bpp, 0x20)
+    return header + bytes(px)
+
+
+def test_a_painted_texture_decodes_into_a_native_t():
+    """A TGA/BMP the artist supplies must become a `.t` the engine can load.
+
+    Neither format is readable by the GM engine, and a part whose atlas stayed
+    a `.png`/`.tga` simply loads with no texture.  The export has to decode
+    the pixels and block-compress them, with the container's own mip
+    accounting.
+    """
+    w, h = 16, 16
+    ti = texmod.parse_t(texmod.tga_to_t(_a_painted_tga(w, h)))
+    assert (ti.width, ti.height) == (w, h)
+    assert ti.fourcc == b"DXT1" and ti.gm_format == 6, ti.fourcc
+    assert ti.mip_count == 5                     # 16, 8, 4, 2, 1
+    assert len(ti.payload) == ti.payload_size()
+    # the pixels arrive the right way round (BGRA in the file, RGBA out)
+    w2, h2, rows = texmod.decode_tga(_a_painted_tga(w, h, bpp=32))
+    assert (w2, h2) == (w, h)
+    assert rows[0][:4] == bytes((96, 0, 0, 255)), rows[0][:4]
+    # alpha that actually varies goes to DXT5, so a cut-out keeps its edges
+    cut = bytearray()
+    for y in range(8):
+        for x in range(8):
+            cut += bytes((64, 64, 64, (x * 32) % 256))
+    cut_tga = struct.pack("<BBBHHBHHHHBB", 0, 0, 2, 0, 0, 0, 0, 0,
+                          8, 8, 32, 0x20) + bytes(cut)
+    assert texmod.parse_t(texmod.tga_to_t(cut_tga)).fourcc == b"DXT5"
+
+    # a bottom-up BMP is the same picture: both origins decode to the same `.t`
+    def bmp(top_down):
+        stride = ((24 * w + 31) // 32) * 4
+        rows = []
+        for y in range(h):
+            row = bytearray()
+            for x in range(w):
+                row += bytes(((x * 16) % 256, (y * 16) % 256, 96))
+            row += b"\0" * (stride - len(row))
+            rows.append(bytes(row))
+        body = b"".join(rows if top_down else list(reversed(rows)))
+        info = struct.pack("<IiiHHIIiiII", 40, w, -h if top_down else h,
+                           1, 24, 0, len(body), 2835, 2835, 0, 0)
+        return (struct.pack("<2sIHHI", b"BM", 14 + 40 + len(body), 0, 0,
+                            14 + 40) + info + body)
+
+    assert texmod.bmp_to_t(bmp(True)) == texmod.bmp_to_t(bmp(False))
+    assert texmod.bmp_to_t(bmp(True)) == texmod.tga_to_t(_a_painted_tga(w, h))
+    # an image this tool cannot read says so instead of writing a broken `.t`
+    try:
+        texmod.image_to_t(b"\xff\xd8\xff\xe0" + b"0" * 64, "paint.jpg")
+    except ValueError as exc:
+        assert "JPEG" in str(exc), exc
+    else:                                        # pragma: no cover
+        raise AssertionError("a JPEG was accepted as a texture")
+
+
+def test_a_texture_that_is_not_a_power_of_two_still_encodes():
+    """An atlas painted at 300x150 must not kill the mip chain.
+
+    The down-sampler walked the *input* width by two, so every odd-sized row
+    wrote one pixel past the end of the level it was building.
+    """
+    ti = texmod.parse_t(texmod.tga_to_t(_a_painted_tga(15, 9)))
+    assert (ti.width, ti.height) == (15, 9)
+    assert len(ti.payload) == ti.payload_size()
+
+
+def test_the_texture_add_step_writes_the_t_the_g_will_name():
+    """``texture add``: a painted atlas in, the engine's ``.t`` out.
+
+    This is the "add the texture too" half of modelling a new part: the file
+    lands next to the unit under the stem the `.g`/`.scene` will carry as
+    ``<stem>.tga``, in the only container the engine reads.
+    """
+    tmp = tempfile.mkdtemp(prefix="d3texadd_")
+    try:
+        src = os.path.join(tmp, "order_helmet_of_the_order.tga")
+        open(src, "wb").write(_a_painted_tga(32, 32))
+        out_dir = os.path.join(tmp, "unit")
+        code = climod._texture_add(src, out_dir)
+        assert code == 0
+        written = os.path.join(out_dir, "order_helmet_of_the_order.t")
+        assert os.path.isfile(written), sorted(os.listdir(out_dir))
+        ti = texmod.parse_t(open(written, "rb").read())
+        assert (ti.width, ti.height, ti.fourcc) == (32, 32, b"DXT1")
+        # an explicit name wins, so a texture can be renamed to what the
+        # material calls it
+        code = climod._texture_add(src, out_dir, "helmet_neck")
+        assert os.path.isfile(os.path.join(out_dir, "helmet_neck.t"))
+        # a file that is not an image is refused, not written as garbage
+        bad = os.path.join(tmp, "notes.txt")
+        open(bad, "w").write("hello")
+        assert climod._texture_add(bad, out_dir) == 1
+        # a name the unit already ships is refused: the export prefers the
+        # shipped .dds/.t by stem, so overwriting it would be undone by the
+        # very next export and the painted atlas would vanish
+        open(os.path.join(out_dir, "character_x.dds"), "wb").write(b"DDS ")
+        assert climod._texture_add(src, out_dir, "character_x") == 1
+        assert not os.path.isfile(os.path.join(out_dir, "character_x.t"))
+        assert climod._texture_add(src, out_dir, "character_x", True) == 0
+        assert os.path.isfile(os.path.join(out_dir, "character_x.t"))
+        # adding the same texture twice is a no-op, not an error
+        assert climod._texture_add(src, out_dir, "helmet_neck") == 0
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_the_export_writes_the_atlas_a_new_part_names():
+    """A glTF that names a texture only the artist has must still ship it.
+
+    ``_export_textures`` is what turns the glTF's image URI into the `.t` the
+    ``.g`` points at; it has to decode a painted TGA as readily as it converts
+    a shipped DDS, or the new part exports without an atlas.
+    """
+    tmp = tempfile.mkdtemp(prefix="d3exptex_")
+    try:
+        gltf_path = os.path.join(tmp, "unit.gltf")
+        open(os.path.join(tmp, "order_helmet.tga"), "wb").write(
+            _a_painted_tga(8, 8))
+        with open(gltf_path, "w", encoding="utf-8") as fh:
+            json.dump({"images": [{"uri": "order_helmet.tga"}],
+                       "materials": [], "textures": []}, fh)
+        out = os.path.join(tmp, "out")
+        os.makedirs(out)
+        first = climod._export_textures(gltf_path, out, "unit", True)
+        assert first == "order_helmet.t", first
+        ti = texmod.parse_t(open(os.path.join(out, first), "rb").read())
+        assert (ti.width, ti.height) == (8, 8)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def test_a_raw_texture_is_recompressed_and_a_packed_one_is_left_alone():
     """The 683 KiB problem: a `.t` holding raw A8R8G8B8 of an atlas the game
     ships as an 86 KiB DXT1.  Same pixels, eight times the size, and the file
@@ -3877,6 +4024,59 @@ def test_scenarios_a_new_mesh_on_the_skeleton_is_drawn():
     result = scenarios.scenario_new_part(unit_dir=REPO_LIKE_UNIT_DIR())
     assert result["bones"] == [scenarios.BONE], result["bones"]
     assert "helmet_empire_inquisitor" in result["forward"], result["forward"]
+
+
+def test_a_lod_scene_with_duplicate_slots_still_gets_the_appended_gobj():
+    """Priestess: two `gobj`s name the body (slots 0 0 1 2 3), four parts.
+
+    Counting numbers positionally claimed every slot up to the `gobj` count,
+    so a part the export *appended* (slot 4) was considered drawn and never
+    got its `gobj` — the weapon stayed invisible on the battlefield while
+    every file looked right.  A part the shipped scene simply never drew (the
+    Goblin's and the Thug's scenes both leave one out) must still be left
+    alone.
+    """
+    text = open(os.path.join(REPO, "Empire", "Priestess",
+                             "character_empire_priestess_lod.scene"),
+                encoding="latin-1", newline="").read()
+    parts = list(gfile.iter_parts(gfile.parse_geometry_file(
+        open(os.path.join(REPO, "Empire", "Priestess",
+                          "character_empire_priestess_lod.g"),
+             "rb").read())))
+    # untouched: nothing is appended and nothing is added
+    same, added = scenemod.ensure_part_gobjs(text, parts)
+    assert same == text and added == [], added
+    extra = copy.copy(parts[-1])
+    extra.name = "lod_helmet_empire_inquisitor"
+    fresh, added = scenemod.ensure_part_gobjs(text, parts + [extra],
+                                              only=["lod_helmet_empire_inquisitor"])
+    assert added == ["lod_helmet_empire_inquisitor"], added
+    assert "lod_helmet_empire_inquisitor" in fresh
+    # and the retail scenes with a part no `gobj` draws are untouched
+    for unit, folder in (("goblin", "Goblin"), ("thug", "Thug")):
+        scene = open(os.path.join(REPO, "Neutrals", folder,
+                                  f"character_neutrals_{unit}_lod.scene"),
+                     encoding="latin-1", newline="").read()
+        mesh = list(gfile.iter_parts(gfile.parse_geometry_file(
+            open(os.path.join(REPO, "Neutrals", folder,
+                              f"character_neutrals_{unit}_lod.g"), "rb").read())))
+        assert scenemod.ensure_part_gobjs(scene, mesh)[0] == scene, unit
+
+
+def test_scenarios_a_new_mesh_brings_its_own_texture():
+    """The new part's own atlas reaches every file the engine reads.
+
+    Modelled with its own material and painted from a texture that exists
+    nowhere in the game data, the part must end up with `<name>.t` in the
+    folder, that name in its block of the `.g` *and* the `_lod.g`, the same
+    name in both `.scene` `gobj`s, and the atlas handed back by the forward
+    export.  Both placements are covered: the atlas next to the glTF and the
+    atlas in the unit's folder.
+    """
+    import scenarios
+    result = scenarios.scenario_new_part_texture(unit_dir=REPO_LIKE_UNIT_DIR())
+    assert result["atlas"] == "order_helmet_of_the_order.tga", result
+    assert result["bytes"] > 0
 
 
 def REPO_LIKE_UNIT_DIR():

@@ -113,6 +113,12 @@ python3 -m d3tool texture convert Neutrals/AirElemental/character_neutrals_airel
   -o out/character_neutrals_airelemental.dds
 python3 -m d3tool texture info Neutrals/AirElemental/character_neutrals_airelemental.t
 
+# a texture you painted yourself (png/tga/bmp/dds) -> the <name>.t the engine
+# reads, written straight into the unit's folder; then name the part after it
+# (`--name` to choose the stem) and export: the .g, the _lod.g and both .scene
+# files get that name
+python3 -m d3tool texture add C:/paint/order_helmet.tga -o Empire/Inquisitor
+
 # run the unit tests
 python3 tests/test_d3tool.py
 
@@ -218,6 +224,16 @@ runs six such scenarios, all battle-ready):
   world space and the bone's motion is added on top, so shaping a weapon onto
   an animated frame doubles the offset and it drifts out of the palm in game.
   `tools/place_weapon.py` is the same recipe as a stand-alone script.
+* **A new part's own texture is a file of its own.**  The engine reads only
+  `<stem>.t` next to the unit, while an atlas an artist paints comes as a
+  `.png`/`.tga`/`.bmp`/`.dds`.  *Add Texture File…* in the sidebar (or
+  `d3tool texture add <image> -o <unit folder>`) converts it into place and
+  names the part after it; the export then writes that name into the `.g`, the
+  `_lod.g` and both `.scene` files, and decodes an atlas that only exists next
+  to the glTF as well.  A name the unit already ships is refused unless forced
+  with `--force` — the export resolves textures by stem and prefers the
+  shipped `.dds`/`.t`, so silently replacing the body atlas would be undone by
+  the next export.
 * **Every export ends with a battle-readiness check**: each `.ac` state's
   file present, `frame1` within that `.a`'s real frame count, meshfile
   and `.scene` references resolvable, a `.t` behind every
@@ -721,6 +737,8 @@ whole unit.
   round-trip exactly.
 * `.t` textures are a 59-byte GM header wrapping the same DXT payload a `.dds`
   stores after its 128-byte header.  `d3tool/texture.py` converts `.t` ↔ `.dds`
-  losslessly (format codes 6/7/8 → DXT1/DXT3/DXT5; code 3 → 16-bit A1R5G5B5).
+  losslessly (format codes 6/7/8 → DXT1/DXT3/DXT5; code 3 → 16-bit A1R5G5B5),
+  and decodes the formats an artist actually paints in (PNG, TGA, BMP) into a
+  block-compressed `.t` — the engine reads no other container.
 
 See `docs/FORMATS.md` for details.

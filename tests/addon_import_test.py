@@ -268,6 +268,21 @@ assert unitprops.clean_atlas_name("//textures/weapon_x_diffuse.dds") == \
 assert unitprops.clean_atlas_name("material0") == ""
 assert unitprops.clean_atlas_name("Material.001") == ""
 assert unitprops.clean_atlas_name("leaf") == ""
+# ...but a texture the artist painted himself is kept when the file is there:
+# the export must not silently fall back to the donor's atlas just because a
+# new atlas does not follow the retail naming conventions
+_texdir = tempfile.mkdtemp(prefix="d3atlas_")
+try:
+    open(os.path.join(_texdir, "order_helmet_of_the_order.t"), "wb").close()
+    assert unitprops.clean_atlas_name(
+        "order_helmet_of_the_order.png", [_texdir]) == \
+        "order_helmet_of_the_order.tga"
+    assert unitprops.clean_atlas_name("order_helmet_of_the_order.png") == ""
+    assert unitprops.clean_atlas_name("Image", [_texdir]) == ""
+    assert unitprops.clean_atlas_name("material0", [_texdir]) == ""
+finally:
+    import shutil as _sh
+    _sh.rmtree(_texdir, ignore_errors=True)
 
 # the material's image is the atlas, even though a packed image never reaches
 # the glTF as a file URI (which is why the export used to fall back to the

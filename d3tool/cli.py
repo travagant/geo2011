@@ -11,7 +11,8 @@ writers:
 * ``bundle <folder>``   — run the full pipeline over a unit folder (both ways).
 * ``validate <gltf>``   — structural self-check of a glTF.
 * ``import <g>``        — dump the parsed `.g` as JSON.
-* ``texture convert|info`` — native `.t` <-> `.dds`.
+* ``texture convert|info|add`` — native `.t` <-> `.dds`, and bringing a
+  texture the artist painted into a unit folder.
 * ``vdpack list|extract|validate|manifest|pack`` — the one-file form of a unit bundle
   (what a mod ships; see ``d3tool/vdpack.py``).
 * ``char show|list|find|validate|set-id`` — the ``.char`` unit profile that
@@ -350,9 +351,17 @@ def _export_textures(gltf_path: str, out_dir: str, base: str,
     """Emit the GM ``.t`` textures referenced by a glTF's images.
 
     dis3tool's glTF references its diffuse texture as a ``.dds``.  The GM
-    engine instead wants the native ``.t`` container, so if the referenced
-    ``.dds`` exists on disk (next to the glTF) we convert it to a ``.t`` and
-    write it into the output directory.
+    engine instead wants the native ``.t`` container, so the file the image
+    names is resolved on disk and written into the output directory as
+    ``<stem>.t``.
+
+    * a shipped ``.dds`` is converted (and its own ``.t`` header reused, which
+      is what makes an untouched re-export byte-identical);
+    * a shipped ``.t`` is copied verbatim;
+    * a texture the artist supplied himself — a ``.png``/``.tga``/``.bmp`` he
+      painted for a new part — is decoded and block-compressed, because the
+      engine can only read ``.t`` and a part whose atlas never got written
+      loads with no texture at all.
 
     Returns the basename of the first emitted texture (the diffuse), or
     ``None`` if none was written, so the caller can point ``material0_diffuse``
@@ -364,36 +373,42 @@ def _export_textures(gltf_path: str, out_dir: str, base: str,
     except (OSError, ValueError):
         return None
     gltf_dir = os.path.dirname(os.path.abspath(gltf_path))
+    # where a texture may live, in the order that is most likely right:
+    # next to the glTF (a Blender re-save, a new atlas the artist dropped
+    # there), then the unit's own folder, then whatever is already in the
+    # output folder
+    dirs = [d for d in (gltf_dir, src_dir, out_dir) if d]
     images = doc.get("images") or []
     first = None
     for img in images:
         uri = img.get("uri")
         if not uri or uri.startswith("data:"):
             if not quiet:
-                ui.warn("texture image without a file URI "
-                        "(embedded bufferView) — no .t written for it")
+                # A packed image carries no path into the glTF.  That is the
+                # normal state of a part whose atlas already sits in the unit
+                # folder (`d3unit_diffuses` names it), so this is a note, not
+                # a warning: `_carry_material_textures` fails loudly when a
+                # texture the `.g` names really is missing.
+                ui.info("a texture image is packed into the glTF (no file "
+                        "path) — the .t next to the unit is what the engine "
+                        "reads; run `d3tool texture add <image> -o <folder>` "
+                        "if it is not there yet")
             continue
-        src = os.path.join(gltf_dir, os.path.basename(uri))
         # strip every image extension: a Blender re-save of an imported
         # ``x.dds`` writes ``x.dds.png``, and keeping the ``.dds`` in the stem
         # produced ``x.dds.t`` — a texture the engine (which looks for
         # ``x.t``) and the forward export both fail to find
-        stem = texmod.clean_stem(src)
+        stem = texmod.clean_stem(uri)
 
         def _find_orig(ext: str) -> Optional[str]:
-            # the original `.dds`/`.t` ships next to the glTF when assets
-            # were imported in place, or in the donor folder when the
-            # Blender re-save lives elsewhere (weight-paint workflow)
-            for d in (gltf_dir, src_dir):
-                if not d:
-                    continue
+            for d in dirs:
                 p = os.path.join(d, stem + ext)
                 if os.path.exists(p):
                     return p
             # same texture under a doubled extension (an export from before
             # the stem fix) or a different case
-            for d in (gltf_dir, src_dir):
-                if not d or not os.path.isdir(d):
+            for d in dirs:
+                if not os.path.isdir(d):
                     continue
                 try:
                     for cand in os.listdir(d):
@@ -404,108 +419,93 @@ def _export_textures(gltf_path: str, out_dir: str, base: str,
                     continue
             return None
 
-        if not src.lower().endswith(".dds"):
-            # Blender re-saves textures as .png/.jpg next to the glTF.  The
-            # engine wants the native `.t`, and a re-encoded DXT of a
-            # re-saved PNG would not be byte-faithful anyway — so resolve
-            # the ORIGINAL by stem: the sibling `.dds` (convert) or the
-            # shipped `.t` (pass through verbatim).
-            alt_dds = _find_orig(".dds")
-            alt_t = _find_orig(".t")
-            if alt_dds is not None:
-                src = alt_dds
-                if not quiet:
-                    ui.info(f"{os.path.basename(uri)}: not a .dds — using "
-                            f"the original {os.path.basename(alt_dds)}")
-            elif alt_t is not None:
-                out_t = os.path.join(out_dir, stem + ".t")
-                with open(alt_t, "rb") as fh:
-                    payload = fh.read()
-                with open(out_t, "wb") as fh:
-                    fh.write(payload)
-                if not quiet:
-                    ui.wrote(out_t, "copied the shipped .t "
-                             "(the glTF image is a re-saved PNG)")
-                if first is None:
-                    first = os.path.basename(out_t)
-                continue
-            elif src.lower().endswith(".png") and os.path.exists(src):
-                # Last resort: re-encode the PNG into an uncompressed .t.
-                # Not byte-faithful to any original, but the unit ships
-                # with a loadable texture instead of a missing one.
-                try:
-                    payload = texmod.png_to_t(open(src, "rb").read())
-                except ValueError as exc:
-                    if not quiet:
-                        ui.warn(f"{os.path.basename(uri)}: PNG re-encode "
-                                f"failed ({exc}) — no .t written")
-                    continue
-                out_t = os.path.join(out_dir, stem + ".t")
-                with open(out_t, "wb") as fh:
-                    fh.write(payload)
-                if not quiet:
-                    ui.wrote(out_t, "re-encoded from PNG as uncompressed "
-                             "32-bit (place the original .dds next to the "
-                             "glTF for a byte-faithful .t)")
-                if first is None:
-                    first = os.path.basename(out_t)
-                continue
-            else:
-                if not quiet:
-                    ui.warn(f"{os.path.basename(uri)}: no {stem}.dds/.t "
-                            f"next to the glTF — no .t written; the engine "
-                            f"will miss this texture")
-                continue
-        if not os.path.exists(src):
-            # the image is named in the glTF but lives with the unit rather
-            # than next to the glTF (an atlas dropped into the game folder and
-            # picked in Blender from there)
-            alt = _find_orig(".dds")
-            if alt is None:
-                alt = _find_orig(".t")
-            if alt is None:
-                if not quiet:
-                    ui.warn(f"{os.path.basename(uri)}: file not found — "
-                            f"no .t written")
-                continue
-            src = alt
+        # The shipped containers win over a re-save (their bytes are the ones
+        # the game reads); anything else is a texture the artist supplied.
+        src = None
+        for ext in (".dds", ".t") + texmod.DECODABLE_EXTS:
+            src = _find_orig(ext)
+            if src is not None:
+                break
+        if src is None:
+            if not quiet:
+                ui.warn(f"{os.path.basename(uri)}: no {stem}.dds / .t / .png / "
+                        f".tga / .bmp next to the glTF or in the unit folder "
+                        f"— no .t written; the engine will miss this texture")
+            continue
         out_t = os.path.join(out_dir, stem + ".t")
+        ext = os.path.splitext(src)[1].lower()
+        if ext == ".t":
+            if os.path.abspath(src) == os.path.abspath(out_t):
+                if first is None:
+                    first = os.path.basename(out_t)
+                continue
+            with open(src, "rb") as fh:
+                payload = fh.read()
+            with open(out_t, "wb") as fh:
+                fh.write(payload)
+            if not quiet:
+                ui.wrote(out_t, "copied the .t the unit ships")
+            if first is None:
+                first = os.path.basename(out_t)
+            continue
         with open(src, "rb") as fh:
             data = fh.read()
-        # If the source asset ships a native .t next to the .dds, reuse its
-        # header so the emitted .t round-trips byte-identically (the @24/@52
-        # flags are not stored in a .dds and cannot be reconstructed).
-        src_t = _find_orig(".t")
-        orig_header = None
-        if src_t is not None:
-            with open(src_t, "rb") as fh:
-                orig_header = fh.read()[:59]
-        try:
-            payload = texmod.dds_to_t(data, orig_header, os.path.basename(src))
-        except ValueError as exc:
-            # An unreadable source texture must not sink the whole unit export
-            # (e.g. OrcKing's sword ships a .dds whose header declares 24-bit
-            # RGB while the payload is 32-bit — dis3tool wrote it that way).
-            # The native `.t` next to it is authoritative, so pass it through.
-            if orig_header is not None and os.path.exists(src_t):
+        if ext == ".dds":
+            # If the source asset ships a native .t next to the .dds, reuse
+            # its header so the emitted .t round-trips byte-identically (the
+            # @24/@52 flags are not stored in a .dds and cannot be
+            # reconstructed).
+            src_t = _find_orig(".t")
+            orig_header = None
+            if src_t is not None:
                 with open(src_t, "rb") as fh:
-                    payload = fh.read()
-                if not quiet:
-                    ui.warn(f"{os.path.basename(src)}: {exc} — reusing the "
-                            f"shipped {stem}.t verbatim")
-            else:
-                if not quiet:
-                    ui.warn(f"{os.path.basename(src)}: not converted — {exc}")
-                continue
+                    orig_header = fh.read()[:59]
+            try:
+                payload = texmod.dds_to_t(data, orig_header,
+                                          os.path.basename(src))
+            except ValueError as exc:
+                # An unreadable source texture must not sink the whole unit
+                # export (e.g. OrcKing's sword ships a .dds whose header
+                # declares 24-bit RGB while the payload is 32-bit — dis3tool
+                # wrote it that way).  The native `.t` next to it is
+                # authoritative, so pass it through.
+                if orig_header is not None and os.path.exists(src_t):
+                    with open(src_t, "rb") as fh:
+                        payload = fh.read()
+                    if not quiet:
+                        ui.warn(f"{os.path.basename(src)}: {exc} — reusing "
+                                f"the shipped {stem}.t verbatim")
+                else:
+                    if not quiet:
+                        ui.warn(f"{os.path.basename(src)}: not converted — "
+                                f"{exc}")
+                    continue
+            with open(out_t, "wb") as fh:
+                fh.write(payload)
+            if not quiet:
+                ui.wrote(out_t, "converted from .dds")
+            if first is None:
+                first = os.path.basename(out_t)
+            continue
+        # a texture the artist painted himself (.png / .tga / .bmp): decode it
+        # and block-compress, so the `.t` the `.g` names actually exists
+        try:
+            payload = texmod.image_to_t(data, src)
+        except ValueError as exc:
+            if not quiet:
+                ui.warn(f"{os.path.basename(src)}: {exc} — no .t written; "
+                        f"the engine will miss this texture")
+            continue
         with open(out_t, "wb") as fh:
             fh.write(payload)
         if not quiet:
-            ui.wrote(out_t, "converted from .dds")
+            ui.wrote(out_t, f"converted from {ext}"
+                          + ("" if stem.lower() in
+                             os.path.basename(src).lower()
+                             else f" ({os.path.basename(src)})"))
         if first is None:
             first = os.path.basename(out_t)
     return first
-
-
 
 
 def _donor_dir(gltf_path: str, base: str) -> str:
@@ -1056,6 +1056,30 @@ def _export_delta(out_dir: str, before: Set[str],
     return out
 
 
+def _atlases_the_gs_name(out_dir: str) -> Set[str]:
+    """Every ``<stem>.t`` the folder's own `.g`/`_lod.g` name, by file name."""
+    names: Set[str] = set()
+    try:
+        listing = os.listdir(out_dir)
+    except OSError:
+        return names
+    for fn in listing:
+        if not fn.endswith(".g"):
+            continue
+        try:
+            parsed = gfile.parse_geometry_file(
+                open(os.path.join(out_dir, fn), "rb").read())
+        except Exception:  # noqa: BLE001 - a bad `.g` is reported elsewhere
+            continue
+        for blk in [parsed] + list(getattr(parsed, "parts", ()) or ()):
+            for key, value in (getattr(blk, "attrs", None) or {}).items():
+                low = key.lower()
+                if value and (low.endswith("_diffuse")
+                              or low.endswith("_lightmap")):
+                    names.add(texmod.clean_stem(value) + ".t")
+    return names
+
+
 def _report_export_delta(out_dir: str, before: Set[str],
                          src_dir: Optional[str], quiet: bool) -> None:
     """Say what the export added to the folder, and complain if it added any."""
@@ -1069,11 +1093,22 @@ def _report_export_delta(out_dir: str, before: Set[str],
                           + ", ".join(delta["rewritten"][:6])
                           + (" …" if len(delta["rewritten"]) > 6 else ""))
     if delta["new"]:
-        ui.warn("this export ADDED " + str(len(delta["new"]))
-                + " file(s) the unit did not have: "
-                + ", ".join(delta["new"])
-                + " — delete them if the game already has them, they are not "
-                  "part of the unit")
+        # A texture the parts themselves name is not spare data: it is the
+        # atlas of a part this export wrote (the artist painted a new one for
+        # a new mesh).  Report it by name, but as what it is.  Everything else
+        # is a file that appeared without being asked for.
+        owned = _atlases_the_gs_name(out_dir)
+        mine = [n for n in delta["new"] if n in owned]
+        rest = [n for n in delta["new"] if n not in owned]
+        if mine:
+            ui.info("the export wrote the atlas of a part: "
+                    + ", ".join(mine))
+        if rest:
+            ui.warn("this export ADDED " + str(len(rest))
+                    + " file(s) the unit did not have: "
+                    + ", ".join(rest)
+                    + " — delete them if the game already has them, they are "
+                      "not part of the unit")
 
 
 def _shrink_texture(path: str, quiet: bool) -> bool:
@@ -1173,7 +1208,7 @@ def _carry_material_textures(out_dir: str, base: str,
             # data), and the engine reads both.  The pixels do not change.
             _shrink_texture(existing, quiet)
             continue
-        src_t = src_dds = None
+        src_t = src_dds = src_img = None
         for d in dirs:
             if not d or not os.path.isdir(d):
                 continue
@@ -1193,7 +1228,15 @@ def _carry_material_textures(out_dir: str, base: str,
                             break
                 except OSError:
                     pass
-            if src_t is not None:
+            if src_t is None and src_dds is None and src_img is None:
+                # a texture the artist supplied himself: the game reads
+                # `<stem>.t` only, so his `.png`/`.tga`/`.bmp` has to be
+                # converted into the folder the `.g` points at
+                for ext in texmod.DECODABLE_EXTS:
+                    if os.path.isfile(os.path.join(d, stem + ext)):
+                        src_img = os.path.join(d, stem + ext)
+                        break
+            if src_t is not None or src_dds is not None or src_img is not None:
                 break
         dst = os.path.join(out_dir, stem + ".t")
         try:
@@ -1207,6 +1250,11 @@ def _carry_material_textures(out_dir: str, base: str,
                 texmod.convert_file(src_dds, dst)
                 if not quiet:
                     ui.wrote(dst, "converted from the unit's .dds")
+            elif src_img is not None:
+                texmod.add_texture(src_img, out_dir, stem)
+                if not quiet:
+                    ui.wrote(dst, f"converted from "
+                                  f"{os.path.basename(src_img)}")
             elif not quiet:
                 ui.warn(f"{stem}.t: no such texture next to the export or in "
                         f"the donor folder — '{mat}' will load untextured "
@@ -1992,6 +2040,34 @@ def _texture_convert(src: str, dst: str, quiet: bool = False) -> None:
                       f" mips={info.mip_count}")
 
 
+def _texture_add(src: str, out_dir: str, name: Optional[str] = None,
+                 force: bool = False) -> int:
+    """``d3tool texture add <image> -o <unit folder>`` — a new atlas, in place.
+
+    The engine only ever reads ``<stem>.t`` next to the unit, while a texture
+    an artist paints comes as a ``.png``/``.tga``/``.bmp``/``.dds``.  This is
+    the "add the texture too" step of modelling a new part: convert it into
+    the unit folder under the name the ``.g``/``.scene`` will carry
+    (``<stem>.tga``).
+    """
+    ui.section("Texture add")
+    try:
+        dst = texmod.add_texture(src, out_dir, name, force=force)
+    except (OSError, ValueError) as exc:
+        ui.fail(str(exc))
+        return 1
+    with open(dst, "rb") as fh:
+        info = texmod.parse_t(fh.read(), dst)
+    stem = texmod.clean_stem(os.path.basename(dst))
+    ui.wrote(dst, f"{info.width}x{info.height} {_format_label(info)} "
+                  f"mips={info.mip_count}, {max(1, os.path.getsize(dst) // 1024)} KB")
+    ui.info(f'name it "{stem}.tga" on the part (its material, or the Material '
+            f"field in the sidebar) — the export then writes that name into the "
+            f".g, the _lod.g and both .scene files, and this .t sits next to "
+            f"the unit where the engine looks for it")
+    return 0
+
+
 def _texture_info(path: str) -> None:
     """``d3tool texture info <file>`` — describe a .t or .dds texture."""
     ui.section(f"Texture  {path}")
@@ -2137,7 +2213,9 @@ def _build_parser() -> argparse.ArgumentParser:
     p_dump.add_argument("gfile")
 
     p_texture = sub.add_parser(
-        "texture", help="inspect / convert .t (GM) <-> .dds textures")
+        "texture",
+        help="inspect / convert .t (GM) <-> .dds textures; add a texture to "
+             "a unit folder")
     p_texture_sub = p_texture.add_subparsers(dest="tex_cmd", required=True)
     p_tc = p_texture_sub.add_parser(
         "convert", help="convert a .t to .dds (or .dds to .t)")
@@ -2146,6 +2224,17 @@ def _build_parser() -> argparse.ArgumentParser:
     p_ti = p_texture_sub.add_parser(
         "info", help="describe a .t / .dds texture")
     p_ti.add_argument("file")
+    p_ta = p_texture_sub.add_parser(
+        "add", help="put an image (.png/.tga/.bmp/.dds/.t) into a unit "
+                    "folder as the <name>.t the engine reads")
+    p_ta.add_argument("image")
+    p_ta.add_argument("-o", "--out", required=True,
+                      help="the unit's folder (where the .g lives)")
+    p_ta.add_argument("--name", help="texture name (default: the file's stem)")
+    p_ta.add_argument("--force", action="store_true",
+                      help="replace a texture of the same name that the unit "
+                           "already ships (the export prefers the shipped "
+                           ".dds/.t, so this is rarely what you want)")
 
     p_vd = sub.add_parser(
         "vdpack", help="list / extract / pack a .vdpack mod archive")
@@ -2356,6 +2445,8 @@ def main(argv=None) -> int:
             _texture_convert(args.src, args.out)
         elif args.tex_cmd == "info":
             _texture_info(args.file)
+        elif args.tex_cmd == "add":
+            return _texture_add(args.image, args.out, args.name, args.force)
     elif args.cmd == "vdpack":
         return _vdpack(args)
     elif args.cmd == "char":
@@ -2582,10 +2673,12 @@ def _lod_sync(unit_dir: str, out_dir: Optional[str] = None,
                        if i >= donor_len and p.name not in names]
         else:
             missing = [p for p in main_all[len(lod_parts):] if p.name not in names]
+        appended_names: List[str] = []
         if missing:
             parent = ((lod_parts[0].attrs or {}).get("dwParent")
                       if lod_parts else None)
             appended = [gfile.lod_part(p, parent) for p in missing]
+            appended_names = [p.name for p in appended]
             lod_bytes = gfile.append_parts(lod_bytes, appended)
             lod_parts = list(gfile.iter_parts(
                 gfile.parse_geometry_file(lod_bytes)))
@@ -2792,7 +2885,11 @@ def _lod_sync(unit_dir: str, out_dir: Optional[str] = None,
             _scene_retag = True
         else:
             _scene_retag = False
-        new_text, added = scenemod.ensure_part_gobjs(text, lod_parts)
+        # a part this run appended is the one that needs the `gobj`; a part
+        # the shipped LOD never drew (the Goblin's and the Thug's scenes both
+        # leave one out) is left exactly as the artist shipped it
+        new_text, added = scenemod.ensure_part_gobjs(
+            text, lod_parts, only=appended_names or None)
         restated: List[str] = []
         try:
             # a `_lod.scene` repeats the numbers of the MAIN mesh, not of the

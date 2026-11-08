@@ -1,4 +1,4 @@
-"""The three things a modder is allowed to do to a unit, end to end.
+"""The things a modder is allowed to do to a unit, end to end.
 
 Every other test in this repository checks one piece of the pipeline.  This
 file checks the promises a user actually cares about, on a real retail unit,
@@ -17,6 +17,12 @@ through the same code Blender drives:
    one bone, export, and the part must appear in the `.g`, in the `_lod.g`,
    and in both `.scene` files with a `gobj` pointing at its block — otherwise
    the engine never draws it.
+4. **That new mesh brings its own new texture.**  An atlas that exists nowhere
+   in the game data (a 64x64 TGA the artist painted) must be written into the
+   folder as ``<name>.t``, named in the part's block of the `.g` and of the
+   `_lod.g`, repeated in both `.scene` files, reported by name, and given back
+   by the forward export — whether it sat next to the glTF or in the unit
+   folder.
 
 Run standalone for a readable report:
 
@@ -176,7 +182,40 @@ def _a_bone(folder, unit):
     return names[-1]
 
 
-def add_part(gltf_path, name, bone_name, size=3.0, skin_index=0):
+def make_tga(path, width=64, height=64):
+    """Write a texture the way an artist hands one over: an uncompressed TGA.
+
+    TGA is the spelling the `.g` itself uses (``material0_diffuse "x.tga"``),
+    so it is the format a new atlas most often arrives in — and it is the one
+    the engine cannot read, which is why the export has to convert it.
+    """
+    px = bytearray()
+    for y in range(height):
+        for x in range(width):
+            px += bytes(((x * 4) % 256, (y * 4) % 256, 128))
+    header = struct.pack("<BBBHHBHHHHBB", 0, 0, 2, 0, 0, 0, 0, 0,
+                         width, height, 24, 0x20)
+    with open(path, "wb") as fh:
+        fh.write(header + bytes(px))
+    return path
+
+
+def add_texture_material(gltf_path, uri, name="material_new"):
+    """Append an image + texture + material to a glTF; return the material id."""
+    d = json.load(open(gltf_path, encoding="utf-8"))
+    d.setdefault("images", []).append({"uri": uri})
+    d.setdefault("textures", []).append({"source": len(d["images"]) - 1})
+    d.setdefault("materials", []).append({
+        "name": name,
+        "pbrMetallicRoughness": {
+            "baseColorTexture": {"index": len(d["textures"]) - 1}},
+    })
+    with open(gltf_path, "w", encoding="utf-8") as fh:
+        json.dump(d, fh)
+    return len(d["materials"]) - 1
+
+
+def add_part(gltf_path, name, bone_name, size=3.0, skin_index=0, material=0):
     """Add a box bound rigidly to one bone of a unit's exported glTF.
 
     This is what Blender hands us when the user models a helmet, parents it to
@@ -246,7 +285,7 @@ def add_part(gltf_path, name, bone_name, size=3.0, skin_index=0):
     d["meshes"].append({"name": name, "primitives": [{
         "attributes": {"POSITION": ap, "NORMAL": an, "TEXCOORD_0": at,
                        "WEIGHTS_0": aw, "JOINTS_0": aj},
-        "indices": ai, "material": 0, "mode": 4}]})
+        "indices": ai, "material": material, "mode": 4}]})
     d["nodes"].append({"name": name, "mesh": len(d["meshes"]) - 1,
                        "skin": skin_index})
     d["scenes"][d.get("scene", 0)]["nodes"].append(len(d["nodes"]) - 1)
@@ -479,7 +518,7 @@ def scenario_armour_retexture(verbose=False, unit_dir=None, unit=None):
                   "texture": os.path.getsize(tex) if os.path.exists(tex) else 0}
         if verbose:
             moved = [n for (n, a), (_b, b) in zip(after, before) if a != b]
-            print(f"  4 body atlas    : {was} -> {stem} on "
+            print(f"  3 body atlas    : {was} -> {stem} on "
                   f"{', '.join(moved) or 'NO block'}"
                   f"; texture {result['texture']} B")
 
@@ -563,7 +602,7 @@ def scenario_new_part(verbose=False, unit_dir=None, unit=None, bone=None):
                   [b.name for b in lod_helmet[0].bones],
                   "forward": names, "ac_findings": findings}
         if verbose:
-            print(f"  3 new part      : {helmet.name} — {tris} tri, {verts} v, "
+            print(f"  4 new part      : {helmet.name} — {tris} tri, {verts} v, "
                   f"bone {bones}, LOD {lod_helmet[0].name}, "
                   f"forward export {names}")
         assert bones == [bone], bones
@@ -576,6 +615,131 @@ def scenario_new_part(verbose=False, unit_dir=None, unit=None, bone=None):
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def scenario_new_part_texture(verbose=False, unit_dir=None, unit=None,
+                              bone=None):
+    """4. A new mesh with a new atlas: the `.t` must be written next to it.
+
+    The part is modelled with its own material, painted from a fresh 64x64
+    texture that exists nowhere in the game data — the atlas an artist hands
+    over as a ``.png``/``.tga``/``.bmp`` (the engine reads only ``.t``).  Two
+    places are checked, because both are what people actually do:
+
+    * the atlas sits **next to the glTF** (where Blender writes a re-saved or
+      newly created image);
+    * the atlas sits **in the unit's own folder** (the artist dropped it there
+      and picked it in Blender from that path).
+
+    In both the export must write ``<name>.t``, name it in the part's block of
+    the ``.g`` *and* of the ``_lod.g``, repeat it in both ``.scene`` files (the
+    scene's copy is what the engine draws with), leave every other part's
+    atlas alone, and report the file by name.
+    """
+    unit_dir = unit_dir or UNIT_DIR
+    unit = unit or unit_of(unit_dir)
+    bone = bone or _a_bone(unit_dir, unit)
+    if not bone:
+        return {"skipped": "the unit has no bones to attach a part to"}
+    from d3tool import texture as texmod
+    tmp = tempfile.mkdtemp(prefix="d3sc_t_")
+    atlas = "order_helmet_of_the_order"   # a name no retail convention covers
+    wanted = atlas + ".tga"
+    try:
+        donor_main = _parts(os.path.join(unit_dir, unit + ".g"))
+        gltf = _export_gltf(unit_dir, unit, os.path.join(tmp, unit + ".gltf"))
+        if not json.load(open(gltf, encoding="utf-8")).get("skins"):
+            return {"skipped": "the unit has no skeleton to attach a part to"}
+        make_tga(os.path.join(tmp, wanted))
+        add_part(gltf, "helmet_empire_inquisitor", bone,
+                 material=add_texture_material(gltf, wanted))
+        out = os.path.join(tmp, "out")
+        # loud (but captured): the report has to name the files it adds
+        _log = _quiet(climod._export, gltf, out, 0, anim=True, quiet=False,
+                      donor_dir=unit_dir)[1]
+
+        def check(folder, where):
+            main = _parts(os.path.join(folder, unit + ".g"))
+            lod = _parts(_lod_path(folder, unit))
+            part = [p for p in main.parts
+                    if p.name == "helmet_empire_inquisitor"]
+            assert part, [p.name for p in main.parts]
+            got = (part[0].attrs or {}).get("material0_diffuse")
+            assert got == wanted, f"{where}: the .g says {got!r}, not {wanted!r}"
+            lodpart = [p for p in lod.parts
+                       if p.name == "lod_helmet_empire_inquisitor"]
+            assert lodpart, [p.name for p in lod.parts]
+            lodgot = (lodpart[0].attrs or {}).get("material0_diffuse")
+            assert lodgot == wanted, f"{where}: the _lod.g says {lodgot!r}"
+            t_path = os.path.join(folder, atlas + ".t")
+            assert os.path.isfile(t_path), (
+                f"{where}: no {atlas}.t was written — the .g names a texture "
+                f"the engine cannot load ({sorted(os.listdir(folder))})")
+            info = texmod.parse_t(open(t_path, "rb").read())
+            assert (info.width, info.height) == (64, 64), (info.width,
+                                                          info.height)
+            for scene, tag, gobj in (
+                    (_scene_path(folder, unit), "main",
+                     "helmet_empire_inquisitor"),
+                    (_scene_path(folder, unit, lod=True), "lod",
+                     "lod_helmet_empire_inquisitor")):
+                gobjs = dict(_scene_gobjs(scene, textures=True))
+                assert gobj in gobjs, (where, tag, sorted(gobjs))
+                assert gobjs[gobj] == wanted, (where, tag, gobjs[gobj])
+            # a new part must not re-texture the parts that were already
+            # there: the body and the weapon keep the atlas they shipped with
+            for p in main.parts:
+                if p.name == "helmet_empire_inquisitor":
+                    continue
+                before = [q for q in donor_main.parts if q.name == p.name]
+                if not before:
+                    continue
+                mine = (p.attrs or {}).get("material0_diffuse")
+                theirs = (before[0].attrs or {}).get("material0_diffuse")
+                assert mine == theirs, (where, p.name, mine, theirs)
+            return info
+
+        info = check(out, "texture next to the glTF")
+        assert atlas + ".t" in _log, (
+            "the export wrote the atlas without naming it in the report: "
+            + "; ".join(ln for ln in _log.splitlines()
+                        if atlas in ln))
+        # the part must come back out of the `.g` wearing the same atlas
+        back = os.path.join(tmp, "back.gltf")
+        anims = sorted(glob.glob(os.path.join(out, "*.a")))
+        climod._export_gl(os.path.join(out, unit + ".g"),
+                          anims[0] if anims else None, back, None, quiet=True)
+        doc = json.load(open(back, encoding="utf-8"))
+        mesh = [m for m in doc["meshes"]
+                if m.get("name") == "helmet_empire_inquisitor"]
+        assert mesh, [m.get("name") for m in doc["meshes"]]
+        tex = (doc["materials"][mesh[0]["primitives"][0]["material"]]
+               ["pbrMetallicRoughness"]["baseColorTexture"]["index"])
+        uri = doc["images"][doc["textures"][tex]["source"]]["uri"]
+        assert texmod.clean_stem(uri) == atlas,             f"the part came back wearing {uri!r}"
+        assert os.path.isfile(os.path.join(tmp, atlas + ".dds")),             "the forward export did not write the part's texture"
+
+        # the same atlas, supplied only in the unit's folder
+        donor = os.path.join(tmp, "donor")
+        shutil.copytree(unit_dir, donor, dirs_exist_ok=True)
+        make_tga(os.path.join(donor, wanted))
+        gltf2 = _export_gltf(unit_dir, unit,
+                             os.path.join(tmp, "case2", unit + ".gltf"))
+        add_part(gltf2, "helmet_empire_inquisitor", bone,
+                 material=add_texture_material(gltf2, wanted))
+        out2 = os.path.join(tmp, "out2")
+        _quiet(climod._export, gltf2, out2, 0, anim=True, quiet=True,
+               donor_dir=donor)
+        check(out2, "texture in the unit folder")
+        if verbose:
+            print(f"  5 new part+tex  : helmet_empire_inquisitor — "
+                  f"{wanted} ({info.width}x{info.height} "
+                  f"{texmod.describe(os.path.join(out, atlas + '.t'), True)}), "
+                  f"written for both placements, .g/_lod.g/both .scene")
+        return {"atlas": wanted, "bytes": os.path.getsize(
+            os.path.join(out, atlas + ".t"))}
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def run_all(verbose=True, unit_dir=None):
     """Run the scenarios; return a list of (name, ok, error)."""
     unit_dir = unit_dir or UNIT_DIR
@@ -584,8 +748,10 @@ def run_all(verbose=True, unit_dir=None):
     for name, fn in (("unchanged", scenario_unchanged),
                      ("part atlas", scenario_retexture),
                      ("body atlas", scenario_armour_retexture),
-                     ("new part", scenario_new_part)):
-        if name in ("part atlas", "body atlas", "new part") and \
+                     ("new part", scenario_new_part),
+                     ("new part + texture", scenario_new_part_texture)):
+        if name in ("part atlas", "body atlas", "new part",
+                    "new part + texture") and \
                 not os.path.isfile(_lod_path(unit_dir, unit)):
             out.append((name, True, "skipped: the unit has no LOD model"))
             continue

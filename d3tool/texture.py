@@ -660,23 +660,29 @@ def _mip_chain(rows, width: int, height: int) -> list:
 def _downsample_rows(src, w: int, h: int) -> list:
     """2x2 box average of RGBA rows -> the (w>>1, h>>1) level."""
     half_w = max(w >> 1, 1)
+    half_h = max(h >> 1, 1)
     out = []
-    for y in range(0, h, 2):
+    for yi in range(half_h):
+        y = yi * 2
         y1 = min(y + 1, h - 1)
         r = bytearray(half_w * 4)
-        xo = 0
-        for x in range(0, w, 2):
+        for xi in range(half_w):
+            # walk the *output* width: a non-power-of-two image (an atlas an
+            # artist painted at 300x150) has an odd last column, and stepping
+            # the input by two wrote one pixel past the end of every row
+            x = xi * 2
             x1 = min(x + 1, w - 1)
+            o = 4 * xi
             for c in range(4):
                 v = (src[y][4 * x + c] + src[y][4 * x1 + c]
                      + src[y1][4 * x + c] + src[y1][4 * x1 + c])
-                r[xo + c] = (v + 2) >> 2
-            xo += 4
+                r[o + c] = (v + 2) >> 2
         out.append(bytes(r))
     return out
 
 
-def encode_dxt(rows, width: int, height: int, fourcc: bytes = b"DXT1") -> bytes:
+def encode_dxt(rows, width: int, height: int, fourcc: bytes = b"DXT1",
+               levels: Optional[int] = None) -> bytes:
     """DXT payload of a whole mip chain, the way a GM ``.t`` stores it.
 
     The container does *not* 4x4-align the tail mips: every level is exactly
@@ -687,7 +693,10 @@ def encode_dxt(rows, width: int, height: int, fourcc: bytes = b"DXT1") -> bytes:
     """
     rate = 0.5 if fourcc == b"DXT1" else 1.0
     payload = bytearray()
-    for w, h, level in _mip_chain(rows, width, height):
+    chain = _mip_chain(rows, width, height)
+    if levels is not None:
+        chain = chain[:max(1, levels)]
+    for w, h, level in chain:
         data = bytearray()
         for y in range(0, h, 4):
             for x in range(0, w, 4):
@@ -850,16 +859,8 @@ def decode_png(data: bytes):
     return width, height, rows
 
 
-def png_to_t(data: bytes) -> bytes:
-    """Re-encode a PNG into a native GM ``.t`` (uncompressed A8R8G8B8).
-
-    Blender saves textures as PNG; the engine wants a `.t`.  The pixels are
-    block-compressed here (DXT1, or DXT5 when the image really uses alpha):
-    writing the container's raw 32-bit form instead produced a 683 KiB file
-    where the shipped atlas is 86 KiB for the *same* picture, which reads like
-    the wrong texture in any folder listing and costs eight times the space.
-    """
-    width, height, rows = decode_png(data)
+def _rows_to_t(width: int, height: int, rows) -> bytes:
+    """RGBA rows -> a native GM ``.t`` with a full DXT mip chain."""
 
     def mip_count_of(w: int, h: int) -> int:
         n = 0
@@ -868,29 +869,262 @@ def png_to_t(data: bytes) -> bytes:
             w, h = w >> 1, h >> 1
         return n
 
-    def downsample(src, w: int, h: int):
-        """2x2 box average of RGBA rows -> the (w>>1, h>>1) level."""
-        half_w = max(w >> 1, 1)
-        out = []
-        for y in range(0, h, 2):
-            y1 = min(y + 1, h - 1)
-            r = bytearray(half_w * 4)
-            xo = 0
-            for x in range(0, w, 2):
-                x1 = min(x + 1, w - 1)
-                for c in range(4):
-                    v = (src[y][4 * x + c] + src[y][4 * x1 + c]
-                         + src[y1][4 * x + c] + src[y1][4 * x1 + c])
-                    r[xo + c] = (v + 2) >> 2
-                xo += 4
-            out.append(bytes(r))
-        return out
-
     fourcc = b"DXT5" if _has_alpha(rows) else b"DXT1"
+    # A `.t` header stores only the number of mips; the payload size is
+    # recomputed from the dimensions with `w*h*rate` summed as a float and
+    # truncated once, while every level is truncated on its own.  For a
+    # power-of-two atlas (every shipped one) the two agree; for a texture
+    # painted at, say, 300x150 they differ by a byte, which would leave the
+    # header describing more data than the file holds — so such an image gets
+    # one level, and the engine reads exactly what is there.
+    pot = (width & (width - 1)) == 0 and (height & (height - 1)) == 0
+    levels = mip_count_of(width, height) if pot else 1
     info = TextureInfo(
         width=width, height=height,
-        mip_count=mip_count_of(width, height),
+        mip_count=levels,
         gm_format=_DDS_FOURCC_TO_T[fourcc], fourcc=fourcc,
-        payload=encode_dxt(rows, width, height, fourcc),
+        payload=encode_dxt(rows, width, height, fourcc, levels=levels),
     )
     return write_t(info)
+
+
+def png_to_t(data: bytes) -> bytes:
+    """Re-encode a PNG into a native GM ``.t`` (block-compressed pixels).
+
+    Blender saves textures as PNG; the engine wants a `.t`.  The pixels are
+    block-compressed here (DXT1, or DXT5 when the image really uses alpha):
+    writing the container's raw 32-bit form instead produced a 683 KiB file
+    where the shipped atlas is 86 KiB for the *same* picture, which reads like
+    the wrong texture in any folder listing and costs eight times the space.
+    """
+    return _rows_to_t(*decode_png(data))
+
+
+def decode_tga(data: bytes):
+    """Minimal pure-Python TGA decoder -> ``(width, height, rgba_rows)``.
+
+    TGA is the spelling the game's own attribute blocks use
+    (``material0_diffuse "x.tga"``), so it is the format an artist is most
+    likely to hand back.  Supports what image editors write for game art:
+    image types 1/2/3 (colour-mapped, true-colour, greyscale) and their
+    run-length encoded forms 9/10/11, 8/16/24/32 bits per pixel, both
+    bottom-up and top-down origin.
+    """
+    if len(data) < 18:
+        raise ValueError("TGA too short")
+    (id_len, cmap_type, img_type, _cmap_first, cmap_len, cmap_size,
+     _x, _y, width, height, bpp, desc) = struct.unpack_from(
+        "<BBBHHBHHHHBB", data, 0)
+    if not width or not height:
+        raise ValueError("TGA has no pixels")
+    if img_type not in (1, 2, 3, 9, 10, 11):
+        raise ValueError(f"unsupported TGA image type {img_type}")
+    pos = 18 + id_len
+    palette: List[bytes] = []
+    if cmap_type or img_type in (1, 9):
+        entry = (cmap_size + 7) // 8
+        raw = data[pos:pos + cmap_len * entry]
+        pos += cmap_len * entry
+        palette = [raw[i * entry:(i + 1) * entry] for i in range(cmap_len)]
+    bytes_per_px = (bpp + 7) // 8
+    if bytes_per_px not in (1, 2, 3, 4):
+        raise ValueError(f"unsupported TGA pixel depth {bpp}")
+    count = width * height
+    stream: List[bytes] = []
+    if img_type in (9, 10, 11):
+        i = 0
+        while len(stream) < count and pos + i < len(data):
+            head = data[pos + i]
+            i += 1
+            n = (head & 0x7F) + 1
+            if head & 0x80:
+                px = data[pos + i:pos + i + bytes_per_px]
+                i += bytes_per_px
+                stream.extend([px] * n)
+            else:
+                for _ in range(n):
+                    stream.append(data[pos + i:pos + i + bytes_per_px])
+                    i += bytes_per_px
+    else:
+        for k in range(count):
+            off = pos + k * bytes_per_px
+            stream.append(data[off:off + bytes_per_px])
+    if len(stream) < count:
+        raise ValueError("TGA is truncated")
+
+    def pixel(raw: bytes) -> bytes:
+        if img_type in (1, 9) or len(raw) == 1:
+            idx = raw[0]
+            if img_type in (1, 9):
+                if idx >= len(palette):
+                    return b"\0\0\0\xff"
+                raw = palette[idx]
+                return pixel_colour(raw)
+            return bytes((idx, idx, idx, 0xFF))
+        return pixel_colour(raw)
+
+    def pixel_colour(raw: bytes) -> bytes:
+        if len(raw) >= 4:                       # BGRA
+            return bytes((raw[2], raw[1], raw[0], raw[3]))
+        if len(raw) == 3:                       # BGR
+            return bytes((raw[2], raw[1], raw[0], 0xFF))
+        if len(raw) == 2:                       # A1R5G5B5, little endian
+            v = raw[0] | (raw[1] << 8)
+            r = ((v >> 10) & 0x1F) * 255 // 31
+            g = ((v >> 5) & 0x1F) * 255 // 31
+            b = (v & 0x1F) * 255 // 31
+            return bytes((r, g, b, 0xFF))
+        return bytes((raw[0], raw[0], raw[0], 0xFF))
+
+    rows = [bytearray(width * 4) for _ in range(height)]
+    top_down = bool(desc & 0x20)
+    for k, raw in enumerate(stream[:count]):
+        y = k // width
+        if not top_down:
+            y = height - 1 - y
+        x = k % width
+        rows[y][4 * x:4 * x + 4] = pixel(raw)
+    return width, height, [bytes(r) for r in rows]
+
+
+def tga_to_t(data: bytes) -> bytes:
+    """Re-encode a TGA into a native GM ``.t`` (block-compressed pixels)."""
+    return _rows_to_t(*decode_tga(data))
+
+
+def decode_bmp(data: bytes):
+    """Minimal pure-Python BMP decoder -> ``(width, height, rgba_rows)``.
+
+    Only what an image editor writes without compression: BI_RGB 24/32-bit
+    (and BI_BITFIELDS 32-bit), bottom-up or top-down.
+    """
+    if data[:2] != b"BM":
+        raise ValueError("not a BMP file")
+    off = struct.unpack_from("<I", data, 10)[0]
+    header = struct.unpack_from("<I", data, 14)[0]
+    if header < 40:
+        raise ValueError(f"unsupported BMP header size {header}")
+    width, height = struct.unpack_from("<ii", data, 18)
+    bpp = struct.unpack_from("<H", data, 28)[0]
+    compression = struct.unpack_from("<I", data, 30)[0]
+    if bpp not in (24, 32):
+        raise ValueError(f"unsupported BMP depth {bpp}")
+    if compression not in (0, 3):
+        raise ValueError(f"unsupported BMP compression {compression}")
+    top_down = height < 0
+    height = abs(height)
+    if not width or not height:
+        raise ValueError("BMP has no pixels")
+    stride = ((bpp * width + 31) // 32) * 4
+    rows = []
+    for y in range(height):
+        row = bytearray(width * 4)
+        src_y = y if top_down else height - 1 - y
+        base = off + src_y * stride
+        line = data[base:base + stride]
+        if len(line) < width * (bpp // 8):
+            raise ValueError("BMP is truncated")
+        for x in range(width):
+            o = x * (bpp // 8)
+            row[4 * x] = line[o + 2]
+            row[4 * x + 1] = line[o + 1]
+            row[4 * x + 2] = line[o]
+            row[4 * x + 3] = line[o + 3] if bpp == 32 else 0xFF
+        rows.append(bytes(row))
+    return width, height, rows
+
+
+def bmp_to_t(data: bytes) -> bytes:
+    """Re-encode a BMP into a native GM ``.t`` (block-compressed pixels)."""
+    return _rows_to_t(*decode_bmp(data))
+
+
+#: extensions :func:`image_to_t` can turn into a native ``.t`` by itself
+DECODABLE_EXTS = (".png", ".tga", ".bmp")
+
+
+def image_to_t(data: bytes, source: str = "") -> bytes:
+    """Any image the artist supplies -> native ``.t`` bytes.
+
+    ``.t`` passes through untouched, ``.dds`` is converted (its payload is
+    the same blocks), and ``.png`` / ``.tga`` / ``.bmp`` are decoded and
+    block-compressed.  The format is detected from the bytes first and the
+    file name second, because a Blender re-save may call a PNG
+    ``x.dds.png`` and a texture handed over by hand may carry no extension
+    at all.
+    """
+    ext = os.path.splitext(source or "")[1].lower()
+    if data[:4] == b"DDS ":
+        orig = None
+        if source:
+            sib = os.path.splitext(source)[0] + ".t"
+            if os.path.isfile(sib):
+                with open(sib, "rb") as fh:
+                    orig = fh.read(T_HEADER_SIZE)
+        return dds_to_t(data, orig, os.path.basename(source or "texture.dds"))
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return png_to_t(data)
+    if data[:2] == b"BM" and len(data) > 26:
+        return bmp_to_t(data)
+    if data[:3] == b"\xff\xd8\xff":
+        raise ValueError(f"{os.path.basename(source) or 'JPEG image'}: a JPEG "
+                         f"cannot be decoded — save it as .png or .tga")
+    try:
+        parse_t(data, source)
+    except ValueError:
+        pass
+    else:
+        return data
+    if ext in ("", ".tga"):
+        return tga_to_t(data)
+    raise ValueError(f"{os.path.basename(source) or 'image'}: not a texture "
+                     f"this tool can read (.t, .dds, .png, .tga, .bmp)")
+
+
+def add_texture(src_path: str, out_dir: str,
+                stem: Optional[str] = None, force: bool = False) -> str:
+    """Put a texture the artist supplies into a unit folder as ``<stem>.t``.
+
+    This is the "add a texture" step of modelling a new part: the artist has
+    the atlas as a ``.png`` / ``.tga`` / ``.bmp`` / ``.dds`` (or already as a
+    ``.t``), and the game will only ever look for ``<stem>.t`` next to the
+    unit — the name the ``.g`` and the ``.scene`` carry as
+    ``<stem>.tga``.  The file is converted, block-compressed and written into
+    *out_dir* under the cleaned stem.
+
+    Returns the path written.
+
+    A name that already exists in the folder is refused unless *force*: the
+    export resolves a texture by stem and prefers the shipped `.dds`/`.t`
+    over anything else, so quietly overwriting ``<unit>.t`` with a painted
+    atlas of the same name produces a folder the next export reverts — the
+    artist sees his texture disappear and every file still looks right.
+    """
+    if not src_path or not os.path.isfile(src_path):
+        raise ValueError(f"no such texture file: {src_path}")
+    stem = clean_stem(stem or os.path.basename(src_path))
+    if not stem:
+        raise ValueError(f"cannot derive a texture name from {src_path}")
+    with open(src_path, "rb") as fh:
+        data = fh.read()
+    payload = image_to_t(data, src_path)
+    small = compress_t(payload, src_path)
+    if small is not None and len(small) < len(payload):
+        payload = small
+    os.makedirs(out_dir, exist_ok=True)
+    dst = os.path.join(out_dir, stem + ".t")
+    if not force:
+        for other in (stem + ".t", stem + ".dds"):
+            existing = os.path.join(out_dir, other)
+            if not os.path.isfile(existing):
+                continue
+            with open(existing, "rb") as fh:
+                if fh.read() == payload:
+                    return dst          # the same texture, already there
+            raise ValueError(
+                f"{other} already exists in {out_dir} — give the texture its "
+                f"own name (rename the file, or pass --name) instead of "
+                f"replacing the unit's own atlas")
+    with open(dst, "wb") as fh:
+        fh.write(payload)
+    return dst

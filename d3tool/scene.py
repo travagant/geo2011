@@ -666,7 +666,7 @@ def refresh_part_gobjs(text: str, parts,
     return render_scene(doc), changed
 
 
-def ensure_part_gobjs(text: str, parts) -> Tuple[str, List[str]]:
+def ensure_part_gobjs(text: str, parts, only=None) -> Tuple[str, List[str]]:
     """Give every part in the `.g` a `gobj` the engine will instantiate.
 
     A part is bound by the number its `gobj` writes after the `.g` path
@@ -703,12 +703,27 @@ def ensure_part_gobjs(text: str, parts) -> Tuple[str, List[str]]:
     # that numbers nothing, or numbers past the end, falls back to "the parts
     # after the last `gobj`": an export appends at the end.
     declared = [node_mesh_index(n) for n in gobjs]
-    if (all(d is not None and 0 <= d < len(ordered) for d in declared)
-            and len(set(declared)) == len(declared)):
-        claimed = set(declared)
+    numbered = {d for d in declared if d is not None and 0 <= d < len(ordered)}
+    if numbered and len(numbered) == len(declared):
+        claimed = set(numbered)
     else:
         claimed = set(range(len(gobjs)))
     unbound = [p for i, p in enumerate(ordered) if i not in claimed]
+    if only is not None:
+        # The caller knows which parts were APPENDED to the mesh (the LOD
+        # sync), and an appended part cannot be named by any `gobj` the
+        # shipped scene already had.  Counting numbers positionally — the
+        # fallback for a scene whose numbering is duplicated, which the
+        # Priestess LOD scene is (two `gobj`s for the body, slots 0 0 1 2 3) —
+        # then claims every slot up to the `gobj` count and the appended part
+        # is never drawn.  Trust the numbers for this case only: retail
+        # scenes such as the Goblin's and the Thug's legitimately have no
+        # `gobj` for one of their parts, and adding one there would draw what
+        # the shipped unit does not.
+        wanted = set(only)
+        pool = numbered or claimed
+        unbound = [p for i, p in enumerate(ordered)
+                   if i not in pool and p.name in wanted]
     if not unbound:
         return text, []
 

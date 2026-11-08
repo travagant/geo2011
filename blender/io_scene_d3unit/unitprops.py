@@ -43,7 +43,7 @@ VERSION = 1
 _ATLAS_HINTS = ("_diffuse", "_lightmap", "_specular")
 
 
-def clean_atlas_name(name: str) -> str:
+def clean_atlas_name(name: str, folders=()) -> str:
     """``weapon_x_diffuse.tga`` for any spelling of a unit texture, else "".
 
     Blender keeps an imported atlas as ``x.dds.png`` and an artist may type
@@ -51,6 +51,13 @@ def clean_atlas_name(name: str) -> str:
     atlases at all — ``material0``, ``Material.001``, ``Image`` — come back
     empty, so a material merely *called* something is never mistaken for a
     texture.
+
+    A name that follows none of the retail conventions is still a texture when
+    the file is *there*: a part the artist modelled himself wears whatever
+    atlas he painted for it (``helmet_of_the_order.tga``), and refusing the
+    name because it does not look like ``weapon_*_diffuse`` made the export
+    quietly fall back to the donor atlas.  *folders* is where that evidence is
+    looked for — the unit folder first, then the .blend's.
     """
     from . import bridge
     raw = str(name or "").strip().replace("\\", "/")
@@ -62,13 +69,47 @@ def clean_atlas_name(name: str) -> str:
     except Exception:  # noqa: BLE001 - a fallback is better than a crash
         stem = os.path.splitext(raw)[0]
     low = stem.lower()
-    if not stem or low.startswith("material"):
+    if not stem or low.startswith(("material", "image", "texture", "untitled")):
         return ""
-    if not (any(hint in low for hint in _ATLAS_HINTS)
-            or low.startswith(("weapon_", "character_", "armor_", "armour_",
-                               "creature_", "tower_", "decoration_"))):
-        return ""
-    return stem + ".tga"
+    if any(hint in low for hint in _ATLAS_HINTS) or low.startswith(
+            ("weapon_", "character_", "armor_", "armour_", "creature_",
+             "tower_", "decoration_")):
+        return stem + ".tga"
+    for folder in folders or ():
+        if not folder or not os.path.isdir(folder):
+            continue
+        for ext in (".t", ".dds", ".tga", ".png", ".bmp"):
+            if os.path.isfile(os.path.join(folder, stem + ext)):
+                return stem + ".tga"
+    return ""
+
+
+def texture_folders(context=None, mesh=None) -> list:
+    """Folders searched for a part's texture: the unit's, then the .blend's.
+
+    A unit keeps its atlas next to its ``.g``; a texture picked by hand may sit
+    anywhere, so the unit folder comes first and the folder the scene was saved
+    in second (a scratch folder is where a re-exported atlas usually lands).
+    """
+    context = context or _context()
+    folders = []
+    root = find_unit_root(context)
+    info = get_info(root) if root else {}
+    for value in (info.get("dir"), info.get("g"), info.get("gltf")):
+        value = str(value or "")
+        if not value:
+            continue
+        folder = value if os.path.isdir(value) else os.path.dirname(value)
+        if folder and folder not in folders:
+            folders.append(folder)
+    try:
+        import bpy
+        blend = os.path.dirname(bpy.data.filepath or "")
+    except Exception:  # noqa: BLE001
+        blend = ""
+    if blend and blend not in folders:
+        folders.append(blend)
+    return folders
 
 
 def _feeds_base_colour(tree, node) -> bool:
@@ -89,7 +130,7 @@ def _feeds_base_colour(tree, node) -> bool:
     return False
 
 
-def material_texture_name(ob) -> str:
+def material_texture_name(ob, folders=()) -> str:
     """The atlas the object's own material points at, ``""`` when it names none.
 
     Re-texturing a part in Blender means giving it a material with the image —
@@ -116,14 +157,14 @@ def material_texture_name(ob) -> str:
             if image is None:
                 continue
             name = clean_atlas_name(getattr(image, "filepath", "")
-                                    or getattr(image, "name", ""))
+                                    or getattr(image, "name", ""), folders)
             if not name:
                 continue
             if _feeds_base_colour(tree, node):
                 return name
             guessed = guessed or name
         if not guessed:
-            guessed = clean_atlas_name(getattr(mat, "name", ""))
+            guessed = clean_atlas_name(getattr(mat, "name", ""), folders)
     return guessed
 
 

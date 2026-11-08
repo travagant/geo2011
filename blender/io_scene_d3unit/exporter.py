@@ -471,7 +471,8 @@ def export_unit(context, path: str, use_anim: bool = True, weights: int = 0,
         if str(ob.get(unitprops.DIFFUSE_PROP) or "").strip():
             continue
         try:
-            guess = unitprops.material_texture_name(ob)
+            guess = unitprops.material_texture_name(
+                ob, unitprops.texture_folders(context, ob))
         except Exception:  # noqa: BLE001 - a probe must never fail an export
             guess = ""
         if guess:

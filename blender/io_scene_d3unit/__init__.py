@@ -26,7 +26,7 @@ package only builds and reads the Blender scene.
 bl_info = {
     "name": "Disciples III Unit (GM .g/.a/.scene/.ac/.t)",
     "author": "Arena agent / geo2011",
-    "version": (1, 1, 41),
+    "version": (1, 1, 42),
     "blender": (3, 0, 0),
     "location": "File > Import/Export > Disciples III Unit",
     "description": "Import and export Disciples III character units "
@@ -43,6 +43,7 @@ import bpy  # noqa: E402
 from bpy.props import (BoolProperty, FloatProperty,  # noqa: E402
                        PointerProperty, StringProperty)
 from bpy.types import Panel  # noqa: E402
+from bpy_extras.io_utils import ImportHelper  # noqa: E402
 
 from . import (bridge, exporter, importer, preferences,  # noqa: E402
                unitprops, weapon)
@@ -52,29 +53,8 @@ from . import (bridge, exporter, importer, preferences,  # noqa: E402
 #  the texture a part is drawn with
 # --------------------------------------------------------------------------- #
 def texture_folders(context, mesh=None) -> list:
-    """Folders searched for a part's texture: the unit's, then the .blend's.
-
-    A unit keeps its atlas next to its ``.g``; a texture picked by hand may sit
-    anywhere, so the unit folder comes first and the folder the scene was saved
-    in second (a scratch folder is where a re-exported atlas usually lands).
-    """
-    folders = []
-    root = unitprops.find_unit_root(context)
-    info = unitprops.get_info(root) if root else {}
-    for value in (info.get("dir"), info.get("g"), info.get("gltf")):
-        value = str(value or "")
-        if not value:
-            continue
-        folder = value if os.path.isdir(value) else os.path.dirname(value)
-        if folder and folder not in folders:
-            folders.append(folder)
-    try:
-        blend = os.path.dirname(bpy.data.filepath or "")
-    except Exception:  # noqa: BLE001
-        blend = ""
-    if blend and blend not in folders:
-        folders.append(blend)
-    return folders
+    """Folders searched for a part's texture: the unit's, then the .blend's."""
+    return unitprops.texture_folders(context, mesh)
 
 
 def find_part_texture(context, mesh):
@@ -244,6 +224,9 @@ def _draw_texture_box(layout, context, mesh) -> None:
         row.label(text="(not set)")
     op = row.operator("d3unit.name_texture", text="", icon="GREASEPENCIL")
     op.value = str(mesh.get(unitprops.DIFFUSE_PROP) or "")
+    tb.operator("d3unit.add_texture",
+                text="Add Texture File…  (writes <name>.t next to the unit)",
+                icon="FILE_IMAGE")
     tb.operator("d3unit.number_materials",
                 text="Number the materials: material0, material1, …")
     hint = tb.column(align=True)
@@ -254,7 +237,8 @@ def _draw_texture_box(layout, context, mesh) -> None:
         # the name off the material itself (`unitprops.material_texture_name`)
         from_material = ""
         try:
-            from_material = unitprops.material_texture_name(mesh)
+            from_material = unitprops.material_texture_name(
+                mesh, texture_folders(context, mesh))
         except Exception:  # noqa: BLE001 - a panel must never raise
             from_material = ""
         if from_material:
@@ -393,6 +377,60 @@ class D3UNIT_OT_name_texture(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class D3UNIT_OT_add_texture(bpy.types.Operator, ImportHelper):
+    """Put a texture file into the unit folder and give it to this part"""
+
+    bl_idname = "d3unit.add_texture"
+    bl_label = "Add Texture File…"
+    bl_description = (
+        "Bring a texture you painted (.png/.tga/.bmp/.dds, or a .t) into the "
+        "unit's folder as <name>.t — the only form the engine reads — and "
+        "name this part after it, so the export writes the atlas into the .g, "
+        "the _lod.g and both .scene files")
+    bl_options = {"REGISTER", "UNDO"}
+
+    filename_ext = ""
+    filter_glob: StringProperty(
+        default="*.png;*.tga;*.bmp;*.dds;*.t", options={"HIDDEN"})  # type: ignore[valid-type]
+
+    def invoke(self, context, event):
+        context.window_manager.fileselect_add(self)
+        return {"RUNNING_MODAL"}
+
+    def execute(self, context):
+        ob = getattr(context, "object", None)
+        if ob is None or getattr(ob, "type", "") != "MESH":
+            self.report({"ERROR"}, "select the mesh part first")
+            return {"CANCELLED"}
+        folders = texture_folders(context, ob)
+        if not folders:
+            self.report({"ERROR"},
+                        "no unit folder to put the texture in — import the "
+                        "unit first, or save the .blend next to it")
+            return {"CANCELLED"}
+        # the unit's own folder is the one the game reads the `.t` from
+        target = folders[0]
+        try:
+            tex = bridge.module("texture")
+            dst = tex.add_texture(self.filepath, target)
+        except Exception as exc:  # noqa: BLE001 - report, never crash Blender
+            self.report({"ERROR"}, f"{exc}")
+            return {"CANCELLED"}
+        stem = tex.clean_stem(os.path.basename(dst))
+        name = stem + ".tga"
+        try:
+            ob[unitprops.DIFFUSE_PROP] = name
+        except Exception as exc:  # noqa: BLE001
+            self.report({"ERROR"}, f"could not store the texture name: {exc}")
+            return {"CANCELLED"}
+        ok, message = apply_part_texture(context, ob)
+        self.report({"INFO"} if ok else {"WARNING"},
+                    f"{ob.name}: wrote {os.path.basename(dst)} "
+                    f"({max(1, os.path.getsize(dst) // 1024)} KB), part is "
+                    f"now {name} — {message}")
+        return {"FINISHED"}
+
+
 class D3UNIT_OT_self_test(bpy.types.Operator):
     """Re-export the imported unit without changing anything and diff it"""
 
@@ -478,6 +516,7 @@ CLASSES = (
     exporter.D3UNIT_OT_export,
     weapon.D3UNIT_OT_place_weapon,
     D3UNIT_OT_name_texture,
+    D3UNIT_OT_add_texture,
     D3UNIT_OT_apply_texture,
     D3UNIT_OT_open_log,
     D3UNIT_OT_number_materials,
