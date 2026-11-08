@@ -454,6 +454,19 @@ the written parts (`d3tool/scene.py::refresh_part_gobjs`) and carries the `.t`
 a grafted part wear another unit's texture, since the name the engine reads
 lives in the `.scene`, not in the material.
 
+**The viewport has to agree with the file.**  Naming a part changes nothing
+on screen: Blender keeps drawing the image the material had, and only the `.g`
+gets the new name, so a correct re-texture looks exactly like a broken export.
+*Show in the Viewport* (`d3unit.apply_texture`, run automatically after the
+name is typed) resolves the name to the file that ships it
+(`d3tool/texture.py::find_texture_file` — `<stem>.t`, `<stem>.dds`, a doubled
+`<stem>.dds.t`, any case), unwraps a `.t` into a temporary `.dds` because
+Blender has no `.t` loader, and puts it on the material's image node.  The
+export then reports what it actually wrote, part by part, read back out of the
+files it just saved (`d3tool/parts.py::texture_report`), and warns about a name
+whose texture is not in the folder — plus about every part that has no
+`d3unit_diffuse` of its own, i.e. one imported before 1.1.27 or hand-assembled.
+
 A part's material name is stored in **three** places that the engine reads
 independently: the `material0_diffuse` attribute of the block in the main
 `.g`, the same attribute in the `_lod.g`, and the `attr "material0_diffuse"`

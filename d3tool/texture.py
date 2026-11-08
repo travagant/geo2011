@@ -42,7 +42,7 @@ import struct
 import os
 import zlib
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Dict, List, Optional, Sequence
 
 # GM `.t` pixel-format code -> DDS fourCC / block size for compressed codes.
 _T_FMT_TO_DDS = {
@@ -415,6 +415,50 @@ def clean_stem(name: str) -> str:
             stem = root
         else:
             return stem
+
+
+def find_texture_file(name: str, folders: Sequence[str]) -> Optional[str]:
+    """Resolve a ``material0_diffuse`` name to the file that ships it.
+
+    The attribute block names ``<stem>.tga`` while the game ships ``<stem>.t``,
+    a Blender re-save leaves ``<stem>.dds`` (or ``<stem>.dds.png``), and a
+    texture the artist picked by hand may be any of those in any folder.  This
+    walks *folders* in order and, inside each, prefers the exact spelling, then
+    a real ``.t``/``.dds``, then anything whose cleaned stem matches — the same
+    order :func:`find_diffuse_texture` uses for one folder.
+
+    Returns the path, or ``None`` when no folder holds the texture.
+    """
+    stem = clean_stem(name)
+    if not stem:
+        return None
+    exact = os.path.basename(name or "")
+    loose: List[str] = []
+    for folder in folders or ():
+        if not folder or not os.path.isdir(folder):
+            continue
+        if exact:
+            p = os.path.join(folder, exact)
+            if os.path.isfile(p):
+                return p
+        for ext in (".t", ".dds", ".tga", ".png", ".jpg", ".jpeg", ".bmp"):
+            p = os.path.join(folder, stem + ext)
+            if os.path.isfile(p):
+                return p
+        try:
+            listing = os.listdir(folder)
+        except OSError:
+            continue
+        for cand in listing:
+            if clean_stem(cand).lower() != stem.lower():
+                continue
+            path = os.path.join(folder, cand)
+            if not os.path.isfile(path):
+                continue
+            if cand.lower().endswith(".t"):
+                return path
+            loose.append(path)
+    return loose[0] if loose else None
 
 
 def find_diffuse_texture(g_path: str, attrs: Dict[str, str]) -> Optional[str]:

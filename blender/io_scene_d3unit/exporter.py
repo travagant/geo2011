@@ -382,6 +382,31 @@ def _stamp_diffuse_names(target: str, meshes) -> tuple:
             stamped += 1
             seen.add(node.get(key))
             break
+    # A node is normally named after its object, but an exporter that folds
+    # an object's name away (`.001` suffixes, a renamed node, a mesh shared by
+    # two objects) would drop the name without a word.  Match the *mesh data*
+    # name as a second chance before reporting the part as unattached.
+    if len(seen) < len(wanted):
+        by_mesh = {m.get("name"): i for i, m in enumerate(meshes_json)}
+        for ob in meshes:
+            if ob.name in seen:
+                continue
+            value = wanted.get(ob.name)
+            if not value:
+                continue
+            try:
+                data_name = ob.data.name
+            except Exception:  # noqa: BLE001
+                continue
+            mi = by_mesh.get(data_name)
+            if mi is None:
+                mi = by_mesh.get(ob.name)
+            if mi is None or mi >= len(meshes_json):
+                continue
+            meshes_json[mi].setdefault("extras", {})[
+                "d3unit_diffuse"] = value
+            stamped += 1
+            seen.add(ob.name)
     with open(target, "w", encoding="utf-8") as fh:
         json.dump(doc, fh)
     missing = sorted(set(wanted) - seen)
@@ -423,6 +448,18 @@ def export_unit(context, path: str, use_anim: bool = True, weights: int = 0,
     warns = validate_unit(arm, meshes, context)
     if hidden:
         warns.insert(0, "hidden mesh(es) skipped: " + ", ".join(hidden))
+    # A mesh imported before 1.1.27 carries no `d3unit_diffuse`; its part then
+    # keeps whatever texture the material or the donor .g names, which is how
+    # a grafted sword came out wearing the donor's atlas without a word.
+    unnamed = [o.name for o in meshes
+               if not str(o.get(unitprops.DIFFUSE_PROP) or "").strip()]
+    if unnamed:
+        more = "" if len(unnamed) <= 6 else f" (+{len(unnamed) - 6} more)"
+        warns.append(
+            "part(s) with no texture name of their own — the export keeps "
+            "whatever the material/donor .g names: "
+            + ", ".join(unnamed[:6]) + more
+            + " (set it in the sidebar: Texture of <part>)")
 
     scene = context.scene
     saved = (scene.render.fps, scene.render.fps_base, scene.frame_current,
@@ -458,7 +495,11 @@ def export_unit(context, path: str, use_anim: bool = True, weights: int = 0,
         result = _verify(out_dir, base)
         if result["warnings"]:
             warns.extend(result["warnings"])
-        text = log.getvalue()
+        tex_lines = _texture_lines(out_dir, base, donor_dir, warns)
+        for line in tex_lines:
+            print("[d3unit] texture" + line)
+        text = log.getvalue() + "".join(
+            "\n" + line for line in tex_lines)
         _log_to_text(f"{base} export", text + "\n" + "\n".join(warns))
         return {"g": os.path.join(out_dir, base + ".g"),
                 "base": base, "out_dir": out_dir, "armature": arm,
@@ -481,6 +522,50 @@ def export_unit(context, path: str, use_anim: bool = True, weights: int = 0,
 def _pref_path(context):
     prefs = get_prefs(context)
     return getattr(prefs, "d3tool_path", "") if prefs else ""
+
+
+def _texture_lines(out_dir, base, donor_dir, warns):
+    """Read the written ``.g``/``_lod.g`` back: what texture each part wears.
+
+    The name can come from three places (the mesh's own ``d3unit_diffuse``, the
+    image Blender exported, the donor part) and nothing on the Blender side
+    tells them apart — so the export reports what actually landed in the file,
+    and says so when the file that name points at is not next to the unit.
+    """
+    try:
+        parts = bridge.module("parts")
+    except Exception:  # noqa: BLE001 - a report must never break an export
+        return []
+    lines, said = [], set()
+    for suffix in ("", "_lod"):
+        g_path = os.path.join(out_dir, base + suffix + ".g")
+        if not os.path.isfile(g_path):
+            continue
+        try:
+            rows = parts.texture_report(g_path, [donor_dir])
+        except Exception as exc:  # noqa: BLE001
+            lines.append(f"{base}{suffix}.g: could not read the part "
+                         f"textures back ({exc})")
+            continue
+        for part, diffuse, found in rows:
+            if not diffuse:
+                if part not in said:
+                    said.add(part)
+                    warns.append(
+                        f"part '{part}' has no material0_diffuse in "
+                        f"{base}{suffix}.g — the game draws it untextured")
+                continue
+            status = os.path.basename(found) if found else "NOT FOUND"
+            lines.append(f"  {base}{suffix}.g: {part} -> {diffuse} ({status})")
+            key = diffuse.lower()
+            if not found and key not in said:
+                said.add(key)
+                warns.append(
+                    f"part '{part}' wears {diffuse}, but no such texture is "
+                    f"next to the unit — put {os.path.splitext(diffuse)[0]}"
+                    f".t in the folder, or set another name in the panel "
+                    f"(Texture of {part})")
+    return lines
 
 
 def _verify(out_dir, base):

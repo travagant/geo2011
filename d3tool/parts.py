@@ -16,6 +16,8 @@ them into warnings.
 """
 from __future__ import annotations
 
+import os
+
 from typing import Dict, List, Optional, Sequence, Tuple
 
 #: a part may differ this much from its donor part on any axis before the
@@ -117,3 +119,32 @@ def donor_mismatches(mesh, donor, size_tol: float = SIZE_TOL,
                 f"part '{name}' is bound to {mine_b} bone(s), the donor's to "
                 f"{their_b} — the engine deforms it differently")
     return findings
+
+
+# --------------------------------------------------------------------------- #
+#  the texture every part will be drawn with
+# --------------------------------------------------------------------------- #
+def texture_report(g_path: str,
+                   folders: Sequence[str] = ()) -> List[Tuple[str, str, str]]:
+    """``(part, material0_diffuse, file on disk or "")`` for every part of a ``.g``.
+
+    Reading the *written* files back is the only honest answer to "did my
+    texture name reach the game?": the name lives in the attribute block of the
+    ``.g``, can come from the mesh's own ``d3unit_diffuse``, from the material
+    image Blender exported, or from the donor part, and the three are
+    indistinguishable from the Blender side.  ``folders`` are searched, after
+    the ``.g``'s own folder, for a file with that name
+    (:func:`d3tool.texture.find_texture_file`).
+    """
+    from . import gfile, texture
+
+    with open(g_path, "rb") as fh:
+        mesh = gfile.parse_geometry_file(fh.read())
+    search = [os.path.dirname(os.path.abspath(g_path))]
+    search += [f for f in folders or () if f]
+    rows = []
+    for part in gfile.iter_parts(mesh):
+        name = (getattr(part, "attrs", {}) or {}).get("material0_diffuse") or ""
+        found = texture.find_texture_file(name, search) if name else None
+        rows.append((getattr(part, "name", "") or "?", name, found or ""))
+    return rows

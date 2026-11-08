@@ -26,7 +26,7 @@ package only builds and reads the Blender scene.
 bl_info = {
     "name": "Disciples III Unit (GM .g/.a/.scene/.ac/.t)",
     "author": "Arena agent / geo2011",
-    "version": (1, 1, 27),
+    "version": (1, 1, 28),
     "blender": (3, 0, 0),
     "location": "File > Import/Export > Disciples III Unit",
     "description": "Import and export Disciples III character units "
@@ -37,6 +37,7 @@ bl_info = {
 }
 
 import os  # noqa: E402  (kept for the panels)
+import tempfile  # noqa: E402
 
 import bpy  # noqa: E402
 from bpy.props import (BoolProperty, FloatProperty,  # noqa: E402
@@ -45,6 +46,152 @@ from bpy.types import Panel  # noqa: E402
 
 from . import (bridge, exporter, importer, preferences,  # noqa: E402
                unitprops, weapon)
+
+
+# --------------------------------------------------------------------------- #
+#  the texture a part is drawn with
+# --------------------------------------------------------------------------- #
+def texture_folders(context, mesh=None) -> list:
+    """Folders searched for a part's texture: the unit's, then the .blend's.
+
+    A unit keeps its atlas next to its ``.g``; a texture picked by hand may sit
+    anywhere, so the unit folder comes first and the folder the scene was saved
+    in second (a scratch folder is where a re-exported atlas usually lands).
+    """
+    folders = []
+    root = unitprops.find_unit_root(context)
+    info = unitprops.get_info(root) if root else {}
+    for value in (info.get("dir"), info.get("g"), info.get("gltf")):
+        value = str(value or "")
+        if not value:
+            continue
+        folder = value if os.path.isdir(value) else os.path.dirname(value)
+        if folder and folder not in folders:
+            folders.append(folder)
+    try:
+        blend = os.path.dirname(bpy.data.filepath or "")
+    except Exception:  # noqa: BLE001
+        blend = ""
+    if blend and blend not in folders:
+        folders.append(blend)
+    return folders
+
+
+def find_part_texture(context, mesh):
+    """``(name, path)`` of the texture a mesh part is meant to wear."""
+    name = str(mesh.get(unitprops.DIFFUSE_PROP) or "").strip()
+    if not name:
+        return "", ""
+    try:
+        tex = bridge.module("texture")
+    except Exception:  # noqa: BLE001
+        return name, ""
+    return name, tex.find_texture_file(name, texture_folders(context, mesh)) or ""
+
+
+def _blender_image(path: str):
+    """A Blender-readable image for a GM texture (``.t`` -> a temporary ``.dds``).
+
+    Blender has no ``.t`` loader, so the container is unwrapped into a plain
+    ``.dds`` — the payload is byte-identical, only the 59-byte GM header goes.
+    """
+    if path.lower().endswith(".t"):
+        tex = bridge.module("texture")
+        with open(path, "rb") as fh:
+            dds = tex.t_to_dds(fh.read(), source=path)
+        stem = tex.clean_stem(os.path.basename(path)) or "texture"
+        tmp = os.path.join(tempfile.gettempdir(), "d3unit_" + stem + ".dds")
+        with open(tmp, "wb") as fh:
+            fh.write(dds)
+        path = tmp
+    return bpy.data.images.load(path, check_existing=True)
+
+
+def _assign_image(mesh, image) -> int:
+    """Point every image node of the part's materials at *image*.
+
+    The node feeding *Base Color* wins when a material has several (an atlas
+    plus a light map), otherwise the first image node is reused.  A material
+    without nodes (or without an image node) is left alone — the export does
+    not read it, and inventing a shader for the artist is not this operator's
+    job.
+    """
+    used = 0
+    for slot in getattr(mesh, "material_slots", ()) or ():
+        mat = slot.material
+        if mat is None or not getattr(mat, "use_nodes", False):
+            continue
+        tree = getattr(mat, "node_tree", None)
+        if tree is None:
+            continue
+        nodes = [n for n in tree.nodes if n.type == "TEX_IMAGE"]
+        if not nodes:
+            continue
+        target = None
+        for node in nodes:
+            for link in tree.links:
+                if link.from_node is node and link.to_socket.name == "Base Color":
+                    target = node
+                    break
+            if target is not None:
+                break
+        node = target or nodes[0]
+        node.image = image
+        used += 1
+    return used
+
+
+def apply_part_texture(context, mesh=None) -> tuple:
+    """Load the part's named texture into its material so the viewport matches.
+
+    Returns ``(ok, message)``.  Setting the name only tells the exporter what to
+    write; until the image is on the material Blender keeps drawing the old
+    atlas, which looks exactly like a broken export.  This makes what the
+    viewport shows and what the ``.g`` says the same thing.
+    """
+    mesh = mesh if mesh is not None else getattr(context, "object", None)
+    if mesh is None or getattr(mesh, "type", "") != "MESH":
+        return False, "select the mesh part first"
+    name, path = find_part_texture(context, mesh)
+    if not name:
+        return False, (f"{mesh.name} has no texture name yet — set one in the "
+                       f"panel (it is written into the .g and the .scene)")
+    if not path:
+        folders = ", ".join(texture_folders(context, mesh)) or "(no folder)"
+        return False, f"{name} is not in {folders} — the export would name a file the game cannot find"
+    try:
+        image = _blender_image(path)
+    except Exception as exc:  # noqa: BLE001
+        return False, f"could not read {os.path.basename(path)}: {exc}"
+    used = _assign_image(mesh, image)
+    try:
+        image.pack()
+    except Exception:  # noqa: BLE001 - packing is a convenience, not a must
+        pass
+    if not used:
+        return False, (f"loaded {os.path.basename(path)} but {mesh.name} has "
+                       f"no material image node to put it in")
+    for area in getattr(context.screen, "areas", ()) or ():
+        if area.type == "VIEW_3D":
+            area.tag_redraw()
+    return True, f"{mesh.name} -> {os.path.basename(path)}"
+
+
+class D3UNIT_OT_apply_texture(bpy.types.Operator):
+    """Show the named texture on the part (viewport = what the export writes)"""
+
+    bl_idname = "d3unit.apply_texture"
+    bl_label = "Show This Texture"
+    bl_description = ("Load the texture the part is named after into its "
+                      "material, so the viewport shows what the export will "
+                      "write into the .g/.scene")
+    bl_options = {"REGISTER", "UNDO"}
+
+    def execute(self, context):
+        ok, message = apply_part_texture(context)
+        self.report({"INFO"} if ok else {"WARNING"}, message)
+        return {"FINISHED"} if ok else {"CANCELLED"}
+
 
 class D3UNIT_OT_name_texture(bpy.types.Operator):
     """Name the texture this part wears in the game"""
@@ -82,7 +229,14 @@ class D3UNIT_OT_name_texture(bpy.types.Operator):
         except Exception as exc:  # noqa: BLE001
             self.report({"ERROR"}, f"could not store the name: {exc}")
             return {"CANCELLED"}
-        self.report({"INFO"}, f"{ob.name}: {name or '(none)'}")
+        # the name alone changes nothing on screen: load the file it points at
+        # so the viewport agrees with what the export is about to write
+        if name:
+            ok, message = apply_part_texture(context, ob)
+            self.report({"INFO"} if ok else {"WARNING"},
+                        f"{ob.name}: {name} — {message}")
+        else:
+            self.report({"INFO"}, f"{ob.name}: (none)")
         return {"FINISHED"}
 
 
@@ -94,6 +248,7 @@ CLASSES = (
     exporter.D3UNIT_OT_export,
     weapon.D3UNIT_OT_place_weapon,
     D3UNIT_OT_name_texture,
+    D3UNIT_OT_apply_texture,
 )
 
 
@@ -190,13 +345,21 @@ class D3UNIT_PT_panel(Panel):
                 row.label(text="(inherited from the donor .g)")
             op = row.operator("d3unit.name_texture", text="", icon="GREASEPENCIL")
             op.value = str(mesh.get(unitprops.DIFFUSE_PROP) or "")
-            if str(mesh.get(unitprops.DIFFUSE_PROP) or "").lower().endswith(
-                    ".tga"):
-                hint = tb.column(align=True)
-                hint.scale_y = 0.8
-                hint.label(text="file next to the unit: "
-                                + os.path.splitext(str(mesh.get(
-                                    unitprops.DIFFUSE_PROP)))[0] + ".t")
+            tb.operator("d3unit.apply_texture", text="Show in the Viewport",
+                        icon="IMAGE_DATA")
+            _name, _path = find_part_texture(context, mesh)
+            hint = tb.column(align=True)
+            hint.scale_y = 0.8
+            if _name and _path:
+                hint.label(text="file: " + os.path.basename(_path),
+                           icon="CHECKMARK")
+            elif _name:
+                hint.label(text="NOT in the unit folder: "
+                                + os.path.splitext(os.path.basename(_name))[0]
+                                + ".t", icon="ERROR")
+            else:
+                hint.label(text="unnamed: the export keeps the material's",
+                           icon="INFO")
         op = layout.operator(exporter.D3UNIT_OT_export.bl_idname,
                              text="Export Unit", icon="EXPORT")
         op.filepath = info.get("g", "")

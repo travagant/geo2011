@@ -15,6 +15,7 @@ import d3tool
 from d3tool import anim as animmod
 from d3tool import cli as climod
 from d3tool import gfile, gltf, ac as acmod, gltf_out, scene as scenemod
+from d3tool import parts as partsmod
 from d3tool import texture as texmod
 from d3tool import weapon as weaponmod
 
@@ -2399,6 +2400,78 @@ def test_blender_texture_name_property_reaches_the_g_and_the_scene():
         assert scene.count('"weapon_empire_inquisitor.tga"') == 0
         assert os.path.isfile(os.path.join(
             out, "weapon_empire_knight_sword_diffuse.t"))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_find_texture_file_resolves_every_shipped_spelling():
+    """A part names `<stem>.tga`; the folder may hold `<stem>.t` and friends.
+
+    This is what the add-on's "Show in the Viewport" button and the export's
+    texture report both lean on: after a re-texture the file on disk is
+    whatever the artist had (`x.t`, `x.dds`, or the doubled `x.dds.t` our own
+    exporter used to write), while the name in the `.g` stays `x.tga`.
+    """
+    tmp = tempfile.mkdtemp(prefix="d3texfind_")
+    try:
+        first = os.path.join(tmp, "unit")
+        second = os.path.join(tmp, "elsewhere")
+        os.makedirs(first)
+        os.makedirs(second)
+        # a .t preferred over the .dds next to it
+        open(os.path.join(first, "a.t"), "wb").write(b"")
+        open(os.path.join(first, "a.dds"), "wb").write(b"")
+        assert texmod.find_texture_file(
+            "a.tga", [first]).endswith("a.t")
+        # a doubled extension, the name ours used to produce
+        open(os.path.join(first, "b.dds.t"), "wb").write(b"")
+        assert texmod.find_texture_file(
+            "b.tga", [first]).endswith("b.dds.t")
+        # a Blender re-save, and a different case on disk
+        open(os.path.join(second, "c.dds.png"), "wb").write(b"")
+        open(os.path.join(second, "D.t"), "wb").write(b"")
+        assert texmod.find_texture_file(
+            "c.tga", [first, second]).endswith("c.dds.png")
+        assert texmod.find_texture_file(
+            "d.tga", [first, second]).endswith("D.t")
+        # folders are searched in order, and a miss stays a miss
+        assert texmod.find_texture_file("missing.tga", [first, second]) is None
+        assert texmod.find_texture_file("", [first]) is None
+        assert texmod.find_texture_file("a.tga", ["/no/such/dir"]) is None
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_texture_report_names_what_each_part_will_be_drawn_with():
+    """The export reads its own `.g` back and says which texture each part wears.
+
+    Re-texturing a part goes wrong silently: the name can come from the mesh's
+    `d3unit_diffuse`, from the material image Blender exported, or from the
+    donor part, and only the written file says which one won.  One row per
+    part, with the file on disk when there is one.
+    """
+    tmp = tempfile.mkdtemp(prefix="d3texrep_")
+    try:
+        src = os.path.join(REPO, "Empire", "Inquisitor")
+        for name in ("character_empire_inquisitor.g",
+                     "character_empire_inquisitor_baseanims.a",
+                     "character_empire_inquisitor.ac",
+                     "character_empire_inquisitor.scene",
+                     "character_empire_inquisitor.t"):
+            shutil.copyfile(os.path.join(src, name),
+                            os.path.join(tmp, name))
+        g_path = os.path.join(tmp, "character_empire_inquisitor.g")
+        rows = {part: (name, found) for part, name, found
+                in partsmod.texture_report(g_path)}
+        name, found = rows["Standard_8"]
+        assert name == "character_empire_inquisitor.tga", rows
+        assert os.path.basename(found) == "character_empire_inquisitor.t"
+        # the weapon part names the other unit's atlas: absent until the .t is
+        # dropped next to the unit, which is exactly the finding the report
+        # has to surface instead of an untextured part in game
+        name, found = rows["weapon_empire_inquisitor"]
+        assert name == "weapon_empire_inquisitor.tga", rows
+        assert found == "", rows
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
