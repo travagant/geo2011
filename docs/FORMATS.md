@@ -191,6 +191,22 @@ sword out of the model".  `gfile.write_geometry_file` now rewrites the field
 from the blocks it emits, `gfile.append_parts` bumps it, and `gfile.mesh_count`
 / `set_mesh_count` read and write it.
 
+### Node identity: `dwNode` / `dwParent`
+Both keys are part of every attribute block and name the block's node in the
+model's scene graph: `dwParent` is the node the part hangs off, `dwNode` is
+the part's own node.  The corpus is unanimous — all 376 sub-meshes of the 141
+compound `.g` files share one parent id per file (the file's own `Scene Root`
+node) and each carries a distinct node id.  The ids themselves are arbitrary
+integers and are *not* the ids of the `.scene`: a retail file's parts use
+values that never appear in its scene.
+
+A block written by a tool that cannot know the file's ids gets placeholders
+(`d3tool.cli._default_attrs`: `dwNode 375048704`, `dwParent 55867360`) — the
+Angel's exported sword carried exactly that pair, so its parent named no node
+in the file.  `gfile.normalize_part_identity(mesh, parent)` rewrites such a
+block onto the file's own parent (and allocates a node id when one is
+missing), and the reverse export runs it before writing the geometry.
+
 ### Vertex record
 ```
 [0:4]   per-vertex prefix magic (asset specific, e.g. 5ce6ac0b / 28e7ce19)

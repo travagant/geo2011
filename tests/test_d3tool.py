@@ -1595,6 +1595,54 @@ def anim_bone_stub(name, parent=""):
 
 
 
+def test_every_corpus_submesh_hangs_off_one_parent_node():
+    """The invariant the Angel's sword broke: one parent id per file.
+
+    `dwParent` names the node a part hangs off.  All 376 sub-meshes of the
+    retail corpus (141 compound files) share a single parent id per file; a
+    part written with a placeholder parent names no node at all.
+    """
+    files = checked = 0
+    for root in ("Empire", "Neutrals"):
+        for path in sorted(glob.glob(os.path.join(REPO, root, "*", "*.g"))):
+            mesh = gfile.parse_geometry_file(open(path, "rb").read())
+            if mesh.parse_error:
+                continue
+            parts = gfile.iter_parts(mesh)
+            if len(parts) < 2:
+                continue
+            files += 1
+            parents = {p.attrs.get("dwParent") for p in parts}
+            assert len(parents) == 1, (path, parents)
+            nodes = [p.attrs.get("dwNode") for p in parts]
+            assert len(set(nodes)) == len(nodes), (path, nodes)
+            checked += len(parts)
+    assert files > 100 and checked > 300, (files, checked)
+
+
+def test_added_part_inherits_the_files_parent_node():
+    """A part the export synthesized joins the file's node tree."""
+    body = gfile.parse_geometry_file(open(os.path.join(
+        REPO, "Empire", "Angel", "character_empire_angel.g"), "rb").read())
+    parent = gfile.iter_parts(body)[0].attrs["dwParent"]
+    added = copy.deepcopy(gfile.iter_parts(body)[-1])
+    added.name = "empire_knight_sword"
+    added.attr_items = [
+        (k, "55867360" if k == "dwParent" else
+         "empire_knight_sword" if k == "name" else v)
+        for k, v in added.attr_items]
+    added.attrs = dict(added.attr_items)
+    body.parts.append(added)
+    changes = gfile.normalize_part_identity(body, parent)
+    assert changes == [f"empire_knight_sword: dwParent 55867360 -> {parent}"], changes
+    assert added.attrs["dwParent"] == parent
+    assert added.raw == b"", "a rewritten part must not keep its donor bytes"
+    # a file whose parts already agree is left alone
+    again = gfile.parse_geometry_file(open(os.path.join(
+        REPO, "Empire", "Angel", "character_empire_angel.g"), "rb").read())
+    assert gfile.normalize_part_identity(again, parent) == []
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0

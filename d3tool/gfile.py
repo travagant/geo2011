@@ -1054,6 +1054,80 @@ def append_parts(base: bytes, parts) -> bytes:
     return bytes(out)
 
 
+def normalize_part_identity(mesh, parent: str | None = None) -> List[str]:
+    """Give every block of a compound mesh the file's own node identity.
+
+    ``dwNode``/``dwParent`` are the ``.g`` side of the scene graph: a part's
+    node hangs off the parent node named by ``dwParent`` and carries its own
+    ``dwNode``.  All 376 sub-meshes of the retail corpus share one parent id
+    per file — the file's own ``Scene Root`` node — and each holds a distinct
+    node id.
+
+    A block built by a tool that cannot know the file's ids (the reverse
+    export of a mesh the donor file never had — an added weapon) is written
+    with the placeholder pair of :func:`d3tool.cli._default_attrs`, a parent
+    no node in the file answers to.  The part is then not part of the model's
+    node tree and the engine draws it as a loose object at its stored
+    coordinates instead of following the bone it is bound to.
+
+    Returns the changes made, e.g.
+    ``["empire_knight_sword: dwParent 55867360 -> 53704704"]``.
+    """
+    parts = list(getattr(mesh, "parts", ()) or ())
+    if not parts:
+        return []
+    if not parent:
+        for part in parts:
+            parent = parent or (part.attrs or {}).get("dwParent")
+    parent = parent or getattr(mesh, "attrs", {}).get("dwParent")
+    if not parent:
+        return []
+    used = set()
+    for part in [mesh] + parts:
+        node = (getattr(part, "attrs", {}) or {}).get("dwNode")
+        if node and node.isdigit():
+            used.add(int(node))
+    changes: List[str] = []
+    for part in parts:
+        attrs = dict(getattr(part, "attrs", {}) or {})
+        if not attrs:
+            continue
+        items = list(getattr(part, "attr_items", ()) or ())
+        touched = False
+        if attrs.get("dwParent") != parent:
+            changes.append(f"{attrs.get('name', '?')}: dwParent "
+                           f"{attrs.get('dwParent')} -> {parent}")
+            attrs["dwParent"] = parent
+            items = _items_set(items, "dwParent", parent) if items else items
+            touched = True
+        node = attrs.get("dwNode")
+        if not node or not node.isdigit():
+            fresh = (max(used) if used else 375048704) + 8
+            used.add(fresh)
+            node = str(fresh)
+            changes.append(f"{attrs.get('name', '?')}: dwNode -> {node}")
+            attrs["dwNode"] = node
+            items = _items_set(items, "dwNode", node) if items else items
+            touched = True
+        if touched:
+            part.attrs = attrs
+            if items:
+                part.attr_items = items
+            part.raw = b""            # the writer keeps parsed bytes verbatim
+    return changes
+
+
+def _items_set(items, key: str, value: str):
+    """Set ``key`` in a ``(key, value)`` attribute list, appending if absent."""
+    out = list(items)
+    for i, (k, _) in enumerate(out):
+        if k == key:
+            out[i] = (key, value)
+            return out
+    out.append((key, value))
+    return out
+
+
 def attr_block_bounds(data: bytes, part) -> Tuple[int, int, int]:
     """``(start, end, count)`` of one sub-mesh's attribute block in ``data``.
 

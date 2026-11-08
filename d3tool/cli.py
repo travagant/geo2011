@@ -656,6 +656,15 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
                 attrs["material0_diffuse"] = cand
                 break
 
+    # every block of a compound mesh must hang off the file's own parent node
+    # (retail: 376/376 sub-meshes) -- a block the glTF lane synthesized gets
+    # the placeholder ids of `_default_attrs` otherwise, and a part whose
+    # parent names no node in the file is drawn as a loose object instead of
+    # following the bone it is bound to
+    for line in gfile.normalize_part_identity(sm, attrs.get("dwParent")):
+        if not quiet:
+            ui.info(f"{base}.g: {line}")
+
     # geometry
     g_bytes = gfile.write_geometry_file(sm, attrs)
     out_g = os.path.join(out_dir, base + ".g")
