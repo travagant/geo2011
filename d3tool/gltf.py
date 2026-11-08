@@ -972,6 +972,8 @@ class _ExtraSlot:
         self.attr_items: List[Tuple[str, str]] = []
         self.part_prefix = b""
         self.part_tail = b""
+        # box the donor's scene-node block was built from (see MeshPart)
+        self.donor_box = None
 
 
 def _node_extras_bone(m: GltfModel, node_idx: Optional[int]) -> Optional[str]:
@@ -1429,6 +1431,7 @@ def _mesh_to_skinned_blender(m: GltfModel, weights_on_vertex: int,
                 attr_items=p_items,
                 part_prefix=slot.part_prefix,
                 part_tail=slot.part_tail,
+                donor_box=getattr(slot, "donor_box", None),
             ))
         else:
             # no glTF mesh for this slot: keep the donor part verbatim
@@ -1661,6 +1664,8 @@ def mesh_to_skinned(m: GltfModel, weights_on_vertex: int = 0,
             attr_items=p_items,
             part_prefix=(dpart.part_prefix if dpart is not None else b""),
             part_tail=(dpart.part_tail if dpart is not None else b""),
+            donor_box=(getattr(dpart, "donor_box", None)
+                       if dpart is not None else None),
         ))
 
     mesh = SkinnedMesh(

@@ -185,6 +185,15 @@ class MeshPart:
     # (baked morph-frame positions).  Both empty for a synthesized part.
     part_prefix: bytes = b""
     part_tail: bytes = b""
+    # bounding box of the vertices as parsed: min.xyz + max.xyz.  The
+    # scene-node block carried in `part_prefix` describes exactly that box,
+    # so while the box is unchanged the block is emitted verbatim and an
+    # untouched part round-trips byte-for-byte.  Recomputed volumes differ
+    # from the file's own in the last bits (measured: 3 bytes of the
+    # Inquisitor's weapon part), and the game-side numbers are not simply
+    # (min+max)/2 — the centre of retail parts cannot be reproduced by
+    # arithmetic on the vertex array at all.
+    donor_box: Optional[Tuple[float, ...]] = None
 
 
 @dataclass

@@ -1,5 +1,6 @@
 """Self-contained tests for the d3tool package (run with `python3 tests/`)."""
 import copy
+import dataclasses
 import hashlib
 import json
 import glob
@@ -2841,9 +2842,13 @@ def test_the_lod_follows_the_main_mesh_texture():
 def test_the_audit_reports_a_scene_that_describes_the_old_mesh():
     """A `.g` and a `.scene` that disagree both parse; only a reader notices.
 
-    The counts in a `gobj` are the buffer sizes the loader takes the mesh with,
-    so a scene left describing the mesh an export replaced is exactly the kind
-    of fault that survives every per-file check and dies in game.
+    A scene left describing the mesh an export replaced is reported — as a
+    note, not a finding.  The shipped game disagrees with itself this way
+    everywhere (the Archer's body gobj says 3631 triangles where its block
+    holds 4407, the Cleric's LOD gobj says 376 against 156) and loads fine, so
+    these numbers cannot be what the loader reads; what it does read — a part
+    that does not exist, a texture that is not in the folder — stays a
+    finding.
     """
     tmp = tempfile.mkdtemp(prefix="d3audit_")
     try:
@@ -2864,8 +2869,10 @@ def test_the_audit_reports_a_scene_that_describes_the_old_mesh():
                              'attr "material0_triangles_num" "537"', 1)
         assert stale != text
         open(scene, "w", encoding="latin-1").write(stale)
-        _facts, findings = auditmod.audit(work)
-        assert any("250" in f and "537" in f for f in findings), findings
+        facts, findings = auditmod.audit(work)
+        notes = facts.get("notes") or []
+        assert any("537" in n and "250" in n for n in notes), notes
+        assert findings == [], findings
 
         # a gobj pointing past the end of the mesh is worse than a wrong count
         text2 = text.replace('"resources\\characters\\empire\\inquisitor\\'
@@ -3699,6 +3706,182 @@ def test_lod_mesh_takes_the_parts_its_main_mesh_gained():
     gobjs = scenemod.parse_scene(patched).find_all("gobj")
     assert len(gobjs) == len(lod_parts)
     assert scenemod.node_mesh_index(gobjs[-1]) == len(lod_parts) - 1
+
+
+def test_gobj_binding_follows_the_mesh_line_not_the_document_order():
+    """The OrcKing's scene opens with its body, the Cleric's with its cloth.
+
+    A `.scene` is free to list its `gobj`s in any order, and the retail
+    corpus uses that freedom: zipping the scene's `gobj` list with the file's
+    part list — what `refresh_part_gobjs` did — stated the body's atlas and
+    counts on the weapon's `gobj` and the weapon's on the body's.  Those
+    numbers are what the engine builds the vertex declaration from, so the
+    swap is a load-time crash, not a cosmetic slip.
+    """
+    from d3tool import roundtrip
+
+    unit = os.path.join(REPO, "Neutrals", "OrcKing",
+                        "character_neutrals_orcking")
+    text = open(unit + ".scene", encoding="latin-1").read()
+    parts = list(gfile.iter_parts(gfile.parse_geometry_file(
+        open(unit + ".g", "rb").read())))
+
+    # nothing changed: the scene comes back byte for byte
+    same, changed = scenemod.refresh_part_gobjs(text, parts, reference=parts)
+    assert same == text and changed == []
+
+    # the weapon part now wears the Knight's blade: only its own gobj moves
+    sword = copy.copy(parts[2])
+    sword.attrs = dict(sword.attrs, material0_diffuse="weapon_empire_knight_"
+                                                "sword_diffuse.tga")
+    touched_parts = list(parts)
+    touched_parts[2] = sword
+    fresh, changed = scenemod.refresh_part_gobjs(text, touched_parts,
+                                                 reference=parts)
+    assert changed == ["weapon_neutral_orcking"], changed
+    doc = scenemod.parse_scene(fresh)
+    by_name = {scenemod.node_attr(n, "name"): n
+               for n in doc.find_all("gobj")}
+    weapon = by_name["weapon_neutral_orcking"]
+    body = by_name["neutrals_orcking"]
+    assert scenemod.node_attr(weapon, "material0_diffuse") == \
+        "weapon_empire_knight_sword_diffuse.tga"
+    # ... and the body kept the numbers it shipped with
+    assert scenemod.node_attr(body, "material0_triangles_num") == "4658"
+    assert scenemod.node_attr(body, "bones_num") == "45"
+
+
+def test_roundtrip_reexport_gives_the_unit_back_byte_for_byte():
+    """`.g` -> glTF -> `.g` on an untouched unit: eight of eight files equal.
+
+    This is the promise the add-on's Self-test makes to the user, measured on
+    the format path so a regression is caught without Blender.
+    """
+    from d3tool import roundtrip
+
+    folder = os.path.join(REPO, "Empire", "Inquisitor")
+    tmp = tempfile.mkdtemp(prefix="d3rt_")
+    try:
+        stem = os.path.join(folder, "character_empire_inquisitor")
+        gltf_path = os.path.join(tmp, "character_empire_inquisitor.gltf")
+        out = os.path.join(tmp, "out")
+        climod._export_gl(stem + ".g", climod._find_animation_for_geometry(
+            stem + ".g"), gltf_path, None, quiet=True)
+        climod._export(gltf_path, out, 0, anim=True, quiet=True,
+                       donor_dir=folder)
+        diffs = roundtrip.diff_folders(folder, out)
+        bad = [d for d in diffs if not d.same and d.produced is not None]
+        assert not bad, [d.summary() for d in bad]
+        assert roundtrip.summary(diffs)["identical"] >= 7
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_first_difference_reports_where_and_ignores_a_prefix():
+    from d3tool import roundtrip
+
+    assert roundtrip.first_difference(b"abc", b"abc") is None
+    assert roundtrip.first_difference(b"abc", b"abcd") is None
+    assert roundtrip.first_difference(b"", b"") is None
+    assert roundtrip.first_difference(b"abc", b"abd") == 2
+    # a difference past the 4096-byte block the scan compares in
+    left = bytes(9000)
+    right = bytearray(left)
+    right[8193] = 1
+    assert roundtrip.first_difference(left, bytes(right)) == 8193
+
+
+def test_diff_folders_does_not_accuse_a_file_the_export_never_wrote():
+    from d3tool import roundtrip
+
+    tmp = tempfile.mkdtemp(prefix="d3diff_")
+    try:
+        src = os.path.join(tmp, "donor")
+        out = os.path.join(tmp, "out")
+        os.makedirs(src)
+        os.makedirs(out)
+        open(os.path.join(src, "a.g"), "wb").write(b"aaaa")
+        open(os.path.join(src, "b.t"), "wb").write(b"bbbb")
+        open(os.path.join(out, "a.g"), "wb").write(b"aaaa")
+        diffs = {d.name: d for d in roundtrip.diff_folders(src, out)}
+        assert diffs["a.g"].same
+        # the export wrote no `.t` at all: that is not a difference, whether
+        # the folder lists it as a missing output or leaves it out
+        assert "b.t" not in diffs or (diffs["b.t"].same
+                                      and diffs["b.t"].produced is None)
+        assert roundtrip.summary(list(diffs.values()))["differing"] == 0
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_lod_sync_leaves_a_shorter_retail_lod_alone():
+    """The Cleric's LOD model drops the hair on purpose.
+
+    Appending "the parts the LOD lacks" on a re-export grew five retail LODs
+    by a few kilobytes each and drew parts the artist never added there.  With
+    the donor in hand only a part the export APPENDED is missing from the LOD.
+    """
+    tmp = tempfile.mkdtemp(prefix="d3lod_")
+    try:
+        src = os.path.join(REPO, "Empire", "Cleric")
+        work = os.path.join(tmp, "unit")
+        shutil.copytree(src, work)
+        donor = list(gfile.iter_parts(gfile.parse_geometry_file(
+            open(os.path.join(work, "character_empire_cleric.g"), "rb").read())))
+        before = open(os.path.join(work, "character_empire_cleric_lod.g"),
+                      "rb").read()
+        climod._lod_sync(work, quiet=True, reference=donor)
+        after = open(os.path.join(work, "character_empire_cleric_lod.g"),
+                     "rb").read()
+        assert after == before, "the LOD was rewritten on an untouched unit"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_repair_repaths_an_ac_to_the_folder_the_scene_names():
+    """The crash-on-recruit of a shipped pack, in one file.
+
+    `character_empire_angel_lod.ac` named
+    ``resources\\characters\\character_empire_angel_lod\\…`` — a folder no
+    install has — while every stream it names sits in
+    ``resources\\characters\\empire\\angel``.  The engine does not fall back: the
+    load stops.  `repair` rewrites the folder of every reference whose file is
+    in the bundle, keeps the file's own ``\\r\\n`` endings, and leaves a
+    reference to another folder alone.
+    """
+    tmp = tempfile.mkdtemp(prefix="d3acrepair_")
+    try:
+        work = os.path.join(tmp, "angel")
+        shutil.copytree(os.path.join(REPO, "Empire", "Angel"), work)
+        bad = "resources\\characters\\character_empire_angel_lod\\"
+        ac = os.path.join(work, "character_empire_angel_lod.ac")
+        states = "".join(
+            f'state "{name}"\r\n{{\r\n'
+            f'file "{bad}character_empire_angel_{stem}.a";\r\n'
+            f'frame0 0;\r\nframe1 30;\r\n'
+            f'meshfile "{bad}character_empire_angel_lod.g";\r\n}}\r\n'
+            for name, stem in (("Idle", "idle"), ("Run", "run")))
+        # one reference that belongs to no folder in this bundle
+        states += ('state "Extra"\r\n{\r\n'
+                   'file "resources\\characters\\shared\\common_idle.a";\r\n'
+                   'frame0 0;\r\nframe1 10;\r\n}\r\n')
+        with open(ac, "w", encoding="latin-1", newline="") as fh:
+            fh.write(states)
+
+        out = os.path.join(tmp, "fixed.ac")
+        assert climod._repair_ac(ac, out, False) == 0
+        with open(out, encoding="latin-1", newline="") as fh:
+            fixed = fh.read()
+        assert "character_empire_angel_lod\\character_empire_angel_lod.g" \
+            not in fixed
+        assert ('"resources\\characters\\empire\\angel\\'
+                'character_empire_angel_lod.g"') in fixed
+        # the foreign reference is not ours to touch
+        assert '"resources\\characters\\shared\\common_idle.a"' in fixed
+        # and the file keeps the terminators the game's files use
+        assert fixed.count("\r\n") == states.count("\r\n")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
 
 
 def test_vdpack_pack_like_keeps_the_source_shape():
@@ -4707,8 +4890,21 @@ def test_a_part_without_a_donor_block_gets_its_own_box_and_weights_key():
     block = gmod._part_block(donor)
     assert block[:4] == struct.pack("<I", 2)
     assert b"new_vertex_weights_format\x00" in block
-    # the box in the emitted block is the sword's own, not a donor's
-    assert block[28:84] == gmod.scene_node_block(donor, b"")
+    # a part nobody moved keeps the bounding record it came with, byte for
+    # byte: recomputing it from (min+max)/2 lands a byte or two away from what
+    # the file says, and the engine's own numbers are not derivable that way
+    # (measured over the corpus: only 19 of 376 blocks agree to the bit)
+    assert block[28:84] == donor.part_prefix[28:84]
+
+    # ... but a part whose vertices were moved gets a box of its own
+    moved = copy.copy(donor)
+    moved.vertices = [dataclasses.replace(
+        v, position=(v.position[0] + 3.0, v.position[1], v.position[2]))
+        for v in donor.vertices]
+    moved.raw = b""
+    shifted = gmod._part_block(moved)
+    assert shifted[28:84] != donor.part_prefix[28:84]
+    assert shifted[28:84] == gmod.scene_node_block(moved, donor.part_prefix[28:84])
 
     # a part whose block never carried the key gets it back
     stripped = copy.copy(donor)

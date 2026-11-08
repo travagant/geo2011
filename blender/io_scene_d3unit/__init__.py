@@ -26,7 +26,7 @@ package only builds and reads the Blender scene.
 bl_info = {
     "name": "Disciples III Unit (GM .g/.a/.scene/.ac/.t)",
     "author": "Arena agent / geo2011",
-    "version": (1, 1, 38),
+    "version": (1, 1, 39),
     "blender": (3, 0, 0),
     "location": "File > Import/Export > Disciples III Unit",
     "description": "Import and export Disciples III character units "
@@ -325,7 +325,7 @@ class D3UNIT_OT_number_materials(bpy.types.Operator):
 
 
 class D3UNIT_OT_open_log(bpy.types.Operator):
-    """Open the text block the last export wrote"""
+    """Open the text block the last export (or self-test) wrote"""
 
     bl_idname = "d3unit.open_log"
     bl_label = "Open the Export Log"
@@ -393,6 +393,83 @@ class D3UNIT_OT_name_texture(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class D3UNIT_OT_self_test(bpy.types.Operator):
+    """Re-export the imported unit without changing anything and diff it"""
+
+    bl_idname = "d3unit.self_test"
+    bl_label = "Self-test: Re-export Unchanged"
+    bl_description = (
+        "Read the imported unit's .g again, write it out through the same "
+        "format path the export uses, and compare every file byte by byte.  "
+        "A unit nobody edited must come back identical: anything else here is "
+        "a defect in this add-on, not in the unit")
+    bl_options = {"REGISTER"}
+
+    def execute(self, context):
+        import os
+        import tempfile
+
+        root = unitprops.find_unit_root(context)
+        info = unitprops.get_info(root) if root else {}
+        folder = str(info.get("dir") or "")
+        base = str(info.get("base") or "")
+        if not folder or not base or not os.path.isdir(folder):
+            self.report({"ERROR"}, "import a unit first")
+            return {"CANCELLED"}
+        try:
+            bridge.require("")
+            climod = bridge.module("cli")
+            rtm = bridge.module("roundtrip")
+        except Exception as exc:  # noqa: BLE001
+            self.report({"ERROR"}, f"d3tool is not usable: {exc}")
+            return {"CANCELLED"}
+        stem = os.path.join(folder, base)
+        if not os.path.isfile(stem + ".g"):
+            self.report({"ERROR"}, f"no {base}.g in {folder}")
+            return {"CANCELLED"}
+        tmp = tempfile.mkdtemp(prefix="d3selftest_")
+        lines = [f"self-test: {base}", f"donor: {folder}", ""]
+        bad = 0
+        try:
+            gltf = os.path.join(tmp, "unit.gltf")
+            out = os.path.join(tmp, "out")
+            climod._export_gl(stem + ".g",
+                              climod._find_animation_for_geometry(stem + ".g"),
+                              gltf, None, quiet=True)
+            climod._export(gltf, out, 0, anim=True, quiet=True,
+                           donor_dir=folder)
+            diffs = rtm.diff_folders(folder, out)
+            for diff in diffs:
+                if diff.expected is None:      # an extra file is not a drift
+                    continue
+                lines.append(("  " if diff.same else "! ") + diff.summary())
+                if not diff.same:
+                    bad += 1
+            counts = rtm.summary(diffs)
+            lines += ["", f"{counts['identical']}/"
+                          f"{counts['identical'] + bad} file(s) identical"]
+        except Exception as exc:  # noqa: BLE001 - the report is the point
+            lines.append(f"the re-export failed: {exc}")
+            bad = -1
+        finally:
+            import shutil
+            shutil.rmtree(tmp, ignore_errors=True)
+        text = "\n".join(lines)
+        block = bpy.data.texts.get(EXPORT_LOG)
+        if block is None:
+            block = bpy.data.texts.new(EXPORT_LOG)
+        block.clear()
+        block.write(text + "\n")
+        for line in lines[:8]:
+            print(f"[d3unit] {line}")
+        if bad == 0:
+            self.report({"INFO"}, "the unit re-exports byte for byte")
+            return {"FINISHED"}
+        self.report({"WARNING"}, f"{bad} file(s) came back different — see "
+                                 f"the Text block '{EXPORT_LOG}'")
+        return {"FINISHED"}
+
+
 CLASSES = (
     preferences.D3UNIT_PT_preferences,
     preferences.D3UNIT_OT_check_tool,
@@ -404,6 +481,7 @@ CLASSES = (
     D3UNIT_OT_apply_texture,
     D3UNIT_OT_open_log,
     D3UNIT_OT_number_materials,
+    D3UNIT_OT_self_test,
 )
 
 
@@ -503,6 +581,7 @@ class D3UNIT_PT_panel(Panel):
         op.filepath = info.get("g", "")
         row = layout.row(align=True)
         row.operator(importer.D3UNIT_OT_import.bl_idname, text="Re-import")
+        row.operator("d3unit.self_test", text="Self-test", icon="CHECKMARK")
         layout.operator("d3unit.check_tool", text="Check d3tool")
 
 

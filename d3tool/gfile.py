@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import math
 import struct
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from .model import Bone, MeshPart, SkinnedMesh, Vertex
 
@@ -463,6 +463,7 @@ def _parse_compound_parts(buf: bytes) -> Tuple[List[MeshPart], int]:
             attr_items=pitems,
             raw=buf[block_start:o],
             part_prefix=buf[block_start:attr_o],
+            donor_box=position_bounds(vertices),
             part_tail=tail + (buf[baked_off:o] if baked else b""),
         ))
     return parts, o
@@ -541,6 +542,16 @@ def _scene_matrix() -> bytes:
     return struct.pack("<14f", *_SCENE_MATRIX_FLOATS)
 
 
+def position_bounds(vertices) -> Optional[Tuple[float, ...]]:
+    """min.xyz + max.xyz of a vertex list, or ``None`` when it has none."""
+    if not vertices:
+        return None
+    xs = [v.position[0] for v in vertices]
+    ys = [v.position[1] for v in vertices]
+    zs = [v.position[2] for v in vertices]
+    return (min(xs), min(ys), min(zs), max(xs), max(ys), max(zs))
+
+
 def scene_node_block(part, donor: bytes = b"") -> bytes:
     """The 56-byte scene-node record that precedes a part's attributes.
 
@@ -566,14 +577,11 @@ def scene_node_block(part, donor: bytes = b"") -> bytes:
     handle the LODs were built around, 3 m above the character) and the
     engine had nothing sensible to cull or place it by.
     """
-    verts = getattr(part, "vertices", None) or []
-    if not verts:
+    box = position_bounds(getattr(part, "vertices", None) or [])
+    if box is None:
         return donor or _scene_matrix()
-    xs = [v.position[0] for v in verts]
-    ys = [v.position[1] for v in verts]
-    zs = [v.position[2] for v in verts]
-    mn = (min(xs), min(ys), min(zs))
-    mx = (max(xs), max(ys), max(zs))
+    mn = box[:3]
+    mx = box[3:]
     if getattr(part, "morph", False) and len(donor) >= 56:
         centre = struct.unpack_from("<3f", donor, 0)
     else:
@@ -860,8 +868,21 @@ def _part_block(part: MeshPart) -> bytes:
         # the scene-node record is the mesh's own bounding volume, not the
         # donor's: a part appended from another `.g` used to keep the box it
         # was cut out of (an axe handle three metres up) — see
-        # `scene_node_block`
-        prefix = (prefix[:28] + scene_node_block(part, prefix[28:84])
+        # `scene_node_block`.
+        #
+        # But when the vertices still have the box the donor's record was
+        # built from, that record *is* this mesh's own and is emitted
+        # verbatim: recomputing it produced a volume that differs from the
+        # file's in the last bits (3 bytes of the Inquisitor's weapon part),
+        # and retail centres are not derivable from the vertex array by any
+        # rounding of (min+max)/2, so "recompute" can never be exact.
+        box = position_bounds(part.vertices)
+        donor_box = getattr(part, "donor_box", None)
+        same_box = (donor_box is not None and box is not None
+                    and tuple(donor_box) == box)
+        prefix = (prefix[:28]
+                  + (prefix[28:84] if same_box
+                     else scene_node_block(part, prefix[28:84]))
                   + prefix[84:])
     elif prefix and len(prefix) >= 28:
         prefix = prefix + scene_node_block(part)
@@ -887,12 +908,18 @@ def _part_block(part: MeshPart) -> bytes:
                       else part.weights_on_vertex))
 
     items = list(part.attr_items)
-    if items and not part.morph and "new_vertex_weights_format" not in attrs:
+    skinned = bool(part.bones) or "weights_on_vertex" in attrs
+    if items and skinned and not part.morph \
+            and "new_vertex_weights_format" not in attrs:
         # every skinned sub-mesh of the corpus declares it, and the engine
         # takes the weight stride from that declaration: a part that omits it
         # (a mesh appended by a tool that only copied the donor's keys) is
         # read five bytes short apiece and never drawn.  The block is
         # ordered the way the corpus writes it -- right before the counts.
+        # A rigid, attr-less sub-block (rod-1's sword: no `bones_num`, no
+        # `weights_on_vertex`, 40-byte records) declares nothing of the sort
+        # and must not be given it: the key is a weight stride, and the engine
+        # would look for weight data that is not in the block.
         pair = ("new_vertex_weights_format", "1")
         at = next((i for i, (k, _) in enumerate(items)
                    if k == "vertexs_weights_num"), len(items))

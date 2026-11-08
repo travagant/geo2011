@@ -26,6 +26,7 @@ import argparse
 import glob
 import json
 import os
+import re
 import shutil
 import struct
 import sys
@@ -39,6 +40,7 @@ from . import alias as aliasmod
 from . import char as charmod
 from . import anim as animmod
 from . import audit as auditmod
+from . import roundtrip as rtmmod
 from . import gfile
 from . import gltf as gltfmod
 from . import gltf_out as gltfout
@@ -764,8 +766,14 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
                     f"`gobj` for each, without which the engine never draws "
                     f"that part")
         try:
+            # the donor tells the restate *which* parts this export rewrote: a
+            # `gobj` whose part came back unchanged keeps the numbers the game
+            # shipped, so an untouched unit re-exports byte for byte, and a
+            # weapon the export replaced still gets its own `gobj` corrected
             fresh, restated = scenemod.refresh_part_gobjs(
-                scene_bytes.decode("latin-1"), gfile.iter_parts(written))
+                scene_bytes.decode("latin-1"), gfile.iter_parts(written),
+                reference=(gfile.iter_parts(donor) if donor is not None
+                           else None))
             if restated:
                 scene_bytes = fresh.encode("latin-1")
                 note += f"; {len(restated)} gobj restated"
@@ -920,7 +928,9 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
                     ui.wrote(dst, "copied from the donor (the LOD model)")
     try:
         if any(fn.endswith("_lod.g") for fn in os.listdir(out_dir)):
-            _lod_sync(out_dir, quiet=quiet)
+            _lod_sync(out_dir, quiet=quiet,
+                      reference=(gfile.iter_parts(donor) if donor is not None
+                                 else None))
     except Exception as exc:  # noqa: BLE001 - never fail an export over it
         ui.warn(f"{base}: the LOD model was not synced ({exc}) — an added "
                 f"weapon will not show on the battlefield")
@@ -1016,6 +1026,10 @@ def _carry_material_textures(out_dir: str, base: str,
             continue
         existing = os.path.join(out_dir, stem + ".t")
         if os.path.isfile(existing):
+            # Raw-pixel atlases are re-encoded on every export, the shipped
+            # ones included: an A8R8G8B8 `.t` is eight times the size of the
+            # same pixels as DXT (the 683 KiB blade that is 86 KiB in the game
+            # data), and the engine reads both.  The pixels do not change.
             _shrink_texture(existing, quiet)
             continue
         src_t = src_dds = None
@@ -2065,6 +2079,22 @@ def _build_parser() -> argparse.ArgumentParser:
     p_au.add_argument("--against", metavar="REF", default=None,
                       help="compare with a known-good bundle (e.g. the retail "
                            "folder) and list what changed")
+    p_rt = sub.add_parser(
+        "roundtrip",
+        help="export a unit folder and diff every file against the original",
+        description="Run the format path the add-on's export uses (.g -> "
+                    "glTF -> .g, with the folder itself as the donor) and "
+                    "report, file by file, what came back different and at "
+                    "which byte. The add-on's own Self-test runs the same "
+                    "comparison through Blender's glTF importer/exporter; this "
+                    "is the version that needs no Blender.",
+    )
+    p_rt.add_argument("unit_dir", help="folder holding the unit's bundle")
+    p_rt.add_argument("-o", "--out", default=None,
+                      help="write the re-export here (default: a temp folder)")
+    p_rt.add_argument("--keep", action="store_true",
+                      help="leave the re-exported files on disk for inspection")
+
     p_ga = sub.add_parser(
         "gattr", help="insert or replace one attribute in a .g part")
     p_ga.add_argument("file", help="the .g to edit")
@@ -2193,9 +2223,64 @@ def main(argv=None) -> int:
         return _lod_sync(args.unit_dir, args.out)
     elif args.cmd == "audit":
         return _audit_cmd(args)
+    elif args.cmd == "roundtrip":
+        return _roundtrip_cmd(args)
     elif args.cmd == "gattr":
         return _gattr(args)
     return 0
+
+
+def _roundtrip_cmd(args) -> int:
+    """`roundtrip <folder>` — re-export a unit and diff it against itself.
+
+    The most useful question a modder can ask of a toolkit is "did importing
+    and exporting this unit, without touching anything, give the same files
+    back?"  Every answer is a byte comparison, so the comparison is the
+    feature: this runs the format path, the add-on's Self-test operator runs
+    the same thing through Blender, and both say which file differs and where.
+    """
+    import tempfile
+    folder = os.path.abspath(args.unit_dir)
+    stems = [os.path.join(folder, fn[:-2]) for fn in sorted(os.listdir(folder))
+             if fn.lower().endswith(".g") and not fn[:-2].lower().endswith("_lod")]
+    if not stems:
+        ui.section("roundtrip")
+        ui.fail(f"no .g in {folder}")
+        return 1
+    tmp = args.out or tempfile.mkdtemp(prefix="d3roundtrip_")
+    os.makedirs(tmp, exist_ok=True)
+    ui.section(f"roundtrip {os.path.basename(folder)}")
+    rc = 0
+    for stem in stems:
+        base = os.path.basename(stem)
+        gltf = os.path.join(tmp, base + ".gltf")
+        out = os.path.join(tmp, "out")
+        try:
+            _export_gl(stem + ".g", _find_animation_for_geometry(stem + ".g"),
+                       gltf, None, quiet=True)
+            _export(gltf, out, 0, anim=True, quiet=True, donor_dir=folder)
+        except Exception as exc:  # noqa: BLE001 - a failed export is the report
+            ui.fail(f"{base}: export failed ({exc})")
+            rc = 1
+            continue
+        diffs = rtmmod.diff_folders(folder, out)
+        for line in rtmmod.report_lines(diffs):
+            print("    " + line)
+        counts = rtmmod.summary(diffs)
+        if counts["differing"]:
+            rc = 1
+            ui.warn(f"{base}: {counts['differing']} file(s) differ from the "
+                    f"folder they came from")
+        else:
+            ui.ok(f"{base}: every written file is identical")
+        _facts, findings = auditmod.audit(out)
+        for finding in findings:
+            ui.warn("  " + finding)
+        if findings:
+            rc = 1
+    if args.keep or args.out:
+        ui.info(f"re-export kept in {tmp}")
+    return rc
 
 
 def _gattr(args) -> int:
@@ -2270,7 +2355,7 @@ def _gattr(args) -> int:
 
 
 def _lod_sync(unit_dir: str, out_dir: Optional[str] = None,
-              quiet: bool = False) -> int:
+              quiet: bool = False, reference=None) -> int:
     """`lod <unit folder>` — make a unit's LOD model carry its added parts.
 
     The engine swaps to `unit_scene_lod` (marked in the `.char` profile with a
@@ -2313,7 +2398,19 @@ def _lod_sync(unit_dir: str, out_dir: Optional[str] = None,
         # is no guide) — whatever trails them was added after the fact
         names = {p.name for p in lod_parts}
         names |= {n[4:] if n.startswith("lod_") else n for n in names}
-        missing = [p for p in main_all[len(lod_parts):] if p.name not in names]
+        if reference is not None:
+            # With the donor in hand "missing from the LOD" means "not in the
+            # donor either": a part the export APPENDED.  The retail LOD model
+            # legitimately holds fewer parts than the main mesh (the Cleric's
+            # LOD drops the hair), so the old trailing-parts rule appended the
+            # main mesh's tail to every such LOD on a plain re-export — the LOD
+            # grew by a few kilobytes and the battlefield drew parts the
+            # artist never added.
+            donor_len = len(list(reference))
+            missing = [p for i, p in enumerate(main_all)
+                       if i >= donor_len and p.name not in names]
+        else:
+            missing = [p for p in main_all[len(lod_parts):] if p.name not in names]
         if missing:
             parent = ((lod_parts[0].attrs or {}).get("dwParent")
                       if lod_parts else None)
@@ -2336,11 +2433,40 @@ def _lod_sync(unit_dir: str, out_dir: Optional[str] = None,
         # weapon.  Only rigid single-bone parts are swapped: a skinned part is
         # lower-poly in the LOD on purpose and must stay as it is.
         main_by = {p.name: p for p in main_all}
+        # `iter_parts` yields the container's own root block first (a
+        # `SkinnedMesh`, the body) and the compound sub-meshes after it.  The
+        # root is not a part: it has no `part_prefix`/`part_tail` scaffolding,
+        # because its layout is the whole-file one.  Rebuilding it with
+        # `_part_block` raised `'SkinnedMesh' object has no attribute
+        # 'part_prefix'`, the caller swallowed that into "the LOD model was not
+        # synced", and every unit whose LOD root block names another atlas than
+        # its main root (Empire/Angel: `mithrael` in the LOD, `Myzrael_alpha` in
+        # the main file) silently kept drawing the old weapon on the
+        # battlefield.  Index 0 is never a candidate for a swap: the LOD's own
+        # body is decimated on purpose.
+        # ... and with the donor in hand, only a part this export REWROTE can
+        # need swapping: the LOD's own decimated copy of an untouched part is
+        # what the artist shipped.  Decimation moves a small part's bounding
+        # box past the 10% tolerance below often enough that a plain
+        # re-export replaced five units' LOD parts with the full-resolution
+        # mesh (the Dwarf's LOD grew by 5.6 KB, the MasterThug's by 5.9 KB).
+        moved = None
+        main_pos = {id(p): i for i, p in enumerate(main_all)}
+        if reference is not None:
+            donor_parts = list(reference)
+            moved = {i for i, p in enumerate(main_all)
+                     if i >= len(donor_parts)
+                     or scenemod._part_facts(p)
+                     != scenemod._part_facts(donor_parts[i])}
         swaps = []
         for i, lp in enumerate(lod_parts):
+            if i == 0:
+                continue
             base_name = lp.name[4:] if lp.name.startswith("lod_") else lp.name
             mp = main_by.get(base_name)
             if mp is None or len(lp.bones or ()) != 1 or len(mp.bones or ()) != 1:
+                continue
+            if moved is not None and main_pos.get(id(mp)) not in moved:
                 continue
             # The LOD's own copy of a part is the SAME shape at lower detail,
             # so its bounding box survives decimation.  A part the export
@@ -2362,9 +2488,14 @@ def _lod_sync(unit_dir: str, out_dir: Optional[str] = None,
         # camera pulls back.  A material is a name, not geometry: copy it.
         retags = []
         for i, lp in enumerate(lod_parts):
+            if i == 0:
+                # the root block's atlas is its own by design (see above)
+                continue
             base_name = lp.name[4:] if lp.name.startswith("lod_") else lp.name
             mp = main_by.get(base_name)
             if mp is None:
+                continue
+            if moved is not None and main_pos.get(id(mp)) not in moved:
                 continue
             want = (mp.attrs or {}).get("material0_diffuse")
             have = (lp.attrs or {}).get("material0_diffuse")
@@ -2425,7 +2556,8 @@ def _lod_sync(unit_dir: str, out_dir: Optional[str] = None,
             # triangles where `_lod.g` holds 1716, and every shipped unit does
             # this — restating from the LOD mesh wrote numbers no retail file
             # has, and left the gobj on the old atlas
-            new_text, restated = scenemod.refresh_part_gobjs(new_text, main_all)
+            new_text, restated = scenemod.refresh_part_gobjs(
+                new_text, main_all, reference=reference)
         except Exception:  # noqa: BLE001 - cosmetic, never fatal
             restated = []
         if restated and not added:
@@ -2561,6 +2693,87 @@ def _weights(args) -> int:
     return 0
 
 
+def _unit_resource_prefix(folder: str, names: List[str]) -> str:
+    """The resource path a bundle's files live at, as its own `.scene` spells it.
+
+    ``resources\\characters\\empire\\angel`` for the retail Angel folder: the
+    `.scene` writes an absolute resource path for its mesh, which is the only
+    place a bundle states where the game will look for it (the folder it sits
+    in on disk is no guide — an export lands anywhere).
+    """
+    for name in [n for n in names if n.lower().endswith(".scene")]:
+        try:
+            with open(os.path.join(folder, name), encoding="latin-1") as fh:
+                doc = scenemod.parse_scene(fh.read())
+        except Exception:  # noqa: BLE001 - a scene we cannot read is no guide
+            continue
+        for node in doc.find_all("gobj"):
+            # the `.scene` is the authority here: it may name a `.g` that is
+            # not in this folder (a scene and its mesh can ship apart), and
+            # the folder it names is what the engine will look for
+            ref = auditmod._mesh_ref(node)
+            if not ref or not ref.lower().endswith(".g"):
+                continue
+            for item in node.items:
+                if isinstance(item, str) and item.strip().startswith('"'):
+                    full = item.split('"')[1] if '"' in item else ""
+                    if os.path.basename(full.replace("\\", "/")) != ref:
+                        continue
+                    parts = full.replace("/", "\\").split("\\")
+                    return "\\".join(parts[:-1])
+    return ""
+
+
+def _repair_ac(path: str, out: Optional[str], in_place: bool) -> int:
+    """`repair <file.ac>` — point an `.ac`'s references at its own folder.
+
+    An `.ac` names its animation streams and its mesh by *resource* path, and
+    the engine does not fall back when that path points into a folder the game
+    does not have: the load stops with a missing-file dialog naming the pack —
+    the crash-on-recruit of a pack whose `_lod.ac` said
+    ``resources\\characters\\character_empire_angel_lod`` while every file it
+    names sits in ``resources\\characters\\empire\\angel``.  This rewrites the
+    folder of every reference whose file IS in the bundle and leaves the rest
+    alone, so a unit that legitimately shares another folder's streams is not
+    touched.
+    """
+    folder = os.path.dirname(os.path.abspath(path)) or "."
+    ui.section(f"repair {os.path.basename(path)}")
+    names = sorted(os.listdir(folder))
+    prefix = _unit_resource_prefix(folder, names)
+    if not prefix:
+        ui.fail("no `.scene` in this folder to say where the game looks for "
+                "it — nothing to anchor the paths to")
+        return 1
+    with open(path, encoding="latin-1", newline="") as fh:
+        text = fh.read()
+    fixed = text
+    changed = []
+    for ref in sorted(set(re.findall(r'"([^"]+\\[^"]+)"', text))):
+        base = ref.replace("/", "\\").split("\\")[-1]
+        if not os.path.isfile(os.path.join(folder, base)):
+            continue
+        want = prefix + "\\" + base
+        if ref == want:
+            continue
+        fixed = fixed.replace(f'"{ref}"', f'"{want}"')
+        changed.append((ref, want))
+    for old_ref, new_ref in changed:
+        ui.warn(f"{old_ref}\n      -> {new_ref}")
+    if not changed:
+        ui.ok("every reference already points at this folder")
+        return 0
+    target = out or (path if in_place else "")
+    if not target:
+        ui.info("nothing was written: pass --in-place (or -o FILE) to apply "
+                "the fix")
+        return 0
+    with open(target, "w", encoding="latin-1", newline="") as fh:
+        fh.write(fixed)
+    ui.wrote(target, f"{len(fixed)} bytes, {len(changed)} reference(s) repathed")
+    return 0
+
+
 def _repair(args) -> int:
     """`repair` — recompute the container counts a `.g`'s headers advertise.
 
@@ -2575,6 +2788,8 @@ def _repair(args) -> int:
         ui.section("repair")
         ui.fail(f"no such file: {path}")
         return 1
+    if path.lower().endswith(".ac"):
+        return _repair_ac(path, args.out, args.in_place)
     raw = open(path, "rb").read()
     ui.section(f"repair {os.path.basename(path)}")
     try:

@@ -30,6 +30,7 @@ Parser notes (verified against all 245 bundled `.scene` files):
 """
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass, field
 from typing import Dict, Iterator, List, Optional, Tuple, Union
@@ -398,6 +399,119 @@ def node_attr(node: SceneNode, key: str) -> Optional[str]:
     return None
 
 
+def _bind_name(name: str) -> str:
+    """A part / `gobj` name reduced to what both sides agree on.
+
+    LOD blocks are spelled ``lod_<name>`` and a weapon `gobj` is sometimes
+    spelled after its atlas (``weapon_empire_acolyte``) while the block is
+    (``acolyte_staff``), so a name is evidence, never proof.
+    """
+    n = (name or "").strip().lower()
+    return n[4:] if n.startswith("lod_") else n
+
+
+def _part_counts(part) -> Tuple[int, int, int, int, str]:
+    """(triangles, vertices, weight slots, bones, atlas stem) of a part.
+
+    Accepts a `MeshPart` from `gfile` and the `PartFacts` the audit builds from
+    one: both describe the same block, and the binder only ever compares these
+    five facts.
+    """
+    def pick(*names):
+        for name in names:
+            value = getattr(part, name, None)
+            if value is not None:
+                return value
+        return 0
+
+    bones = getattr(part, "bones", ())
+    nbones = bones if isinstance(bones, int) else len(bones or ())
+    mat = ((getattr(part, "attrs", None) or {}).get("material0_diffuse")
+           or (getattr(part, "materials", None) or {}).get("material0_diffuse")
+           or getattr(part, "material_diffuse", "") or "")
+    return (int(pick("tri_count", "tris") or 0),
+            int(pick("vertex_count", "verts") or 0),
+            int(pick("weights_on_vertex") or 0), int(nbones), mat)
+
+
+def _fact_diffs(node: SceneNode, part) -> int:
+    """How much a `gobj` already agrees with a part, as a score.
+
+    The scored form of "does this `gobj` describe this part".  Used to bind the
+    two lists, because neither order nor name can be trusted across the corpus:
+    the OrcKing's scene opens with the body (part #3 in the file) while the
+    Cleric's opens with the cloth (part #1), and the Angel's LOD names its body
+    ``mithrael`` where the `.g` says ``lod_empire_angel``.
+    """
+    tris, verts, weights, nbones, tex = _part_counts(part)
+    score = 0
+    for key, want, weight in (
+            ("material0_triangles_num", tris, 4),
+            ("vertexs_weights_num", verts, 4),
+            ("bones_num", nbones, 4),
+            ("weights_on_vertex", weights, 1)):
+        have = node_attr(node, key)
+        if want and have and have.strip() == str(int(want)):
+            score += weight
+    have_tex = node_attr(node, "material0_diffuse") or ""
+    if have_tex and tex and (os.path.splitext(have_tex)[0].lower()
+                             == os.path.splitext(tex)[0].lower()):
+        score += 6
+    if _bind_name(node_attr(node, "name") or "") == _bind_name(
+            getattr(part, "name", "") or ""):
+        score += 5
+    return score
+
+
+def bind_gobjs(gobjs, parts, prefer_tail: bool = False) -> List[int]:
+    """Which part of `parts` each `gobj` draws — ``-1`` when nothing fits.
+
+    A `gobj` names a mesh slot on its mesh line, and for a good half of the
+    corpus that number is simply the part's position in the file; the rest
+    number them in the scene's own order, and a handful (OrcKing, Archer) are
+    off by one throughout.  Rather than guess which convention a file uses,
+    every (`gobj`, part) pair is scored by how much the `gobj` already agrees
+    with the part — triangle count, vertex count, bone count, weight slots,
+    atlas and name — and the best-scoring pairs are assigned first, one part
+    per `gobj`.  A part the export rewrote scores badly on its own `gobj` and
+    well on the one whose *name* still says what it is, which is exactly the
+    weapon-swap case this has to get right: the alternative was to hand the
+    body a weapon's counts and the weapon the body's.
+    """
+    ordered = list(parts)
+    pairs = []
+    for gi, node in enumerate(gobjs):
+        declared = node_mesh_index(node)
+        for pi, part in enumerate(ordered):
+            score = _fact_diffs(node, part)
+            if declared is not None and declared == pi:
+                score += 2          # the file's own convention, as a tie-break
+            if score:
+                # `prefer_tail`: when two parts explain a `gobj` equally well,
+                # the later one is the one without a node (a part appended to
+                # the end of the file), not the artist's original cloth
+                slide = pi * 0.001 if prefer_tail else 0.0
+                pairs.append((-score + slide, gi, pi))
+    pairs.sort()
+    out = [-1] * len(gobjs)
+    used = set()
+    for _neg, gi, pi in pairs:
+        if out[gi] != -1 or pi in used:
+            continue
+        out[gi] = pi
+        used.add(pi)
+    # a `gobj` nothing explains (an empty part, a scene we cannot read the
+    # numbers of): keep document order for the parts still free
+    free = [i for i in range(len(ordered)) if i not in used]
+    for gi in range(len(gobjs)):
+        if out[gi] == -1 and free:
+            declared = node_mesh_index(gobjs[gi])
+            pick = declared if declared in free else free[0]
+            out[gi] = pick
+            free.remove(pick)
+    return out
+
+
 def node_mesh_index(node: SceneNode) -> Optional[int]:
     """The number a `gobj` writes after its `.g` path (its slot in the file)."""
     for line in node.items:
@@ -447,16 +561,34 @@ def _eol(line: str) -> str:
 _ATTR_VALUE = re.compile(r'^(\s*attr\s+"([^"]+)"\s+")([^"]*)("\s*)$')
 
 
-def refresh_part_gobjs(text: str, parts) -> Tuple[str, List[str]]:
+def _part_facts(part) -> Tuple:
+    """The numbers a `gobj` restates, in one comparable tuple."""
+    tris, verts, weights, nbones, tex = _part_counts(part)
+    return (tris, verts, weights, nbones, os.path.splitext(tex)[0].lower())
+
+
+def refresh_part_gobjs(text: str, parts,
+                       reference=None) -> Tuple[str, List[str]]:
     """Re-state every `gobj`'s material and counts from the part it binds.
 
-    The engine binds the i-th mesh part to the i-th `gobj`, so a part the
-    export REPLACED rather than added — the unit's mace slot now holding a
-    sword from another model — keeps the donor's `gobj` verbatim: it still
-    names the replaced weapon's texture and its triangle/vertex counts.  The
-    counts only cost a wrong bounding volume, but the texture is what the
-    player sees, and it is what makes a pack ship a `.t` nothing references
-    while the `.g` names one that is not there.
+    A `gobj` names the part it draws on its mesh line — ``"…\\x.g" 3 0.000000``
+    draws slot 3 of that file (``node_mesh_index``, the same number
+    `audit.scene_gobjs` reads) — so a part the export REPLACED rather than
+    added, the unit's mace slot now holding a sword from another model, keeps
+    the donor's `gobj` verbatim: it still names the replaced weapon's texture
+    and its triangle/vertex counts.  The counts only cost a wrong bounding
+    volume, but the texture is what the player sees, and it is what makes a
+    pack ship a `.t` nothing references while the `.g` names one that is not
+    there.
+
+    Binding by *position* — zipping the scene's `gobj` list with the file's
+    part list — was wrong for 68 of the 91 retail units, because a scene is
+    free to list its `gobj`s in any order (the Cleric's scene opens with the
+    cloth, slot 1, while the file opens with the hair, slot 0).  Positional
+    binding then wrote the body's atlas and counts onto the weapon's `gobj`
+    and the weapon's onto the body's: `weights_on_vertex` and the triangle
+    count are what the engine builds the vertex declaration from, so that is
+    a load-time crash rather than a cosmetic slip.
 
     Only the three keys a mesh part owns are touched, in place, so the file
     keeps its line endings and every other line byte for byte.  Returns the
@@ -468,10 +600,38 @@ def refresh_part_gobjs(text: str, parts) -> Tuple[str, List[str]]:
         return text, []
 
     def field(part, key: str):
-        return part.get(key) if isinstance(part, dict) else getattr(part, key)
+        if isinstance(part, dict):
+            return part.get(key)
+        if key == "material_diffuse":
+            # the attribute block is what the `.g` ships: a part can carry the
+            # atlas the export patched into `attrs` while the convenience
+            # field still holds the donor's
+            own = (getattr(part, "attrs", None) or {}).get("material0_diffuse")
+            if own:
+                return own
+        return getattr(part, key)
 
+    binding = bind_gobjs(gobjs, parts)
+    pairs = [(node, list(parts)[i] if i >= 0 else None)
+             for node, i in zip(gobjs, binding)]
+
+    # Which parts did this export actually rewrite?  With the donor in hand
+    # that is a comparison, and everything the export left alone keeps the
+    # `gobj` the game shipped — a re-export that changes nothing then comes
+    # back byte for byte.  Without a reference (the `lod` command, a scene
+    # repaired by hand) every gobj is restated.
+    moved = set()
+    if reference is not None:
+        donor = list(reference)
+        for i, part in enumerate(list(parts)):
+            if i >= len(donor) or _part_facts(part) != _part_facts(donor[i]):
+                moved.add(i)
     changed: List[str] = []
-    for node, part in zip(gobjs, parts):
+    for node, part in pairs:
+        if part is None:
+            continue
+        if reference is not None and list(parts).index(part) not in moved:
+            continue
         try:
             bones = list(field(part, "bones") or ())
             want = {
@@ -509,14 +669,13 @@ def refresh_part_gobjs(text: str, parts) -> Tuple[str, List[str]]:
 def ensure_part_gobjs(text: str, parts) -> Tuple[str, List[str]]:
     """Give every part in the `.g` a `gobj` the engine will instantiate.
 
-    The engine attaches the i-th mesh part to the i-th `gobj`, in document
-    order: every shipped unit carries exactly one gobj per part (84 of 85
-    scenes), and the LOD scenes settle that it is *position*, not the
-    ``attr "name"``, that binds — their gobj names (`empire_angel_wing`) never
-    match their part names (`lod_empire_angel_wing`) and the game draws them
-    anyway.  So a `.g` with more parts than the scene has gobjs leaves the
-    *trailing* parts without a node and invisible — exactly the Angel's sword,
-    the fifth mesh with four gobjs to bind it.
+    A part is bound by the number its `gobj` writes after the `.g` path
+    (``node_mesh_index``), so the parts no `gobj` claims are the ones the
+    engine never draws — in the retail Angel, the sword, the fifth mesh with
+    four `gobj`s to bind it.  Every such part gets a `gobj` naming its own
+    slot; a part is never bound by where it sits in the file, because 68 of
+    the 91 retail scenes list their `gobj`s in another order than the file
+    does.
 
     Each unbound trailing part gets a clone of the unit's largest *opaque*
     `gobj`: same tech, shaders, flags and `.g` path, a fresh `uid`/`dwNode`,
@@ -537,8 +696,19 @@ def ensure_part_gobjs(text: str, parts) -> Tuple[str, List[str]]:
         return part.get(key) if isinstance(part, dict) else getattr(part, key)
 
     ordered = list(parts)
-    # one gobj per mesh part, in file order
-    unbound = ordered[len(gobjs):]
+    # every part no `gobj` draws.  The slot number on each mesh line says
+    # which, when the numbers are distinct and inside the file — which is the
+    # case for a scene this exporter wrote and for every retail scene whose
+    # numbering is not a permutation of the file (OrcKing, Archer).  A scene
+    # that numbers nothing, or numbers past the end, falls back to "the parts
+    # after the last `gobj`": an export appends at the end.
+    declared = [node_mesh_index(n) for n in gobjs]
+    if (all(d is not None and 0 <= d < len(ordered) for d in declared)
+            and len(set(declared)) == len(declared)):
+        claimed = set(declared)
+    else:
+        claimed = set(range(len(gobjs)))
+    unbound = [p for i, p in enumerate(ordered) if i not in claimed]
     if not unbound:
         return text, []
 

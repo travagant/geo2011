@@ -112,6 +112,15 @@ def scene_gobjs(path: str) -> List[GobjFacts]:
     return out
 
 
+def _mesh_ref(node) -> str:
+    """The `.g` a `gobj` line names, as a basename."""
+    for item in node.items:
+        if isinstance(item, str) and item.strip().startswith('"'):
+            first = item.split('"')[1] if '"' in item else ""
+            return os.path.basename(first.replace("\\", "/"))
+    return ""
+
+
 def _int(value) -> Optional[int]:
     try:
         return int(str(value).strip())
@@ -236,6 +245,48 @@ def audit(folder: str) -> Tuple[Dict[str, List], List[str]]:
             findings.append(f"{name}: does not parse ({exc})")
             continue
         facts["gobjs"].append((name, gobjs))
+        # Which part does each `gobj` really draw?  Its mesh line names a slot
+        # and for about half the corpus that *is* the part's position, but the
+        # rest number their scenes in their own order (the OrcKing's opens with
+        # the body, the Cleric's with the cloth), so comparing the declared
+        # number to the file libelled 31 shipped units.  Resolve the binding by
+        # agreement first (name, atlas, counts) and keep the declared number as
+        # the tie-break; a `gobj` nothing explains is then a real finding.
+        bound: Dict[str, int] = {}
+        try:
+            nodes = scenemod.parse_scene(
+                open(os.path.join(folder, name), encoding="latin-1").read()
+            ).find_all("gobj")
+        except Exception:  # noqa: BLE001
+            nodes = []
+        for path in [n for n in parts_by_g if n.endswith(".g")]:
+            mine = [n for n in nodes if _mesh_ref(n) == path]
+            if not mine:
+                continue
+            # Two conventions live in the corpus: a LOD scene usually repeats
+            # the MAIN mesh's numbers (the Inquisitor's LOD gobj says 4664
+            # triangles where `_lod.g` holds 1716) and sometimes its own (the
+            # OrcKing's LOD shield gobj says 156, which is the LOD block's
+            # count).  Bind against both lists and keep the one that explains
+            # more of the scene.
+            best = None
+            for cand in ([parts_by_g.get(path[:-6] + ".g")] +
+                         [None] if name.lower().endswith("_lod.scene")
+                         else [None]):
+                gparts = cand or parts_by_g[path]
+                if len(gparts) != len(mine):
+                    continue
+                binding = scenemod.bind_gobjs(mine, gparts)
+                score = sum(scenemod._fact_diffs(n, gparts[i])
+                            for n, i in zip(mine, binding) if i >= 0)
+                if best is None or score > best[0]:
+                    best = (score, binding, gparts)
+            if best is None:
+                continue
+            bound[name + "|parts"] = best[2]
+            for node, idx in zip(mine, best[1]):
+                bound[(name, id(node))] = idx
+                bound[(name, scenemod.node_attr(node, "name") or "")] = idx
         for gobj in gobjs:
             parts = parts_by_g.get(gobj.g_base)
             if parts is None:
@@ -244,70 +295,87 @@ def audit(folder: str) -> Tuple[Dict[str, List], List[str]]:
                         f"{name}: gobj {gobj.name} draws {gobj.g_base}, which is "
                         f"not in the folder")
                 continue
-            if gobj.index is None:
-                findings.append(f"{name}: gobj {gobj.name} has no part index")
-                continue
-            if gobj.index >= len(parts):
+            # the number the engine reads off the mesh line must name a block
+            # that exists, whatever the numbers in the attribute block say
+            if gobj.index is not None and gobj.index >= len(parts):
                 findings.append(
                     f"{name}: gobj {gobj.name} points at part #{gobj.index} of "
                     f"{gobj.g_base}, which has {len(parts)} block(s) — the "
                     f"engine reads past the end of the mesh")
                 continue
-            part = parts[gobj.index]
+            drawn = bound.get((name, gobj.name), -1)
+            if drawn < 0:
+                drawn = bound.get((name, gobj.attrs.get("name") or ""), -1)
+            if drawn < 0:
+                if gobj.index is None:
+                    findings.append(
+                        f"{name}: gobj {gobj.name} has no part index")
+                    continue
+                if gobj.index >= len(parts):
+                    findings.append(
+                        f"{name}: gobj {gobj.name} points at part "
+                        f"#{gobj.index} of {gobj.g_base}, which has "
+                        f"{len(parts)} block(s) — the engine reads past the "
+                        f"end of the mesh")
+                    continue
+                drawn = gobj.index
+            if not 0 <= drawn < len(parts):
+                # the binding chose the MAIN mesh's part list (a LOD scene);
+                # the part itself lives in the file the node draws
+                drawn = gobj.index if gobj.index is not None else 0
+            if not 0 <= drawn < len(parts):
+                continue
+            part = parts[drawn]
             # A `_lod.scene` repeats the numbers of the MAIN mesh, not of the
             # LOD `.g` it draws — the retail Inquisitor's LOD gobj says 4664
             # triangles while `_lod.g` holds 1716, and every shipped unit does
             # this.  Compare a LOD gobj against the file it is describing or
             # the check reports the corpus itself as broken.
-            counted = part
+            chosen = bound.get(name + "|parts")
+            counted = chosen[drawn] if chosen and drawn < len(chosen) else part
             counted_file = gobj.g_base
-            if name.lower().endswith("_lod.scene") and gobj.g_base:
-                main_file = gobj.g_base[:-6] + ".g"
-                main_parts = parts_by_g.get(main_file)
-                if main_parts and gobj.index < len(main_parts):
-                    counted = main_parts[gobj.index]
-                    counted_file = main_file
-            # the gobj repeats the part's numbers; one stale copy is enough to
-            # desynchronise the loader (buffer sizes come from here)
-            checks = (
-                ("material0_triangles_num", part.tris, "triangles"),
-                ("vertexs_weights_num", part.verts, "vertices"),
-                ("bones_num", part.bones, "bones"),
-                ("weights_on_vertex", part.weights_on_vertex, "weight slots"),
-            )
-            for key, expected, what in checks:
-                want = expected
-                if key in ("material0_triangles_num", "vertexs_weights_num",
-                           "bones_num", "weights_on_vertex"):
-                    want = getattr(counted, {
-                        "material0_triangles_num": "tris",
-                        "vertexs_weights_num": "verts",
-                        "bones_num": "bones",
-                        "weights_on_vertex": "weights_on_vertex"}[key])
+            if chosen is not None and chosen is not parts:
+                counted_file = (gobj.g_base[:-6] + ".g"
+                                if name.lower().endswith("_lod.scene")
+                                else gobj.g_base)
+            # The `gobj` repeats the part's numbers, and a stale copy used to
+            # look like a crash waiting to happen.  It is not: the shipped
+            # units disagree with their own meshes everywhere (the Archer's
+            # body gobj says 3631 triangles where the block holds 4407, the
+            # Cleric's LOD gobj says 376 where the LOD block holds 156, the
+            # Archer's bow gobj names `weapon_empire_archer_bow_complete.tga`
+            # while the mesh names `..._bow_diffuse.tga`), and the game loads
+            # all of them — so these numbers cannot be what the loader reads.
+            # They are reported as notes: worth knowing when a pack behaves
+            # oddly, never a reason to call a shipped unit broken.
+            def off(have: int, want: int) -> bool:
+                return abs(have - want) > max(2, int(0.05 * want))
+
+            for key, expected, what in (
+                    ("material0_triangles_num", counted.tris, "triangles"),
+                    ("vertexs_weights_num", counted.verts, "vertices"),
+                    ("bones_num", counted.bones, "bones")):
                 have = _int(gobj.attrs.get(key))
-                if have is None or not want:
+                if have is None or not expected:
                     continue
-                if have != want:
-                    findings.append(
+                if off(have, expected):
+                    facts.setdefault("notes", []).append(
                         f"{name}: gobj {gobj.name} says {key} {have}, part "
-                        f"#{gobj.index} of {counted_file} has {want} {what}")
-            attr_name = gobj.attrs.get("name")
-            # index 0 is the root block, whose own name is the geometry's
-            # (`Standard_8`) while the gobj is named after the unit — retail
-            # does this everywhere, so only a *part* name mismatch counts
-            if gobj.index and attr_name and attr_name != _strip_lod(part.name) \
-                    and attr_name != part.name:
-                findings.append(
-                    f"{name}: gobj {gobj.name} is named {attr_name!r}, the part "
-                    f"it draws is {part.name!r}")
+                        f"#{drawn} of {counted_file} has {expected} {what}")
+            have_w = _int(gobj.attrs.get("weights_on_vertex"))
+            if have_w is not None and counted.weights_on_vertex \
+                    and have_w != counted.weights_on_vertex:
+                facts.setdefault("notes", []).append(
+                    f"{name}: gobj {gobj.name} says weights_on_vertex "
+                    f"{have_w}, part #{drawn} of {counted_file} writes "
+                    f"{counted.weights_on_vertex}")
             mat = gobj.attrs.get("material0_diffuse")
-            own = part.materials.get("material0_diffuse")
+            own = counted.materials.get("material0_diffuse")
             if mat and own and os.path.splitext(mat)[0].lower() != \
                     os.path.splitext(own)[0].lower():
-                findings.append(
-                    f"{name}: gobj {gobj.name} draws {mat}, but part "
-                    f"#{gobj.index} of {gobj.g_base} names {own} — the scene "
-                    f"and the mesh disagree on the atlas")
+                facts.setdefault("notes", []).append(
+                    f"{name}: gobj {gobj.name} draws {mat}, part #{drawn} of "
+                    f"{counted_file} names {own}")
 
     # the LOD is the model the battlefield actually draws (`unit_scene_lod`)
     for main, parts in parts_by_g.items():
@@ -318,12 +386,20 @@ def audit(folder: str) -> Tuple[Dict[str, List], List[str]]:
             continue
         main_names = [p.name for p in parts]
         lod_names = [_strip_lod(p.name) for p in parts_by_g[lod]]
+        # A LOD model legitimately holds fewer parts than the main mesh (the
+        # Cleric's LOD drops the hair: it is not worth drawing at distance),
+        # so a part is only "missing" when the LOD has no counterpart at all —
+        # neither by name nor by position with the same bone count.
+        lod_parts = parts_by_g[lod]
         for name in main_names:
-            if name not in lod_names:
-                findings.append(
-                    f"{lod}: no part for {name!r} — the battle camera swaps to "
-                    f"the LOD at distance and that part is not drawn "
-                    f"(run `d3tool lod`)")
+            main_idx = [p.name for p in parts].index(name)
+            twin = (main_idx < len(lod_parts)
+                    and lod_parts[main_idx].bones == parts[main_idx].bones)
+            if name not in lod_names and not twin:
+                facts.setdefault("notes", []).append(
+                    f"{lod}: no part for {name!r} — the LOD model (what the "
+                    f"battle camera draws at distance) has fewer parts than "
+                    f"the main mesh, as it usually does")
         for part in parts:
             if not part.materials:
                 continue
