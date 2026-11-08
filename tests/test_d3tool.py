@@ -4016,6 +4016,34 @@ def test_dump_extract_reads_modules_and_rebuilds_a_pe(tmp_path=None):
     assert dm.entropy(b"\x00" * 100) == 0.0
 
 
+def test_localdumps_reg_files_are_what_windows_expects():
+    """The crash dump is the one artefact that makes a protected engine
+    readable, and these two files are how a non-technical step produces it:
+    double-click, crash, send the file.  What must not drift is the registry
+    shape Windows actually reads — both views (a 32-bit game on 64-bit Windows
+    looks in Wow6432Node), a full dump rather than a mini one, and an
+    expandable string for the folder."""
+    import re
+    folder = os.path.join(REPO, "tools", "windows")
+    enable = open(os.path.join(folder, "enable_localdumps.reg"), "rb").read()
+    disable = open(os.path.join(folder, "disable_localdumps.reg"), "rb").read()
+    assert enable.startswith(b"Windows Registry Editor Version 5.00\r\n")
+    assert disable.startswith(b"Windows Registry Editor Version 5.00\r\n")
+    assert enable.count(b"Windows Error Reporting\\LocalDumps]") == 2
+    assert b"Wow6432Node" in enable
+    assert enable.count(b'"DumpType"=dword:00000002') == 2   # full, not mini
+    assert enable.count(b'"DumpCount"=dword:0000000a') == 2
+    hexed = re.search(rb'"DumpFolder"=hex\(2\):([0-9a-f,]+)', enable).group(1)
+    path = bytes.fromhex(hexed.decode().replace(",", "")).decode("utf-16-le")
+    assert path.rstrip("\x00") == "%USERPROFILE%\\Desktop\\D3dumps"
+    assert path.endswith("\x00")                             # NUL terminated
+    assert not path[:-1].endswith("\x00")
+    # the undo file removes exactly the keys the enable file creates
+    assert disable.count(b"[-HKEY_LOCAL_MACHINE") == 2
+    for key in (b"Windows Error Reporting\\LocalDumps]",):
+        assert enable.count(key) == disable.count(key) == 2
+
+
 def test_scene_gains_a_gobj_for_a_part_it_cannot_bind():
     """The engine binds the i-th mesh part to the i-th `gobj`, in order — the
     LOD scenes prove it, since their gobj names (`empire_angel_wing`) never

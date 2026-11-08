@@ -931,10 +931,50 @@ scanning the faulting thread's stack and resolving it to `module+offset`.
 own names (`index`, `resources\`, `vdpack`) become visible, and `--module`
 limits the work to one image.
 
-So the order of operations for every remaining question is: dump the process
-while it is alive (`Task Manager -> right click -> Create dump file`, or
-`procdump -ma <pid>`), run `dump_extract.py`, read the module.  Nothing in this
-document has to be guessed from statistics as long as that artefact exists.
+**Getting the dump without tools.**  A dump taken by hand only catches the
+process while it is still alive, so the crash itself is missed.  Windows Error
+Reporting already writes one at the moment of the crash if it is told to:
+`tools/windows/enable_localdumps.reg` sets `LocalDumps` for both registry views
+(a 32-bit game on 64-bit Windows reads the `Wow6432Node` one) with
+`DumpType=2` (full, so the module images are actually in the file, not just
+their headers) and `DumpCount=10`, and points the folder at
+`%USERPROFILE%\Desktop\D3dumps`.  Double-click it, accept the elevation
+prompt, reproduce the crash, and send the newest file from that folder;
+`disable_localdumps.reg` removes both keys again.  A `MiniDumpNormal` dump is
+useless here even though it carries the exception record: it does not contain
+the module pages, so the decrypted code is not in it.
+
+So the order of operations for every remaining question is: arm the crash dump
+(or take one by hand from `Task Manager -> right click -> Create dump file`, or
+`procdump -ma <pid>`), reproduce, run `dump_extract.py`, read the module.
+Nothing in this document has to be guessed from statistics as long as that
+artefact exists.
+
+**What statistics cannot do: the `index` entry.**  The one `.vdpack` entry no
+tool decodes was attacked every way that does not need the loader, on the only
+independent sample available (28 entries, 4 738 bytes, 1 674 bytes of names):
+
+* entropy 7.96 with all 256 byte values present, no repeated 4-byte or 8-byte
+  word, length 4 738 ≡ 2 (mod 8) — a cipher or hash construction, not a table
+  with slack;
+* no stride structure: over every record size r in 1…399 the count of equal
+  bytes at distance r stays inside the noise band expected for random data
+  (best |z| ≈ 3.1 at r = 140, against 399 trials), so there is no fixed-size
+  per-entry record anywhere in it;
+* not compressed at any offset 0…95 as zlib (all three window modes), raw or
+  aligned LZMA, or bzip2;
+* not a single-byte XOR, and none of the paths appear in it in ASCII, upper
+  case, or UTF-16LE;
+* none of the obvious four-byte name digests appear either — CRC32, Adler32,
+  FNV-1a, DJB2, or the first four bytes of MD5/SHA-1, in either byte order.
+
+The consequence is worth stating plainly: `index` is not recoverable by
+inspection, because it is almost certainly keyed by a constant inside the
+packer.  That constant is in `Toolkit.exe`, which is encrypted, so the constant
+comes out of a dump like everything else here.  Independent packs would help
+one question only — whether the blob depends on the entry set or on the names
+alone — and packs rebuilt by this toolkit cannot answer it, because they inherit
+the `index` they were given.
 
 ## 6. The `.vdpack` mod archive
 
