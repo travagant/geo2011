@@ -534,6 +534,7 @@ def _texture_lines(out_dir, base, donor_dir, warns):
     """
     try:
         parts = bridge.module("parts")
+        tex = bridge.module("texture")
     except Exception:  # noqa: BLE001 - a report must never break an export
         return []
     lines, said = [], set()
@@ -555,7 +556,11 @@ def _texture_lines(out_dir, base, donor_dir, warns):
                         f"part '{part}' has no material0_diffuse in "
                         f"{base}{suffix}.g — the game draws it untextured")
                 continue
-            status = os.path.basename(found) if found else "NOT FOUND"
+            if found:
+                size = tex.describe(found)
+                status = os.path.basename(found) + (f" {size}" if size else "")
+            else:
+                status = "NOT FOUND"
             lines.append(f"  {base}{suffix}.g: {part} -> {diffuse} ({status})")
             key = diffuse.lower()
             if not found and key not in said:

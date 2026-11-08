@@ -2476,6 +2476,84 @@ def test_texture_report_names_what_each_part_will_be_drawn_with():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_the_sword_takes_its_own_atlas_and_never_the_shield():
+    """Both atlases sit in one folder; only the stem decides.
+
+    The Knight ships two weapon textures — a 128x1024 blade strip (86 KiB) and
+    a 512x2048 shield sheet (683 KiB) — and a re-textured part that grabs the
+    wrong one looks *plausible* in Blender and wrong in game.  Resolution has to
+    be stem-exact: no "close enough" match, no picking the biggest file, no
+    shared prefix (`weapon_empire_knight_`).
+    """
+    tmp = tempfile.mkdtemp(prefix="d3swordshield_")
+    try:
+        src = os.path.join(REPO, "Empire", "Inquisitor")
+        for name in ("character_empire_inquisitor.g",
+                     "character_empire_inquisitor_baseanims.a",
+                     "character_empire_inquisitor.ac",
+                     "character_empire_inquisitor.scene",
+                     "character_empire_inquisitor.t"):
+            shutil.copyfile(os.path.join(src, name),
+                            os.path.join(tmp, name))
+        knight = os.path.join(REPO, "Empire", "Knight")
+        sword_t = os.path.join(knight, "weapon_empire_knight_sword_diffuse.t")
+        shield_t = os.path.join(knight, "weapon_empire_knight_shield_diffuse.t")
+        assert os.path.getsize(shield_t) > 5 * os.path.getsize(sword_t)
+        assert texmod.describe(sword_t) == "128x1024"
+        assert texmod.describe(shield_t) == "512x2048"
+        shutil.copyfile(sword_t,
+                        os.path.join(tmp, "weapon_empire_knight_sword_diffuse.t"))
+        shutil.copyfile(shield_t,
+                        os.path.join(tmp, "weapon_empire_knight_shield_diffuse.t"))
+
+        found = texmod.find_texture_file(
+            "weapon_empire_knight_sword_diffuse.tga", [tmp])
+        assert os.path.basename(found) == \
+            "weapon_empire_knight_sword_diffuse.t", found
+        found = texmod.find_texture_file(
+            "weapon_empire_knight_shield_diffuse.tga", [tmp])
+        assert os.path.basename(found) == \
+            "weapon_empire_knight_shield_diffuse.t", found
+        # a name with neither stem in the folder must stay unresolved rather
+        # than fall back to the nearest weapon atlas
+        assert texmod.find_texture_file(
+            "weapon_empire_knight_mace_diffuse.tga", [tmp]) is None
+
+        # the whole way through: name the inquisitor's sword part after the
+        # blade atlas and export; the .t that lands in the folder is the 86 KiB
+        # one, byte for byte, not the shield's
+        fwd = os.path.join(tmp, "fwd")
+        os.makedirs(fwd)
+        gt, _bt = climod._export_gl(
+            os.path.join(tmp, "character_empire_inquisitor.g"),
+            os.path.join(tmp, "character_empire_inquisitor_baseanims.a"),
+            os.path.join(fwd, "character_empire_inquisitor.gltf"), None,
+            quiet=True)
+        doc = json.load(open(gt))
+        weapon = [m for m in doc["meshes"]
+                  if "weapon" in (m.get("name") or "")][0]
+        weapon.setdefault("extras", {})["d3unit_diffuse"] = \
+            "weapon_empire_knight_sword_diffuse.tga"
+        json.dump(doc, open(gt, "w"))
+        out = os.path.join(tmp, "back")
+        climod._export(gt, out, 0, anim=True, quiet=True, donor_dir=tmp)
+
+        carried = os.path.join(out, "weapon_empire_knight_sword_diffuse.t")
+        assert os.path.isfile(carried), os.listdir(out)
+        assert open(carried, "rb").read() == open(sword_t, "rb").read(), \
+            "the exported .t is not the blade atlas"
+        assert texmod.describe(carried) == "128x1024"
+        rows = {part: (name, found) for part, name, found
+                in partsmod.texture_report(
+                    os.path.join(out, "character_empire_inquisitor.g"), [out])}
+        name, found = rows["weapon_empire_inquisitor"]
+        assert name == "weapon_empire_knight_sword_diffuse.tga", rows
+        assert os.path.basename(found) == \
+            "weapon_empire_knight_sword_diffuse.t", rows
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0

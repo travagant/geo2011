@@ -26,7 +26,7 @@ package only builds and reads the Blender scene.
 bl_info = {
     "name": "Disciples III Unit (GM .g/.a/.scene/.ac/.t)",
     "author": "Arena agent / geo2011",
-    "version": (1, 1, 28),
+    "version": (1, 1, 29),
     "blender": (3, 0, 0),
     "location": "File > Import/Export > Disciples III Unit",
     "description": "Import and export Disciples III character units "
@@ -351,7 +351,13 @@ class D3UNIT_PT_panel(Panel):
             hint = tb.column(align=True)
             hint.scale_y = 0.8
             if _name and _path:
-                hint.label(text="file: " + os.path.basename(_path),
+                _size = ""
+                try:
+                    _size = bridge.module("texture").describe(_path)
+                except Exception:  # noqa: BLE001
+                    _size = ""
+                hint.label(text="file: " + os.path.basename(_path)
+                                + (f"  ({_size})" if _size else ""),
                            icon="CHECKMARK")
             elif _name:
                 hint.label(text="NOT in the unit folder: "
