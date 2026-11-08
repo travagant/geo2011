@@ -1025,6 +1025,25 @@ front of the "pack and test" step; `--json` emits the same comparison for a
 script.  A pack and the folder it was built from compare clean, separators
 aside, so the tool doubles as "is this folder what the pack carries".
 
+`vdpack plan <folder> [--like <pack-that-loads>]` turns that grade into an
+instruction, because a folder on disk is shallow (`Empire/Inquisitor`) while the
+path it lands on is not (`resources\\Characters\\Empire\\Inquisitor`), and a
+modder cannot see which of the two shapes a file will take.  The plan lines the
+folder up with an archive path — from the pack itself when one is given (the
+entry carrying one of the folder's own files names the folder), otherwise from
+the unit's own `.scene`, which spells the `resources\\…\\<base>.g` it binds — and
+then, per file, says `replaces` or `new path`.  A `new path` that is a `.t` is
+the interesting case: the pack's own textures in that folder are printed as
+rename targets, because a `.g` attribute holds a bare texture name resolved
+inside the unit's folder, so pointing the part at a name the `index` already
+lists costs nothing and keeps the confirmed shape.  Files the pack carries and
+the folder does not are listed as `stays vanilla` — dropping them from a bundle
+is how the retail tree keeps resolving them.  The last line is the
+`game\\resources\\…\\<file>` layout the engine's own mount reaches, which is the
+only way to ship a path no pack can carry.  With no `--like` the plan prints
+that layout alone and marks every file `loose`; `--strict` exits 1 on a
+`new path`, matching `vdpack diff`.
+
 `vdpack manifest <archive|folder>` writes the sha256 inventory of a bundle —
 one `{path, bytes, sha256}` per file, in archive naming and case-insensitive
 order, plus the reference report.  The document is identical for a folder and

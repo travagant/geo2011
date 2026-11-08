@@ -306,6 +306,111 @@ def pack_folder(root: str) -> List[Tuple[str, bytes]]:
 
 
 # --------------------------------------------------------------------------- #
+#  planning a build
+# --------------------------------------------------------------------------- #
+
+def infer_prefix(base, folder_names: Sequence[str]) -> Optional[str]:
+    """Which archive folder a loose unit folder belongs to.
+
+    A mod's folder is shallow (``Empire/Inquisitor``) while the archive path is
+    deep (``resources\\Characters\\Empire\\Inquisitor``), so a plan has to line
+    the two up before it can say anything about "new paths".  The pack is the
+    authority: the entry that carries one of the folder's own files names the
+    folder, and a file name match outranks a bare ``.g`` stem match.
+    """
+    wanted = {n.replace("/", "\\").lower() for n in folder_names}
+    stems = {os.path.splitext(n)[0].lower() for n in folder_names
+             if n.lower().endswith(".g")}
+    scores: Dict[str, int] = {}
+    for name, _ in _pairs(base):
+        parts = _norm_name(name).split("\\")
+        if len(parts) < 2:
+            continue
+        leaf = parts[-1].lower()
+        parent = "\\".join(parts[:-1])
+        if leaf in wanted:
+            scores[parent] = scores.get(parent, 0) + 3
+        elif leaf.endswith(".g") and os.path.splitext(leaf)[0] in stems:
+            scores[parent] = scores.get(parent, 0) + 1
+    if not scores:
+        return None
+    return max(scores.items(), key=lambda kv: (kv[1], len(kv[0])))[0]
+
+
+def _scene_prefix(files: Sequence[Tuple[str, bytes]]) -> Optional[str]:
+    """The archive folder a unit's own `.scene` says its mesh lives in."""
+    import re
+    for name, data in files:
+        if not name.lower().endswith(".scene"):
+            continue
+        text = data.decode("latin-1", "replace")
+        hit = re.search(r'"([^"]*[\\/][^"]*\.g)"', text, re.IGNORECASE)
+        if hit:
+            return "\\".join(hit.group(1).replace("/", "\\").split("\\")[:-1])
+    return None
+
+
+def plan_bundle(folder, base=None, prefix: Optional[str] = None) -> dict:
+    """How to ship `folder` so the engine actually sees it.
+
+    ``base`` is the pack the game already loads (or a folder in the same
+    shape).  The plan answers the three questions a modder ships on:
+
+    * which files **replace** a path the pack already carries — the only shape
+      with a runtime confirmation behind it;
+    * which files are **new paths**, i.e. the shape the port tried in game and
+      saw no units at all, with the names already available in that folder as
+      the rename targets;
+    * which of the pack's own files the folder does **not** carry — those stay
+      whatever the vanilla tree has, which is fine and worth seeing.
+
+    With no ``base`` it still plans the loose install the engine's own mount
+    understands (``resources\\...\\<file>``), which is the way to ship a file
+    that no pack shape can add.
+    """
+    pairs = _pairs(folder)
+    names = [n.replace("/", "\\") for n, _ in pairs]
+    base_pairs = _pairs(base) if base is not None else []
+    where = prefix or (infer_prefix(base_pairs, names) if base_pairs
+                       else None) or _scene_prefix(pairs) or ""
+    where = where.strip("\\")
+    existing = {_norm_name(n).lower() for n, _ in base_pairs}
+    textures: Dict[str, List[str]] = {}     # archive folder -> texture stems
+    for name, _ in base_pairs:
+        norm = _norm_name(name)
+        parts = norm.split("\\")
+        if parts[-1].lower().endswith(".t"):
+            textures.setdefault("\\".join(parts[:-1]).lower(), []).append(
+                os.path.splitext(parts[-1])[0])
+    entries = []
+    for name, data in pairs:
+        leaf = name.replace("/", "\\").split("\\")[-1]
+        path = f"{where}\\{leaf}" if where else leaf
+        if not base_pairs:
+            kind = "loose"          # nothing to compare against: a bare layout
+        else:
+            kind = ("replaces" if path.lower() in existing else "new")
+        entries.append({"path": path, "file": leaf, "bytes": len(data),
+                        "kind": kind})
+    carried = {e["path"].lower() for e in entries}
+    missing = [n for n, _ in base_pairs
+               if where and _norm_name(n).lower().startswith(where.lower() + "\\")
+               and _norm_name(n).lower() not in carried]
+    added = [e for e in entries if e["kind"] == "new"]
+    here = sorted(textures.get(where.lower(), []))
+    for entry in added:
+        entry["alternatives"] = []
+        if entry["file"].lower().endswith(".t"):
+            # a `.g` attribute holds a bare texture name, resolved inside the
+            # unit's own folder first: these are the names a rename can take,
+            # and every one of them is a path the pack's `index` already lists.
+            entry["alternatives"] = here[:4]
+    return {"prefix": where, "entries": entries, "added": added,
+            "replaced": [e for e in entries if e["kind"] == "replaces"],
+            "missing": sorted(missing), "has_base": bool(base_pairs)}
+
+
+# --------------------------------------------------------------------------- #
 #  extracting
 # --------------------------------------------------------------------------- #
 

@@ -3776,6 +3776,95 @@ def test_vdpack_diff_cli_reports_and_exits():
             assert climod._run(["vdpack", "diff", one, one]) == 0
 
 
+def test_vdpack_plan_separates_replacement_from_a_new_path():
+    """What `plan` is for: a folder on disk says nothing about the archive
+    path it lands on, so a modder can ship a file that replaces one the engine
+    already reaches, or one at a path the pack's `index` never lists — and the
+    second shape is the one that showed no units at all in game."""
+    from d3tool import vdpack as vmod
+    base = [("resources\\Characters\\Empire\\Unit\\a.g", b"old"),
+            ("resources\\Characters\\Empire\\Unit\\a.scene", b"scene"),
+            ("resources\\Characters\\Empire\\Unit\\a.t", b"atlas"),
+            ("resources\\Characters\\Empire\\Unit\\Aliases\\x.alias", b"a")]
+    folder = [("a.g", b"new"), ("a.scene", b"scene"), ("a.t", b"atlas"),
+              ("b.t", b"atlas")]
+    plan = vmod.plan_bundle(folder, base)
+    assert plan["prefix"] == "resources\\Characters\\Empire\\Unit"
+    assert [e["path"] for e in plan["replaced"]] == [
+        "resources\\Characters\\Empire\\Unit\\a.g",
+        "resources\\Characters\\Empire\\Unit\\a.scene",
+        "resources\\Characters\\Empire\\Unit\\a.t"]
+    assert [e["path"] for e in plan["added"]] == [
+        "resources\\Characters\\Empire\\Unit\\b.t"]
+    # the rename targets are the textures the pack already lists in that folder
+    assert plan["added"][0]["alternatives"] == ["a"]
+    assert plan["missing"] == ["resources\\Characters\\Empire\\Unit\\Aliases\\x.alias"]
+    # a clean folder: nothing new, so the confirmed shape
+    clean = vmod.plan_bundle(folder[:3], base)
+    assert clean["added"] == [] and len(clean["replaced"]) == 3
+
+
+def test_vdpack_plan_without_a_pack_is_the_loose_layout():
+    """No `--like`: the plan can still line the folder up (its own `.scene`
+    names the archive path) and print the loose tree, which is the only way to
+    ship a path no pack can carry."""
+    from d3tool import vdpack as vmod
+    folder = [("a.g", b"g"), ("a.t", b"t"),
+              ("a.scene", b'name "x"\nmesh "resources/Characters/Empire/Unit/a.g"\n')]
+    plan = vmod.plan_bundle(folder)
+    assert plan["prefix"] == "resources\\Characters\\Empire\\Unit"
+    assert plan["has_base"] is False
+    assert plan["added"] == []
+    assert [e["kind"] for e in plan["entries"]] == ["loose"] * 3
+    assert plan["entries"][0]["path"].startswith(
+        "resources\\Characters\\Empire\\Unit\\")
+    # no prefix anywhere: a bare listing, never a crash
+    bare = vmod.plan_bundle([("a.g", b"g")])
+    assert bare["prefix"] == "" and bare["entries"][0]["path"] == "a.g"
+
+
+def test_vdpack_plan_cli_reports_and_exits():
+    import contextlib
+    import io
+    from d3tool import vdpack as vmod
+    base = vmod.build_vdpack([("index", b"i"),
+                              ("resources\\U\\a.g", b"1"),
+                              ("resources\\U\\a.t", b"2")])
+    with tempfile.TemporaryDirectory() as d:
+        archive = os.path.join(d, "base.vdpack")
+        open(archive, "wb").write(base)
+        folder = os.path.join(d, "Unit")
+        os.makedirs(folder)
+        for name in ("a.g", "a.t"):
+            open(os.path.join(folder, name), "wb").write(b"payload")
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            assert climod._run(["vdpack", "plan", folder, "--like", archive]) == 0
+            assert climod._run(["vdpack", "plan", folder, "--like", archive,
+                                "--strict"]) == 0
+            assert climod._run(["vdpack", "plan", folder]) == 0
+        text = buf.getvalue()
+        assert "replaces  resources\\U\\a.g" in text
+        assert "loose layout" in text
+        # a file the pack cannot reach flips the verdict and --strict
+        open(os.path.join(folder, "b.t"), "wb").write(b"payload")
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            assert climod._run(["vdpack", "plan", folder, "--like", archive]) == 0
+            assert climod._run(["vdpack", "plan", folder, "--like", archive,
+                                "--strict"]) == 1
+            assert climod._run(["vdpack", "plan", os.path.join(d, "nope")]) == 1
+        text = buf.getvalue()
+        assert "new path  resources\\U\\b.t" in text
+        assert "a" in text              # the rename target it suggests
+        # --prefix overrides the inference, --json prints the record
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            assert climod._run(["vdpack", "plan", folder, "--prefix",
+                                "resources\\Other", "--json"]) == 0
+        assert '"prefix": "resources\\\\Other"' in buf.getvalue()
+
+
 def test_scene_gains_a_gobj_for_a_part_it_cannot_bind():
     """The engine binds the i-th mesh part to the i-th `gobj`, in order — the
     LOD scenes prove it, since their gobj names (`empire_angel_wing`) never

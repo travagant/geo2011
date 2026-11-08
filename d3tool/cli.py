@@ -13,7 +13,7 @@ writers:
 * ``import <g>``        — dump the parsed `.g` as JSON.
 * ``texture convert|info|add`` — native `.t` <-> `.dds`, and bringing a
   texture the artist painted into a unit folder.
-* ``vdpack list|extract|validate|manifest|pack`` — the one-file form of a unit bundle
+* ``vdpack list|extract|validate|manifest|plan|pack`` — the one-file form of a unit bundle
   (what a mod ships; see ``d3tool/vdpack.py``).
 * ``char show|list|find|validate|set-id`` — the ``.char`` unit profile that
   names a unit's scene, icons and sounds (see ``d3tool/char.py``).
@@ -1947,6 +1947,70 @@ def _vdpack(args) -> int:
             return 1
         return 0
 
+    if args.vd_cmd == "plan":
+        if not os.path.isdir(args.folder):
+            ui.section("vdpack plan")
+            ui.fail(f"{args.folder} is not a folder")
+            return 1
+        base = None
+        if args.like:
+            pack = vdmod.read_vdpack(args.like)
+            if pack.parse_error:
+                ui.section("vdpack plan")
+                ui.fail(f"{args.like}: {pack.parse_error}")
+                return 1
+            base = list(pack.files().items())
+        plan = vdmod.plan_bundle(vdmod.pack_folder(args.folder), base,
+                                 prefix=args.prefix)
+        ui.section(f"vdpack plan  {os.path.basename(os.path.normpath(args.folder))}")
+        if not plan["prefix"]:
+            ui.warn("could not line the folder up with an archive path — "
+                    "pass `--prefix resources\\Characters\\Empire\\<Unit>`")
+        else:
+            ui.info(f"archive folder: {plan['prefix']}")
+        for entry in plan["replaced"]:
+            ui.ok(f"replaces  {entry['path']}")
+        for entry in plan["entries"]:
+            if entry["kind"] == "loose":
+                ui.info(f"loose    {entry['path']}")
+        for entry in plan["added"]:
+            ui.warn(f"new path  {entry['path']}")
+            names = entry.get("alternatives") or []
+            if names:
+                ui.info(f"    the pack carries in that folder: {', '.join(names)}")
+                ui.info(f"    point the part at one of them "
+                        f"(`d3tool g attr <file>.g --set material0_diffuse=<name>`) "
+                        f"or ship this file loose")
+            else:
+                ui.info("    nothing in the pack carries this name — ship it "
+                        "loose (see the layout below)")
+        if base is not None and plan["missing"]:
+            for name in plan["missing"][:5]:
+                ui.info(f"stays vanilla  {name}")
+            if len(plan["missing"]) > 5:
+                ui.info(f"stays vanilla  ... and {len(plan['missing']) - 5} "
+                        f"more (each keeps the vanilla tree's copy)")
+        if plan["prefix"]:
+            loose = plan["prefix"].replace("\\", os.sep)
+            ui.info(f"loose layout: game{os.sep}{loose}{os.sep}<file> — the "
+                    f"engine's own mount reaches a path no pack can add")
+        if args.json:
+            print(json.dumps(plan, ensure_ascii=False, indent=2))
+        worst = "new" if plan["added"] else "ok"
+        if base is None:
+            ui.info("no `--like`: this is the loose-install shape")
+        elif worst == "ok":
+            ui.ok("every file replaces a path the pack already carries — "
+                  "rebuild with `vdpack pack --like` and it loads as a "
+                  "replacement")
+        else:
+            ui.info(f"{len(plan['added'])} file(s) name a path the pack does "
+                    f"not carry: a pack built from this folder cannot add "
+                    f"them (the engine only reaches paths its `index` lists)")
+        if worst == "new" and args.strict:
+            return 1
+        return 0
+
     if args.vd_cmd == "validate":
         if os.path.isdir(args.target):
             files = dict(vdmod.pack_folder(args.target))
@@ -2394,6 +2458,20 @@ def _build_parser() -> argparse.ArgumentParser:
                       help="rewrite an attribute the part already carries")
     p_ga.add_argument("-o", "--out", help="write here instead of in place")
 
+    p_vpl = p_vd_sub.add_parser(
+        "plan", help="how to ship a unit folder so the engine sees it: which "
+                     "files replace a path, which are new, and the loose layout")
+    p_vpl.add_argument("folder", help="the exported unit folder")
+    p_vpl.add_argument("--like", metavar="ARCHIVE",
+                       help="the pack the game already loads (or a folder in "
+                            "that shape)")
+    p_vpl.add_argument("--prefix", metavar="PATH",
+                       help="override the archive folder, e.g. "
+                            "resources\\Characters\\Empire\\Inquisitor")
+    p_vpl.add_argument("--json", action="store_true")
+    p_vpl.add_argument("--strict", action="store_true",
+                       help="exit 1 when a file names a path the pack does not "
+                            "carry")
     p_vp = p_vd_sub.add_parser("pack", help="pack a folder into an archive")
     p_vp.add_argument("folder")
     p_vp.add_argument("-o", "--out",
