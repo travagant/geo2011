@@ -444,6 +444,68 @@ def _eol(line: str) -> str:
     return "\r" if line.endswith("\r") else ""
 
 
+_ATTR_VALUE = re.compile(r'^(\s*attr\s+"([^"]+)"\s+")([^"]*)("\s*)$')
+
+
+def refresh_part_gobjs(text: str, parts) -> Tuple[str, List[str]]:
+    """Re-state every `gobj`'s material and counts from the part it binds.
+
+    The engine binds the i-th mesh part to the i-th `gobj`, so a part the
+    export REPLACED rather than added — the unit's mace slot now holding a
+    sword from another model — keeps the donor's `gobj` verbatim: it still
+    names the replaced weapon's texture and its triangle/vertex counts.  The
+    counts only cost a wrong bounding volume, but the texture is what the
+    player sees, and it is what makes a pack ship a `.t` nothing references
+    while the `.g` names one that is not there.
+
+    Only the three keys a mesh part owns are touched, in place, so the file
+    keeps its line endings and every other line byte for byte.  Returns the
+    new text and the gobj names that changed (empty when nothing did).
+    """
+    doc = parse_scene(text)
+    gobjs = doc.find_all("gobj")
+    if not gobjs:
+        return text, []
+
+    def field(part, key: str):
+        return part.get(key) if isinstance(part, dict) else getattr(part, key)
+
+    changed: List[str] = []
+    for node, part in zip(gobjs, parts):
+        try:
+            bones = list(field(part, "bones") or ())
+            want = {
+                "material0_diffuse": (field(part, "material_diffuse") or ""),
+                "material0_triangles_num": str(field(part, "tri_count") or 0),
+                "vertexs_weights_num": str(field(part, "vertex_count") or 0),
+            }
+            if not want["material0_diffuse"]:
+                want.pop("material0_diffuse")
+            if bones:
+                want.setdefault("weights_on_vertex",
+                                str(field(part, "weights_on_vertex") or 1))
+                want.setdefault("bones_num", str(len(bones)))
+        except Exception:  # noqa: BLE001 - a Mapping without the fields
+            continue
+        touched = False
+        for i, line in enumerate(node.items):
+            if not isinstance(line, str):
+                continue
+            mm = _ATTR_VALUE.match(line)
+            if not mm:
+                continue
+            key = mm.group(2)
+            if key not in want or mm.group(3) == want[key]:
+                continue
+            node.items[i] = mm.group(1) + want[key] + mm.group(4)
+            touched = True
+        if touched:
+            changed.append(node.name)
+    if not changed:
+        return text, []
+    return render_scene(doc), changed
+
+
 def ensure_part_gobjs(text: str, parts) -> Tuple[str, List[str]]:
     """Give every part in the `.g` a `gobj` the engine will instantiate.
 

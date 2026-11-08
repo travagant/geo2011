@@ -716,6 +716,17 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
             ui.warn(f"{base}.scene did not name {', '.join(added)}: added a "
                     f"`gobj` for each, without which the engine never draws "
                     f"that part")
+        try:
+            fresh, restated = scenemod.refresh_part_gobjs(
+                scene_bytes.decode("latin-1"), gfile.iter_parts(written))
+            if restated:
+                scene_bytes = fresh.encode("latin-1")
+                note += f"; {len(restated)} gobj restated"
+                ui.info(f"{base}.scene: restated {', '.join(restated)} from "
+                        f"the mesh parts (material, counts, weights, bones)")
+        except Exception as exc:  # noqa: BLE001 - never fail an export over it
+            ui.warn(f"{base}.scene: gobj attributes were left as the donor "
+                    f"had them ({exc})")
     with open(out_scene, "wb") as fh:
         fh.write(scene_bytes)
     if not quiet:
@@ -2125,6 +2136,53 @@ def _lod_sync(unit_dir: str, out_dir: Optional[str] = None,
             changed += 1
         elif not quiet:
             ui.info(f"{os.path.basename(lod_g)}: already carries every part")
+        # A part the export REPLACED instead of adding — the unit's mace slot
+        # now holding a sword from another model — is already present by name,
+        # so nothing is appended and the battlefield keeps drawing the old
+        # weapon.  Only rigid single-bone parts are swapped: a skinned part is
+        # lower-poly in the LOD on purpose and must stay as it is.
+        main_by = {p.name: p for p in main_all}
+        swaps = []
+        for i, lp in enumerate(lod_parts):
+            base_name = lp.name[4:] if lp.name.startswith("lod_") else lp.name
+            mp = main_by.get(base_name)
+            if mp is None or len(lp.bones or ()) != 1 or len(mp.bones or ()) != 1:
+                continue
+            # a swapped part comes from a different model, so it brings its
+            # own texture; the same texture with a lower vertex count is the
+            # LOD's own decimated copy of the part and must stay
+            if ((lp.attrs or {}).get("material0_diffuse")
+                    == (mp.attrs or {}).get("material0_diffuse")):
+                continue
+            swaps.append((i, lp, mp))
+        if swaps:
+            import copy as _copy
+            prefix = lod_bytes[:len(lod_bytes)
+                               - sum(len(p.raw) for p in lod_parts)]
+            raws = [p.raw for p in lod_parts]
+            for i, lp, mp in swaps:
+                clone = _copy.copy(lp)
+                clone.vertices = list(mp.vertices)
+                clone.indices = list(mp.indices)
+                tex = (mp.attrs or {}).get("material0_diffuse")
+                items = [(k, tex if k == "material0_diffuse" else v)
+                         for k, v in (clone.attr_items or ())]
+                clone.attr_items = items
+                clone.attrs = dict(items)
+                clone.raw = gfile._part_block(clone)
+                raws[i] = clone.raw
+            lod_bytes = prefix + b"".join(raws)
+            lod_parts = list(gfile.iter_parts(
+                gfile.parse_geometry_file(lod_bytes)))
+            target = (os.path.join(out_dir, os.path.basename(lod_g))
+                      if out_dir else lod_g)
+            os.makedirs(os.path.dirname(target) or ".", exist_ok=True)
+            open(target, "wb").write(lod_bytes)
+            ui.ok(f"{os.path.basename(lod_g)}: "
+                  + ", ".join(f"{lp.name} <- {mp.name}"
+                              for _i, lp, mp in swaps)
+                  + " (the export swapped the part, it was not added)")
+            changed += 1
         lod_scene = stem + "_lod.scene"
         if not os.path.isfile(lod_scene):
             continue
@@ -2134,6 +2192,18 @@ def _lod_sync(unit_dir: str, out_dir: Optional[str] = None,
         with open(lod_scene, encoding="latin-1", newline="") as fh:
             text = fh.read()
         new_text, added = scenemod.ensure_part_gobjs(text, lod_parts)
+        restated: List[str] = []
+        try:
+            new_text, restated = scenemod.refresh_part_gobjs(new_text, lod_parts)
+        except Exception:  # noqa: BLE001 - cosmetic, never fatal
+            restated = []
+        if restated and not added:
+            target = (os.path.join(out_dir, os.path.basename(lod_scene))
+                      if out_dir else lod_scene)
+            open(target, "w", encoding="latin-1", newline="").write(new_text)
+            ui.ok(f"{os.path.basename(lod_scene)}: restated "
+                  + ", ".join(restated))
+            changed += 1
         if added:
             target = (os.path.join(out_dir, os.path.basename(lod_scene))
                       if out_dir else lod_scene)

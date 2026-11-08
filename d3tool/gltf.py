@@ -1421,6 +1421,26 @@ def mesh_to_skinned(m: GltfModel, weights_on_vertex: int = 0,
         sbones = sub.bones
         if dpart is not None and dpart.bones:
             sbones = dpart.bones
+        # The material the primitive itself carries wins over the donor
+        # part's when the two name different images: an object the donor file
+        # never had (a sword grafted onto the unit's mace slot) otherwise
+        # inherits the *replaced* part's texture and the pack ships a `.t`
+        # nothing references while the `.g` names one that is not there.
+        p_mat = (dpart.material_diffuse if dpart is not None
+                 else sub.material_diffuse)
+        p_attrs = (dict(dpart.attrs) if dpart is not None
+                   else _synth_part_attrs(sub, sbones))
+        p_items = (list(dpart.attr_items) if dpart is not None else [])
+        if sub.material_diffuse:
+            want = (os.path.splitext(os.path.basename(sub.material_diffuse))[0]
+                    + ".tga")
+            have = p_attrs.get("material0_diffuse") or p_mat or ""
+            if (os.path.splitext(os.path.basename(have))[0].lower()
+                    != os.path.splitext(os.path.basename(want))[0].lower()):
+                p_mat = want
+                p_attrs["material0_diffuse"] = want
+                p_items = [(k, want if k == "material0_diffuse" else v)
+                           for k, v in p_items]
         parts.append(MeshPart(
             name=sub.mesh_name,
             vertex_count=sub.vertex_count,
@@ -1430,17 +1450,15 @@ def mesh_to_skinned(m: GltfModel, weights_on_vertex: int = 0,
             bones=sbones,
             weights_on_vertex=sw,
             morph=pmorph,
-            material_diffuse=(dpart.material_diffuse if dpart is not None
-                              else sub.material_diffuse),
+            material_diffuse=p_mat,
             lm_uv=_pick_lm(dpart.lm_uv if dpart is not None else b"",
                            sub.lm_uv, len(svertices)),
             lightmap=(dpart.lightmap if dpart is not None and dpart.lightmap
                       else sub.lightmap),
             vertex_magic=(dpart.vertex_magic if dpart is not None
                           else b""),
-            attrs=(dict(dpart.attrs) if dpart is not None else
-                   _synth_part_attrs(sub, sbones)),
-            attr_items=(list(dpart.attr_items) if dpart is not None else []),
+            attrs=p_attrs,
+            attr_items=p_items,
             part_prefix=(dpart.part_prefix if dpart is not None else b""),
             part_tail=(dpart.part_tail if dpart is not None else b""),
         ))
@@ -1527,6 +1545,50 @@ def _pick_lm(donor_lm: bytes, gltf_lm: bytes, vertex_count: int) -> bytes:
     if len(gltf_lm) == want:
         return gltf_lm
     return (donor_lm or gltf_lm)[:want].ljust(want, b"\x00")
+
+
+def _donor_full_bones(anim: "animmod.AnimFile",
+                      donor: "animmod.AnimFile") -> "animmod.AnimFile":
+    """Give ``anim`` the donor's bone list, donor track included.
+
+    A `.a` is addressed **by index** — a `.scene` names `boneid 11`, the
+    engine maps it to the twelfth record — so a stream that silently drops an
+    animation-only bone shifts every bone behind it and the unit animates with
+    the wrong limbs (the Inquisitor's weapon trail went from `Trail1`/`Trail2`
+    to `RightShoulder`/`RightArm`).  Such a bone carries no skin weights, so a
+    Blender glTF export writes no channel for it; the donor's record is then
+    the only correct source, and it is what the shipped asset animates with.
+
+    Records keep the donor order; a track resampled onto a re-timed action
+    holds the nearest donor sample.  Bones the donor does not know (a rig
+    edited in Blender) are appended, exactly where the rebuild put them.
+    """
+    if donor is None or getattr(donor, "raw", b"") or not donor.bones:
+        return anim
+    count = anim.frame_count
+    by_name = {b.name: b for b in anim.bones}
+    out = []
+    kept = set()
+    for db in donor.bones:
+        rec = by_name.get(db.name)
+        if rec is None:
+            frames = list(db.frames)
+            if count and frames and len(frames) != count:
+                frames = [frames[min(len(frames) - 1,
+                                     (i * len(frames)) // count)]
+                          for i in range(count)]
+            preamble = (db.preamble if len(frames) == len(db.frames)
+                        else animmod._preamble_for(len(frames),
+                                                   len(db.name) + 1,
+                                                   len(db.parent) + 1))
+            rec = animmod.BoneAnim(db.name, db.parent, len(frames), frames,
+                                   preamble)
+        out.append(rec)
+        kept.add(rec.name)
+    out.extend(b for b in anim.bones if b.name not in kept)
+    anim.bones = out
+    anim.bone_count = len(out)
+    return anim
 
 
 def _synth_part_attrs(sub: GltfModel, sbones: List[Bone]) -> Dict[str, str]:
@@ -1946,6 +2008,10 @@ def animation_from_gltf(m: GltfModel, donor: Optional["animmod.AnimFile"] = None
                 rb.parent = dn.parent
                 if len(dn.frames) == len(rb.frames):
                     rb.preamble = dn.preamble
+            # the glTF animates fewer bones than the asset has: an animation-
+            # only bone (a weapon trail) has no channel and no weights, so it
+            # is missing from the rebuild — and every index behind it shifts
+            anim = _donor_full_bones(anim, donor)
 
     # ---- trailing vertex-morph streams ----
     morphs = []  # (name, frames, vc, positions)

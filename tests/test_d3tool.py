@@ -1864,6 +1864,140 @@ def test_battle_check_catches_a_rigid_export_and_a_lost_armature():
         assert text.count("armature was not exported") == 1, text
 
 
+def test_export_keeps_animation_only_bones():
+    """A `.a` is addressed by index, so an animation-only bone the glTF has no
+    channel for (a weapon trail carries no weights) shifts every bone behind
+    it: the Inquisitor's trail went from `Trail1`/`Trail2` to
+    `RightShoulder`/`RightArm` and the effect followed the wrong limbs.  The
+    donor's record is the only correct source for such a bone."""
+    from d3tool import anim as animmod
+    from d3tool import gltf as gltfmod
+    folder = os.path.join(REPO, "Empire", "Inquisitor")
+    retail = animmod.parse_anim(open(os.path.join(
+        folder, "character_empire_inquisitor_baseanims.a"), "rb").read())
+    assert retail.bone_count == 27
+    assert retail.bones[11].name == "Trail1"
+    assert retail.bones[12].name == "Trail2"
+
+    # what a Blender export produced: the same stream minus the two trail
+    # tracks (no weights, so the glTF carried no channel for them)
+    hurt = animmod.AnimFile(bone_count=25, frame_count=retail.frame_count,
+                            header=retail.header,
+                            bones=[b for i, b in enumerate(retail.bones)
+                                   if i not in (11, 12)],
+                            trailing=retail.trailing)
+    assert hurt.bones[11].name == "RightShoulder"
+
+    fixed = gltfmod._donor_full_bones(hurt, retail)
+    assert len(fixed.bones) == 27
+    assert [b.name for b in fixed.bones] == [b.name for b in retail.bones]
+    assert fixed.bones[11].name == "Trail1"
+    assert list(fixed.bones[11].frames) == list(retail.bones[11].frames)
+    assert list(fixed.bones[12].frames) == list(retail.bones[12].frames)
+    # every track the export did carry stays exactly as it was
+    for name in ("Reference", "Hips", "Weapon1", "RightArm"):
+        mine = next(b for b in fixed.bones if b.name == name)
+        was = next(b for b in hurt.bones if b.name == name)
+        assert list(mine.frames) == list(was.frames), name
+
+
+def test_refresh_part_gobjs_restates_the_swapped_part():
+    """A part the export REPLACED keeps the donor's `gobj`, which still names
+    the replaced weapon's texture — that is how a pack ends up shipping a `.t`
+    nothing references while the `.g` names one that is not there."""
+    import copy
+    from d3tool import gfile as gmod
+    from d3tool import scene as scenemod
+
+    folder = os.path.join(REPO, "Empire", "Inquisitor")
+    text = open(os.path.join(folder, "character_empire_inquisitor.scene"),
+                encoding="latin-1", newline="").read()
+    parts = list(gmod.iter_parts(gmod.parse_geometry_file(open(os.path.join(
+        folder, "character_empire_inquisitor.g"), "rb").read())))
+    same, changed = scenemod.refresh_part_gobjs(text, parts)
+    assert changed == [] and same == text          # retail agrees with itself
+
+    knight = gmod.parse_geometry_file(open(os.path.join(
+        REPO, "Empire", "Knight", "character_empire_knight.g"), "rb").read())
+    sword = [p for p in gmod.iter_parts(knight) if p.name.endswith("sword")][0]
+    blk = copy.copy(parts[-1])                     # the mace slot
+    blk.vertices = list(sword.vertices)
+    blk.indices = list(sword.indices)
+    blk.vertex_count = len(sword.vertices)
+    blk.tri_count = len(sword.indices) // 3
+    blk.weights_on_vertex = 1
+    blk.material_diffuse = "weapon_empire_knight_sword_diffuse.tga"
+    blk.attrs = dict(blk.attrs,
+                     material0_diffuse=blk.material_diffuse)
+    out, changed = scenemod.refresh_part_gobjs(text, [parts[0], blk])
+    assert changed == ["weapon_empire_inquisitor"], changed
+    assert 'attr "material0_diffuse" "weapon_empire_knight_sword_diffuse.tga"' in out
+    assert 'attr "material0_triangles_num" "124"' in out
+    assert 'attr "vertexs_weights_num" "136"' in out
+    # the body's block is untouched, and so is every other line
+    assert out.count("material0_diffuse") == text.count("material0_diffuse")
+
+
+def test_lod_sync_replaces_a_weapon_the_export_swapped():
+    """The LOD keeps the weapon the unit shipped with unless the export's
+    part is carried over: the part is already present by name, so nothing is
+    appended and the battlefield draws the old weapon at distance."""
+    import copy
+    import shutil
+    import tempfile
+    from d3tool import cli as climod
+    from d3tool import gfile as gmod
+
+    folder = os.path.join(REPO, "Empire", "Inquisitor")
+    retail = open(os.path.join(folder, "character_empire_inquisitor.g"),
+                  "rb").read()
+    parts = list(gmod.iter_parts(gmod.parse_geometry_file(retail)))
+    prefix = retail[:len(retail) - sum(len(p.raw) for p in parts)]
+    knight = gmod.parse_geometry_file(open(os.path.join(
+        REPO, "Empire", "Knight", "character_empire_knight.g"), "rb").read())
+    sword = [p for p in gmod.iter_parts(knight) if p.name.endswith("sword")][0]
+    blk = copy.copy(parts[-1])
+    blk.vertices = list(sword.vertices)
+    blk.indices = list(sword.indices)
+    items = [(k, "weapon_empire_knight_sword_diffuse.tga"
+              if k == "material0_diffuse" else v)
+             for k, v in blk.attr_items]
+    blk.attr_items = items
+    blk.attrs = dict(items)
+    blk.raw = gmod._part_block(blk)
+
+    with tempfile.TemporaryDirectory() as d:
+        base = "character_empire_inquisitor"
+        open(os.path.join(d, base + ".g"), "wb").write(
+            prefix + parts[0].raw + blk.raw)
+        for ext in ("_lod.g", "_lod.scene"):
+            shutil.copyfile(os.path.join(folder, base + ext),
+                            os.path.join(d, base + ext))
+        before_lod = gmod.parse_geometry_file(open(os.path.join(
+            d, base + "_lod.g"), "rb").read())
+        before_parts = list(gmod.iter_parts(before_lod))
+        assert before_parts[-1].attrs["material0_diffuse"] == \
+            "weapon_empire_inquisitor.tga"              # the shipped mace
+
+        assert climod._lod_sync(d, quiet=True) == 0
+        after = list(gmod.iter_parts(gmod.parse_geometry_file(open(os.path.join(
+            d, base + "_lod.g"), "rb").read())))
+        assert len(after) == len(before_parts)           # replaced, not added
+        weapon = after[-1]
+        assert weapon.name == "lod_weapon_empire_inquisitor"
+        assert len(weapon.vertices) == len(sword.vertices)
+        assert weapon.attrs["material0_diffuse"] == \
+            "weapon_empire_knight_sword_diffuse.tga"
+        assert weapon.attrs["dwParent"] == before_parts[-1].attrs["dwParent"]
+        text = open(os.path.join(d, base + "_lod.scene"),
+                    encoding="latin-1", newline="").read()
+        assert "weapon_empire_knight_sword_diffuse.tga" in text
+        # idempotent
+        assert climod._lod_sync(d, quiet=True) == 0
+        assert open(os.path.join(d, base + "_lod.g"), "rb").read() == \
+            open(os.path.join(d, base + "_lod.g"), "rb").read()
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0
