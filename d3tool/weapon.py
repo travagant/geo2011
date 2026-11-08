@@ -181,13 +181,24 @@ def angle_between(src: Axis, dst: Axis) -> float:
 # --------------------------------------------------------------------------- #
 #  the placement itself
 # --------------------------------------------------------------------------- #
+def perpendicular(axis: Axis) -> Vec3:
+    """Some unit vector perpendicular to ``axis`` (stable for any input)."""
+    a = _unit(axis)
+    pick = [1.0, 0.0, 0.0] if abs(a[0]) < 0.9 else [0.0, 1.0, 0.0]
+    return _unit(_cross(a, pick))
+
+
 def align_matrix(ref_points: Points, ref_grip: Axis,
                  src_points: Points, src_grip: Axis,
-                 roll_deg: float = 0.0) -> Tuple[Mat4, Dict[str, object]]:
+                 roll_deg: float = 0.0, flip: bool = False
+                 ) -> Tuple[Mat4, Dict[str, object]]:
     """Rigid matrix that lays ``src`` onto ``ref`` (grip on grip, axis on axis).
 
     ``roll_deg`` spins the mesh about the reference axis afterwards — the
-    blade's flat face is the one thing the axis cannot decide.
+    blade's flat face is the one thing the axis cannot decide.  ``flip``
+    instead turns the mesh half a circle about a perpendicular, which is what
+    "the blade points the wrong way" needs: a grip in the middle of a weapon
+    (an origin at the crossguard) leaves the axis sign undecided.
     """
     ref_axis = main_axis(ref_points, ref_grip)
     src_axis = main_axis(src_points, src_grip)
@@ -202,6 +213,12 @@ def align_matrix(ref_points: Points, ref_grip: Axis,
         [row[:] for row in IDENTITY]
     mat = mm(mm(translation(ref_grip), rotate),
              translation([-c for c in src_grip]))
+    if flip and info["axis_found"]:
+        turn = mm(mm(translation(ref_grip),
+                     _rotation(perpendicular(rx), math.pi)),
+                  translation([-c for c in ref_grip]))
+        mat = mm(turn, mat)
+        info["flipped"] = True
     if roll_deg and info["axis_found"]:
         spin = mm(mm(translation(ref_grip), _rotation(rx, math.radians(roll_deg))),
                   translation([-c for c in ref_grip]))

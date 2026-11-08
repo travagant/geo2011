@@ -203,10 +203,13 @@ runs six such scenarios, all battle-ready):
   file and out of the model — see `docs/FORMATS.md` ("How many mesh blocks the
   container declares").
 * **A new weapon gets put where the reference weapon is, by one operator.**
-  Pick the reference weapon in the *Disciples III* sidebar (object picker) and
-  press *Place Active Mesh on Reference*: the mesh is rotated about its own
-  grip until its principal axis (a Jacobi fit in `d3tool.weapon`) matches the
-  reference weapon's shaft, then moved so the two grips coincide.  The grip is
+  Pick both meshes in the *Disciples III* sidebar (*Mesh* and *Reference*, two
+  object pickers) and press *Place on Reference*: the mesh is rotated about its
+  own grip until its principal axis (a Jacobi fit in `d3tool.weapon`) matches
+  the reference weapon's shaft, then moved so the two grips coincide.
+  *Flip* turns it half a circle about a perpendicular when the blade ends up
+  pointing the wrong way — the answer to an origin in the middle of a handle,
+  which leaves the axis sign undecided — and *Roll* spins it about the shaft.  The grip is
   the **object origin** — how retail weapons are modelled, and *Set Origin >
   Origin to 3D Cursor* moves it in one step; a mesh with exactly one vertex
   selected uses that vertex instead.  *Roll* spins the blade about that axis, *Same Bone*

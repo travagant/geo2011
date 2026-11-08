@@ -26,7 +26,7 @@ package only builds and reads the Blender scene.
 bl_info = {
     "name": "Disciples III Unit (GM .g/.a/.scene/.ac/.t)",
     "author": "Arena agent / geo2011",
-    "version": (1, 1, 19),
+    "version": (1, 1, 20),
     "blender": (3, 0, 0),
     "location": "File > Import/Export > Disciples III Unit",
     "description": "Import and export Disciples III character units "
@@ -39,8 +39,8 @@ bl_info = {
 import os  # noqa: E402  (kept for the panels)
 
 import bpy  # noqa: E402
-from bpy.props import (FloatProperty, PointerProperty,  # noqa: E402
-                       StringProperty)
+from bpy.props import (BoolProperty, FloatProperty,  # noqa: E402
+                       PointerProperty, StringProperty)
 from bpy.types import Panel  # noqa: E402
 
 from . import (bridge, exporter, importer, preferences,  # noqa: E402
@@ -84,24 +84,33 @@ class D3UNIT_PT_panel(Panel):
         # weapon placement is a plain scene operation: it works on a unit that
         # was imported by this add-on and on a hand-assembled test scene alike
         ob = getattr(context, "active_object", None)
+        scene = context.scene
         box = layout.box()
         box.label(text="Weapon placement", icon="SNAP_ON")
         col = box.column(align=True)
-        col.prop(context.scene, "d3unit_weapon_ref", text="Reference")
-        col.prop(context.scene, "d3unit_weapon_roll", text="Roll")
+        col.prop(scene, "d3unit_weapon_src", text="Mesh")
+        col.prop(scene, "d3unit_weapon_ref", text="Reference")
+        opts = col.row(align=True)
+        opts.prop(scene, "d3unit_weapon_roll", text="Roll")
+        opts.prop(scene, "d3unit_weapon_flip", text="Flip")
+        src = scene.d3unit_weapon_src
+        if src is None and ob is not None and ob.type == "MESH":
+            src = ob
         row = col.row(align=True)
-        row.enabled = ob is not None and ob.type == "MESH"
+        row.enabled = src is not None
         op = row.operator(weapon.D3UNIT_OT_place_weapon.bl_idname,
-                          text="Place Active Mesh on Reference", icon="SNAP_ON")
-        op.roll = context.scene.d3unit_weapon_roll
-        if ob is not None and ob.type == "MESH":
-            col.label(text=f"Active: {ob.name}", icon="MESH_DATA")
-            nested = col.column(align=True)
-            nested.scale_y = 0.8
-            nested.label(text="grip = the object's origin")
-            nested.label(text="(or its one selected vertex)")
+                          text="Place on Reference", icon="SNAP_ON")
+        op.roll = scene.d3unit_weapon_roll
+        op.flip = scene.d3unit_weapon_flip
+        op.source = scene.d3unit_weapon_src.name if scene.d3unit_weapon_src else ""
+        hint = col.column(align=True)
+        hint.scale_y = 0.8
+        if src is not None:
+            hint.label(text=f"Mesh: {src.name}", icon="MESH_DATA")
         else:
-            col.label(text="Select the mesh to place", icon="INFO")
+            hint.label(text="pick the mesh to place", icon="INFO")
+        hint.label(text="grip = the object's origin")
+        hint.label(text="(or its one selected vertex)")
 
         root = unitprops.find_unit_root(context)
         info = unitprops.get_info(root) if root else {}
@@ -154,9 +163,16 @@ def register():
     bpy.types.TOPBAR_MT_file_export.append(_menu_export)
 
     # the weapon-placement panel remembers its reference across re-registers
-    for prop in ("d3unit_weapon_ref", "d3unit_weapon_roll"):
+    for prop in ("d3unit_weapon_src", "d3unit_weapon_ref",
+                 "d3unit_weapon_roll", "d3unit_weapon_flip"):
         if hasattr(bpy.types.Scene, prop):
             delattr(bpy.types.Scene, prop)
+    bpy.types.Scene.d3unit_weapon_src = PointerProperty(
+        type=bpy.types.Object,
+        poll=lambda self, ob: ob.type == "MESH",
+        name="Mesh",
+        description="Mesh to place on the reference weapon (empty = the "
+                    "selected mesh)")
     bpy.types.Scene.d3unit_weapon_ref = PointerProperty(
         type=bpy.types.Object,
         poll=lambda self, ob: ob.type == "MESH",
@@ -167,6 +183,11 @@ def register():
         name="Roll",
         default=0.0,
         description="Extra spin about the reference axis, in degrees")
+    bpy.types.Scene.d3unit_weapon_flip = BoolProperty(
+        name="Flip",
+        default=False,
+        description="Turn the mesh half a circle about a perpendicular — the "
+                    "answer to a blade pointing the wrong way")
 
     # a cheap self-check, visible in the console at start-up
     mod = bridge.load()
@@ -188,7 +209,8 @@ def unregister():
             bpy.utils.unregister_class(cls)
         except (RuntimeError, ValueError):
             pass
-    for prop in ("d3unit_weapon_ref", "d3unit_weapon_roll"):
+    for prop in ("d3unit_weapon_src", "d3unit_weapon_ref",
+                 "d3unit_weapon_roll", "d3unit_weapon_flip"):
         if hasattr(bpy.types.Scene, prop):
             delattr(bpy.types.Scene, prop)
 

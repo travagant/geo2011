@@ -3492,6 +3492,26 @@ def test_weapon_placement_of_retail_parts_is_rigid():
     assert len(moved) == len(src) == 136
 
 
+
+def test_weapon_flip_turns_the_blade_round():
+    """``Flip`` reverses the axis about the grip — a mid-handle origin needs it."""
+    ref, ref_grip, src, src_grip = _weapon_clouds()
+    mat, info = weaponmod.align_matrix(ref, ref_grip, src, src_grip,
+                                       flip=True)
+    assert info.get("flipped") is True
+    moved = weaponmod.place(src, mat)
+    assert weaponmod.angle_between(weaponmod.main_axis(moved, ref_grip),
+                                   weaponmod.main_axis(ref, ref_grip)) > 178.0
+    grip = weaponmod.place([src_grip], mat)[0]
+    assert max(abs(grip[i] - ref_grip[i]) for i in range(3)) < 1e-9
+    assert abs(_dist(src[0], src[-1]) - _dist(moved[0], moved[-1])) < 1e-9
+    # ... and roll + flip compose without moving the grip either
+    mat2, _ = weaponmod.align_matrix(ref, ref_grip, src, src_grip,
+                                     roll_deg=45.0, flip=True)
+    grip2 = weaponmod.place([src_grip], mat2)[0]
+    assert max(abs(grip2[i] - ref_grip[i]) for i in range(3)) < 1e-9
+
+
 if __name__ == "__main__":
     # Keep this at the very end: `main()` collects every module-level
     # `test_*` function, so tests defined below an earlier guard would never

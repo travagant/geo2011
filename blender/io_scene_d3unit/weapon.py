@@ -95,11 +95,23 @@ class D3UNIT_OT_place_weapon(Operator):
                       "its long axis along the reference's shaft")
     bl_options = {"UNDO", "REGISTER"}
 
+    source: StringProperty(
+        name="Mesh",
+        default="",
+        description="Object name of the mesh to place; empty = the panel's "
+                    "Mesh field, then the active mesh",
+    )
     reference: StringProperty(
         name="Reference",
         default="",
         description="Object name of the reference weapon; empty = the panel's "
                     "Reference field, else the only weapon-like mesh",
+    )
+    flip: BoolProperty(
+        name="Flip",
+        default=False,
+        description="Turn the mesh half a circle about a perpendicular — the "
+                    "answer to a blade pointing the wrong way",
     )
     roll: FloatProperty(
         name="Roll",
@@ -114,10 +126,31 @@ class D3UNIT_OT_place_weapon(Operator):
 
     @classmethod
     def poll(cls, context):
+        # the panel's Mesh field allows an armature or nothing to be active
+        if getattr(context.scene, "d3unit_weapon_src", None) is not None:
+            return True
         ob = getattr(context, "active_object", None)
         return ob is not None and ob.type == "MESH"
 
     # -- helpers ---------------------------------------------------------- #
+    def _source(self, context):
+        """The mesh to place: the operator field, the panel field, the active."""
+        if self.source:
+            ob = context.scene.objects.get(self.source)
+            if ob is not None:
+                return ob
+        picked = getattr(context.scene, "d3unit_weapon_src", None)
+        if picked is not None:
+            try:
+                if picked.name in context.scene.objects:
+                    return picked
+            except ReferenceError:      # the object was deleted
+                pass
+        ob = getattr(context, "active_object", None)
+        if ob is not None and ob.type == "MESH":
+            return ob
+        return None
+
     def _reference(self, context, src):
         """The weapon to copy the placement from, or ``None`` (already reported).
 
@@ -190,9 +223,11 @@ class D3UNIT_OT_place_weapon(Operator):
                             "leave Edit Mode first — the selected vertex is "
                             "read from the mesh data")
                 return {"CANCELLED"}
-        src = context.active_object
+        src = self._source(context)
         if src is None or src.type != "MESH":
-            self.report({"ERROR"}, "activate the mesh you want to place")
+            self.report({"ERROR"},
+                        "no mesh to place — pick one in the panel's Mesh "
+                        "field (or select it in the viewport)")
             return {"CANCELLED"}
         ref = self._reference(context, src)
         if ref is None:
@@ -219,7 +254,7 @@ class D3UNIT_OT_place_weapon(Operator):
 
         mat, info = wmod.align_matrix(ref_points, ref_grip,
                                       src_points, src_grip,
-                                      float(self.roll))
+                                      float(self.roll), bool(self.flip))
         if not info.get("axis_found"):
             self.report({"WARNING"},
                         "no long axis could be measured for one of the "
@@ -235,6 +270,7 @@ class D3UNIT_OT_place_weapon(Operator):
         self.report({"INFO"},
                     f"{src.name} onto {ref.name}: axes {info['angle_deg']:.1f}°"
                     f" apart; grips from {src_how}/{ref_how}"
+                    + (", flipped" if self.flip else "")
                     + (f", re-parented to {ref.parent_bone!r}"
                        if moved else "")
                     + (" — armature is posed, set Pose Position: Rest for a "
