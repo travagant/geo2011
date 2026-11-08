@@ -884,6 +884,7 @@ def _battle_readiness_check(out_dir: str, base: str, quiet: bool) -> None:
     """
     try:
         findings: List[str] = []
+        skeleton: List[str] = []          # every bone name the .g declares
         out_g = os.path.join(out_dir, base + ".g")
         if os.path.isfile(out_g):
             g_data = open(out_g, "rb").read()
@@ -936,6 +937,12 @@ def _battle_readiness_check(out_dir: str, base: str, quiet: bool) -> None:
                         findings.append(
                             f"{base}.g part {prt.name}: material0_diffuse "
                             f"'{pmat}' has no {pwant} in the output")
+                # skinning that came out of the round-trip rigid or missing:
+                # the unit folds around one bone (or hangs loose) in game and
+                # nothing in the file looks broken enough to notice
+                findings.extend(weightsmod.skinning_problems(sm_g))
+                for blk in [sm_g] + list(sm_g.parts):
+                    skeleton.extend(b.name for b in (blk.bones or ()))
                 names = [p.name for p in sm_g.parts]
                 if len(set(names)) != len(names):
                     dupes = sorted({n for n in names if names.count(n) > 1})
@@ -985,6 +992,18 @@ def _battle_readiness_check(out_dir: str, base: str, quiet: bool) -> None:
                             f".ac state {st.name}: frames go to "
                             f"{st.frame1} but {fn} has {a.frame_count} "
                             f"(last index {a.frame_count - 1})")
+                    # A stream that carries one track named after the object
+                    # instead of the armature is what a Blender export leaves
+                    # behind when the meshes are not skinned to the armature:
+                    # the unit then stands in its rest pose (or falls apart)
+                    # while the skeleton it belongs to is 20+ bones.
+                    if skeleton and len(a.bones) <= 1:
+                        only = a.bones[0].name if a.bones else "-"
+                        findings.append(
+                            f"{fn}: {len(a.bones)} bone track ({only!r}) for "
+                            f"a {len(set(skeleton))}-bone skeleton — the "
+                            f"armature was not exported, the unit cannot "
+                            f"animate")
                 if st.meshfile:
                     mf = os.path.basename(st.meshfile.replace("\\", "/")
                                           .rsplit("/", 1)[-1])
@@ -1005,6 +1024,9 @@ def _battle_readiness_check(out_dir: str, base: str, quiet: bool) -> None:
                 if not os.path.isfile(os.path.join(out_dir, fn)):
                     findings.append(f"{os.path.basename(sc)} references "
                                     f"{fn}, which was not written")
+        # one line per distinct problem: a unit whose `.ac` names the same
+        # stream in five states must not repeat the finding five times
+        findings = list(dict.fromkeys(findings))
         if findings and not quiet:
             ui.warn("battle-readiness check FAILED — fix before shipping:")
             for f in findings:

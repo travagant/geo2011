@@ -244,6 +244,49 @@ def weight_report(mesh) -> List[Tuple[str, str, str, str]]:
     return rows
 
 
+def skinning_problems(mesh) -> List[str]:
+    """What a `.g` would do in game if its weights are as written.
+
+    Two shapes are always wrong, and both come out of a Blender round-trip
+    that lost the skinning rather than out of the original asset:
+
+    * a block that declares several bones but every vertex follows **one** of
+      them at full weight.  The mesh is rigid — the engine glues all of it to
+      that single bone, so the unit folds into a heap as soon as it animates
+      (the Inquisitor came back with all 3 699 vertices on `RightShoulder`).
+      The add-on's glTF export says ``exported rigid (bound to the nearest
+      bone)`` when the mesh has no vertex groups;
+    * a block whose vertices carry **no** weight while the file has a
+      skeleton: nothing attaches it, so the part is drawn at its stored
+      coordinates or not at all.  A weapon part that lost its `Weapon1` bone
+      is exactly this.
+
+    A legitimately rigid part (a weapon, a single-bone prop) has one bone in
+    its own table and is not reported.
+    """
+    problems: List[str] = []
+    for info in summarise(mesh):
+        if not info.vertex_count or info.influences <= 0:
+            continue                      # morph part: no skinning at all
+        if info.bone_count <= 1:
+            continue                      # rigid by design
+        if info.unweighted == info.vertex_count:
+            problems.append(
+                f"part {info.name}: none of its {info.vertex_count} vertices "
+                f"carries a weight although the file has {info.bone_count} "
+                f"bones — the mesh is not attached to the skeleton")
+            continue
+        if info.bones_used <= 1:
+            bone = next(iter(info.dominant), "?")
+            problems.append(
+                f"part {info.name}: all {info.vertex_count} vertices follow "
+                f"the single bone '{bone}' of the {info.bone_count} in its "
+                f"table — the mesh is rigid, the export lost its skin "
+                f"weights (re-import the unit, check the armature modifier "
+                f"and the vertex groups)")
+    return problems
+
+
 def is_plausible(weights: Sequence[float]) -> bool:
     """Every vertex must sum to ~1 — the engine divides by the sum."""
     return bool(weights) and abs(math.fsum(weights) - 1.0) <= 2 * QUANTUM

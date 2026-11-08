@@ -1802,6 +1802,68 @@ def test_battle_check_reports_a_lod_that_lost_the_added_part():
         assert "_lod.g has 4 mesh part(s)" in text, text
 
 
+def test_battle_check_catches_a_rigid_export_and_a_lost_armature():
+    """The Inquisitor once came back from Blender with all 3 699 body vertices
+    bound to `RightShoulder` at weight 1 and a `.a` holding a single track
+    named after the *object*: the unit folds into a heap around one bone and
+    never animates, while nothing in the files looks structurally wrong.  Both
+    shapes are reported now — a genuine single-bone weapon part is not."""
+    import shutil
+    import tempfile
+    from d3tool import anim as animmod
+    from d3tool import cli as climod
+    from d3tool import gfile as gmod
+    from d3tool import weights as wmod
+
+    retail_g = open(os.path.join(REPO, "Empire", "Inquisitor",
+                                 "character_empire_inquisitor.g"), "rb").read()
+    parsed = gmod.parse_geometry_file(retail_g)
+    assert wmod.skinning_problems(parsed) == []          # retail is clean
+    assert len(wmod.summarise(parsed)[0].dominant) > 1
+
+    # the body block, rewritten the way the broken export wrote it: every
+    # vertex on bone slot 0 with weight 1
+    attrs, _ = gmod.parse_attributes(retail_g)
+    for vertex in parsed.vertices:
+        vertex.stored_weights = (1.0,)
+        vertex.bones = (0, 0)
+    parsed.weights_on_vertex = 1
+    rigid = gmod.write_geometry_file(parsed, attrs)
+
+    ridden = wmod.skinning_problems(gmod.parse_geometry_file(rigid))
+    assert len(ridden) == 1, ridden
+    assert "'RightShoulder'" in ridden[0], ridden
+    assert "rigid" in ridden[0], ridden
+    # the sword block is rigid by design (one bone in its own table): it must
+    # not be reported, or every exported weapon would look like a defect
+    assert all("weapon_empire_inquisitor" not in p for p in ridden), ridden
+
+    with tempfile.TemporaryDirectory() as d:
+        base = "character_empire_inquisitor"
+        for ext in (".scene", ".ac", "_lod.scene", "_lod.g"):
+            shutil.copyfile(os.path.join(REPO, "Empire", "Inquisitor", base + ext),
+                            os.path.join(d, base + ext))
+        open(os.path.join(d, base + ".g"), "wb").write(rigid)
+        # one track named after the object, 301 frames: what an export that
+        # skipped the armature writes
+        broken = animmod.build_anim([("empire_inquisitor", "Scene Root",
+                                      [(0.0,) * 7] * 301)], 301)
+        broken.raw = b""
+        open(os.path.join(d, base + "_baseanims.a"), "wb").write(
+            animmod.write_anim(broken))
+        seen = []
+        real = climod.ui.warn
+        climod.ui.warn = lambda msg="": seen.append(str(msg))
+        try:
+            climod._battle_readiness_check(d, base, False)
+        finally:
+            climod.ui.warn = real
+        text = "\n".join(seen)
+        assert "the mesh is rigid" in text, text
+        assert "1 bone track ('empire_inquisitor')" in text, text
+        assert text.count("armature was not exported") == 1, text
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0
