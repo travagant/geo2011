@@ -1643,6 +1643,70 @@ def test_added_part_inherits_the_files_parent_node():
     assert gfile.normalize_part_identity(again, parent) == []
 
 
+def test_no_corpus_part_declares_more_slots_than_bones():
+    """The invariant the Angel's sword broke: a rigid part has no slots.
+
+    A part stores one weight lane per bone it references.  The corpus never
+    declares more influence slots than it has bones, and a single-bone part
+    declares none at all (`weights_on_vertex 1`, the plain 40-byte record) —
+    that is the shape of every retail weapon.  The export wrote the sword as
+    `weights_on_vertex 2` with `bones_num 1`, a combination that occurs zero
+    times in 376 sub-meshes, and the engine drew it without skinning it: the
+    sword hung in mid-air at its stored coordinates.
+    """
+    single = checked = 0
+    for root in ("Empire", "Neutrals"):
+        for path in sorted(glob.glob(os.path.join(REPO, root, "*", "*.g"))):
+            mesh = gfile.parse_geometry_file(open(path, "rb").read())
+            if mesh.parse_error:
+                continue
+            for part in gfile.iter_parts(mesh):
+                if part.morph:
+                    continue
+                w = part.weights_on_vertex
+                bones = len(part.bones)
+                checked += 1
+                assert w <= max(bones, 1), (path, part.name, w, bones)
+                if bones == 1:
+                    assert w == 1, (path, part.name, w)
+                    single += 1
+    assert checked > 300 and single > 100, (checked, single)
+
+
+def test_a_single_bone_part_is_written_without_influence_slots():
+    """`weights_on_vertex 2` with one bone is rewritten to the rigid record."""
+    from d3tool.model import Bone, MeshPart, Vertex
+    v = Vertex((0.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0),
+               0xFFFFFFFF, (1.0,), (0, 0))
+    eye = (1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,
+           0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0)
+    bone = Bone("Bip01 R Hand", eye)
+    part = MeshPart(
+        name="empire_knight_sword", vertex_count=1, tri_count=1,
+        vertices=[v, v, v], indices=[0, 1, 2], bones=[bone],
+        weights_on_vertex=2,
+        attr_items=[("dwNode", "1"), ("dwParent", "2"), ("name",
+                    "empire_knight_sword"), ("groupname", "Scene Root"),
+                    ("materials_num", "1"),
+                    ("material0_diffuse", "x.tga"),
+                    ("material0_triangles_num", "1"),
+                    ("new_vertex_weights_format", "1"),
+                    ("vertexs_weights_num", "3"),
+                    ("weights_on_vertex", "2"), ("bones_num", "1")],
+        attrs=None, vertex_magic=b"\x0b\x6e\xd5\x1c",
+    )
+    part.attrs = dict(part.attr_items)
+    block = gfile._part_block(part)
+    parsed = (gfile._parse_compound_parts(block)[0] or [None])[0]
+    assert parsed is not None, block[:64]
+    assert parsed.attrs["weights_on_vertex"] == "1", parsed.attrs
+    assert parsed.weights_on_vertex == 1
+    assert len(parsed.bones) == 1 and parsed.bones[0].name == "Bip01 R Hand"
+    # the vertex stride is the rigid one: the data is 3 * 40 bytes behind the
+    # attribute block, nothing else
+    assert gfile.vertex_stride(1)[2] == 40
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0

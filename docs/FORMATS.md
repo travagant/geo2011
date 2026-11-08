@@ -237,6 +237,23 @@ written that way (`empire_knight_sword`, `paladin_sword`, ... — 111 parts over
 the corpus), so a weapon that arrives as a two-influence skin is not shaped
 like anything the engine ships.
 
+The corpus is absolute about this: **no part declares more influence slots
+than it has bones**, and a part with `bones_num 1` always declares `w = 1`
+(148 parts).  `(2, 1)` occurs zero times in 376 sub-meshes — the export that
+wrote the Angel's sword that way got a part the engine does not skin, so it
+was drawn at its stored coordinates, hanging in mid-air beside the model
+instead of following the bone.  `gfile.record_width` states the rule and both
+writers apply it (`_part_block`, `write_geometry_file`), and the reverse
+export clamps an added mesh to `min(w, bones)`.
+
+Binding a rigid part to a bone the body block also skins to is ordinary
+retail practice, not a mistake: `empire_defenderoffaith_head` hangs off
+`Head`, `neutrals_dwarf_hair` off `Head`, `weapon_empire_hierophant` off
+`Weapon1` — all `w = 1`, all with their vertices in model space at the bone's
+bind origin and the bone descriptor holding that bone's inverse bind.  That is
+exactly the shape the Angel's sword needs, which is why the record width was
+the whole of its defect.
+
 The leading 4-byte magic is constant *within* a file but differs between files;
 it must be preserved for round-trips.
 

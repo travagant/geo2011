@@ -897,7 +897,12 @@ def _extra_mesh_to_part(sub: GltfModel, m: GltfModel, Q, donor_of_bone,
                             sub.weights_on_vertex or 2)
         verts, bones, _app = _remap_slot_vertices(
             sub, holder, Q, donor_of_bone, frame_convert)
-        w = max(2, min(4, _mesh_lanes(sub) or sub.weights_on_vertex or 2))
+        # a part can never declare more influence slots than it has bones:
+        # the corpus has no such part, and the engine draws one that does
+        # without skinning it at all.  A single-bone mesh is a *rigid* part
+        # (the 40-byte record every retail weapon uses).
+        w = max(1, min(4, _mesh_lanes(sub) or sub.weights_on_vertex or 2))
+        w = 1 if len(bones) == 1 else min(w, len(bones))
         attrs = _synth_part_attrs(sub, bones)
         if not attrs:
             attrs = _synth_part_attrs(
@@ -986,7 +991,7 @@ def _extra_mesh_to_part(sub: GltfModel, m: GltfModel, Q, donor_of_bone,
             GltfModel(mesh_name=name, material_diffuse=fallback_diffuse),
             [bone])
     if attrs:
-        attrs["weights_on_vertex"] = "2"
+        attrs["weights_on_vertex"] = "1"
         attrs["vertexs_weights_num"] = str(len(verts))
         attrs["bones_num"] = "1"
     part = MeshPart(
@@ -996,7 +1001,7 @@ def _extra_mesh_to_part(sub: GltfModel, m: GltfModel, Q, donor_of_bone,
         vertices=verts,
         indices=list(sub.indices),
         bones=[bone],
-        weights_on_vertex=2,
+        weights_on_vertex=1,
         morph=False,
         material_diffuse=(sub.material_diffuse or fallback_diffuse),
         attrs=attrs,

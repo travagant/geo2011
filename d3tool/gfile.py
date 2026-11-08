@@ -506,6 +506,25 @@ def _eff_width(declared: int, bone_count: int) -> int:
     return 2 if declared == 1 and bone_count > 1 else declared
 
 
+def record_width(declared: int, bone_count: int) -> int:
+    """Record width the engine derives from a part's declarations.
+
+    Two corpus rules, both of them absolute (376 sub-meshes, 141 files):
+
+    * a **single-bone part carries no influence data at all** — the record is
+      the plain 40-byte one and the engine attaches the whole mesh to that
+      bone.  Every retail weapon is this shape (``weights_on_vertex 1``,
+      ``bones_num 1``, 148 parts); no corpus part declares more slots than it
+      has bones, and ``(2, 1)`` never occurs.
+    * a part that references **several** bones while declaring one still
+      stores the two-influence record (``lod_empire_golem``: ``w=1`` with 18
+      bones) — see :func:`vertex_stride`.
+    """
+    if bone_count <= 1:
+        return 1 if bone_count == 1 else max(declared, 0)
+    return 2 if declared == 1 else declared
+
+
 def _fit_lm(lm: bytes, n: int) -> bytes:
     """Clamp a light-map UV block to exactly ``n`` bytes (one pair per vertex).
 
@@ -815,6 +834,11 @@ def _part_block(part: MeshPart) -> bytes:
     w_rec = part.weights_on_vertex
     if w_rec == 1 and len(part.bones) > 1:
         w_rec = 2
+    if len(part.bones) == 1:
+        # a single bone means a rigid, influence-free record: the engine
+        # attaches the mesh to that bone, and a part that declares slots it
+        # cannot fill is drawn unskinned (the sword hung in mid-air)
+        w_rec = 1
 
     prefix = part.part_prefix
     if prefix and len(prefix) >= 28 and struct.unpack_from("<I", prefix, 0)[0] == 2:
@@ -858,7 +882,9 @@ def _part_block(part: MeshPart) -> bytes:
     declared = attrs.get("weights_on_vertex")
     if declared is not None and \
             _eff_width(int(declared), len(part.bones)) != w_rec:
-        set_count("weights_on_vertex", str(part.weights_on_vertex))
+        set_count("weights_on_vertex",
+                  str(w_rec if len(part.bones) == 1
+                      else part.weights_on_vertex))
 
     items = list(part.attr_items)
     if items and not part.morph and "new_vertex_weights_format" not in attrs:
@@ -927,11 +953,12 @@ def write_geometry_file(mesh: SkinnedMesh, attrs: Dict[str, str]) -> bytes:
         # two-influence record), otherwise announce what is really there — a
         # donor may say 3 while the rebuilt mesh only carries one
         declared = attrs.get("weights_on_vertex")
+        single = len(mesh.bones) == 1
+        want = 1 if single else (2 if w == 1 and len(mesh.bones) > 1 else w)
         if declared is None:
-            attrs["weights_on_vertex"] = str(w)
-        elif _eff_width(int(declared), len(mesh.bones)) != \
-                (2 if w == 1 and len(mesh.bones) > 1 else w):
-            attrs["weights_on_vertex"] = str(w)
+            attrs["weights_on_vertex"] = str(want)
+        elif _eff_width(int(declared), len(mesh.bones)) != want:
+            attrs["weights_on_vertex"] = str(want)
     set_attr("material0_triangles_num", str(tc))
     attrs.setdefault("name", mesh.name)
     attrs.setdefault("groupname", "Scene Root")
@@ -975,6 +1002,8 @@ def write_geometry_file(mesh: SkinnedMesh, attrs: Dict[str, str]) -> bytes:
     # two-influence record (verified on the corpus: lod_empire_golem is w=1
     # with 18 bones) — every reader derives the stride the same way.
     w_rec = 2 if w == 1 and len(mesh.bones) > 1 else w
+    if len(mesh.bones) == 1:
+        w_rec = 1                     # rigid: see `record_width`
     if mesh.morph:
         # a morph base mesh carries no influence slots: 40-byte records of
         # magic + pos + normal + diffuse + uv (the shapes live in the
