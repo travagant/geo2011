@@ -1998,6 +1998,93 @@ def test_lod_sync_replaces_a_weapon_the_export_swapped():
             open(os.path.join(d, base + "_lod.g"), "rb").read()
 
 
+def test_lod_sync_swaps_a_replaced_part_that_keeps_the_old_material_name():
+    """A sword dropped into the mace slot is exported under the *part's* own
+    material name — `weapon_empire_inquisitor.tga`, exactly what the shipped
+    mace carries — so comparing materials left the LOD drawing the mace while
+    the main mesh drew the sword.  The LOD's own copy of a part is the same
+    shape at lower detail, which is what the swap looks at now."""
+    import copy
+    import shutil
+    import tempfile
+    from d3tool import cli as climod
+    from d3tool import gfile as gmod
+
+    folder = os.path.join(REPO, "Empire", "Inquisitor")
+    retail = open(os.path.join(folder, "character_empire_inquisitor.g"),
+                  "rb").read()
+    parts = list(gmod.iter_parts(gmod.parse_geometry_file(retail)))
+    prefix = retail[:len(retail) - sum(len(p.raw) for p in parts)]
+    knight = gmod.parse_geometry_file(open(os.path.join(
+        REPO, "Empire", "Knight", "character_empire_knight.g"), "rb").read())
+    sword = [p for p in gmod.iter_parts(knight) if p.name.endswith("sword")][0]
+    blk = copy.copy(parts[-1])
+    blk.vertices = list(sword.vertices)         # 0.26 long, the mace is 1.96
+    blk.indices = list(sword.indices)
+    blk.raw = gmod._part_block(blk)            # material name left untouched
+    assert blk.attrs["material0_diffuse"] == "weapon_empire_inquisitor.tga"
+
+    with tempfile.TemporaryDirectory() as d:
+        base = "character_empire_inquisitor"
+        open(os.path.join(d, base + ".g"), "wb").write(
+            prefix + parts[0].raw + blk.raw)
+        for ext in ("_lod.g", "_lod.scene"):
+            shutil.copyfile(os.path.join(folder, base + ext),
+                            os.path.join(d, base + ext))
+        lod_path = os.path.join(d, base + "_lod.g")
+        before = open(lod_path, "rb").read()
+        before_parts = list(gmod.iter_parts(gmod.parse_geometry_file(before)))
+        assert before_parts[-1].attrs["material0_diffuse"] == \
+            "weapon_empire_inquisitor.tga"
+        assert len(before_parts[-1].vertices) != len(sword.vertices)
+
+        assert climod._lod_sync(d, quiet=True) == 0
+        after = open(lod_path, "rb").read()
+        after_parts = list(gmod.iter_parts(gmod.parse_geometry_file(after)))
+        assert len(after_parts) == len(before_parts)        # replaced
+        weapon = after_parts[-1]
+        assert weapon.name == "lod_weapon_empire_inquisitor"
+        assert len(weapon.vertices) == len(sword.vertices)
+        # idempotent
+        assert climod._lod_sync(d, quiet=True) == 0
+        assert open(lod_path, "rb").read() == after
+
+        # ... and the retailer's own LOD pair is left alone: same shape,
+        # fewer vertices is the decimation, not a swap
+        for ext in (".g", "_lod.g", "_lod.scene"):
+            shutil.copyfile(os.path.join(folder, base + ext),
+                            os.path.join(d, base + ext))
+        retail_before = open(lod_path, "rb").read()
+        assert climod._lod_sync(d, quiet=True) == 0
+        assert open(lod_path, "rb").read() == retail_before
+
+
+def test_export_reports_a_part_that_is_out_of_scale_with_the_donor():
+    """A `.g` carries no transform, so a part scaled in Blender exports the
+    way it looks: the Inquisitor's borrowed sword came out 1.9x the Knight's
+    and half a hand off the grip while every byte of the file looked sane."""
+    from d3tool import gfile as gmod
+    from d3tool import parts as pmod
+
+    folder = os.path.join(REPO, "Empire", "Inquisitor")
+    retail = open(os.path.join(folder, "character_empire_inquisitor.g"),
+                  "rb").read()
+    donor = gmod.parse_geometry_file(retail)
+    mine = gmod.parse_geometry_file(retail)
+    assert pmod.donor_mismatches(mine, donor) == []
+
+    weapon = [p for p in gmod.iter_parts(mine)
+              if p.name.startswith("weapon")][0]
+    for v in weapon.vertices:
+        v.position = tuple(c * 1.8 for c in v.position)
+    x, y, z = weapon.vertices[0].position
+    weapon.vertices[0].position = (x, y, z + 0.6)  # and off the grip
+    text = "\n".join(pmod.donor_mismatches(mine, donor))
+    assert "1.80x the donor's" in text, text
+    assert "Apply > Scale" in text, text
+    assert "sits" in text and "along" in text, text
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0

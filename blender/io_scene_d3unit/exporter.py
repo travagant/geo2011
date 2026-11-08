@@ -141,6 +141,17 @@ def validate_unit(arm, meshes, context=None):
                          f"slots; a .g part carries one material — only the "
                          f"first ({ob.material_slots[0].name or 'empty'}) is "
                          f"exported")
+        # `.g` carries no transform: whatever the object's scale is, the
+        # engine draws the part that many times bigger.  Borrowed geometry
+        # keeps its own scale (a Knight sword sits at 1.802 in an Inquisitor
+        # scene), so say it here instead of on the battlefield.
+        sc = tuple(ob.scale)
+        if any(abs(c - 1.0) > 1e-3 for c in sc):
+            warns.append(
+                f"'{ob.name}' has a scale of "
+                f"{sc[0]:.3f}, {sc[1]:.3f}, {sc[2]:.3f} — a .g stores raw "
+                f"mesh data, so the part is exported that many times bigger. "
+                f"Apply it (Object > Apply > Scale) before exporting")
         elif not ob.material_slots or ob.material_slots[0].material is None:
             warns.append(f"'{ob.name}' has no material — its part will reuse "
                          f"the unit's main texture")

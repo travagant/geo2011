@@ -41,6 +41,7 @@ from . import anim as animmod
 from . import gfile
 from . import gltf as gltfmod
 from . import gltf_out as gltfout
+from . import parts as partsmod
 from . import scene as scenemod
 from . import texture as texmod
 from . import ui as ui
@@ -680,6 +681,18 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
             ui.warn(f"{base}.g: {line} — the engine will crash loading it")
     except Exception:  # noqa: BLE001 - the re-read is a diagnostic only
         written = None
+
+    # What the export wrote about every part's size and placement, against the
+    # donor the game ships.  A `.g` carries no transform, so a part that was
+    # scaled/moved in Blender without applying the transform exports the way it
+    # looks — 1.8x too big, a hand's width off the grip — and nothing in the
+    # file looks wrong.
+    if written is not None and donor is not None:
+        try:
+            for line in partsmod.donor_mismatches(written, donor):
+                ui.warn(f"{base}.g: {line}")
+        except Exception as exc:  # noqa: BLE001 - never fail an export over it
+            ui.warn(f"{base}.g: not compared with the donor ({exc})")
 
     # scene (reuse the original if present to keep particle emitters)
     out_scene = os.path.join(out_dir, base + ".scene")
@@ -2148,11 +2161,18 @@ def _lod_sync(unit_dir: str, out_dir: Optional[str] = None,
             mp = main_by.get(base_name)
             if mp is None or len(lp.bones or ()) != 1 or len(mp.bones or ()) != 1:
                 continue
-            # a swapped part comes from a different model, so it brings its
-            # own texture; the same texture with a lower vertex count is the
-            # LOD's own decimated copy of the part and must stay
-            if ((lp.attrs or {}).get("material0_diffuse")
-                    == (mp.attrs or {}).get("material0_diffuse")):
+            # The LOD's own copy of a part is the SAME shape at lower detail,
+            # so its bounding box survives decimation.  A part the export
+            # replaced comes from another model and therefore another shape —
+            # and it does not have to bring another *texture*: a sword dropped
+            # into the mace's slot is exported under the mace's material name
+            # (`weapon_empire_inquisitor.tga` comes from the part, not from the
+            # file it was modelled in), so comparing materials missed exactly
+            # the case this branch exists for.
+            lod_dims, main_dims = partsmod.dimensions(lp), partsmod.dimensions(mp)
+            if max(main_dims) > 0 and max(lod_dims) > 0 and all(
+                    abs(lod_dims[k] - main_dims[k]) <= 0.10 * max(
+                        main_dims[k], 1e-6) for k in range(3)):
                 continue
             swaps.append((i, lp, mp))
         if swaps:
