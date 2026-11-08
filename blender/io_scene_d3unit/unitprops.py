@@ -39,6 +39,142 @@ OWNER_PROP = "d3unit_owner"
 VERSION = 1
 
 
+#: a material named after the atlas it wants, e.g. ``weapon_x_diffuse``
+_ATLAS_HINTS = ("_diffuse", "_lightmap", "_specular")
+
+
+def clean_atlas_name(name: str) -> str:
+    """``weapon_x_diffuse.tga`` for any spelling of a unit texture, else "".
+
+    Blender keeps an imported atlas as ``x.dds.png`` and an artist may type
+    ``x.t``; the `.g` understands only ``<stem>.tga``.  Names that are not unit
+    atlases at all — ``material0``, ``Material.001``, ``Image`` — come back
+    empty, so a material merely *called* something is never mistaken for a
+    texture.
+    """
+    from . import bridge
+    raw = str(name or "").strip().replace("\\", "/")
+    if not raw:
+        return ""
+    raw = os.path.basename(raw)
+    try:
+        stem = bridge.module("texture").clean_stem(raw)
+    except Exception:  # noqa: BLE001 - a fallback is better than a crash
+        stem = os.path.splitext(raw)[0]
+    low = stem.lower()
+    if not stem or low.startswith("material"):
+        return ""
+    if not (any(hint in low for hint in _ATLAS_HINTS)
+            or low.startswith(("weapon_", "character_", "armor_", "armour_",
+                               "creature_", "tower_", "decoration_"))):
+        return ""
+    return stem + ".tga"
+
+
+def _feeds_base_colour(tree, node) -> bool:
+    """True when an image node feeds the material's colour, not its normal map."""
+    try:
+        links = tree.links
+    except AttributeError:
+        return False
+    for link in links:
+        try:
+            if link.from_node is not node:
+                continue
+            socket = str(getattr(link.to_socket, "name", "")).lower()
+        except AttributeError:
+            continue
+        if socket in ("base color", "color", "diffuse"):
+            return True
+    return False
+
+
+def material_texture_name(ob) -> str:
+    """The atlas the object's own material points at, ``""`` when it names none.
+
+    Re-texturing a part in Blender means giving it a material with the image —
+    the natural thing to do — but until 1.1.33 that only reached the `.g` when
+    the image arrived in the glTF as a file URI.  A *packed* image has none, so
+    the part exported with the donor's atlas while the report said it had "no
+    texture name of its own": the material was right there, naming the atlas.
+    """
+    guessed = ""
+    for slot in (getattr(ob, "material_slots", ()) or ()):
+        mat = getattr(slot, "material", None)
+        if mat is None:
+            continue
+        tree = None
+        try:
+            if getattr(mat, "use_nodes", False):
+                tree = mat.node_tree
+        except AttributeError:
+            tree = None
+        for node in (getattr(tree, "nodes", ()) or ()):
+            if getattr(node, "type", "") != "TEX_IMAGE":
+                continue
+            image = getattr(node, "image", None)
+            if image is None:
+                continue
+            name = clean_atlas_name(getattr(image, "filepath", "")
+                                    or getattr(image, "name", ""))
+            if not name:
+                continue
+            if _feeds_base_colour(tree, node):
+                return name
+            guessed = guessed or name
+        if not guessed:
+            guessed = clean_atlas_name(getattr(mat, "name", ""))
+    return guessed
+
+
+def normalise_material_names(meshes) -> list:
+    """Name a unit's materials ``material0``, ``material1``, … in part order.
+
+    Blender keeps datablock names unique, so a unit whose parts each carry
+    ``material0`` ends up with ``material0``, ``material0.001``,
+    ``material0.002`` — names the engine never uses, and the artist can no
+    longer tell the weapon's material from the body's.  Numbering the whole
+    unit once (part order, then slot order) gives the mapping the `.g` uses:
+    the body is ``material0``, the sword ``material1``.
+
+    Returns ``[(object name, [material name per slot]), …]`` for the report.
+    """
+    seen: Dict[int, str] = {}
+    planned = []
+    rows = []
+    for ob in (meshes or ()):
+        row = []
+        for slot in (getattr(ob, "material_slots", ()) or ()):
+            mat = getattr(slot, "material", None)
+            if mat is None:
+                row.append("")
+                continue
+            try:
+                key = mat.as_pointer()
+            except AttributeError:
+                key = id(mat)
+            if key not in seen:
+                seen[key] = "material%d" % len(seen)
+                planned.append((mat, seen[key]))
+            row.append(seen[key])
+        rows.append((getattr(ob, "name", ""), row))
+    if not planned:
+        return rows
+    # two passes: renaming onto a name another datablock still holds would get
+    # it a ".001" suffix — which is the thing being removed here
+    for i, pair in enumerate(planned):
+        try:
+            pair[0].name = "_d3unit_tmp_%d" % i
+        except Exception:  # noqa: BLE001
+            pass
+    for mat, name in planned:
+        try:
+            mat.name = name
+        except Exception:  # noqa: BLE001
+            pass
+    return rows
+
+
 def find_armature(context=None, prefer=None):
     """The armature object that owns the unit in this scene, if any.
 

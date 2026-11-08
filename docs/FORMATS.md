@@ -476,6 +476,19 @@ and `find_texture_file` prefers a block-compressed copy when a folder holds
 several files with one stem (an exact `<stem>.t` still wins: that is the
 shipped file).
 
+**Materials are numbered per part, in slot order.**  Every shipped part has
+exactly one material (`materials_num: 1`, `material0_diffuse`,
+`material0_triangles_num`); a part that really carries two ranges has
+`material0_*` and `material1_*` and the export rewrites both, each from its own
+primitive's atlas.  In Blender the numbering runs once across the unit in part
+order, so the body is `material0` and the weapon `material1` — without it
+Blender's own uniqueness rule hands out `material0`, `material0.001`,
+`material0.002`, names the engine never sees.  A part that names no texture of
+its own takes the atlas off the material it wears (an image node, or a material
+named after the atlas); a *packed* image never reaches the glTF as a URI, which
+is why reading the name off the material itself is what makes "assign the
+sword's atlas to the sword" work.
+
 **Whose name wins.**  Two rules, and the second one was wrong for a long
 time: a Blender re-save's part takes its texture from the *mesh*, not from the
 donor slot it replaced (`slot.material_diffuse or sub.material_diffuse` pinned

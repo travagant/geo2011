@@ -26,7 +26,7 @@ package only builds and reads the Blender scene.
 bl_info = {
     "name": "Disciples III Unit (GM .g/.a/.scene/.ac/.t)",
     "author": "Arena agent / geo2011",
-    "version": (1, 1, 32),
+    "version": (1, 1, 33),
     "blender": (3, 0, 0),
     "location": "File > Import/Export > Disciples III Unit",
     "description": "Import and export Disciples III character units "
@@ -244,16 +244,36 @@ def _draw_texture_box(layout, context, mesh) -> None:
         row.label(text="(not set)")
     op = row.operator("d3unit.name_texture", text="", icon="GREASEPENCIL")
     op.value = str(mesh.get(unitprops.DIFFUSE_PROP) or "")
+    tb.operator("d3unit.number_materials",
+                text="Number the materials: material0, material1, …")
     hint = tb.column(align=True)
     hint.scale_y = 0.8
     if not own:
-        inherited = inherited_texture(context, mesh)
-        if inherited:
-            hint.label(text="export keeps: " + os.path.basename(inherited),
-                       icon="INFO")
-            hint.label(text="set it above to change the atlas")
+        # the material on the part usually knows the atlas already; a packed
+        # image carries no file URI into the glTF, so the export has to read
+        # the name off the material itself (`unitprops.material_texture_name`)
+        from_material = ""
+        try:
+            from_material = unitprops.material_texture_name(mesh)
+        except Exception:  # noqa: BLE001 - a panel must never raise
+            from_material = ""
+        if from_material:
+            hint.label(text="from the material: " + os.path.basename(from_material),
+                       icon="CHECKMARK")
+            hint.label(text="the export writes this name")
         else:
-            hint.label(text="export keeps the material's texture", icon="INFO")
+            inherited = inherited_texture(context, mesh)
+            if inherited:
+                hint.label(text="export keeps: " + os.path.basename(inherited),
+                           icon="INFO")
+                hint.label(text="set it above to change the atlas")
+            else:
+                hint.label(text="export keeps the material's texture", icon="INFO")
+        _mats = [getattr(getattr(sl, "material", None), "name", "")
+                 for sl in (getattr(mesh, "material_slots", ()) or ())]
+        _mats = [m for m in _mats if m]
+        if _mats:
+            hint.label(text="materials: " + ", ".join(_mats), icon="MATERIAL")
         return
     _name, _path = find_part_texture(context, mesh)
     row2 = tb.row(align=True)
@@ -275,6 +295,33 @@ def _draw_texture_box(layout, context, mesh) -> None:
                    icon="ERROR")
     else:
         hint.label(text="no texture named yet", icon="INFO")
+
+
+class D3UNIT_OT_number_materials(bpy.types.Operator):
+    """Renumber the unit's materials material0, material1, … in part order"""
+
+    bl_idname = "d3unit.number_materials"
+    bl_label = "Number the Materials"
+    bl_description = ("Blender hands out material0, material0.001, material0.002 "
+                      "for the parts of one unit; the .g numbers them "
+                      "material0, material1, … per part, in slot order")
+    bl_options = {"REGISTER", "UNDO"}
+
+    def execute(self, context):
+        arm = unitprops.find_unit_root(context)
+        meshes = [m for m in (unitprops.unit_meshes(arm) if arm else [])
+                  if m.type == "MESH"]
+        if not meshes:
+            ob = getattr(context, "object", None)
+            meshes = [ob] if ob is not None and ob.type == "MESH" else []
+        if not meshes:
+            self.report({"ERROR"}, "no unit mesh in this scene")
+            return {"CANCELLED"}
+        rows = unitprops.normalise_material_names(meshes)
+        summary = "; ".join(f"{name}: {', '.join(slots) or '(none)'}"
+                            for name, slots in rows)
+        self.report({"INFO"}, summary or "no materials to number")
+        return {"FINISHED"}
 
 
 class D3UNIT_OT_open_log(bpy.types.Operator):
@@ -356,6 +403,7 @@ CLASSES = (
     D3UNIT_OT_name_texture,
     D3UNIT_OT_apply_texture,
     D3UNIT_OT_open_log,
+    D3UNIT_OT_number_materials,
 )
 
 

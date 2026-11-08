@@ -160,8 +160,8 @@ def _extras_diffuse(gltf, mesh_json) -> str:
     return ""
 
 
-def _patch_material(attrs, items, mat, donor_name=""):
-    """Point a part's attribute block at the texture it really wears.
+def _patch_material(attrs, items, mat, donor_name="", per_slot=None):
+    """Point a part's attribute block at the textures it really wears.
 
     The block is written from ``items`` (the donor's ordered ``(key, value)``
     list) — ``attrs`` only drives the counts — so setting
@@ -171,27 +171,72 @@ def _patch_material(attrs, items, mat, donor_name=""):
     Inquisitor's mace slot kept ``material0_diffuse`` = the mace's atlas for
     exactly this reason.
 
+    ``per_slot`` is ``{primitive index: atlas}`` of a part that carries
+    several materials (a body and a weapon sharing one mesh are ``material0``
+    and ``material1`` of one block).  Only keys the block already has are
+    rewritten there: a donor part with one material has no ``material1_*``
+    attributes to point anywhere, and inventing them would leave the triangle
+    ranges of the two materials disagreeing.
+
     Returns ``(attrs, items, written_name)``; ``written_name`` is ``""`` when
     the part already named that texture (the donor's own bytes are left alone).
     """
-    if not mat:
-        return attrs, items, ""
-    want = texmod.clean_stem(mat) + ".tga"
-    if donor_name and texmod.clean_stem(donor_name).lower() == \
-            texmod.clean_stem(want).lower():
+    if not mat and not per_slot:
         return attrs, items, ""
     attrs = dict(attrs)
-    attrs["material0_diffuse"] = want
-    patched, new_items = False, []
-    for key, value in items:
-        if key == "material0_diffuse":
-            new_items.append((key, want))
-            patched = True
+    out = list(items)
+    present = {k for k, _ in out}
+    written = ""
+
+    def set_key(key, value):
+        nonlocal out
+        if key in present:
+            out = [(k, value if k == key else v) for k, v in out]
         else:
-            new_items.append((key, value))
-    if not patched and new_items:
-        new_items.append(("material0_diffuse", want))
-    return attrs, new_items, want
+            out.append((key, value))
+        attrs[key] = value
+
+    if mat:
+        want = texmod.clean_stem(mat) + ".tga"
+        # "written" means the file now names an atlas it did not name before:
+        # that is what the export report quotes, so an unchanged name must not
+        # be reported as a change (nor re-serialised, which is byte-identical
+        # but reads as an edit in a diff)
+        have = dict(out).get("material0_diffuse") or attrs.get(
+            "material0_diffuse", "")
+        if texmod.clean_stem(have).lower() != texmod.clean_stem(want).lower():
+            set_key("material0_diffuse", want)
+            written = want
+    for index, name in sorted((per_slot or {}).items()):
+        if index == 0 or not name:
+            continue
+        key = f"material{index}_diffuse"
+        if key in present:
+            set_key(key, texmod.clean_stem(name) + ".tga")
+    return attrs, out, written
+
+
+def _per_slot_textures(gltf, mesh_json) -> Dict[int, str]:
+    """``{primitive index: atlas name}`` of a mesh that carries several.
+
+    The glTF exporter writes one primitive per material slot, so a part whose
+    body and weapon share a mesh reaches the file as ``material0`` and
+    ``material1`` of one attribute block.  `_mesh_material_maps` reads the
+    first primitive only, which is right for the one-material parts the shipped
+    units use and used to drop the second atlas of a merged one without a word.
+    """
+    out: Dict[int, str] = {}
+    mats = gltf.get("materials", [])
+    for index, prim in enumerate(mesh_json.get("primitives") or []):
+        mi = prim.get("material")
+        if mi is None or mi >= len(mats):
+            continue
+        pbr = mats[mi].get("pbrMetallicRoughness") or {}
+        if "baseColorTexture" in pbr:
+            name = _texture_uri(gltf, pbr["baseColorTexture"]["index"])
+            if name:
+                out[index] = name
+    return out
 
 
 def _mesh_material_maps(gltf, mesh_json):
@@ -493,6 +538,7 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
             material_diffuse=sdiffuse,
             material_override=soverride,
             material_image=simage,
+            material_slots=_per_slot_textures(gltf, mesh_json),
             lightmap=slightmap,
             lm_uv=slm_uv,
             morph=bool(spr.get("targets")),
@@ -562,6 +608,7 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
         material_diffuse=main_diffuse,
         material_override=_mo,
         material_image=_mi,
+        material_slots=_per_slot_textures(gltf, mesh),
         lightmap=main_lightmap,
         frames=frames,
         animation=anim,
@@ -1359,7 +1406,8 @@ def _mesh_to_skinned_blender(m: GltfModel, weights_on_vertex: int,
                                       slot.material_diffuse)
                    or slot.material_diffuse)
             p_attrs, p_items, written = _patch_material(
-                slot.attrs, slot.attr_items, mat, slot.material_diffuse)
+                slot.attrs, slot.attr_items, mat, slot.material_diffuse,
+                sub.material_slots)
             if written:
                 warns.append(
                     f"part {slot.name}: texture {written} (the mesh's own, "
@@ -1579,10 +1627,9 @@ def mesh_to_skinned(m: GltfModel, weights_on_vertex: int = 0,
             have = p_attrs.get("material0_diffuse") or p_mat or ""
             if (os.path.splitext(os.path.basename(have))[0].lower()
                     != os.path.splitext(os.path.basename(want))[0].lower()):
+                p_attrs, p_items, _w = _patch_material(
+                    p_attrs, p_items, want, "", sub.material_slots)
                 p_mat = want
-                p_attrs["material0_diffuse"] = want
-                p_items = [(k, want if k == "material0_diffuse" else v)
-                           for k, v in p_items]
         elif dpart is not None and dpart.material_diffuse:
             # no texture in the scene at all (the image never loaded, or the
             # object is a graft from another unit): the donor part's name is

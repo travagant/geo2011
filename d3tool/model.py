@@ -287,6 +287,11 @@ class GltfModel:
     # this atlas" — see `d3tool.gltf._effective_diffuse`.
     material_override: str = ""
     material_image: str = ""
+    # `{primitive index: atlas name}` for a mesh that carries several
+    # materials: the body and the weapon of one part are `material0` and
+    # `material1` of the same attribute block, and only the first slot's atlas
+    # was read before 1.1.33.
+    material_slots: Dict[int, str] = field(default_factory=dict)
     lightmap: str = ""
     lm_uv: bytes = b""
     # the mesh carries morph targets (a morph-deformer sub-mesh)

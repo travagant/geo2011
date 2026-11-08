@@ -1889,7 +1889,7 @@ def test_export_keeps_animation_only_bones():
                             trailing=retail.trailing)
     assert hurt.bones[11].name == "RightShoulder"
 
-    fixed = gltfmod._donor_full_bones(hurt, retail)
+    fixed = gltf._donor_full_bones(hurt, retail)
     assert len(fixed.bones) == 27
     assert [b.name for b in fixed.bones] == [b.name for b in retail.bones]
     assert fixed.bones[11].name == "Trail1"
@@ -2162,7 +2162,7 @@ def test_blender_resave_converts_a_single_stream_animation():
 
     frames = (0, 90, 240)
     m = _blender_animation_model(donor, Q, frames)
-    built = gltfmod.animation_from_gltf(
+    built = gltf.animation_from_gltf(
         m, donor=donor, streams=[("character_empire_inquisitor_baseanims.a",
                                   donor)], out_name="Idle")
     assert [b.name for b in built.bones] == [b.name for b in donor.bones]
@@ -2178,7 +2178,7 @@ def test_blender_resave_converts_a_single_stream_animation():
     # a dis3tool glTF (its locals *are* the `.a` records) is copied verbatim:
     # the conversion must not touch the byte-exact round trip
     m.blender_layout = False
-    plain = gltfmod.animation_from_gltf(
+    plain = gltf.animation_from_gltf(
         m, donor=donor, streams=[("character_empire_inquisitor_baseanims.a",
                                   donor)], out_name="Idle")
     plain_by = {b.name: b for b in plain.bones}
@@ -2656,7 +2656,7 @@ def test_a_parts_texture_is_written_from_the_attribute_items_not_the_dict():
 
     # rewriting the items is what actually changes it, and it keeps the block
     # otherwise byte-identical
-    patched_attrs, patched_items, written = gltfmod._patch_material(
+    patched_attrs, patched_items, written = gltf._patch_material(
         attrs, list(items), want, old)
     assert written == want, written
     block = gfile._attr_block(patched_attrs, patched_items)
@@ -2666,7 +2666,7 @@ def test_a_parts_texture_is_written_from_the_attribute_items_not_the_dict():
 
     # a part that already names that texture is left alone (the corpus round
     # trip is byte-exact, so an untouched part must not be rewritten)
-    same_attrs, same_items, written = gltfmod._patch_material(
+    same_attrs, same_items, written = gltf._patch_material(
         attrs, list(items), old, old)
     assert written == "" and same_items == items
 
@@ -2713,6 +2713,60 @@ def test_the_compact_copy_of_a_stem_wins_and_its_format_is_reported():
         assert texmod.describe("/no/such.file", True) == ""
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_a_part_with_two_materials_writes_both_atlases():
+    """Body and weapon in one mesh: ``material0`` and ``material1`` of a block.
+
+    The shipped units give every part a single material, so reading the first
+    primitive was enough — until an artist merges the sword into the body mesh
+    (or a unit that really has two ranges is re-textured).  Then the second
+    primitive's atlas has to reach ``material1_diffuse``, both in the attribute
+    dict and in the ordered item list the file is actually written from.
+    """
+    doc = {
+        "materials": [
+            {"pbrMetallicRoughness": {"baseColorTexture": {"index": 0}}},
+            {"pbrMetallicRoughness": {"baseColorTexture": {"index": 1}}},
+        ],
+        "textures": [{"source": 0}, {"source": 1}],
+        "images": [{"uri": "character_empire_inquisitor.dds.png"},
+                   {"uri": "weapon_empire_knight_sword_diffuse.dds.png"}],
+    }
+    mesh_json = {"primitives": [{"material": 0}, {"material": 1}]}
+    slots = gltf._per_slot_textures(doc, mesh_json)
+    assert slots == {0: "character_empire_inquisitor.tga",
+                     1: "weapon_empire_knight_sword_diffuse.tga"}, slots
+
+    items = [("name", "empire_inquisitor"), ("materials_num", "2"),
+             ("material0_diffuse", "character_empire_inquisitor.tga"),
+             ("material0_triangles_num", "10"),
+             ("material1_diffuse", "weapon_empire_inquisitor.tga"),
+             ("material1_triangles_num", "4")]
+    attrs = dict(items)
+    a, i, written = gltf._patch_material(
+        attrs, items, "character_empire_inquisitor.tga", "", slots)
+    got = dict(i)
+    assert got["material0_diffuse"] == "character_empire_inquisitor.tga"
+    assert got["material1_diffuse"] == "weapon_empire_knight_sword_diffuse.tga"
+    assert a["material1_diffuse"] == "weapon_empire_knight_sword_diffuse.tga"
+    assert written == ""            # material0 already said that
+    assert [k for k, _ in i] == [k for k, _ in items]
+
+    # a one-material donor part gets no invented material1 attributes: the
+    # triangle ranges of two materials in a block of one would disagree
+    single = [("material0_diffuse", "weapon_empire_inquisitor.tga"),
+              ("material0_triangles_num", "250")]
+    a2, i2, _w = gltf._patch_material(
+        dict(single), single, "weapon_empire_knight_sword_diffuse.tga", "",
+        {0: "weapon_empire_knight_sword_diffuse.tga"})
+    assert dict(i2)["material0_diffuse"] == \
+        "weapon_empire_knight_sword_diffuse.tga"
+    assert "material1_diffuse" not in dict(i2)
+
+    # ...and with no texture at all the donor's block is returned untouched
+    a3, i3, w3 = gltf._patch_material(dict(single), single, "", "")
+    assert i3 is single and a3 is not None and w3 == ""
 
 
 def main():

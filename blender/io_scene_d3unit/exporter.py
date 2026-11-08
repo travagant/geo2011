@@ -339,8 +339,13 @@ def _export_gltf(context, path, objects, use_anim, base):
 # --------------------------------------------------------------------------- #
 #  core (also driven directly by the tests, without operators)
 # --------------------------------------------------------------------------- #
-def _stamp_diffuse_names(target: str, meshes) -> tuple:
+def _stamp_diffuse_names(target: str, meshes, derived=None) -> tuple:
     """Write every mesh object's ``d3unit_diffuse`` into the glTF as extras.
+
+    ``derived`` holds ``{object name: atlas}`` for the parts that name none
+    themselves but whose material does (``unitprops.material_texture_name``):
+    a packed image leaves the glTF without a URI, so without this the part
+    would fall back to the donor's atlas even though its material is right.
 
     Returns ``(stamped, missing)`` — the object names whose texture name could
     not be attached to any node.  ``d3tool`` reads the value on the way back
@@ -349,12 +354,15 @@ def _stamp_diffuse_names(target: str, meshes) -> tuple:
     lives in *another* unit's folder keeps a name the engine can resolve.
     """
     import json
+    derived = derived or {}
     wanted = {}
     for ob in meshes:
         try:
             value = ob.get(unitprops.DIFFUSE_PROP)
         except Exception:  # noqa: BLE001
             value = None
+        if not value:
+            value = derived.get(ob.name)
         if not value:
             continue
         wanted[ob.name] = str(value)
@@ -449,13 +457,28 @@ def export_unit(context, path: str, use_anim: bool = True, weights: int = 0,
     objects = ([arm] if arm is not None else []) + [
         o for o in unit_objects if o.type != "MESH" or o in meshes]
     warns = validate_unit(arm, meshes, context)
+    notes = []
     if hidden:
         warns.insert(0, "hidden mesh(es) skipped: " + ", ".join(hidden))
     # A mesh imported before 1.1.27 carries no `d3unit_diffuse`; its part then
     # keeps whatever texture the material or the donor .g names, which is how
     # a grafted sword came out wearing the donor's atlas without a word.
+    # A part with no name of its own is not necessarily nameless: the material
+    # on it usually knows the atlas, and a packed image never reaches the glTF
+    # as a URI — see `unitprops.material_texture_name`.
+    derived = {}
+    for ob in meshes:
+        if str(ob.get(unitprops.DIFFUSE_PROP) or "").strip():
+            continue
+        try:
+            guess = unitprops.material_texture_name(ob)
+        except Exception:  # noqa: BLE001 - a probe must never fail an export
+            guess = ""
+        if guess:
+            derived[ob.name] = guess
     unnamed = [o.name for o in meshes
-               if not str(o.get(unitprops.DIFFUSE_PROP) or "").strip()]
+               if not str(o.get(unitprops.DIFFUSE_PROP) or "").strip()
+               and o.name not in derived]
     if unnamed:
         more = "" if len(unnamed) <= 6 else f" (+{len(unnamed) - 6} more)"
         warns.append(
@@ -481,10 +504,13 @@ def export_unit(context, path: str, use_anim: bool = True, weights: int = 0,
             raise RuntimeError(f"the glTF exporter returned {res!r}")
         if not os.path.isfile(target):
             raise RuntimeError("the glTF exporter wrote no file")
-        stamped, missing = _stamp_diffuse_names(target, meshes)
+        stamped, missing = _stamp_diffuse_names(target, meshes, derived)
         if stamped:
             print(f"[d3unit] named the texture of {stamped} part(s) in the "
                   f"glTF (d3unit_diffuse)")
+        for ob_name, atlas in sorted(derived.items()):
+            notes.append(f"texture from the material: {ob_name} -> {atlas}")
+            print(f"[d3unit] {notes[-1]}")
         if missing:
             warns.append(
                 "texture name not attached to any node: "
@@ -501,6 +527,9 @@ def export_unit(context, path: str, use_anim: bool = True, weights: int = 0,
         tex_lines = _texture_lines(out_dir, base, donor_dir, warns)
         for line in tex_lines:
             print("[d3unit] texture" + line)
+        for ob_name, slots in _material_rows(meshes):
+            notes.append(f"materials of {ob_name}: " + ", ".join(slots))
+            print(f"[d3unit] {notes[-1]}")
         text = log.getvalue() + "".join(
             "\n" + line for line in tex_lines)
         # a warning that only reaches the system console is a warning nobody
@@ -518,7 +547,7 @@ def export_unit(context, path: str, use_anim: bool = True, weights: int = 0,
         return {"g": os.path.join(out_dir, base + ".g"),
                 "base": base, "out_dir": out_dir, "armature": arm,
                 "rigid": arm is None,
-                "meshes": meshes, "warnings": warns,
+                "meshes": meshes, "warnings": warns, "notes": notes,
                 "log": text, "stats": result["stats"]}
     finally:
         scene.render.fps, scene.render.fps_base = saved[0], saved[1]
@@ -531,6 +560,25 @@ def export_unit(context, path: str, use_anim: bool = True, weights: int = 0,
             print(f"[d3unit] temp folder kept: {tmp}")
         else:
             shutil.rmtree(tmp, ignore_errors=True)
+
+
+def _material_rows(meshes) -> list:
+    """``[(object, [material name per slot])]``, for the export report.
+
+    The `.g` numbers a part's materials ``material0``, ``material1``, … in slot
+    order, and the body of a unit is slot 0 of its first part.  Printing the
+    mapping is the only way the artist can see that the weapon really took
+    ``material1`` and not a ``material0.002`` Blender invented.
+    """
+    rows = []
+    for ob in meshes or ():
+        names = []
+        for slot in (getattr(ob, "material_slots", ()) or ()):
+            mat = getattr(slot, "material", None)
+            names.append(getattr(mat, "name", "") if mat is not None else "")
+        if names:
+            rows.append((getattr(ob, "name", ""), names))
+    return rows
 
 
 def _pref_path(context):

@@ -292,6 +292,14 @@ def import_unit(context, path: str, use_anim: bool = True,
         packed = _pack_images(context, tmp, pack) if use_textures else 0
         _drop_broken_images(context)
         _stamp_part_materials(meshes, _part_materials(path))
+        # material0, material1, … across the unit, in part order: Blender would
+        # otherwise hand out material0, material0.001, material0.002 for the
+        # parts of one unit and the artist cannot tell the weapon's material
+        # from the body's (the `.g` numbers them per part, in slot order)
+        try:
+            unitprops.normalise_material_names(meshes)
+        except Exception:  # noqa: BLE001 - naming must never fail an import
+            pass
         frames = 0
         for arm in armatures:
             action = _linear_keys(arm)

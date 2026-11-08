@@ -198,6 +198,144 @@ try:
                "no such texture" in w for w in warns), warns
 finally:
     shutil.rmtree(work, ignore_errors=True)
+# --------------------------------------------------------------------------- #
+#  the material tells the export which atlas the part wears
+# --------------------------------------------------------------------------- #
+class FakeImage:
+    def __init__(self, name, path=""):
+        self.name = name
+        self.filepath = path
+
+
+class FakeSocket:
+    def __init__(self, name):
+        self.name = name
+
+
+class FakeLink:
+    def __init__(self, node, socket_name):
+        self.from_node = node
+        self.to_socket = FakeSocket(socket_name)
+
+
+class FakeNode:
+    type = "TEX_IMAGE"
+
+    def __init__(self, image):
+        self.image = image
+
+
+class FakeTree:
+    def __init__(self, nodes, links):
+        self.nodes = nodes
+        self.links = links
+
+
+class FakeMaterial:
+    def __init__(self, name, image=None, socket="Base Color"):
+        self.name = name
+        self.use_nodes = image is not None
+        if image is None:
+            self.node_tree = FakeTree([], [])
+        else:
+            node = FakeNode(image)
+            self.node_tree = FakeTree([node], [FakeLink(node, socket)])
+        self._id = id(self)
+
+    def as_pointer(self):
+        return self._id
+
+
+class FakeSlot:
+    def __init__(self, material):
+        self.material = material
+
+
+def mesh_with(*materials):
+    ob = FakeMesh("part" + str(len(materials)))
+    ob.material_slots = [FakeSlot(m) for m in materials]
+    return ob
+
+
+unitprops = addon.unitprops
+# any spelling of a texture file reduces to the `.tga` the attribute block wants
+assert unitprops.clean_atlas_name("weapon_x_diffuse.dds.png") == \
+    "weapon_x_diffuse.tga"
+assert unitprops.clean_atlas_name("//textures/weapon_x_diffuse.dds") == \
+    "weapon_x_diffuse.tga"
+# ...while a name that is not an atlas at all stays empty: a material called
+# "material0" must never be mistaken for the texture it happens to sit on
+assert unitprops.clean_atlas_name("material0") == ""
+assert unitprops.clean_atlas_name("Material.001") == ""
+assert unitprops.clean_atlas_name("leaf") == ""
+
+# the material's image is the atlas, even though a packed image never reaches
+# the glTF as a file URI (which is why the export used to fall back to the
+# donor's mace atlas and call the part "nameless")
+sword = mesh_with(FakeMaterial("material0.002",
+                               FakeImage("weapon_empire_knight_sword_diffuse.dds.png",
+                                         "//textures/weapon_empire_knight_sword_diffuse.dds.png")))
+assert unitprops.material_texture_name(sword) == \
+    "weapon_empire_knight_sword_diffuse.tga", \
+    unitprops.material_texture_name(sword)
+# an image that only feeds the normal map is the second choice, not the first
+body_mat = FakeMaterial("material0",
+                        FakeImage("weapon_x_diffuse.png"), socket="Normal")
+assert unitprops.material_texture_name(mesh_with(body_mat)) == "weapon_x_diffuse.tga"
+# no image, but a material named after the atlas
+assert unitprops.material_texture_name(
+    mesh_with(FakeMaterial("weapon_empire_knight_sword_diffuse"))) == \
+    "weapon_empire_knight_sword_diffuse.tga"
+# nothing usable anywhere
+assert unitprops.material_texture_name(mesh_with(FakeMaterial("material0"))) == ""
+assert unitprops.material_texture_name(FakeMesh("bare")) == ""
+
+# numbering: the body is material0 and the weapon material1, once across the
+# whole unit — Blender's own ".001"/".002" suffixes never reach the panel
+body = mesh_with(FakeMaterial("material0"))
+weapon = mesh_with(FakeMaterial("material0.002"))
+rows = unitprops.normalise_material_names([body, weapon])
+assert [slots for _n, slots in rows] == [["material0"], ["material1"]], rows
+assert unitprops.normalise_material_names([body, weapon]) == rows   # idempotent
+
+# a mesh whose only material already carries the name keeps it, and two parts
+# sharing one datablock share one index
+shared = FakeMaterial("material0")
+rows = unitprops.normalise_material_names([mesh_with(shared), mesh_with(shared)])
+assert [slots for _n, slots in rows] == [["material0"], ["material0"]], rows
+
+assert addon.D3UNIT_OT_number_materials in addon.CLASSES
+
+# the name read off the material reaches the glTF as extras, which is the only
+# place d3tool.gltf reads it from (a packed image has no file URI to follow)
+import json
+import tempfile as _tempfile
+
+work = _tempfile.mkdtemp(prefix="d3stamp_")
+try:
+    target = os.path.join(work, "u.gltf")
+    with open(target, "w", encoding="utf-8") as fh:
+        json.dump({"nodes": [{"name": "empire_inquisitor", "mesh": 0},
+                             {"name": "empire_knight_sword", "mesh": 1}],
+                   "meshes": [{"name": "empire_inquisitor"},
+                              {"name": "empire_knight_sword"}]}, fh)
+    body_ob = FakeMesh("empire_inquisitor")
+    sword_ob = FakeMesh("empire_knight_sword", {
+        addon.unitprops.DIFFUSE_PROP: "weapon_empire_knight_sword_diffuse.tga"})
+    mat_ob = FakeMesh("empire_knight_shield")
+    stamped, missing = addon.exporter._stamp_diffuse_names(
+        target, [body_ob, sword_ob, mat_ob],
+        {"empire_inquisitor": "character_empire_inquisitor.tga"})
+    assert (stamped, missing) == (2, []), (stamped, missing)
+    doc = json.load(open(target, encoding="utf-8"))
+    extras = [m.get("extras", {}) for m in doc["meshes"]]
+    assert extras[0].get(addon.unitprops.DIFFUSE_PROP) == \
+        "character_empire_inquisitor.tga", extras
+    assert extras[1].get(addon.unitprops.DIFFUSE_PROP) == \
+        "weapon_empire_knight_sword_diffuse.tga", extras
+finally:
+    shutil.rmtree(work, ignore_errors=True)
+
 print("add-on imports and registers", addon.bl_info["version"])
 '''
 
