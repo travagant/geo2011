@@ -457,10 +457,18 @@ def _export_textures(gltf_path: str, out_dir: str, base: str,
                             f"will miss this texture")
                 continue
         if not os.path.exists(src):
-            if not quiet:
-                ui.warn(f"{os.path.basename(uri)}: file not found — "
-                        f"no .t written")
-            continue
+            # the image is named in the glTF but lives with the unit rather
+            # than next to the glTF (an atlas dropped into the game folder and
+            # picked in Blender from there)
+            alt = _find_orig(".dds")
+            if alt is None:
+                alt = _find_orig(".t")
+            if alt is None:
+                if not quiet:
+                    ui.warn(f"{os.path.basename(uri)}: file not found — "
+                            f"no .t written")
+                continue
+            src = alt
         out_t = os.path.join(out_dir, stem + ".t")
         with open(src, "rb") as fh:
             data = fh.read()
@@ -607,6 +615,39 @@ def _anim_bytes(animfile, donor) -> bytes:
     return animmod.write_anim(animfile)
 
 
+def _unit_file_for(src_dir: str, base: str, ext: str) -> str:
+    """The unit's own `.ac`/`.scene`, however the folder spells it.
+
+    A unit's mesh and its scene/action files do not always share a stem
+    (Wolfsnow ships `character_neutrals_wolf.g` with
+    `character_neutrals_wolfsnow.scene`), so a name-keyed lookup misses them
+    and the export generates a second, empty copy next to the real file.  The
+    file that names *this* mesh is the unit's own.
+    """
+    exact = os.path.join(src_dir, base + ext)
+    if os.path.isfile(exact):
+        return exact
+    try:
+        names = sorted(n for n in os.listdir(src_dir)
+                       if n.lower().endswith(ext))
+    except OSError:
+        return exact
+    needle = (base + ".g").lower()
+    for name in names:
+        try:
+            with open(os.path.join(src_dir, name), "rb") as fh:
+                text = fh.read().decode("latin-1").lower()
+        except OSError:
+            continue
+        if needle in text.replace("\\", "/"):
+            return os.path.join(src_dir, name)
+    if ext == ".ac" and len(names) == 1 and not base.endswith("_lod"):
+        # an `.ac` names the animation stream, not the mesh: when the folder
+        # holds exactly one, it is this unit's
+        return os.path.join(src_dir, names[0])
+    return exact
+
+
 def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
             anim: bool = True, quiet: bool = False,
             donor_dir: Optional[str] = None) -> None:
@@ -683,16 +724,36 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
     # textures (glTF .dds -> native .t), and point the .g at the emitted file
     emitted = _export_textures(gltf_path, out_dir, base, quiet,
                                src_dir=src_dir)
-    if emitted and "material0_diffuse" not in attrs:
+    # The texture the *body* wears, resolved through the main mesh's material
+    # chain -- not `emitted`, which is whichever image happened to convert
+    # first (compound units list one image per sub-mesh, and a failed
+    # conversion skips its turn, so the two are not the same question).
+    uri0 = _main_image_uri(gltf_path)
+    stem0 = texmod.clean_stem(uri0) if uri0 else ""
+    donated = str(attrs.get("material0_diffuse") or "")
+    if stem0 and (not donated
+                  or texmod.clean_stem(donated).lower() != stem0.lower()):
+        # A re-save of the same atlas comes back under the same stem (Blender
+        # writes `x.dds.png`, which `clean_stem` folds back to `x`), so a
+        # different stem means the material now wears something else: an
+        # armour / body retexture.  Keeping the donated name there left the
+        # old atlas in the file with the new `.t` sitting unused next to it --
+        # the unit looked untouched in the game.
+        ext = ".tga" if donated.lower().endswith(".tga") else ""
+        attrs["material0_diffuse"] = stem0 + ext
+        if not quiet:
+            ui.wrote(os.path.join(out_dir, base + ".g"),
+                     f"main texture is now {attrs['material0_diffuse']}"
+                     + (f" (was {donated})" if donated else ""))
+    elif emitted and not donated:
         attrs["material0_diffuse"] = emitted
-    elif emitted and attrs.get("material0_diffuse", "").endswith(".tga"):
-        pass  # the donated `.tga` name is the convention the engine expects
     else:
         # No texture was emitted; fall back to the unit base if a .t/.dds
         # happened to be written next to the output (or keep the .tga name).
         for cand in (base + ".t", base + ".dds"):
             if os.path.exists(os.path.join(out_dir, cand)):
-                attrs["material0_diffuse"] = cand
+                if not attrs.get("material0_diffuse"):
+                    attrs["material0_diffuse"] = cand
                 break
 
     # every block of a compound mesh must hang off the file's own parent node
@@ -732,8 +793,13 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
             ui.warn(f"{base}.g: not compared with the donor ({exc})")
 
     # scene (reuse the original if present to keep particle emitters)
-    out_scene = os.path.join(out_dir, base + ".scene")
-    src_scene = os.path.join(src_dir, base + ".scene")
+    # named after the donor, not after the `.g`: a unit whose scene carries
+    # another stem (Wolfsnow's `character_neutrals_wolf.g` lives with
+    # `character_neutrals_wolfsnow.scene`) got a second, empty scene next to
+    # the real one, and the game reads the real one
+    src_scene = _unit_file_for(src_dir, base, ".scene")
+    out_scene = os.path.join(out_dir, os.path.basename(src_scene)
+                             if os.path.isfile(src_scene) else base + ".scene")
     if os.path.exists(src_scene):
         # Some shipped `.scene` files are Latin-1, not UTF-8 (the two large
         # Neutrals/Ship scenes), and `_export` must copy them verbatim.
@@ -793,8 +859,9 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
     # every `event2` entry (the attack/damage/death sound aliases and the
     # FxStrike/fxcast cues): the AirElemental alone carries seven of them.
     anim_files = acmod.detect_anim_files(src_dir, base)
-    out_ac = os.path.join(out_dir, base + ".ac")
-    src_ac = os.path.join(src_dir, base + ".ac")
+    src_ac = _unit_file_for(src_dir, base, ".ac")
+    out_ac = os.path.join(out_dir, os.path.basename(src_ac)
+                          if os.path.isfile(src_ac) else base + ".ac")
     if os.path.exists(src_ac):
         with open(src_ac, "rb") as fh:
             ac_bytes = fh.read()
@@ -921,8 +988,15 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
     # folder has none, then synced.
     if donor_dir and os.path.abspath(donor_dir) != os.path.abspath(out_dir):
         for ext in ("_lod.g", "_lod.scene"):
-            src = os.path.join(donor_dir, base + ext)
-            dst = os.path.join(out_dir, base + ext)
+            src = _unit_file_for(donor_dir, base, ext)
+            if not os.path.isfile(src):
+                # a `.g` names no other file, so the content search has
+                # nothing to match: the folder's only LOD model is this unit's
+                lop = sorted(fn for fn in os.listdir(donor_dir)
+                             if fn.endswith(ext))
+                src = (os.path.join(donor_dir, lop[0]) if len(lop) == 1
+                       else src)
+            dst = os.path.join(out_dir, os.path.basename(src))
             if os.path.isfile(src) and not os.path.isfile(dst):
                 shutil.copyfile(src, dst)
                 if not quiet:
@@ -1065,18 +1139,24 @@ def _carry_material_textures(out_dir: str, base: str,
     from the donor folder (or the glTF's own folder), converting a `.dds`
     when that is all there is, so an export is self-contained.
     """
-    g_path = os.path.join(out_dir, base + ".g")
-    if not os.path.isfile(g_path):
-        return
-    try:
-        mesh = gfile.parse_geometry_file(open(g_path, "rb").read())
-    except Exception:  # noqa: BLE001 - a bad .g is reported by the checker
-        return
-    if getattr(mesh, "parse_error", None):
-        return
     dirs = [out_dir] + ([src_dir] if src_dir else [])
     wanted: List[str] = []
-    for blk in [mesh] + list(getattr(mesh, "parts", ()) or ()):
+    meshes = []
+    for name in (base + ".g", base + "_lod.g"):
+        g_path = os.path.join(out_dir, name)
+        if not os.path.isfile(g_path):
+            continue
+        try:
+            parsed = gfile.parse_geometry_file(open(g_path, "rb").read())
+        except Exception:  # noqa: BLE001 - a bad .g is reported by the checker
+            continue
+        if getattr(parsed, "parse_error", None):
+            continue
+        meshes.append(parsed)
+    if not meshes:
+        return
+    for blk in [b for mesh in meshes
+                for b in [mesh] + list(getattr(mesh, "parts", ()) or ())]:
         for key, value in (getattr(blk, "attrs", None) or {}).items():
             low = key.lower()
             if value and (low.endswith("_diffuse") or low.endswith("_lightmap")):
@@ -2415,6 +2495,23 @@ def _gattr(args) -> int:
     return 0
 
 
+def _retag_scene_text(text: str, renames) -> str:
+    """Point a `.scene`'s `attr ... "<texture>"` lines at renamed atlases.
+
+    The scene names the texture as well as the `.g` does, so a retexture that
+    only reaches the mesh leaves the old atlas on the model the scene builds --
+    which is the one the game draws.
+    """
+    if not renames:
+        return text
+    table = {old.lower(): new for old, new in renames if old and new}
+    out = []
+    for chunk in text.split('"'):
+        low = chunk.lower()
+        out.append(table.get(low, chunk) if low in table else chunk)
+    return '"'.join(out)
+
+
 def _lod_sync(unit_dir: str, out_dir: Optional[str] = None,
               quiet: bool = False, reference=None) -> int:
     """`lod <unit folder>` — make a unit's LOD model carry its added parts.
@@ -2437,6 +2534,11 @@ def _lod_sync(unit_dir: str, out_dir: Optional[str] = None,
     if not os.path.isdir(unit_dir):
         ui.fail(f"no such folder: {unit_dir}")
         return 1
+    # `reference` arrives as a one-shot iterable from `_export`; materialise it
+    # here, or the first reader leaves the next one with nothing and the
+    # donor-length tests below silently see a zero-length donor
+    if reference is not None and not isinstance(reference, (list, tuple)):
+        reference = list(reference)
     stems = [os.path.join(unit_dir, fn[:-2])
              for fn in sorted(os.listdir(unit_dir))
              if fn.endswith(".g") and not fn[:-2].endswith("_lod")]
@@ -2447,13 +2549,21 @@ def _lod_sync(unit_dir: str, out_dir: Optional[str] = None,
     for stem in stems:
         lod_g = stem + "_lod.g"
         if not os.path.isfile(lod_g):
+            # the LOD may carry another stem than the mesh (Wolfsnow)
+            lop = sorted(fn for fn in os.listdir(unit_dir)
+                         if fn.endswith("_lod.g"))
+            lod_g = (os.path.join(unit_dir, lop[0]) if len(lop) == 1
+                     else lod_g)
+        if not os.path.isfile(lod_g):
             ui.info(f"{os.path.basename(stem)}: no LOD model, nothing to do")
             continue
         main_parts = gfile.parse_geometry_file(open(stem + ".g", "rb").read())
         lod_bytes = open(lod_g, "rb").read()
         lod_mesh = gfile.parse_geometry_file(lod_bytes)
         lod_parts = gfile.iter_parts(lod_mesh)
-        main_all = gfile.iter_parts(main_parts)
+        # materialised: `iter_parts` is a generator, and the steps below walk
+        # it several times (missing parts, name lookup, rename pairing)
+        main_all = list(gfile.iter_parts(main_parts))
         # the LOD mesh is the same unit at lower detail: its parts are the
         # main mesh's, in the same order (and spelled `lod_<name>`, so a name
         # is no guide) — whatever trails them was added after the fact
@@ -2493,7 +2603,12 @@ def _lod_sync(unit_dir: str, out_dir: Optional[str] = None,
         # so nothing is appended and the battlefield keeps drawing the old
         # weapon.  Only rigid single-bone parts are swapped: a skinned part is
         # lower-poly in the LOD on purpose and must stay as it is.
+        # the root block is a part too: some units keep the body in the LOD's
+        # root and the weapon as a part (the Zombie is the reverse), so a
+        # retextured body has to be findable under either name
         main_by = {p.name: p for p in main_all}
+        main_by.setdefault(getattr(main_parts, "name", ""), main_parts)
+        main_by.setdefault(getattr(main_parts, "geometry_file", ""), main_parts)
         # `iter_parts` yields the container's own root block first (a
         # `SkinnedMesh`, the body) and the compound sub-meshes after it.  The
         # root is not a part: it has no `part_prefix`/`part_tail` scaffolding,
@@ -2547,7 +2662,42 @@ def _lod_sync(unit_dir: str, out_dir: Optional[str] = None,
         # reaches `swaps` — the geometry is identical, so the LOD keeps the
         # mace's material name and the weapon changes texture the moment the
         # camera pulls back.  A material is a name, not geometry: copy it.
-        retags = []
+        retags: List[Tuple[int, object, str]] = []
+        # A block whose atlas the export RENAMED must be renamed in the LOD
+        # too, whichever block it is: retail spells the same body differently
+        # in the two files (`neutral_zombie` in the main `.g`,
+        # `lod_neutrals_zombie` in the LOD), the Zombie's LOD keeps the body as
+        # a part while its root is the weapon, and the Cleric's main root is a
+        # whip.  Matching by name misses all three; matching by ATLAS and
+        # rewriting every LOD block that wore the old one is exact, and leaves
+        # the blocks that wear a different atlas on purpose (the Angel's
+        # `mithrael`) untouched.
+        donor_parts = list(reference) if reference is not None else []
+        renames: List[Tuple[str, str]] = []
+        for i, mp in enumerate(main_all):
+            new_tex = ((mp.attrs or {}).get("material0_diffuse")
+                       or getattr(mp, "material_diffuse", "") or "")
+            old_tex = ""
+            if i < len(donor_parts):
+                dblk = donor_parts[i]
+                old_tex = ((dblk.attrs or {}).get("material0_diffuse")
+                           or getattr(dblk, "material_diffuse", "") or "")
+            if old_tex and new_tex and old_tex.lower() != new_tex.lower():
+                renames.append((old_tex.lower(), new_tex))
+        root_retag = False
+        root_want = ""
+        for i, lp in enumerate(lod_parts):
+            have = ((lp.attrs or {}).get("material0_diffuse") or "")
+            if not have:
+                continue
+            for old_tex, new_tex in renames:
+                if have.lower() != old_tex:
+                    continue
+                if i == 0:
+                    root_retag, root_want = True, new_tex
+                else:
+                    retags.append((i, lp, new_tex))
+                break
         for i, lp in enumerate(lod_parts):
             if i == 0:
                 # the root block's atlas is its own by design (see above)
@@ -2557,15 +2707,29 @@ def _lod_sync(unit_dir: str, out_dir: Optional[str] = None,
             if mp is None:
                 continue
             if moved is not None and main_pos.get(id(mp)) not in moved:
-                continue
+                # a *texture* change moves no geometry: the LOD's own copy of
+                # the body must follow the new atlas anyway, when it wore the
+                # atlas the body wore in the donor (the rename pass above has
+                # already handled that case, so this stays conservative)
+                _have = (lp.attrs or {}).get("material0_diffuse") or ""
+                if not any(old_tex == _have.lower()
+                           for old_tex, _new in renames):
+                    continue
             want = (mp.attrs or {}).get("material0_diffuse")
             have = (lp.attrs or {}).get("material0_diffuse")
             if want and have and (os.path.splitext(want)[0].lower()
                                   != os.path.splitext(have)[0].lower()):
                 retags.append((i, lp, want))
-        if swaps or retags:
+        if swaps or retags or root_retag:
             import copy as _copy
-            prefix = lod_bytes[:len(lod_bytes)
+            # the file may end with an epilogue no reader parses as a block
+            # (the Cleric's LOD: 141 bytes).  Rebuilding as "everything before
+            # the blocks" + blocks would leave it in the middle, and the file
+            # came back with a single readable block -- the exact corruption
+            # this rewrite exists to avoid
+            tail = getattr(gfile.parse_geometry_file(lod_bytes),
+                           "trailing", b"") or b""
+            prefix = lod_bytes[:len(lod_bytes) - len(tail)
                                - sum(len(p.raw) for p in lod_parts)]
             raws = [p.raw for p in lod_parts]
             for i, _lp, want in retags:
@@ -2587,7 +2751,13 @@ def _lod_sync(unit_dir: str, out_dir: Optional[str] = None,
                 clone.attrs = dict(items)
                 clone.raw = gfile._part_block(clone)
                 raws[i] = clone.raw
-            lod_bytes = prefix + b"".join(raws)
+            if swaps or retags:
+                lod_bytes = prefix + b"".join(raws) + tail
+            if root_retag:
+                fresh = gfile.parse_geometry_file(lod_bytes)
+                attrs = dict(fresh.attrs or {})
+                attrs["material0_diffuse"] = root_want
+                lod_bytes = gfile.write_geometry_file(fresh, attrs)
             lod_parts = list(gfile.iter_parts(
                 gfile.parse_geometry_file(lod_bytes)))
             target = (os.path.join(out_dir, os.path.basename(lod_g))
@@ -2599,9 +2769,16 @@ def _lod_sync(unit_dir: str, out_dir: Optional[str] = None,
                       if _i not in {i for i, _l, _m in swaps}]
             ui.ok(f"{os.path.basename(lod_g)}: " + ", ".join(notes)
                   + (" (the export swapped the part, it was not added)"
-                     if swaps else " (the part's atlas followed the main mesh)"))
+                     if swaps else " (the part's atlas followed the main mesh)")
+                  + (f"; the LOD's own texture followed it too -> {root_want}"
+                     if root_retag else ""))
             changed += 1
         lod_scene = stem + "_lod.scene"
+        if not os.path.isfile(lod_scene):
+            lsc = sorted(fn for fn in os.listdir(unit_dir)
+                         if fn.endswith("_lod.scene"))
+            lod_scene = (os.path.join(unit_dir, lsc[0]) if len(lsc) == 1
+                         else lod_scene)
         if not os.path.isfile(lod_scene):
             continue
         # newline="" keeps the file's own terminators: a scene read with
@@ -2609,6 +2786,12 @@ def _lod_sync(unit_dir: str, out_dir: Optional[str] = None,
         # even though one `gobj` was added
         with open(lod_scene, encoding="latin-1", newline="") as fh:
             text = fh.read()
+        retagged_text = _retag_scene_text(text, renames)
+        if retagged_text != text:
+            text = retagged_text
+            _scene_retag = True
+        else:
+            _scene_retag = False
         new_text, added = scenemod.ensure_part_gobjs(text, lod_parts)
         restated: List[str] = []
         try:
@@ -2627,6 +2810,13 @@ def _lod_sync(unit_dir: str, out_dir: Optional[str] = None,
             open(target, "w", encoding="latin-1", newline="").write(new_text)
             ui.ok(f"{os.path.basename(lod_scene)}: restated "
                   + ", ".join(restated))
+            changed += 1
+        elif _scene_retag:
+            target = (os.path.join(out_dir, os.path.basename(lod_scene))
+                      if out_dir else lod_scene)
+            open(target, "w", encoding="latin-1", newline="").write(new_text)
+            ui.ok(f"{os.path.basename(lod_scene)}: atlas names followed the "
+                  "mesh")
             changed += 1
         if added:
             target = (os.path.join(out_dir, os.path.basename(lod_scene))

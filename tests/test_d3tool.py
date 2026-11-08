@@ -22,6 +22,7 @@ from d3tool import texture as texmod
 from d3tool import weapon as weaponmod
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 
 def test_air_roundtrip():
@@ -2654,16 +2655,25 @@ def test_a_parts_texture_is_written_from_the_attribute_items_not_the_dict():
     naive["material0_diffuse"] = want
     block = gfile._attr_block(naive, list(items))
     assert want.encode() not in block, "attrs alone must not reach the file"
-    assert old.encode() in block
+    # ...except for the file's own block, where the whole point is that a
+    # renamed atlas reaches the file (`write_geometry_file` asks for it)
+    root_block = gfile._attr_block(naive, list(items), patch_textures=True)
+    assert want.encode() in root_block, \
+        "a renamed atlas must reach the root block"
+    assert old.encode() not in root_block
 
     # rewriting the items is what actually changes it, and it keeps the block
     # otherwise byte-identical
     patched_attrs, patched_items, written = gltf._patch_material(
         attrs, list(items), want, old)
     assert written == want, written
-    block = gfile._attr_block(patched_attrs, patched_items)
-    assert want.encode() in block
-    assert old.encode() not in block
+    # both routes end in the same bytes: the items carry the new name anyway
+    block_default = gfile._attr_block(patched_attrs, patched_items)
+    block_root = gfile._attr_block(patched_attrs, patched_items,
+                                   patch_textures=True)
+    assert block_default == block_root
+    assert want.encode() in block_default
+    assert old.encode() not in block_default
     assert len(patched_items) == len(items)
 
     # a part that already names that texture is left alone (the corpus round
@@ -3836,6 +3846,41 @@ def test_lod_sync_leaves_a_shorter_retail_lod_alone():
         assert after == before, "the LOD was rewritten on an untouched unit"
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_scenarios_nothing_touched_comes_back_identical():
+    """The baseline the other three scenarios stand on."""
+    import scenarios
+    result = scenarios.scenario_unchanged(unit_dir=REPO_LIKE_UNIT_DIR())
+    assert result["added"] == [] and result["rewritten"] == []
+
+
+def test_scenarios_a_part_atlas_follows_the_material():
+    import scenarios
+    result = scenarios.scenario_retexture(unit_dir=REPO_LIKE_UNIT_DIR())
+    assert result["texture"] > 0
+    changed = [(n, a) for (n, a), (_b, b) in zip(result["after"],
+                                                 result["before"]) if a != b]
+    assert changed and changed[0][1] == result["now"], changed
+
+
+def test_scenarios_a_body_atlas_reaches_the_lod_and_the_scenes():
+    import scenarios
+    result = scenarios.scenario_armour_retexture(unit_dir=REPO_LIKE_UNIT_DIR())
+    assert result["texture"] > 0
+    assert any(t == result["now"] for _n, t in result["scene"]), result["scene"]
+    assert result["lod_after"] != result["lod_before"]
+
+
+def test_scenarios_a_new_mesh_on_the_skeleton_is_drawn():
+    import scenarios
+    result = scenarios.scenario_new_part(unit_dir=REPO_LIKE_UNIT_DIR())
+    assert result["bones"] == [scenarios.BONE], result["bones"]
+    assert "helmet_empire_inquisitor" in result["forward"], result["forward"]
+
+
+def REPO_LIKE_UNIT_DIR():
+    return os.path.join(REPO, "Empire", "Inquisitor")
 
 
 def test_the_export_reports_the_files_it_added_to_a_unit():

@@ -590,7 +590,8 @@ def scene_node_block(part, donor: bytes = b"") -> bytes:
     return struct.pack("<14f", *centre, 0.0, 0.0, 0.0, *mx, *mn, radius, -1.0)
 
 
-def _attr_block(attrs: Dict[str, str], items=None) -> bytes:
+def _attr_block(attrs: Dict[str, str], items=None,
+                patch_textures: bool = False) -> bytes:
     out = bytearray()
     if items is not None:
         # The donated block keeps its order (and duplicate keys) verbatim;
@@ -608,6 +609,16 @@ def _attr_block(attrs: Dict[str, str], items=None) -> bytes:
         # in the header counts), so sync it only in a single-material
         # block where it IS the total.
         patchable = {"vertexs_weights_num", "bones_num", "weights_on_vertex"}
+        # Texture names are the one thing a modder edits by hand or by
+        # re-assigning a material, and a donated block spells the donor's
+        # atlas.  Without them here a retextured armour or body was written
+        # back with the old name -- the new `.t` sat in the folder unused and
+        # the unit looked untouched in the game.
+        if patch_textures:
+            for k in orig:
+                low = k.lower()
+                if low.endswith("_diffuse") or low.endswith("_lightmap"):
+                    patchable.add(k)
         tri_keys = [k for k in orig if k.startswith("material")
                     and k.endswith("_triangles_num")]
         if len(tri_keys) <= 1:
@@ -949,10 +960,21 @@ def _part_block(part: MeshPart) -> bytes:
     return bytes(out)
 
 
+# Attribute keys whose value lives inside the raw bytes a donated mesh keeps
+# verbatim.  A caller that changes one of these must be rebuilt, not copied:
+# the raw block still spells the donor's texture, so the rename was silently
+# dropped and the unit looked untouched in the game (a retextured armour, a
+# body wearing another atlas, a renamed `.t`).
+_RAW_BOUND_ATTRS = ("material0_diffuse", "material0_lightmap")
+
+
 def write_geometry_file(mesh: SkinnedMesh, attrs: Dict[str, str]) -> bytes:
     """Serialize a :class:`SkinnedMesh` back into the `.g` binary format."""
     if mesh.raw:
-        return mesh.raw
+        donor_attrs = getattr(mesh, "attrs", None) or {}
+        if not any(str(attrs.get(k, "")) != str(donor_attrs.get(k, ""))
+                   for k in _RAW_BOUND_ATTRS):
+            return mesh.raw
     vc, tc = len(mesh.vertices), len(mesh.indices) // 3
     w = mesh.weights_on_vertex
 
@@ -1019,7 +1041,13 @@ def write_geometry_file(mesh: SkinnedMesh, attrs: Dict[str, str]) -> bytes:
     chunks.append(preamble)
     if mesh.attr_items:
         # the donated block verbatim (order and duplicate keys preserved)
-        chunks.append(_attr_block(attrs, items=mesh.attr_items))
+        # the file's own block may take a renamed atlas from `attrs`: the
+        # donor spells its texture here, and a body/armour retexture that only
+        # reaches the dataclass leaves the old name in the file (the unit then
+        # looks untouched in the game).  Parts are different -- their ordered
+        # item list is authoritative, see `_part_block`.
+        chunks.append(_attr_block(attrs, items=mesh.attr_items,
+                                  patch_textures=True))
     else:
         chunks.append(_attr_block(attrs))
 
@@ -1095,7 +1123,18 @@ def append_parts(base: bytes, parts) -> bytes:
     blocks, so an unpatched count leaves the appended part in the file and
     out of the model.
     """
-    out = bytearray(base)
+    # A `.g` may end with a short epilogue that no reader parses as a block
+    # (the Cleric's LOD carries 141 bytes of it).  Appending after that
+    # epilogue hid the new block from the parser -- and from the engine, which
+    # walks the blocks in order: the mesh landed in the file and never in the
+    # model.  Put the blocks in front of the epilogue instead.
+    tail = b""
+    try:
+        tail = getattr(parse_geometry_file(base), "trailing", b"") or b""
+    except Exception:  # noqa: BLE001 - an unparsable base is appended to as-is
+        tail = b""
+    body = base[:len(base) - len(tail)] if tail else base
+    out = bytearray(body)
     for part in parts:
         raw = getattr(part, "raw", b"") or b""
         if not raw:
@@ -1103,6 +1142,7 @@ def append_parts(base: bytes, parts) -> bytes:
                 f"part {getattr(part, 'name', '?')!r} has no raw bytes; a "
                 "part can only be appended straight from a parsed .g")
         out += raw
+    out += tail
     appended = len(out) - len(base)
     if appended:
         _, declared = mesh_count(base)
