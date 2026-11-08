@@ -3865,6 +3865,157 @@ def test_vdpack_plan_cli_reports_and_exits():
         assert '"prefix": "resources\\\\Other"' in buf.getvalue()
 
 
+# --------------------------------------------------------------------------- #
+#  tools/dump_extract.py — reading a Windows minidump
+# --------------------------------------------------------------------------- #
+
+def _pe_image():
+    """The smallest thing that is structurally a PE: header + one section."""
+    img = bytearray(0x2000)
+    img[0:2] = b"MZ"
+    struct.pack_into("<I", img, 0x3C, 0x80)
+    img[0x80:0x84] = b"PE\x00\x00"
+    struct.pack_into("<H", img, 0x84, 0x14C)          # machine i386
+    struct.pack_into("<H", img, 0x86, 1)             # one section
+    struct.pack_into("<H", img, 0x94, 0xE0)          # SizeOfOptionalHeader
+    table = 0x80 + 24 + 0xE0
+    img[table:table + 8] = b".text\x00\x00\x00"
+    struct.pack_into("<I", img, table + 8, 0x1000)   # VirtualSize
+    struct.pack_into("<I", img, table + 12, 0x1000)  # VirtualAddress
+    struct.pack_into("<I", img, table + 16, 0x800)   # SizeOfRawData (on disk)
+    struct.pack_into("<I", img, table + 20, 0x400)   # PointerToRawData
+    img[0x1000:0x1010] = b"\x90" * 16
+    return bytes(img)
+
+
+def _minidump(modules, regions, exception=None, stack_pointer=None):
+    """Assemble a minidump carrying exactly the streams the parser reads.
+
+    ``modules`` is ``{name: (base, size, image)}``; ``regions`` the captured
+    ranges, laid out the way a real dump lays them out (a table of start/size
+    pairs, then the payloads back to back at ``BaseRva``).  Strings sit past
+    every fixed-size structure, as in a dump written by the OS.
+    """
+    names = list(modules)
+    strings = [struct.pack("<I", len(n.encode("utf-16-le"))) +
+               n.encode("utf-16-le") for n in names]
+    nstreams = 3 + (1 if exception else 0)
+    system = struct.pack("<HH", 0, 0) + bytes(52)
+    module_size = 4 + 108 * len(names)
+    memory_size = 16 + 16 * len(regions)
+    cursor = 32 + 12 * nstreams
+    system_rva = cursor
+    module_rva = cursor + len(system)
+    memory_rva = module_rva + module_size
+    payload_rva = memory_rva + memory_size
+    payload_len = sum(len(data) for _start, data in regions)
+    cursor = payload_rva + payload_len
+    exception_rva = cursor if exception else None
+    if exception:
+        cursor += 168
+    context = bytearray(0x2CC)
+    if stack_pointer is not None:
+        struct.pack_into("<I", context, 0xC4, stack_pointer)    # esp
+    context_rva = cursor
+    cursor += len(context)
+    strings_rva = cursor
+
+    records = b""
+    for index, name in enumerate(names):
+        base, size, _image = modules[name]
+        name_rva = strings_rva + sum(len(b) for b in strings[:index])
+        records += struct.pack("<QIIII", base, size, 0, 0, name_rva) \
+            + bytes(52) + bytes(32)
+    module_stream = struct.pack("<I", len(names)) + records
+
+    entries = b""
+    for start, data in regions:
+        entries += struct.pack("<QQ", start, len(data))
+    memory_stream = struct.pack("<QQ", len(regions), payload_rva) + entries
+
+    exception_stream = b""
+    if exception:
+        exception_stream = (struct.pack("<II", 1, 0) +
+                            struct.pack("<II", 0xC0000005, 0) +
+                            struct.pack("<QQ", 0, exception) +
+                            struct.pack("<II", 2, 0) +
+                            struct.pack("<QQ", 0xFFFFFFFF, 0) + bytes(13 * 8) +
+                            struct.pack("<II", len(context), context_rva))
+    streams = [(7, system, system_rva), (4, module_stream, module_rva),
+               (9, memory_stream, memory_rva)]
+    if exception:
+        streams.append((6, exception_stream, exception_rva))
+    directory = b""
+    for kind, data, rva in streams:
+        directory += struct.pack("<III", kind, len(data), rva)
+    body = (system + module_stream + memory_stream +
+            b"".join(data for _start, data in regions) + exception_stream +
+            bytes(context) + b"".join(strings))
+    header = b"MDMP" + struct.pack("<IIIIIQ", 0xA793, nstreams, 32, 0, 0, 0)
+    return header + directory + body
+
+
+def test_dump_extract_reads_modules_and_rebuilds_a_pe(tmp_path=None):
+    """`tools/dump_extract.py` is the way a protected engine becomes readable:
+    the file on disk is encrypted, the process image is not, and the only fix a
+    memory image needs is section pointers back to their virtual addresses."""
+    import importlib.util
+    import subprocess
+    path = os.path.join(REPO, "tools", "dump_extract.py")
+    spec = importlib.util.spec_from_file_location("dump_extract", path)
+    dm = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(dm)
+
+    pe = _pe_image()
+    blob = _minidump({"C:\\game\\Toolkit.exe": (0x400000, 0x2000, pe),
+                      "C:\\game\\ijaqemox.dll": (0x10000000, 0x1000, b"\xA1" * 256)},
+                     [(0x400000, pe), (0x10000000, b"\xA1" * 256),
+                      (0x12FF00, struct.pack("<III", 0x00401234, 0, 0x10000020))],
+                     exception=0x10000010, stack_pointer=0x12FF00)
+    with tempfile.TemporaryDirectory() as d:
+        dump_path = os.path.join(d, "crash.dmp")
+        open(dump_path, "wb").write(blob)
+        dump = dm.read_dump(dump_path)
+        assert [m.name.split("\\")[-1] for m in dump.modules] == [
+            "Toolkit.exe", "ijaqemox.dll"]
+        assert dump.modules[0].base == 0x400000
+        image, got = dump.module_image(dump.modules[0])
+        assert image[:2] == b"MZ" and got == 0x2000
+        rebuilt, notes = dm.rebuild_pe(image)
+        assert rebuilt[:2] == b"MZ" and notes
+        assert struct.unpack_from("<I", rebuilt, 0x80 + 24 + 0xE0 + 20)[0] == 0x1000
+        # a module the dump only partly captured says so instead of lying
+        partial, got = dump.module_image(dump.modules[1])
+        assert got == 256 and len(partial) == 0x1000
+        report = dm.crash_report(dump)
+        assert report["exception"] == 0xC0000005
+        assert report["module"].endswith("ijaqemox.dll")
+        assert report["offset"] == 0x10
+        frames = [(f["module"].split("\\")[-1], f["offset"])
+                  for f in report["stack"]]
+        assert ("Toolkit.exe", 0x1234) in frames
+        assert ("ijaqemox.dll", 0x20) in frames
+        # ... and the CLI agrees with the library
+        out = os.path.join(d, "out")
+        result = subprocess.run([sys.executable, path, dump_path, "-o", out],
+                                capture_output=True, text=True, check=False)
+        assert result.returncode == 0, result.stderr
+        assert "crash: exception 0xc0000005" in result.stdout
+        assert os.path.exists(os.path.join(out, "ijaqemox.dll.img"))
+        assert os.path.exists(os.path.join(out, "Toolkit.exe.rebuilt"))
+        # a file that is not a minidump is refused, not guessed at
+        not_a_dump = os.path.join(d, "x.dmp")
+        open(not_a_dump, "wb").write(b"\x01\x02\x03\x04" + bytes(28))
+        result = subprocess.run([sys.executable, path, not_a_dump],
+                                capture_output=True, text=True, check=False)
+        assert result.returncode == 2
+        assert "not a Windows minidump" in result.stderr
+    # strings: what makes the loader's own names readable
+    assert any("resources" in text for text in
+               dm.printable_strings(b"\x00\x00resources\\characters\x01"))
+    assert dm.entropy(b"\x00" * 100) == 0.0
+
+
 def test_scene_gains_a_gobj_for_a_part_it_cannot_bind():
     """The engine binds the i-th mesh part to the i-th `gobj`, in order — the
     LOD scenes prove it, since their gobj names (`empire_angel_wing`) never

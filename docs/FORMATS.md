@@ -879,6 +879,63 @@ format are always correct; only this flag may differ from a specific source
 
 ---
 
+## 6b. Why the retail binaries cannot be read on disk
+
+Every question this document still leaves open — the `index` record layout, the
+`.g` invariants the loader actually enforces, where a bad unit kills the
+process — lives in code that ships protected.  Measured on the copies provided
+for this port (`google_drive/`, kept out of git):
+
+**`Toolkit.exe`** (6 225 920 B, the editor).  Twelve sections, names repeated
+(`.text .rdata .rdata .data .data .text .rdata .discard .discard .data .rsrc
+.ps4`); `.text` 4 993 024 B at entropy **8.00**, `.rdata`/`.data` likewise, so
+the code and the string table are both ciphertext.  Not one printable run
+exists anywhere in the file — `resources`, `MZ`-adjacent names, `StarForce`,
+`protect.dll`, `sfdrv01` all absent; the only survivors are `ijaqemox.dll` in
+`.rdata` and a stray `UPX` at 0x6ea81.  `CheckSum` is 0 against a computed
+0x5f6971, there is no TLS directory, no debug directory, no certificate table,
+no version info and no manifest.  The entry point is a three-times repeated
+`jmp dword [0x126af90]` whose target lies outside `SizeOfImage` — a slot the
+loader fills at run time.  A `.data` section declares `VirtualSize` 8 716 288
+with only 98 304 B of raw data: an unbacked multi-megabyte hole where the real
+image is written after decryption.  The imports were rebuilt by the protector
+(the engine is reached as `ijaqemox.dll!ordinal 1`, the one import with no
+name), and the readable remainder is 20 KB of position-independent,
+junk-interleaved stub at VA 0xdab000 that ends in `call $+5 / pop / sub` and
+`xchg [esp], ebp / ret` — a computed return, not a call graph.  `.ps4` is an
+empty section with no raw data.
+
+**`ijaqemox.dll`** (10 642 096 B, the engine module).  UPX-named sections
+(`UPX0` VA 0x1000, 5 861 376 B virtual and 0 raw; `UPX1` VA 0x598000,
+10 633 216 B virtual, 10 632 704 raw), a `UPX!` signature at 0x3e0 and the
+string `3.02` at 0x3dc — and a header that decodes to nonsense: `l_magic`
+0x451f7e68 where a UCL stream carries 0x01308198, an implausible `l_size`, a
+block method byte of 0, and a block table no scan can recover.  `tools/unpack_upx.py`
+is a complete NRV2B / NRV2D / NRV2E and raw-LZMA decoder written from the UPX
+3.96 kernels (`src/stub/src/arch/i386/nrv2*_d32.S`); run at every byte offset
+from 0x3e8 to 0x42c it produces at most 16 bytes before the first match points
+behind the output.  The payload is therefore not a UCL stream: the UPX header
+is a costume over a crypter.
+
+**What that means for this work.**  A protected image exists in clear only
+inside a running process, and the one artefact that carries it without a
+debugger, an unpacker or a modified executable is a **minidump** of that
+process — its own licensed execution.  `tools/dump_extract.py` reads one
+(`MDMP`, streams 3/4/5/6/7/9) and emits, per module, the image exactly as the
+process had it plus a `.rebuilt` copy whose section pointers point at their
+virtual addresses, which is the only fix a memory image needs before a reader
+can walk it.  It also prints the crash: the exception code and address, the
+module that owns it with the offset into it, and every return address found by
+scanning the faulting thread's stack and resolving it to `module+offset`.
+`--strings` writes the printable runs of one module, which is how the loader's
+own names (`index`, `resources\`, `vdpack`) become visible, and `--module`
+limits the work to one image.
+
+So the order of operations for every remaining question is: dump the process
+while it is alive (`Task Manager -> right click -> Create dump file`, or
+`procdump -ma <pid>`), run `dump_extract.py`, read the module.  Nothing in this
+document has to be guessed from statistics as long as that artefact exists.
+
 ## 6. The `.vdpack` mod archive
 
 A retail install keeps a unit as a loose folder; mods ship the whole tree as
