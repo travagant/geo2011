@@ -2881,6 +2881,66 @@ def test_the_audit_reports_a_scene_that_describes_the_old_mesh():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_the_audit_reports_an_ac_that_names_a_folder_the_game_lacks():
+    """A generated `*_lod.ac` invents a resource directory no install has.
+
+    The engine does not fall back when an `.ac` names a path into a folder the
+    game does not have — the load stops with a missing-file dialog naming the
+    pack.  Deriving that path from a `*_lod` stem instead of the unit's own
+    folder produces exactly that (`resources\\characters\\
+    character_empire_angel_lod`, seen in a shipped mod pack), while every file
+    it names sits in the unit folder.  The folder a bundle is *stored* in is no
+    guide (an export lands in a temp or `out` directory), so the anchor is the
+    resource folder the `.scene` itself names.
+    """
+    tmp = tempfile.mkdtemp(prefix="d3auditac_")
+    try:
+        work = os.path.join(tmp, "out")
+        os.makedirs(work)
+        retail = os.path.join(REPO, "Empire", "Inquisitor")
+        for name in os.listdir(retail):
+            path = os.path.join(retail, name)
+            if os.path.isfile(path) and name.endswith((".g", ".scene", ".ac",
+                                                       ".a", ".t")):
+                shutil.copyfile(path, os.path.join(work, name))
+        _facts, clean = auditmod.audit(work)
+        assert clean == [], clean
+
+        lod_ac = os.path.join(work, "character_empire_inquisitor_lod.ac")
+        bad = ("// ANIMATION CONFIGURATION file\n"
+               "version 0.2\n"
+               'state "Idle"\n'
+               "{\n"
+               'file "resources\\characters\\'
+               'character_empire_inquisitor_lod\\'
+               'character_empire_inquisitor_baseanims.a";\n'
+               "frame0 0;\n"
+               "frame1 63;\n"
+               "fps 30.000000;\n"
+               "priority 256;\n"
+               "flags 1;\n"
+               'meshfile "resources\\characters\\'
+               'character_empire_inquisitor_lod\\'
+               'character_empire_inquisitor_lod.g";\n'
+               "}\n")
+        open(lod_ac, "w", encoding="latin-1").write(bad)
+        _facts, findings = auditmod.audit(work)
+        folder_hits = [f for f in findings if "no folder" in f]
+        assert len(folder_hits) == 1, findings
+        assert "character_empire_inquisitor_lod" in folder_hits[0]
+        assert folder_hits[0].startswith("character_empire_inquisitor_lod.ac"), \
+            folder_hits[0]
+
+        # the same states pointed at the unit's real folder are not reported
+        open(lod_ac, "w", encoding="latin-1").write(
+            bad.replace("character_empire_inquisitor_lod\\",
+                        "empire\\inquisitor\\"))
+        _facts, findings = auditmod.audit(work)
+        assert not [f for f in findings if "no folder" in f], findings
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def test_same_motion_ignores_only_the_round_trip_noise():
     """A rebuilt `.a` re-quantises every keyframe; that is not an edit.
 

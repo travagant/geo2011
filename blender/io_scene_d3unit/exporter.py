@@ -670,6 +670,21 @@ def _verify(out_dir, base):
                     f"{base}.g: {line} — the game will crash loading it")
     except Exception as exc:  # noqa: BLE001
         out["warnings"].append(f"could not re-read {base}.g: {exc}")
+    # The four files of a unit describe each other, and every one of them
+    # parses on its own however stale it is: only a reader that cross-checks
+    # them (`d3tool audit`) sees a `gobj` still quoting the mesh it replaced, or
+    # an `.ac` naming a folder the game does not have.  The engine finds out at
+    # load time and stops, so say it here, where the export report is read.
+    try:
+        auditmod = bridge.module("audit")
+        _facts, findings = auditmod.audit(out_dir)
+        for line in findings[:8]:
+            out["warnings"].append(f"audit: {line}")
+        if len(findings) > 8:
+            out["warnings"].append(
+                f"audit: … and {len(findings) - 8} more (see the log)")
+    except Exception:  # noqa: BLE001 - the audit must never fail an export
+        pass
     return out
 
 

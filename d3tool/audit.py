@@ -18,9 +18,11 @@ beside the retail one so the changes are not guesswork.
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
+from . import ac as acmod
 from . import gfile, scene as scenemod
 
 
@@ -117,6 +119,74 @@ def _int(value) -> Optional[int]:
         return None
 
 
+def _scene_resource_folder(folder: str, names: List[str]) -> str:
+    """The unit's own resource folder, taken from the main `.scene`.
+
+    A bundle may be assembled anywhere on disk (a temp folder called ``out``),
+    so the directory it sits in says nothing about the path the engine will
+    ask for.  The `.scene` does: it names its geometry as
+    ``resources\\\\characters\\\\empire\\\\inquisitor\\\\….g``, and the segment
+    before the file name is the folder every companion file has to live in.
+    """
+    scenes = [n for n in names if n.lower().endswith(".scene")
+              and not n.lower().endswith("_lod.scene")]
+    for name in scenes or [n for n in names if n.lower().endswith(".scene")]:
+        try:
+            with open(os.path.join(folder, name), encoding="latin-1") as fh:
+                text = fh.read()
+        except OSError:
+            continue
+        for match in re.finditer(r'"([^"\r\n]*?\.g)"', text, re.IGNORECASE):
+            chunks = [c for c in match.group(1).replace("/", "\\").split("\\")
+                      if c]
+            if len(chunks) >= 2:
+                return chunks[-2].lower()
+    return os.path.basename(os.path.abspath(folder)).lower()
+
+
+def _ac_folder_findings(folder: str, names: List[str]) -> List[str]:
+    """`.ac` paths that send the engine into a folder the game does not have.
+
+    An `.ac` names the animation stream and the mesh by *resource* path, and
+    the engine does not fall back when that path points nowhere: the load
+    stops with a missing-file dialog naming the pack.  The usual way to
+    produce one is to derive the resource directory from a `*_lod` stem
+    instead of the unit's own folder, which invents
+    ``resources\\characters\\character_empire_angel_lod`` — a directory no
+    retail install has.  A path is only reported when the file it names is
+    sitting in *this* folder, so a unit that legitimately shares another
+    folder's streams is not accused.
+    """
+    findings: List[str] = []
+    base = _scene_resource_folder(folder, names)
+    for name in [n for n in names if n.lower().endswith(".ac")]:
+        try:
+            with open(os.path.join(folder, name), encoding="latin-1") as fh:
+                config = acmod.parse_ac(fh.read())
+        except Exception as exc:  # noqa: BLE001 - an unreadable .ac is a finding
+            findings.append(f"{name}: does not parse ({exc})")
+            continue
+        seen = set()
+        for state in config.states:
+            for ref in (state.file, state.meshfile):
+                if not ref:
+                    continue
+                chunks = [c for c in ref.replace("/", "\\").split("\\") if c]
+                if len(chunks) < 2:
+                    continue
+                where = chunks[-2].lower()
+                target = chunks[-1]
+                if where == base or (name, where) in seen:
+                    continue
+                if not os.path.isfile(os.path.join(folder, target)):
+                    continue
+                seen.add((name, where))
+                findings.append(
+                    f"{name}: state {state.name} names {ref}, but the game "
+                    f"has no folder {where!r} — {target} is in this folder")
+    return findings
+
+
 def audit(folder: str) -> Tuple[Dict[str, List], List[str]]:
     """Read a unit bundle and report what disagrees with what.
 
@@ -156,6 +226,8 @@ def audit(folder: str) -> Tuple[Dict[str, List], List[str]]:
                 if not os.path.isfile(os.path.join(folder, want)):
                     findings.append(f"{name} part {p.name}: {key} names {mat}, "
                                     f"but {want} is not in the folder")
+
+    findings.extend(_ac_folder_findings(folder, names))
 
     for name in [n for n in names if n.lower().endswith(".scene")]:
         try:
