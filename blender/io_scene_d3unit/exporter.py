@@ -336,6 +336,58 @@ def _export_gltf(context, path, objects, use_anim, base):
 # --------------------------------------------------------------------------- #
 #  core (also driven directly by the tests, without operators)
 # --------------------------------------------------------------------------- #
+def _stamp_diffuse_names(target: str, meshes) -> tuple:
+    """Write every mesh object's ``d3unit_diffuse`` into the glTF as extras.
+
+    Returns ``(stamped, missing)`` — the object names whose texture name could
+    not be attached to any node.  ``d3tool`` reads the value on the way back
+    (``d3tool.gltf._extras_diffuse``) and it outranks both the primitive's own
+    image and the donor part's attribute, which is how a part whose texture
+    lives in *another* unit's folder keeps a name the engine can resolve.
+    """
+    import json
+    wanted = {}
+    for ob in meshes:
+        try:
+            value = ob.get(unitprops.DIFFUSE_PROP)
+        except Exception:  # noqa: BLE001
+            value = None
+        if not value:
+            continue
+        wanted[ob.name] = str(value)
+        try:
+            wanted.setdefault(ob.data.name, str(value))
+        except Exception:  # noqa: BLE001
+            pass
+    if not wanted:
+        return 0, []
+    try:
+        with open(target, "r", encoding="utf-8") as fh:
+            doc = json.load(fh)
+    except (OSError, ValueError):
+        return 0, sorted(wanted)
+    nodes = doc.get("nodes") or []
+    meshes_json = doc.get("meshes") or []
+    stamped, seen = 0, set()
+    for node in nodes:
+        for key in ("name", ""):
+            value = wanted.get(node.get(key) or "")
+            if not value:
+                continue
+            mi = node.get("mesh")
+            if mi is None or mi >= len(meshes_json):
+                continue
+            mesh = meshes_json[mi]
+            mesh.setdefault("extras", {})["d3unit_diffuse"] = value
+            stamped += 1
+            seen.add(node.get(key))
+            break
+    with open(target, "w", encoding="utf-8") as fh:
+        json.dump(doc, fh)
+    missing = sorted(set(wanted) - seen)
+    return stamped, [n for n in missing if n in {ob.name for ob in meshes}]
+
+
 def export_unit(context, path: str, use_anim: bool = True, weights: int = 0,
                 donor_dir: str = "", quiet: bool = False,
                 keep_temp: bool = False) -> dict:
@@ -389,6 +441,14 @@ def export_unit(context, path: str, use_anim: bool = True, weights: int = 0,
             raise RuntimeError(f"the glTF exporter returned {res!r}")
         if not os.path.isfile(target):
             raise RuntimeError("the glTF exporter wrote no file")
+        stamped, missing = _stamp_diffuse_names(target, meshes)
+        if stamped:
+            print(f"[d3unit] named the texture of {stamped} part(s) in the "
+                  f"glTF (d3unit_diffuse)")
+        if missing:
+            warns.append(
+                "texture name not attached to any node: "
+                + ", ".join(missing))
 
         with contextlib.redirect_stdout(log), \
                 contextlib.redirect_stderr(log):

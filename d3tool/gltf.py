@@ -130,6 +130,36 @@ def _texture_uri(gltf, texture_index: int) -> str:
     return uri
 
 
+#: name of the per-mesh extras key the Blender add-on writes when the artist
+#: names a part's texture by hand (see `blender/io_scene_d3unit/unitprops.py`)
+DIFFUSE_EXTRAS = "d3unit_diffuse"
+
+
+def _extras_diffuse(gltf, mesh_json) -> str:
+    """The ``d3unit_diffuse`` override of a mesh, from its extras or material.
+
+    A part can carry the right UV layout and no usable texture link at all —
+    a sword grafted in from another unit wears the *donor's* material until the
+    artist assigns one, and the donor's name then wins silently.  The add-on
+    lets the material be named by hand and passes it here, which outranks both
+    the primitive's image and the donor part's attribute.
+    """
+    for holder in (mesh_json, ):
+        extras = (holder or {}).get("extras") or {}
+        value = extras.get(DIFFUSE_EXTRAS)
+        if value:
+            return str(value)
+    mats = gltf.get("materials", [])
+    for pr in mesh_json.get("primitives") or []:
+        mi = pr.get("material")
+        if mi is None or mi >= len(mats):
+            continue
+        value = (mats[mi].get("extras") or {}).get(DIFFUSE_EXTRAS)
+        if value:
+            return str(value)
+    return ""
+
+
 def _mesh_material_maps(gltf, mesh_json):
     """Diffuse/lightmap texture names of a mesh's first primitive."""
     diffuse = lightmap = ""
@@ -142,6 +172,12 @@ def _mesh_material_maps(gltf, mesh_json):
             diffuse = _texture_uri(gltf, pbr["baseColorTexture"]["index"])
         if "normalTexture" in mat:
             lightmap = _texture_uri(gltf, mat["normalTexture"]["index"])
+    override = _extras_diffuse(gltf, mesh_json)
+    if override:
+        # spelled the way the attribute block wants it (``<stem>.tga``)
+        diffuse = (override if os.path.splitext(override)[1].lower()
+                   in (".tga", ".t", ".dds", ".png", ".jpg", ".jpeg")
+                   else override + ".tga")
     return diffuse, lightmap
 
 
@@ -1394,6 +1430,7 @@ def mesh_to_skinned(m: GltfModel, weights_on_vertex: int = 0,
                 dst.position = src.position
 
     parts: List[MeshPart] = []
+    mwarns: List[str] = []
     for sub in m.submodels:
         dpart = None
         if donor is not None:
@@ -1445,6 +1482,17 @@ def mesh_to_skinned(m: GltfModel, weights_on_vertex: int = 0,
                 p_attrs["material0_diffuse"] = want
                 p_items = [(k, want if k == "material0_diffuse" else v)
                            for k, v in p_items]
+        elif dpart is not None and dpart.material_diffuse:
+            # no texture in the scene at all (the image never loaded, or the
+            # object is a graft from another unit): the donor part's name is
+            # inherited, which is right by default and worth saying out loud —
+            # it is the difference between "the sword keeps the mace's atlas"
+            # and "the sword is painted with the blade's"
+            mwarns.append(
+                f"part {sub.mesh_name}: no texture in the scene — keeping the "
+                f"donor's {dpart.material_diffuse!r}. Assign the material with "
+                f"the right image, or set the object's "
+                f"'{DIFFUSE_EXTRAS}' property to name it")
         parts.append(MeshPart(
             name=sub.mesh_name,
             vertex_count=sub.vertex_count,
@@ -1513,6 +1561,8 @@ def mesh_to_skinned(m: GltfModel, weights_on_vertex: int = 0,
             mesh.trailing = donor.trailing
         elif not mesh.parts:
             mesh.trailing = donor.trailing
+    if mwarns:
+        mesh.blender_warnings = list(mesh.blender_warnings) + mwarns
     return mesh
 
 

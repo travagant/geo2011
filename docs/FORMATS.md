@@ -442,6 +442,18 @@ Reverse rebuild details (byte-parity with the originals, see
 
 ---
 
+**Naming a part's texture from Blender.**  The add-on records each part's
+`material0_diffuse` on its mesh object as the custom property
+`d3unit_diffuse` (set on import, editable in the *Disciples III* sidebar panel,
+or *Object Properties > Custom Properties*).  On export it is written into the
+glTF as `meshes[i].extras.d3unit_diffuse`, `d3tool/gltf.py::_extras_diffuse`
+lets it outrank both the primitive's image and the donor part's attribute, and
+the ordinary export path then restates the `gobj` of both `.scene` files from
+the written parts (`d3tool/scene.py::refresh_part_gobjs`) and carries the `.t`
+(`d3tool/cli.py::_carry_material_textures`).  That is the supported way to make
+a grafted part wear another unit's texture, since the name the engine reads
+lives in the `.scene`, not in the material.
+
 A part's material name is stored in **three** places that the engine reads
 independently: the `material0_diffuse` attribute of the block in the main
 `.g`, the same attribute in the `_lod.g`, and the `attr "material0_diffuse"`

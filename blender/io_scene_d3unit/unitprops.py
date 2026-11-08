@@ -25,6 +25,14 @@ from typing import Dict, Optional
 
 PROP = "d3unit"          # dict on the armature object
 PART_PROP = "d3unit_part"  # True on every mesh that belongs to the unit
+# the `.g` attribute block's `material0_diffuse` of one part, as a string on
+# the mesh object.  The name lives in THREE places (the part's block in the
+# `.g`, the same block in the `_lod.g`, and the `gobj` in both `.scene`
+# files) and the engine reads the scene's copy, so it can only be set on the
+# Blender side when the exporter is the one writing all three.  Set on import
+# from the part's own attribute, honoured on export by writing
+# `extras.d3unit_diffuse` into the glTF (`d3tool/gltf.py`).
+DIFFUSE_PROP = "d3unit_diffuse"
 # which unit a part belongs to (the `.g` base): several units may live in one
 # scene, and an export must pick only its own meshes
 OWNER_PROP = "d3unit_owner"

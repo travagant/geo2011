@@ -2345,6 +2345,64 @@ def test_retexture_part_rewrites_g_and_scene():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_blender_texture_name_property_reaches_the_g_and_the_scene():
+    """``extras.d3unit_diffuse`` beats both the image and the donor part.
+
+    A part can be re-textured from another unit's folder (a sword wearing the
+    Knight's blade atlas) while its glTF material still names the donor's
+    image.  The add-on stores the artist's name on the mesh object and passes
+    it through as ``extras.d3unit_diffuse``; the export has to write it into
+    the part's attribute block, into the LOD copy and into the `gobj` of both
+    `.scene` files — the engine draws the scene's copy — and carry the `.t`.
+    """
+    tmp = tempfile.mkdtemp(prefix="d3diffuse_")
+    try:
+        donor = os.path.join(tmp, "donor")
+        os.makedirs(donor)
+        for name in ("character_empire_inquisitor.g",
+                     "character_empire_inquisitor_baseanims.a",
+                     "character_empire_inquisitor.t",
+                     "character_empire_inquisitor.ac",
+                     "character_empire_inquisitor.scene"):
+            shutil.copyfile(os.path.join(REPO, "Empire", "Inquisitor", name),
+                            os.path.join(donor, name))
+        shutil.copyfile(
+            os.path.join(REPO, "Empire", "Knight",
+                         "weapon_empire_knight_sword_diffuse.t"),
+            os.path.join(donor, "weapon_empire_knight_sword_diffuse.t"))
+        fwd = os.path.join(tmp, "fwd")
+        os.makedirs(fwd)
+        gt, _bt = climod._export_gl(
+            os.path.join(donor, "character_empire_inquisitor.g"),
+            os.path.join(donor, "character_empire_inquisitor_baseanims.a"),
+            os.path.join(fwd, "character_empire_inquisitor.gltf"), None,
+            quiet=True)
+        doc = json.load(open(gt))
+        weapon = [m for m in doc["meshes"]
+                  if "weapon" in (m.get("name") or "")][0]
+        weapon.setdefault("extras", {})["d3unit_diffuse"] = \
+            "weapon_empire_knight_sword_diffuse.tga"
+        json.dump(doc, open(gt, "w"))
+
+        out = os.path.join(tmp, "back")
+        climod._export(gt, out, 0, anim=True, quiet=True, donor_dir=donor)
+        parts = gfile.iter_parts(gfile.parse_geometry_file(
+            open(os.path.join(out, "character_empire_inquisitor.g"),
+                 "rb").read()))
+        mats = {p.name: p.attrs.get("material0_diffuse") for p in parts}
+        assert mats["weapon_empire_inquisitor"] == \
+            "weapon_empire_knight_sword_diffuse.tga", mats
+        assert mats["Standard_8"] == "character_empire_inquisitor.tga", mats
+        scene = open(os.path.join(out, "character_empire_inquisitor.scene"),
+                     "rb").read().decode("latin-1")
+        assert "weapon_empire_knight_sword_diffuse.tga" in scene
+        assert scene.count('"weapon_empire_inquisitor.tga"') == 0
+        assert os.path.isfile(os.path.join(
+            out, "weapon_empire_knight_sword_diffuse.t"))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0

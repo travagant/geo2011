@@ -26,7 +26,7 @@ package only builds and reads the Blender scene.
 bl_info = {
     "name": "Disciples III Unit (GM .g/.a/.scene/.ac/.t)",
     "author": "Arena agent / geo2011",
-    "version": (1, 1, 26),
+    "version": (1, 1, 27),
     "blender": (3, 0, 0),
     "location": "File > Import/Export > Disciples III Unit",
     "description": "Import and export Disciples III character units "
@@ -46,6 +46,46 @@ from bpy.types import Panel  # noqa: E402
 from . import (bridge, exporter, importer, preferences,  # noqa: E402
                unitprops, weapon)
 
+class D3UNIT_OT_name_texture(bpy.types.Operator):
+    """Name the texture this part wears in the game"""
+
+    bl_idname = "d3unit.name_texture"
+    bl_label = "Name the Texture…"
+    bl_description = ("The name is written into the part's block in the .g, "
+                      "the same block of the _lod.g and the gobj of both "
+                      ".scene files on export")
+    bl_options = {"REGISTER", "UNDO"}
+
+    value: StringProperty(
+        name="Texture",
+        description="Material file name, e.g. weapon_empire_knight_sword_"
+                    "diffuse.tga (the .t next to the unit is matched by stem)",
+        default="")  # type: ignore[valid-type]
+
+    def invoke(self, context, event):
+        ob = getattr(context, "object", None)
+        if ob is not None and ob.type == "MESH":
+            self.value = str(ob.get(unitprops.DIFFUSE_PROP) or "")
+        return context.window_manager.invoke_props_dialog(self)
+
+    def execute(self, context):
+        ob = getattr(context, "object", None)
+        if ob is None or ob.type != "MESH":
+            self.report({"ERROR"}, "select the mesh part first")
+            return {"CANCELLED"}
+        name = self.value.strip()
+        try:
+            if name:
+                ob[unitprops.DIFFUSE_PROP] = name
+            elif unitprops.DIFFUSE_PROP in ob:
+                del ob[unitprops.DIFFUSE_PROP]
+        except Exception as exc:  # noqa: BLE001
+            self.report({"ERROR"}, f"could not store the name: {exc}")
+            return {"CANCELLED"}
+        self.report({"INFO"}, f"{ob.name}: {name or '(none)'}")
+        return {"FINISHED"}
+
+
 CLASSES = (
     preferences.D3UNIT_PT_preferences,
     preferences.D3UNIT_OT_check_tool,
@@ -53,6 +93,7 @@ CLASSES = (
     importer.D3UNIT_OT_import_batch,
     exporter.D3UNIT_OT_export,
     weapon.D3UNIT_OT_place_weapon,
+    D3UNIT_OT_name_texture,
 )
 
 
@@ -134,6 +175,28 @@ class D3UNIT_PT_panel(Panel):
                   if o.type == "MESH" and (o is root or o.parent is root
                                            or o.get(unitprops.PART_PROP))]
         col.label(text=f"Meshes: {len(meshes)}")
+        # a part's material name: the one thing about a re-textured part that
+        # Blender cannot carry by itself, because the engine reads the name
+        # out of the `.scene`, not out of the material
+        mesh = ob if (ob is not None and ob.type == "MESH") else None
+        if mesh is not None:
+            tb = layout.box()
+            tb.label(text=f"Texture of {mesh.name}", icon="TEXTURE")
+            row = tb.row(align=True)
+            if unitprops.DIFFUSE_PROP in mesh:
+                row.prop(mesh, '["' + unitprops.DIFFUSE_PROP + '"]',
+                         text="Material")
+            else:
+                row.label(text="(inherited from the donor .g)")
+            op = row.operator("d3unit.name_texture", text="", icon="GREASEPENCIL")
+            op.value = str(mesh.get(unitprops.DIFFUSE_PROP) or "")
+            if str(mesh.get(unitprops.DIFFUSE_PROP) or "").lower().endswith(
+                    ".tga"):
+                hint = tb.column(align=True)
+                hint.scale_y = 0.8
+                hint.label(text="file next to the unit: "
+                                + os.path.splitext(str(mesh.get(
+                                    unitprops.DIFFUSE_PROP)))[0] + ".t")
         op = layout.operator(exporter.D3UNIT_OT_export.bl_idname,
                              text="Export Unit", icon="EXPORT")
         op.filepath = info.get("g", "")
