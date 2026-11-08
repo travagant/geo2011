@@ -202,6 +202,17 @@ runs six such scenarios, all battle-ready):
   fifth block while leaving the donor prelude at four leaves the mesh in the
   file and out of the model — see `docs/FORMATS.md` ("How many mesh blocks the
   container declares").
+* **A new weapon gets put where the reference weapon is, by one operator.**
+  Select one vertex on each weapon — the point the hand grips it by — and press
+  *Place Active Mesh on Reference* in the *Disciples III* sidebar: the mesh is
+  rotated about its own grip until its principal axis (a Jacobi fit in
+  `d3tool.weapon`) matches the reference weapon's shaft, then moved so the two
+  grip vertices coincide.  *Roll* spins the blade about that axis, *Same Bone*
+  hangs the mesh from the reference weapon's bone.  This has to happen **in the
+  bind pose** (armature → Pose Position → Rest): the vertices are written in
+  world space and the bone's motion is added on top, so shaping a weapon onto
+  an animated frame doubles the offset and it drifts out of the palm in game.
+  `tools/place_weapon.py` is the same recipe as a stand-alone script.
 * **Every export ends with a battle-readiness check**: each `.ac` state's
   file present, `frame1` within that `.a`'s real frame count, meshfile
   and `.scene` references resolvable, a `.t` behind every

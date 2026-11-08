@@ -16,6 +16,7 @@ from d3tool import anim as animmod
 from d3tool import cli as climod
 from d3tool import gfile, gltf, ac as acmod, gltf_out, scene as scenemod
 from d3tool import texture as texmod
+from d3tool import weapon as weaponmod
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -3369,6 +3370,77 @@ def test_a_part_without_a_donor_block_gets_its_own_box_and_weights_key():
     if morph:
         pt = morph[0]
         assert gmod.scene_node_block(pt, pt.part_prefix[28:84])[:12] == pt.part_prefix[28:40]
+
+
+
+def _dist(a, b):
+    return sum((a[i] - b[i]) ** 2 for i in range(3)) ** 0.5
+
+
+def _weapon_clouds(seed=7):
+    """A reference weapon along +Y from its grip and a sword along -X."""
+    import random
+    rng = random.Random(seed)
+    ref = [[rng.gauss(0, 0.02), t, rng.gauss(0, 0.02)]
+           for t in [i / 50 for i in range(51)]]
+    src = [[5.0 - t * 1.2, -2.0 + rng.gauss(0, 0.02), 3.0 + rng.gauss(0, 0.02)]
+           for t in [i / 50 for i in range(51)]]
+    return ref, [0.0, 0.0, 0.0], src, [5.0, -2.0, 3.0]
+
+
+def test_weapon_axis_is_the_principal_component():
+    """The long axis comes from the cloud, not from the bounding box."""
+    d = weaponmod._unit([1.0, 2.0, -0.5])
+    pts = [[t * d[0] + (0.01 if i % 2 else -0.01), t * d[1], t * d[2]]
+           for i, t in enumerate([j / 40 for j in range(41)])]
+    axis = weaponmod.main_axis(pts, [0.0, 0.0, 0.0])
+    assert weaponmod.angle_between(axis, d) < 3.0, axis
+    # ... and it points away from the grip, whichever end that is
+    flipped = weaponmod.main_axis(pts, [pts[-1][0] * 1.01, pts[-1][1],
+                                        pts[-1][2]])
+    assert weaponmod.angle_between(flipped, [-x for x in d]) < 3.0
+
+
+def test_weapon_alignment_puts_the_grip_on_the_grip():
+    """The matrix is rigid: grip onto grip, axis onto axis, size unchanged."""
+    ref, ref_grip, src, src_grip = _weapon_clouds()
+    mat, info = weaponmod.align_matrix(ref, ref_grip, src, src_grip)
+    assert info["axis_found"] is True
+    got = weaponmod.place([src_grip], mat)[0]
+    assert max(abs(got[i] - ref_grip[i]) for i in range(3)) < 1e-9
+    moved = weaponmod.place(src, mat)
+    assert weaponmod.angle_between(weaponmod.main_axis(moved, ref_grip),
+                                   weaponmod.main_axis(ref, ref_grip)) < 2.0
+    # every distance survives: no scale, no shear
+    assert abs(_dist(src[0], src[-1]) - _dist(moved[0], moved[-1])) < 1e-9
+    # the blade points the way the reference weapon points: forward along
+    # its axis (the sword is longer than the mace, so it ends past the head)
+    axis = weaponmod.main_axis(ref, ref_grip)
+    rel = [moved[-1][i] - ref_grip[i] for i in range(3)]
+    along = sum(rel[i] * axis[i] for i in range(3))
+    across = _dist(rel, [along * axis[i] for i in range(3)])
+    assert along > 1.1 and across < 0.05, (along, across)
+
+
+def test_weapon_roll_spins_about_the_reference_axis_only():
+    ref, ref_grip, src, src_grip = _weapon_clouds()
+    mat, _ = weaponmod.align_matrix(ref, ref_grip, src, src_grip, roll_deg=90.0)
+    got = weaponmod.place([src_grip], mat)[0]
+    assert max(abs(got[i] - ref_grip[i]) for i in range(3)) < 1e-9
+    moved = weaponmod.place(src, mat)
+    assert weaponmod.angle_between(weaponmod.main_axis(moved, ref_grip),
+                                   weaponmod.main_axis(ref, ref_grip)) < 2.0
+
+
+def test_weapon_alignment_survives_a_mesh_without_an_axis():
+    """A single-vertex "mesh" is only translated, never spun."""
+    ref, ref_grip, src, src_grip = _weapon_clouds()
+    mat, info = weaponmod.align_matrix(ref, ref_grip, [[1.0, 1.0, 1.0]],
+                                       src_grip)
+    assert info["axis_found"] is False
+    got = weaponmod.place([[1.0, 1.0, 1.0]], mat)[0]
+    want = [1.0 - src_grip[i] + ref_grip[i] for i in range(3)]
+    assert max(abs(got[i] - want[i]) for i in range(3)) < 1e-9
 
 
 if __name__ == "__main__":

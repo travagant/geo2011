@@ -254,6 +254,16 @@ bind origin and the bone descriptor holding that bone's inverse bind.  That is
 exactly the shape the Angel's sword needs, which is why the record width was
 the whole of its defect.
 
+Because those vertices are stored in **model space**, a weapon added in
+Blender has to be shaped onto the weapon it replaces while the armature is in
+its rest pose: the part is bound 1.0 to one bone and the engine adds that
+bone's motion on top, so a mesh modelled onto an animated frame comes out
+displaced by the animation too.  The add-on's *Place Active Mesh on Reference*
+does that measurement for you — grip vertex onto grip vertex, the mesh's
+principal axis onto the reference weapon's shaft (`d3tool.weapon`, a 3x3
+symmetric eigenproblem solved with Jacobi rotations) — and `Roll` decides the
+one thing an axis cannot: which way the blade's flat face looks.
+
 The leading 4-byte magic is constant *within* a file but differs between files;
 it must be preserved for round-trips.
 

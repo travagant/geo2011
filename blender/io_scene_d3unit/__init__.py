@@ -26,7 +26,7 @@ package only builds and reads the Blender scene.
 bl_info = {
     "name": "Disciples III Unit (GM .g/.a/.scene/.ac/.t)",
     "author": "Arena agent / geo2011",
-    "version": (1, 1, 17),
+    "version": (1, 1, 18),
     "blender": (3, 0, 0),
     "location": "File > Import/Export > Disciples III Unit",
     "description": "Import and export Disciples III character units "
@@ -39,10 +39,11 @@ bl_info = {
 import os  # noqa: E402  (kept for the panels)
 
 import bpy  # noqa: E402
-from bpy.props import StringProperty  # noqa: E402
+from bpy.props import FloatProperty, StringProperty  # noqa: E402
 from bpy.types import Panel  # noqa: E402
 
-from . import bridge, exporter, importer, preferences, unitprops  # noqa: E402
+from . import (bridge, exporter, importer, preferences,  # noqa: E402
+               unitprops, weapon)
 
 CLASSES = (
     preferences.D3UNIT_PT_preferences,
@@ -50,6 +51,7 @@ CLASSES = (
     importer.D3UNIT_OT_import,
     importer.D3UNIT_OT_import_batch,
     exporter.D3UNIT_OT_export,
+    weapon.D3UNIT_OT_place_weapon,
 )
 
 
@@ -78,6 +80,25 @@ class D3UNIT_PT_panel(Panel):
 
     def draw(self, context):
         layout = self.layout
+        # weapon placement is a plain scene operation: it works on a unit that
+        # was imported by this add-on and on a hand-assembled test scene alike
+        ob = getattr(context, "active_object", None)
+        box = layout.box()
+        box.label(text="Weapon placement", icon="SNAP_ON")
+        col = box.column(align=True)
+        col.prop(context.scene, "d3unit_weapon_ref", text="Reference")
+        col.prop(context.scene, "d3unit_weapon_roll", text="Roll")
+        row = col.row(align=True)
+        row.enabled = ob is not None and ob.type == "MESH"
+        op = row.operator(weapon.D3UNIT_OT_place_weapon.bl_idname,
+                          text="Place Active Mesh on Reference", icon="SNAP_ON")
+        op.reference = context.scene.d3unit_weapon_ref
+        op.roll = context.scene.d3unit_weapon_roll
+        if ob is not None and ob.type == "MESH":
+            col.label(text=f"Active: {ob.name}", icon="MESH_DATA")
+        else:
+            col.label(text="Select the mesh to place", icon="INFO")
+
         root = unitprops.find_unit_root(context)
         info = unitprops.get_info(root) if root else {}
         if not info:
@@ -128,6 +149,20 @@ def register():
     bpy.types.TOPBAR_MT_file_import.append(_menu_import)
     bpy.types.TOPBAR_MT_file_export.append(_menu_export)
 
+    # the weapon-placement panel remembers its reference across re-registers
+    for prop in ("d3unit_weapon_ref", "d3unit_weapon_roll"):
+        if hasattr(bpy.types.Scene, prop):
+            delattr(bpy.types.Scene, prop)
+    bpy.types.Scene.d3unit_weapon_ref = StringProperty(
+        name="Reference weapon",
+        default="",
+        description="Object whose grip and axis the placed mesh is aligned "
+                    "to; empty = the only weapon_* mesh in the scene")
+    bpy.types.Scene.d3unit_weapon_roll = FloatProperty(
+        name="Roll",
+        default=0.0,
+        description="Extra spin about the reference axis, in degrees")
+
     # a cheap self-check, visible in the console at start-up
     mod = bridge.load()
     print(f"[d3unit] add-on registered; {bridge.version_hint()}"
@@ -148,6 +183,9 @@ def unregister():
             bpy.utils.unregister_class(cls)
         except (RuntimeError, ValueError):
             pass
+    for prop in ("d3unit_weapon_ref", "d3unit_weapon_roll"):
+        if hasattr(bpy.types.Scene, prop):
+            delattr(bpy.types.Scene, prop)
 
 
 if __name__ == "__main__":

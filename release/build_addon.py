@@ -38,6 +38,7 @@ ADDON_FILES = (
     "importer.py",
     "preferences.py",
     "unitprops.py",
+    "weapon.py",
 )
 
 SKIP_DIRS = {"__pycache__", ".mypy_cache", ".pytest_cache"}
