@@ -392,10 +392,13 @@ For `character_neutrals_airelemental.gltf` the exporter writes:
   appends and warns about.
 * the same part has to reach the **LOD model** too: the `.char` profile swaps
   to `unit_scene_lod` beyond a draw distance (`10` for nearly every unit), and
-  `<base>_lod.g` is a separate, lower-poly mesh.  `d3tool lod <unit folder>`
-  appends the added parts to the LOD mesh (byte for byte — a `.g` is a
-  sequence of self-contained part blocks) and gives `<base>_lod.scene` the
-  matching `gobj`.
+  `<base>_lod.g` is a separate, lower-poly mesh.  The reverse export runs the
+  sync itself (`d3tool lod <unit folder>` does the same by hand): it appends
+  the added parts to the LOD mesh, renamed `lod_<name>` and re-pointed at that
+  file's own `dwParent` (`gfile.lod_part` — the node ids are per file, the
+  Angel's main mesh uses 53704704 and its LOD mesh 55867360), and gives
+  `<base>_lod.scene` the matching `gobj`.  Only the container's mesh count
+  moves in the shipped bytes; running it twice changes nothing.
 * `character_neutrals_airelemental.ac` — animation config.  When the source
   unit folder already has an `.ac`, the exporter reuses it verbatim so its
   `event2` entries survive (the attack/damage/death sound aliases and the

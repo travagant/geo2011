@@ -26,6 +26,7 @@ import argparse
 import glob
 import json
 import os
+import shutil
 import struct
 import sys
 import textwrap
@@ -845,6 +846,27 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
         except Exception as exc:  # noqa: BLE001
             if not quiet:
                 ui.skipped(base + " <anim>", str(exc))
+    # The LOD model is a separate `.g` pair: a part this export added (a
+    # weapon) stays invisible on the battlefield — where the profile swaps to
+    # `unit_scene_lod` — until the LOD mesh carries it and the LOD scene has
+    # its `gobj`.  The LOD is not part of the export (it is the shipped
+    # low-detail copy), so it is taken from the donor folder when the output
+    # folder has none, then synced.
+    if donor_dir and os.path.abspath(donor_dir) != os.path.abspath(out_dir):
+        for ext in ("_lod.g", "_lod.scene"):
+            src = os.path.join(donor_dir, base + ext)
+            dst = os.path.join(out_dir, base + ext)
+            if os.path.isfile(src) and not os.path.isfile(dst):
+                shutil.copyfile(src, dst)
+                if not quiet:
+                    ui.wrote(dst, "copied from the donor (the LOD model)")
+    try:
+        if any(fn.endswith("_lod.g") for fn in os.listdir(out_dir)):
+            _lod_sync(out_dir, quiet=quiet)
+    except Exception as exc:  # noqa: BLE001 - never fail an export over it
+        ui.warn(f"{base}: the LOD model was not synced ({exc}) — an added "
+                f"weapon will not show on the battlefield")
+
     _battle_readiness_check(out_dir, base, quiet)
     if not quiet:
         print("")
@@ -2002,7 +2024,8 @@ def _gattr(args) -> int:
     return 0
 
 
-def _lod_sync(unit_dir: str, out_dir: Optional[str] = None) -> int:
+def _lod_sync(unit_dir: str, out_dir: Optional[str] = None,
+              quiet: bool = False) -> int:
     """`lod <unit folder>` — make a unit's LOD model carry its added parts.
 
     The engine swaps to `unit_scene_lod` (marked in the `.char` profile with a
@@ -2011,8 +2034,15 @@ def _lod_sync(unit_dir: str, out_dir: Optional[str] = None) -> int:
     added to the main `.g` — a weapon — is therefore invisible on the
     battlefield until it is appended to the LOD mesh and the LOD scene has the
     `gobj` for it.
+
+    The appended block is re-shaped for the file it lands in: renamed
+    ``lod_<name>`` the way every LOD block is spelled, and re-pointed at the
+    LOD file's own parent node (`gfile.lod_part`).  Running it again changes
+    nothing — the match ignores the ``lod_`` prefix, so a synced unit is not
+    given the part twice.
     """
-    ui.section("LOD sync")
+    if not quiet:
+        ui.section("LOD sync")
     if not os.path.isdir(unit_dir):
         ui.fail(f"no such folder: {unit_dir}")
         return 1
@@ -2037,18 +2067,23 @@ def _lod_sync(unit_dir: str, out_dir: Optional[str] = None) -> int:
         # main mesh's, in the same order (and spelled `lod_<name>`, so a name
         # is no guide) — whatever trails them was added after the fact
         names = {p.name for p in lod_parts}
+        names |= {n[4:] if n.startswith("lod_") else n for n in names}
         missing = [p for p in main_all[len(lod_parts):] if p.name not in names]
         if missing:
-            lod_bytes = gfile.append_parts(lod_bytes, missing)
-            lod_parts += missing
+            parent = ((lod_parts[0].attrs or {}).get("dwParent")
+                      if lod_parts else None)
+            appended = [gfile.lod_part(p, parent) for p in missing]
+            lod_bytes = gfile.append_parts(lod_bytes, appended)
+            lod_parts = list(gfile.iter_parts(
+                gfile.parse_geometry_file(lod_bytes)))
             target = (os.path.join(out_dir, os.path.basename(lod_g))
                       if out_dir else lod_g)
             os.makedirs(os.path.dirname(target) or ".", exist_ok=True)
             open(target, "wb").write(lod_bytes)
-            ui.ok(f"{os.path.basename(lod_g)}: +{len(missing)} part(s) — "
-                  + ", ".join(p.name for p in missing))
+            ui.ok(f"{os.path.basename(lod_g)}: +{len(appended)} part(s) — "
+                  + ", ".join(p.name for p in appended))
             changed += 1
-        else:
+        elif not quiet:
             ui.info(f"{os.path.basename(lod_g)}: already carries every part")
         lod_scene = stem + "_lod.scene"
         if not os.path.isfile(lod_scene):

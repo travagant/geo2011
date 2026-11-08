@@ -1707,6 +1707,70 @@ def test_a_single_bone_part_is_written_without_influence_slots():
     assert gfile.vertex_stride(1)[2] == 40
 
 
+def test_lod_sync_appends_the_weapon_as_a_lod_part():
+    """`d3tool lod` gives the LOD mesh a block shaped for its own file.
+
+    The engine swaps to `unit_scene_lod` beyond the profile's draw distance,
+    so a weapon added to the main `.g` has to exist in the LOD mesh too.  The
+    block cannot be copied verbatim: every LOD block is spelled
+    ``lod_<name>`` and hangs off *that file's* parent node — the ids are per
+    file (the Angel's main mesh uses 53704704, its LOD mesh 55867360), and a
+    part whose parent names no node is not part of the model's tree.
+    """
+    import shutil
+    import tempfile
+    from d3tool import cli as climod
+    from d3tool import gfile as gmod
+
+    angel = os.path.join(REPO, "Empire", "Angel", "character_empire_angel")
+    knight = gmod.parse_geometry_file(open(os.path.join(
+        REPO, "Empire", "Knight", "character_empire_knight.g"), "rb").read())
+    sword = gmod.iter_parts(knight)[1]          # a rigid single-bone weapon
+    assert sword.attrs["name"] == "empire_knight_shield"
+    assert len(sword.bones) == 1 and sword.weights_on_vertex == 1
+    assert sword.raw, "a compound part keeps its own bytes"
+
+    with tempfile.TemporaryDirectory() as d:
+        for ext in (".g", ".scene", "_lod.g", "_lod.scene"):
+            shutil.copyfile(angel + ext,
+                            os.path.join(d, "character_empire_angel" + ext))
+        main_g = os.path.join(d, "character_empire_angel.g")
+        grown = gmod.append_parts(open(main_g, "rb").read(), [sword])
+        open(main_g, "wb").write(grown)
+
+        lod_g = os.path.join(d, "character_empire_angel_lod.g")
+        before = open(lod_g, "rb").read()
+        before_parts = gmod.iter_parts(gmod.parse_geometry_file(before))
+        parent = before_parts[0].attrs["dwParent"]
+
+        assert climod._lod_sync(d, quiet=True) == 0
+        after = open(lod_g, "rb").read()
+        after_parts = gmod.iter_parts(gmod.parse_geometry_file(after))
+        assert len(after_parts) == len(before_parts) + 1
+        added = after_parts[-1]
+        assert added.attrs["name"] == "lod_" + sword.attrs["name"]
+        assert added.attrs["dwParent"] == parent, added.attrs["dwParent"]
+        assert added.weights_on_vertex == 1 and len(added.bones) == 1
+        assert gmod.mesh_count(after)[1] == len(after_parts)
+        # nothing but the container count moves in the shipped bytes
+        at, old = bytearray(after), bytearray(before)
+        off = gmod.mesh_count(before)[0]
+        at[off:off + 4] = old[off:off + 4] = b"\0\0\0\0"
+        assert bytes(at[:len(old)]) == bytes(old)
+
+        # a `.g` and a `.scene` agree block for block
+        from d3tool import scene as scenemod
+        text = open(os.path.join(d, "character_empire_angel_lod.scene"),
+                    encoding="latin-1", newline="").read()
+        gobjs = scenemod.parse_scene(text).find_all("gobj")
+        assert len(gobjs) == len(after_parts)
+        assert scenemod.node_mesh_index(gobjs[-1]) == len(after_parts) - 1
+
+        # idempotent: the match ignores the `lod_` prefix
+        assert climod._lod_sync(d, quiet=True) == 0
+        assert open(lod_g, "rb").read() == after
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0

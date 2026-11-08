@@ -1083,6 +1083,38 @@ def append_parts(base: bytes, parts) -> bytes:
     return bytes(out)
 
 
+def lod_part(part, parent: str | None = None, prefix: str = "lod_"):
+    """A copy of a main-mesh part, shaped for the unit's LOD mesh.
+
+    The LOD mesh is the same unit at lower detail: its blocks are the main
+    mesh's in the same order, spelled ``lod_<name>`` (the Knight's LOD mesh
+    carries ``lod_empire_knight_sword``), and they hang off *that file's* own
+    parent node — the ids are per file, so a part lifted from the main `.g`
+    would otherwise name a node the LOD file does not have.
+
+    The copy carries freshly serialized ``raw`` bytes, which is what
+    :func:`append_parts` writes.
+    """
+    import copy
+
+    clone = copy.copy(part)
+    name = getattr(part, "name", "") or part.attrs.get("name", "")
+    if prefix and not name.startswith(prefix):
+        name = prefix + name
+    items = [(k, v) for k, v in (getattr(part, "attr_items", ()) or ())]
+    items = [(k, name if k == "name" else v) for k, v in items]
+    if parent:
+        if any(k == "dwParent" for k, _ in items):
+            items = [(k, parent if k == "dwParent" else v) for k, v in items]
+        else:
+            items.append(("dwParent", parent))
+    clone.name = name
+    clone.attr_items = items
+    clone.attrs = dict(items)
+    clone.raw = _part_block(clone)
+    return clone
+
+
 def normalize_part_identity(mesh, parent: str | None = None) -> List[str]:
     """Give every block of a compound mesh the file's own node identity.
 
