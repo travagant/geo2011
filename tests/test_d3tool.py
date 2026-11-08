@@ -2671,6 +2671,50 @@ def test_a_parts_texture_is_written_from_the_attribute_items_not_the_dict():
     assert written == "" and same_items == items
 
 
+def test_the_compact_copy_of_a_stem_wins_and_its_format_is_reported():
+    """One atlas, two files: 86 KiB as DXT1 and 683 KiB as raw RGBA.
+
+    An artist who re-saved the Knight's blade atlas through Blender ends up with
+    a ``x.dds.t`` eight times the size of the shipped ``x.t``; both hold the
+    same picture, and "683 KB after export" reads like the wrong texture was
+    picked.  Resolution prefers the block-compressed copy when a folder offers
+    both, and the report says how the pixels are stored so the number stops
+    being ambiguous.
+    """
+    tmp = tempfile.mkdtemp(prefix="d3compact_")
+    try:
+        # neither is the exact spelling, so the loose match has to choose
+        small = os.path.join(tmp, "x.dds.t")
+        big = os.path.join(tmp, "x.png.t")
+        open(small, "wb").write(b"small")
+        open(big, "wb").write(b"big")
+        assert texmod.clean_stem(small) == texmod.clean_stem(big) == "x"
+        real = texmod.is_compressed
+        texmod.is_compressed = lambda p: os.path.basename(p) == "x.dds.t"
+        try:
+            assert texmod.find_texture_file("x.tga", [tmp]) == small
+            texmod.is_compressed = lambda p: os.path.basename(p) == "x.png.t"
+            assert texmod.find_texture_file("x.tga", [tmp]) == big
+        finally:
+            texmod.is_compressed = real
+
+        # an exact `<stem>.t` beats every loose spelling, compressed or not
+        exact = os.path.join(tmp, "x.t")
+        open(exact, "wb").write(b"exact")
+        assert texmod.find_texture_file("x.tga", [tmp]) == exact
+
+        knight = os.path.join(REPO, "Empire", "Knight")
+        sword = os.path.join(knight, "weapon_empire_knight_sword_diffuse.t")
+        shield = os.path.join(knight, "weapon_empire_knight_shield_diffuse.t")
+        assert texmod.describe(sword, True) == "128x1024 DXT1"
+        assert texmod.describe(shield, True) == "512x2048 DXT1"
+        assert texmod.describe(sword) == "128x1024"
+        assert texmod.is_compressed(sword)
+        assert texmod.describe("/no/such.file", True) == ""
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0

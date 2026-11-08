@@ -26,7 +26,7 @@ package only builds and reads the Blender scene.
 bl_info = {
     "name": "Disciples III Unit (GM .g/.a/.scene/.ac/.t)",
     "author": "Arena agent / geo2011",
-    "version": (1, 1, 31),
+    "version": (1, 1, 32),
     "blender": (3, 0, 0),
     "location": "File > Import/Export > Disciples III Unit",
     "description": "Import and export Disciples III character units "
@@ -263,7 +263,8 @@ def _draw_texture_box(layout, context, mesh) -> None:
     if _name and _path:
         _size = ""
         try:
-            _size = bridge.module("texture").describe(_path)
+            _size = bridge.module("texture").describe(_path, True)
+            _size += f", {max(1, os.path.getsize(_path) // 1024)} KB"
         except Exception:  # noqa: BLE001
             _size = ""
         hint.label(text="file: " + os.path.basename(_path)

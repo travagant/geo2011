@@ -467,6 +467,15 @@ files it just saved (`d3tool/parts.py::texture_report`), and warns about a name
 whose texture is not in the folder — plus about every part that has no
 `d3unit_diffuse` of its own, i.e. one imported before 1.1.27 or hand-assembled.
 
+**Same atlas, different weight.**  A `.t` can hold DXT1 blocks (the Knight's
+blade atlas: 128x1024, 86 KiB) or raw A8R8G8B8 pixels (the same picture
+re-saved from Blender: 683 KiB) — an eightfold difference in size for identical
+pixels, which reads like the wrong texture in any report that only prints
+bytes.  `d3tool.texture.describe(path, True)` prints the size *and* the layout,
+and `find_texture_file` prefers a block-compressed copy when a folder holds
+several files with one stem (an exact `<stem>.t` still wins: that is the
+shipped file).
+
 **Whose name wins.**  Two rules, and the second one was wrong for a long
 time: a Blender re-save's part takes its texture from the *mesh*, not from the
 donor slot it replaced (`slot.material_diffuse or sub.material_diffuse` pinned

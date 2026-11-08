@@ -417,14 +417,19 @@ def clean_stem(name: str) -> str:
             return stem
 
 
-def describe(path: str) -> str:
-    """``"128x1024"`` for a texture file (``""`` when it cannot be read).
+def describe(path: str, with_format: bool = False) -> str:
+    """``"128x1024"`` (or ``"128x1024 DXT1"``) for a texture file.
 
     Two atlases of one unit differ in shape far more reliably than in name —
     the Knight's blade is a 128x1024 strip, his shield a 512x2048 sheet — so the
     report the artist reads after an export prints the size next to the file.
     That is what tells "the sword took the sword atlas" from "it took the
     shield's" at a glance.
+
+    ``with_format`` adds how the pixels are stored.  The same atlas is 86 KiB
+    as ``DXT1`` and 683 KiB as uncompressed ``RGBA``, so a byte count alone
+    reads like a different picture: the shape and the format say which file it
+    really is.
     """
     try:
         with open(path, "rb") as fh:
@@ -436,7 +441,25 @@ def describe(path: str) -> str:
             else parse_dds(data, path)
     except Exception:  # noqa: BLE001 - an odd texture is not a failure here
         return ""
-    return f"{info.width}x{info.height}"
+    size = f"{info.width}x{info.height}"
+    if not with_format:
+        return size
+    if getattr(info, "fourcc", None):
+        return f"{size} {info.fourcc.decode('latin-1')}"
+    return f"{size} RGBA" if not getattr(info, "r5g5b5", False) \
+        else f"{size} A1R5G5B5"
+
+
+def is_compressed(path: str) -> bool:
+    """True when the texture stores DXT blocks rather than raw pixels."""
+    try:
+        with open(path, "rb") as fh:
+            data = fh.read(128)
+        info = parse_t(data, path) if data[:2] == b"\x01\x00" \
+            else parse_dds(data, path)
+    except Exception:  # noqa: BLE001
+        return False
+    return bool(getattr(info, "fourcc", None))
 
 
 def find_texture_file(name: str, folders: Sequence[str]) -> Optional[str]:
@@ -477,10 +500,13 @@ def find_texture_file(name: str, folders: Sequence[str]) -> Optional[str]:
             path = os.path.join(folder, cand)
             if not os.path.isfile(path):
                 continue
-            if cand.lower().endswith(".t"):
-                return path
             loose.append(path)
-    return loose[0] if loose else None
+    if not loose:
+        return None
+    # several files with one stem: the compact block-compressed one is the
+    # shipped texture, a raw RGBA re-save is the same picture at 8x the size
+    loose.sort(key=lambda p: (not is_compressed(p), not p.lower().endswith(".t")))
+    return loose[0]
 
 
 def find_diffuse_texture(g_path: str, attrs: Dict[str, str]) -> Optional[str]:

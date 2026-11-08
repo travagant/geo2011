@@ -571,8 +571,12 @@ def _texture_lines(out_dir, base, donor_dir, warns):
                         f"{base}{suffix}.g — the game draws it untextured")
                 continue
             if found:
-                size = tex.describe(found)
-                status = os.path.basename(found) + (f" {size}" if size else "")
+                # size AND pixel layout: one atlas is 86 KiB as DXT1 and 683 KiB
+                # as raw RGBA, so a byte count alone reads like another picture
+                size = tex.describe(found, True)
+                kb = max(1, os.path.getsize(found) // 1024)
+                status = os.path.basename(found) + \
+                    (f" ({size}, {kb} KB)" if size else "")
             else:
                 status = "NOT FOUND"
             lines.append(f"  {base}{suffix}.g: {part} -> {diffuse} ({status})")
