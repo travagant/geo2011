@@ -26,7 +26,7 @@ package only builds and reads the Blender scene.
 bl_info = {
     "name": "Disciples III Unit (GM .g/.a/.scene/.ac/.t)",
     "author": "Arena agent / geo2011",
-    "version": (1, 1, 29),
+    "version": (1, 1, 30),
     "blender": (3, 0, 0),
     "location": "File > Import/Export > Disciples III Unit",
     "description": "Import and export Disciples III character units "
@@ -193,6 +193,111 @@ class D3UNIT_OT_apply_texture(bpy.types.Operator):
         return {"FINISHED"} if ok else {"CANCELLED"}
 
 
+
+#: text block the export writes its log into, and the scene property the
+#: sidebar shows afterwards — warnings that only reach the system console are
+#: warnings nobody reads, and "the export kept the donor's texture" is exactly
+#: the kind of note that has to be in the artist's face
+EXPORT_LOG = exporter.D3UNIT_EXPORT_LOG
+NOTES_PROP = "d3unit_last_export"
+
+
+def inherited_texture(context, mesh) -> str:
+    """The name the export would keep for a part that names none itself.
+
+    Reads it out of the donor `.g` the unit was imported from, so the panel can
+    say "inherited: weapon_empire_inquisitor.tga" instead of leaving the artist
+    guessing why a re-textured part still looks wrong.
+    """
+    if not mesh or unitprops.DIFFUSE_PROP in mesh:
+        return ""
+    root = unitprops.find_unit_root(context)
+    info = unitprops.get_info(root) if root else {}
+    g_path = str(info.get("g") or "")
+    if not g_path or not os.path.isfile(g_path):
+        return ""
+    try:
+        parts = bridge.module("parts")
+        rows = parts.texture_report(g_path)
+    except Exception:  # noqa: BLE001
+        return ""
+    for name, diffuse, _found in rows:
+        if name == mesh.name or name == mesh.name.split(".")[0]:
+            return diffuse
+    return ""
+
+
+def _draw_texture_box(layout, context, mesh) -> None:
+    """The one material field Blender cannot infer: the part's texture name.
+
+    It lives outside the unit-metadata branch on purpose — a scene built before
+    the property existed, or assembled by hand, has no metadata but still needs
+    to say which atlas its sword wears.
+    """
+    tb = layout.box()
+    tb.label(text=f"Texture of {mesh.name}", icon="TEXTURE")
+    row = tb.row(align=True)
+    own = unitprops.DIFFUSE_PROP in mesh
+    if own:
+        row.prop(mesh, '["' + unitprops.DIFFUSE_PROP + '"]', text="Material")
+    else:
+        row.label(text="(not set)")
+    op = row.operator("d3unit.name_texture", text="", icon="GREASEPENCIL")
+    op.value = str(mesh.get(unitprops.DIFFUSE_PROP) or "")
+    hint = tb.column(align=True)
+    hint.scale_y = 0.8
+    if not own:
+        inherited = inherited_texture(context, mesh)
+        if inherited:
+            hint.label(text="export keeps: " + os.path.basename(inherited),
+                       icon="INFO")
+            hint.label(text="set it above to change the atlas")
+        else:
+            hint.label(text="export keeps the material's texture", icon="INFO")
+        return
+    _name, _path = find_part_texture(context, mesh)
+    row2 = tb.row(align=True)
+    row2.enabled = bool(_name)
+    row2.operator("d3unit.apply_texture", text="Show in the Viewport",
+                  icon="IMAGE_DATA")
+    if _name and _path:
+        _size = ""
+        try:
+            _size = bridge.module("texture").describe(_path)
+        except Exception:  # noqa: BLE001
+            _size = ""
+        hint.label(text="file: " + os.path.basename(_path)
+                        + (f"  ({_size})" if _size else ""), icon="CHECKMARK")
+    elif _name:
+        hint.label(text="NOT in the unit folder: "
+                        + os.path.splitext(os.path.basename(_name))[0] + ".t",
+                   icon="ERROR")
+    else:
+        hint.label(text="no texture named yet", icon="INFO")
+
+
+class D3UNIT_OT_open_log(bpy.types.Operator):
+    """Open the text block the last export wrote"""
+
+    bl_idname = "d3unit.open_log"
+    bl_label = "Open the Export Log"
+    bl_description = "Show the last export's log and warnings"
+    bl_options = {"REGISTER"}
+
+    def execute(self, context):
+        block = bpy.data.texts.get(EXPORT_LOG)
+        if block is None:
+            self.report({"WARNING"}, "no export log yet")
+            return {"CANCELLED"}
+        for area in getattr(context.screen, "areas", ()) or ():
+            if area.type != "TEXT_EDITOR":
+                continue
+            area.spaces[0].text = block
+            return {"FINISHED"}
+        self.report({"INFO"}, f"the log is in the Text editor: {EXPORT_LOG}")
+        return {"FINISHED"}
+
+
 class D3UNIT_OT_name_texture(bpy.types.Operator):
     """Name the texture this part wears in the game"""
 
@@ -249,6 +354,7 @@ CLASSES = (
     weapon.D3UNIT_OT_place_weapon,
     D3UNIT_OT_name_texture,
     D3UNIT_OT_apply_texture,
+    D3UNIT_OT_open_log,
 )
 
 
@@ -308,6 +414,9 @@ class D3UNIT_PT_panel(Panel):
         hint.label(text="grip = the object's origin")
         hint.label(text="(or its one selected vertex)")
 
+        mesh = ob if (ob is not None and ob.type == "MESH") else None
+        if mesh is not None:
+            _draw_texture_box(layout, context, mesh)
         root = unitprops.find_unit_root(context)
         info = unitprops.get_info(root) if root else {}
         if not info:
@@ -330,42 +439,16 @@ class D3UNIT_PT_panel(Panel):
                   if o.type == "MESH" and (o is root or o.parent is root
                                            or o.get(unitprops.PART_PROP))]
         col.label(text=f"Meshes: {len(meshes)}")
-        # a part's material name: the one thing about a re-textured part that
-        # Blender cannot carry by itself, because the engine reads the name
-        # out of the `.scene`, not out of the material
-        mesh = ob if (ob is not None and ob.type == "MESH") else None
-        if mesh is not None:
-            tb = layout.box()
-            tb.label(text=f"Texture of {mesh.name}", icon="TEXTURE")
-            row = tb.row(align=True)
-            if unitprops.DIFFUSE_PROP in mesh:
-                row.prop(mesh, '["' + unitprops.DIFFUSE_PROP + '"]',
-                         text="Material")
-            else:
-                row.label(text="(inherited from the donor .g)")
-            op = row.operator("d3unit.name_texture", text="", icon="GREASEPENCIL")
-            op.value = str(mesh.get(unitprops.DIFFUSE_PROP) or "")
-            tb.operator("d3unit.apply_texture", text="Show in the Viewport",
-                        icon="IMAGE_DATA")
-            _name, _path = find_part_texture(context, mesh)
-            hint = tb.column(align=True)
-            hint.scale_y = 0.8
-            if _name and _path:
-                _size = ""
-                try:
-                    _size = bridge.module("texture").describe(_path)
-                except Exception:  # noqa: BLE001
-                    _size = ""
-                hint.label(text="file: " + os.path.basename(_path)
-                                + (f"  ({_size})" if _size else ""),
-                           icon="CHECKMARK")
-            elif _name:
-                hint.label(text="NOT in the unit folder: "
-                                + os.path.splitext(os.path.basename(_name))[0]
-                                + ".t", icon="ERROR")
-            else:
-                hint.label(text="unnamed: the export keeps the material's",
-                           icon="INFO")
+        notes = str(context.scene.get(NOTES_PROP) or "")
+        if notes:
+            nb = layout.box()
+            nb.label(text="Last export", icon="INFO")
+            for line in notes.splitlines()[:6]:
+                nb.label(text=line[:70])
+            if len(notes.splitlines()) > 6:
+                nb.label(text=f"... {len(notes.splitlines()) - 6} more "
+                              f"(Text block '{EXPORT_LOG}')")
+            nb.operator("d3unit.open_log", text="Open the Log", icon="TEXT")
         op = layout.operator(exporter.D3UNIT_OT_export.bl_idname,
                              text="Export Unit", icon="EXPORT")
         op.filepath = info.get("g", "")

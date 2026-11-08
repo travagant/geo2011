@@ -110,7 +110,7 @@ for name in ("unitprops", "weapon", "bridge", "preferences", "exporter",
              "importer"):
     importlib.import_module("blender.io_scene_d3unit." + name)
 addon = importlib.import_module("blender.io_scene_d3unit")
-assert addon.bl_info["version"] >= (1, 1, 29), addon.bl_info["version"]
+assert addon.bl_info["version"] >= (1, 1, 30), addon.bl_info["version"]
 assert addon.unitprops.DIFFUSE_PROP == "d3unit_diffuse"
 assert addon.D3UNIT_OT_name_texture in addon.CLASSES
 assert addon.D3UNIT_OT_apply_texture in addon.CLASSES

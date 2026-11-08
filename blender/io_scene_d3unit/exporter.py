@@ -32,6 +32,9 @@ from .preferences import get_prefs
 
 FPS = 30
 
+#: text block every export writes, under a name that never changes
+D3UNIT_EXPORT_LOG = "d3unit export"
+
 
 # --------------------------------------------------------------------------- #
 #  scene inspection
@@ -500,7 +503,18 @@ def export_unit(context, path: str, use_anim: bool = True, weights: int = 0,
             print("[d3unit] texture" + line)
         text = log.getvalue() + "".join(
             "\n" + line for line in tex_lines)
+        # a warning that only reaches the system console is a warning nobody
+        # reads; the sidebar shows these next to the Export button
+        try:
+            if warns:
+                context.scene["d3unit_last_export"] = "\n".join(warns[:12])
+            elif "d3unit_last_export" in context.scene:
+                del context.scene["d3unit_last_export"]
+        except Exception:  # noqa: BLE001
+            pass
         _log_to_text(f"{base} export", text + "\n" + "\n".join(warns))
+        # ...and under a stable name the sidebar's "Open the Log" can find
+        _log_to_text(D3UNIT_EXPORT_LOG, text + "\n" + "\n".join(warns))
         return {"g": os.path.join(out_dir, base + ".g"),
                 "base": base, "out_dir": out_dir, "armature": arm,
                 "rigid": arm is None,
