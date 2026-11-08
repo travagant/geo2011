@@ -848,6 +848,22 @@ appended by other tooling usually copied its neighbours' *data* and not their
 *format* declaration — that is the shape to look for before blaming the
 archive.
 
+The exporter's own output was audited block by block on a re-export of that
+unit, and the two models now agree.  Main mesh: 347 266 B, five parts, no count
+disagreement; the sword block `empire_knight_sword` holds 136 vertices / 124
+triangles, declares `new_vertex_weights_format` and `weights_on_vertex 1`,
+carries the single bone `Bip01 R Hand` and the diffuse
+`weapon_empire_knight_sword_diffuse.tga`.  LOD mesh: retail 161 869 B → 173 210
+B, mesh count 4 → 5, the appended block spelled `lod_empire_knight_sword` and
+parented to the LOD file's own `55867360`; its vertices, indices, normals, UVs,
+weights and bone matrix are byte-identical to the main mesh's block, so both
+draw the same sword, and a second `d3tool lod` run is a no-op.  The LOD scene
+gained exactly 39 lines — one `gobj` on mesh slot 4 — with every other line
+untouched, and the near `.ac` stayed byte-identical to retail.  The one item
+`validate` still reports is the generated `*_lod.ac`, which retail never ships
+and which the runtime experiments above say the engine never opens — it is left
+alone rather than repathed.
+
 `vdpack manifest <archive|folder>` writes the sha256 inventory of a bundle —
 one `{path, bytes, sha256}` per file, in archive naming and case-insensitive
 order, plus the reference report.  The document is identical for a folder and
