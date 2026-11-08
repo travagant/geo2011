@@ -16,6 +16,7 @@ from d3tool import anim as animmod
 from d3tool import cli as climod
 from d3tool import gfile, gltf, ac as acmod, gltf_out, scene as scenemod
 from d3tool import parts as partsmod
+from d3tool import audit as auditmod
 from d3tool import texture as texmod
 from d3tool import weapon as weaponmod
 
@@ -2767,6 +2768,117 @@ def test_a_part_with_two_materials_writes_both_atlases():
     # ...and with no texture at all the donor's block is returned untouched
     a3, i3, w3 = gltf._patch_material(dict(single), single, "", "")
     assert i3 is single and a3 is not None and w3 == ""
+
+
+def test_the_lod_follows_the_main_mesh_texture():
+    """All four files must agree on the weapon's atlas — the LOD included.
+
+    `unit_scene_lod` has a draw distance of 10 for nearly every unit, so the
+    battlefield draws the LOD model most of the time; a main mesh that says
+    "sword" while `_lod.g` and `_lod.scene` still say "mace" changes the
+    weapon the moment the camera pulls back.  A `_lod.scene` also repeats the
+    MAIN mesh's counts (every retail unit does), so restating it from the LOD
+    mesh wrote numbers no shipped file has.
+    """
+    tmp = tempfile.mkdtemp(prefix="d3lodtex_")
+    try:
+        work = os.path.join(tmp, "unit")
+        os.makedirs(work)
+        for name in ("character_empire_inquisitor.g",
+                     "character_empire_inquisitor_baseanims.a",
+                     "character_empire_inquisitor.ac",
+                     "character_empire_inquisitor.scene",
+                     "character_empire_inquisitor.t",
+                     "character_empire_inquisitor_lod.g",
+                     "character_empire_inquisitor_lod.scene",
+                     "weapon_empire_inquisitor.t"):
+            shutil.copyfile(os.path.join(REPO, "Empire", "Inquisitor", name),
+                            os.path.join(work, name))
+        shutil.copyfile(
+            os.path.join(REPO, "Empire", "Knight",
+                         "weapon_empire_knight_sword_diffuse.t"),
+            os.path.join(work, "weapon_empire_knight_sword_diffuse.t"))
+        gl = os.path.join(tmp, "character_empire_inquisitor.gltf")
+        climod._export_gl(os.path.join(work, "character_empire_inquisitor.g"),
+                          os.path.join(work,
+                                       "character_empire_inquisitor_baseanims.a"),
+                          gl, None, quiet=True)
+        doc = json.load(open(gl))
+        for mesh in doc["meshes"]:
+            if "weapon" in (mesh.get("name") or ""):
+                mesh.setdefault("extras", {})["d3unit_diffuse"] = \
+                    "weapon_empire_knight_sword_diffuse.tga"
+        json.dump(doc, open(gl, "w"))
+        out = os.path.join(tmp, "out")
+        climod._export(gl, out, 0, anim=True, quiet=True, donor_dir=work)
+
+        sword = "weapon_empire_knight_sword_diffuse.tga"
+        for name in ("character_empire_inquisitor.g",
+                     "character_empire_inquisitor_lod.g"):
+            mesh = gfile.parse_geometry_file(
+                open(os.path.join(out, name), "rb").read())
+            parts = list(gfile.iter_parts(mesh))
+            assert parts[1].attrs["material0_diffuse"] == sword, (name, parts[1].attrs)
+        for name in ("character_empire_inquisitor.scene",
+                     "character_empire_inquisitor_lod.scene"):
+            text = open(os.path.join(out, name), encoding="latin-1").read()
+            assert sword in text, name
+            assert "weapon_empire_inquisitor.tga" not in text.split("weapon")[0], name
+
+        # the LOD scene keeps the main mesh's numbers, as every retail unit does
+        lod_scene = open(os.path.join(out,
+                                      "character_empire_inquisitor_lod.scene"),
+                         encoding="latin-1").read()
+        assert 'attr "material0_triangles_num" "4664"' in lod_scene
+        assert 'attr "vertexs_weights_num" "3693"' in lod_scene
+        # ...and the audit agrees that the bundle is self-consistent
+        _facts, findings = auditmod.audit(out)
+        assert findings == [], findings
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_the_audit_reports_a_scene_that_describes_the_old_mesh():
+    """A `.g` and a `.scene` that disagree both parse; only a reader notices.
+
+    The counts in a `gobj` are the buffer sizes the loader takes the mesh with,
+    so a scene left describing the mesh an export replaced is exactly the kind
+    of fault that survives every per-file check and dies in game.
+    """
+    tmp = tempfile.mkdtemp(prefix="d3audit_")
+    try:
+        work = os.path.join(tmp, "unit")
+        os.makedirs(work)
+        retail = os.path.join(REPO, "Empire", "Inquisitor")
+        for name in os.listdir(retail):
+            path = os.path.join(retail, name)
+            if os.path.isfile(path) and name.endswith((".g", ".scene", ".t")):
+                shutil.copyfile(path, os.path.join(work, name))
+        # the retail bundle is consistent: no findings at all
+        _facts, clean = auditmod.audit(work)
+        assert clean == [], clean
+
+        scene = os.path.join(work, "character_empire_inquisitor.scene")
+        text = open(scene, encoding="latin-1").read()
+        stale = text.replace('attr "material0_triangles_num" "250"',
+                             'attr "material0_triangles_num" "537"', 1)
+        assert stale != text
+        open(scene, "w", encoding="latin-1").write(stale)
+        _facts, findings = auditmod.audit(work)
+        assert any("250" in f and "537" in f for f in findings), findings
+
+        # a gobj pointing past the end of the mesh is worse than a wrong count
+        text2 = text.replace('"resources\\characters\\empire\\inquisitor\\'
+                             'character_empire_inquisitor.g" 1',
+                             '"resources\\characters\\empire\\inquisitor\\'
+                             'character_empire_inquisitor.g" 7', 1)
+        assert text2 != text
+        open(scene, "w", encoding="latin-1").write(text2)
+        _facts, findings = auditmod.audit(work)
+        assert any("past the end" in f or "points at part" in f
+                   for f in findings), findings
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
 
 
 def main():

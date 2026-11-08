@@ -38,6 +38,7 @@ from . import ac as acmod
 from . import alias as aliasmod
 from . import char as charmod
 from . import anim as animmod
+from . import audit as auditmod
 from . import gfile
 from . import gltf as gltfmod
 from . import gltf_out as gltfout
@@ -1880,7 +1881,7 @@ def _build_parser() -> argparse.ArgumentParser:
               d3tool analyze Neutrals/AirElemental
               d3tool export-all Neutrals -o gltf
               d3tool bundle Neutrals/AirElemental -o bundle
-              d3tool validate out/unit.gltf
+              d3tool audit   Empire/Inquisitor --against <retail>   # what the loader reads
               d3tool lod out/     # LOD mesh takes the parts the main one gained
         """),
     )
@@ -2033,6 +2034,20 @@ def _build_parser() -> argparse.ArgumentParser:
     p_lod.add_argument("-o", "--out", default=None,
                        help="write the patched files here instead of in place")
 
+    p_au = sub.add_parser(
+        "audit",
+        help="cross-check a unit folder the way the engine loads it",
+        description="Read the .g, the _lod.g, both .scene files and the .ac "
+                    "of a unit and report what disagrees: a gobj pointing past "
+                    "the mesh, a gobj whose triangle/vertex/bone counts belong "
+                    "to the mesh it replaced, a part the scene still draws with "
+                    "another atlas, an atlas that is not in the folder. The "
+                    "same checks the loader makes, before the game makes them.",
+    )
+    p_au.add_argument("unit_dir", help="folder holding the unit's bundle")
+    p_au.add_argument("--against", metavar="REF", default=None,
+                      help="compare with a known-good bundle (e.g. the retail "
+                           "folder) and list what changed")
     p_ga = sub.add_parser(
         "gattr", help="insert or replace one attribute in a .g part")
     p_ga.add_argument("file", help="the .g to edit")
@@ -2159,6 +2174,8 @@ def main(argv=None) -> int:
         return _char(args)
     elif args.cmd == "lod":
         return _lod_sync(args.unit_dir, args.out)
+    elif args.cmd == "audit":
+        return _audit_cmd(args)
     elif args.cmd == "gattr":
         return _gattr(args)
     return 0
@@ -2322,11 +2339,34 @@ def _lod_sync(unit_dir: str, out_dir: Optional[str] = None,
                         main_dims[k], 1e-6) for k in range(3)):
                 continue
             swaps.append((i, lp, mp))
-        if swaps:
+        # A part the export only re-textured (same shape, another atlas) never
+        # reaches `swaps` — the geometry is identical, so the LOD keeps the
+        # mace's material name and the weapon changes texture the moment the
+        # camera pulls back.  A material is a name, not geometry: copy it.
+        retags = []
+        for i, lp in enumerate(lod_parts):
+            base_name = lp.name[4:] if lp.name.startswith("lod_") else lp.name
+            mp = main_by.get(base_name)
+            if mp is None:
+                continue
+            want = (mp.attrs or {}).get("material0_diffuse")
+            have = (lp.attrs or {}).get("material0_diffuse")
+            if want and have and (os.path.splitext(want)[0].lower()
+                                  != os.path.splitext(have)[0].lower()):
+                retags.append((i, lp, want))
+        if swaps or retags:
             import copy as _copy
             prefix = lod_bytes[:len(lod_bytes)
                                - sum(len(p.raw) for p in lod_parts)]
             raws = [p.raw for p in lod_parts]
+            for i, _lp, want in retags:
+                clone = _copy.copy(_lp)
+                items = [(k, want if k == "material0_diffuse" else v)
+                         for k, v in (clone.attr_items or ())]
+                clone.attr_items = items
+                clone.attrs = dict(items)
+                clone.raw = gfile._part_block(clone)
+                raws[i] = clone.raw
             for i, lp, mp in swaps:
                 clone = _copy.copy(lp)
                 clone.vertices = list(mp.vertices)
@@ -2345,10 +2385,12 @@ def _lod_sync(unit_dir: str, out_dir: Optional[str] = None,
                       if out_dir else lod_g)
             os.makedirs(os.path.dirname(target) or ".", exist_ok=True)
             open(target, "wb").write(lod_bytes)
-            ui.ok(f"{os.path.basename(lod_g)}: "
-                  + ", ".join(f"{lp.name} <- {mp.name}"
-                              for _i, lp, mp in swaps)
-                  + " (the export swapped the part, it was not added)")
+            notes = [f"{lp.name} <- {mp.name}" for _i, lp, mp in swaps]
+            notes += [f"{lp.name}: {want}" for _i, lp, want in retags
+                      if _i not in {i for i, _l, _m in swaps}]
+            ui.ok(f"{os.path.basename(lod_g)}: " + ", ".join(notes)
+                  + (" (the export swapped the part, it was not added)"
+                     if swaps else " (the part's atlas followed the main mesh)"))
             changed += 1
         lod_scene = stem + "_lod.scene"
         if not os.path.isfile(lod_scene):
@@ -2361,7 +2403,12 @@ def _lod_sync(unit_dir: str, out_dir: Optional[str] = None,
         new_text, added = scenemod.ensure_part_gobjs(text, lod_parts)
         restated: List[str] = []
         try:
-            new_text, restated = scenemod.refresh_part_gobjs(new_text, lod_parts)
+            # a `_lod.scene` repeats the numbers of the MAIN mesh, not of the
+            # LOD `.g` it draws: the retail Inquisitor's LOD gobj says 4664
+            # triangles where `_lod.g` holds 1716, and every shipped unit does
+            # this — restating from the LOD mesh wrote numbers no retail file
+            # has, and left the gobj on the old atlas
+            new_text, restated = scenemod.refresh_part_gobjs(new_text, main_all)
         except Exception:  # noqa: BLE001 - cosmetic, never fatal
             restated = []
         if restated and not added:
@@ -2379,6 +2426,42 @@ def _lod_sync(unit_dir: str, out_dir: Optional[str] = None,
                   + ", ".join(added))
             changed += 1
     ui.info(f"{changed} file(s) rewritten")
+    return 0
+
+
+def _audit_cmd(args) -> int:
+    """`audit <folder>` — the cross-check the engine performs, spelled out."""
+    facts, findings = auditmod.audit(args.unit_dir)
+    if not facts["parts"] and not facts["gobjs"]:
+        ui.fail(f"nothing to audit in {args.unit_dir}")
+        return 1
+    ui.section(f"audit {args.unit_dir}")
+    for name, parts in facts["parts"]:
+        ui.info(f"{name}")
+        for part in parts:
+            print(f"    #{part.index} {part.summary()}")
+    for name, gobjs in facts["gobjs"]:
+        ui.info(f"{name}")
+        for gobj in gobjs:
+            where = (f"{gobj.g_base} #{gobj.index}" if gobj.g_base
+                     else "no mesh reference")
+            mat = gobj.attrs.get("material0_diffuse", "-")
+            print(f"    {gobj.name} -> {where}, {mat}")
+    if args.against:
+        ui.section(f"against {args.against}")
+        lines = auditmod.compare(args.against, args.unit_dir)
+        if not lines:
+            ui.ok("structurally identical")
+        for line in lines:
+            print("  " + line.replace("\n", "\n  "))
+    if findings:
+        ui.warn(f"{len(findings)} disagreement(s) — these are what the loader "
+                f"reads first:")
+        for finding in findings:
+            ui.warn("  " + finding)
+        return 1
+    ui.ok("the bundle is consistent: every gobj matches its part, every part "
+          "finds its atlas, the LOD carries the main mesh's parts")
     return 0
 
 
