@@ -2287,6 +2287,64 @@ def test_blender_texture_name_does_not_double_the_extension():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_retexture_part_rewrites_g_and_scene():
+    """A part's material lives in three places and they must agree.
+
+    ``tools/retexture_part.py`` rewrites the part's attribute block in the
+    main and LOD `.g` and the matching `gobj` in both `.scene` files, and
+    touches nothing else -- a whole-file rewrite of a `.g`/`.scene` would lose
+    the scaffolding (attribute order, prelude, line endings) the game needs.
+    """
+    import importlib.util
+    tmp = tempfile.mkdtemp(prefix="d3ret_")
+    try:
+        src = os.path.join(REPO, "Empire", "Inquisitor")
+        for name in ("character_empire_inquisitor.g",
+                     "character_empire_inquisitor_lod.g",
+                     "character_empire_inquisitor.scene",
+                     "character_empire_inquisitor_lod.scene"):
+            shutil.copyfile(os.path.join(src, name), os.path.join(tmp, name))
+        before_g = open(os.path.join(tmp, "character_empire_inquisitor.g"),
+                        "rb").read()
+        before_s = open(os.path.join(tmp, "character_empire_inquisitor.scene"),
+                        "rb").read()
+
+        spec = importlib.util.spec_from_file_location(
+            "retexture_part", os.path.join(REPO, "tools", "retexture_part.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        assert mod.main(["--folder", tmp, "--part", "weapon_empire_inquisitor",
+                         "--diffuse", "blade.tga"]) == 0
+
+        after_g = open(os.path.join(tmp, "character_empire_inquisitor.g"),
+                       "rb").read()
+        # only the name string changes length; every part must survive, with
+        # the same vertex/triangle counts and the same order
+        delta = len(before_g) - len(after_g)
+        assert 1 <= delta <= 64, delta
+        before_parts = gfile.iter_parts(gfile.parse_geometry_file(before_g))
+        parts = gfile.iter_parts(gfile.parse_geometry_file(after_g))
+        assert [(p.name, p.vertex_count, p.tri_count) for p in parts] == \
+            [(p.name, p.vertex_count, p.tri_count) for p in before_parts]
+        mats = {p.name: p.attrs.get("material0_diffuse") for p in parts}
+        assert mats["weapon_empire_inquisitor"] == "blade.tga", mats
+        assert mats["Standard_8"] == "character_empire_inquisitor.tga", mats
+        lod = gfile.iter_parts(gfile.parse_geometry_file(
+            open(os.path.join(tmp, "character_empire_inquisitor_lod.g"),
+                 "rb").read()))
+        assert {p.name: p.attrs.get("material0_diffuse")
+                for p in lod}["lod_weapon_empire_inquisitor"] == "blade.tga"
+
+        after_s = open(os.path.join(tmp, "character_empire_inquisitor.scene"),
+                       "rb").read()
+        assert after_s.count(b'"blade.tga"') == 1
+        assert len(after_s.splitlines()) == len(before_s.splitlines())
+        assert after_s.replace(b"blade.tga", b"weapon_empire_inquisitor.tga") \
+            == before_s
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0

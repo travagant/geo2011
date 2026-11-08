@@ -442,6 +442,14 @@ Reverse rebuild details (byte-parity with the originals, see
 
 ---
 
+A part's material name is stored in **three** places that the engine reads
+independently: the `material0_diffuse` attribute of the block in the main
+`.g`, the same attribute in the `_lod.g`, and the `attr "material0_diffuse"`
+of the matching `gobj` in each `.scene`.  Re-texturing a part means rewriting
+all of them (`tools/retexture_part.py`); an export that only changes the
+geometry leaves the scene naming the donor's texture, and the engine keeps
+drawing that one.
+
 ### Texture naming: the stem is the material name
 
 The attribute block names the material `material0_diffuse "<stem>.tga"` and
