@@ -2185,6 +2185,108 @@ def test_blender_resave_converts_a_single_stream_animation():
     assert abs(got[0] - m.anim_channels[3 + 1]["rotation"][0][0]) < 1e-6
 
 
+def test_texture_lookup_survives_a_doubled_extension():
+    """A material names ``x.tga``; the folder ships ``x.dds.t``.
+
+    That spelling is what an export wrote before the stem was cleaned, and a
+    case-different name is what a pack authored on Windows ships.  Both have to
+    resolve to the file that is actually there — otherwise the part imports
+    untextured while the texture sits next to it.
+    """
+    tmp = tempfile.mkdtemp(prefix="d3tex_")
+    try:
+        g_path = os.path.join(tmp, "unit.g")
+        open(g_path, "wb").write(b"")
+        open(os.path.join(tmp, "Sword_Diffuse.DDS.T"), "wb").write(b"x")
+        attrs = {"material0_diffuse": "sword_diffuse.tga"}
+        found = texmod.find_diffuse_texture(g_path, attrs)
+        assert found == os.path.join(tmp, "Sword_Diffuse.DDS.T"), found
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_texture_stem_strips_every_extension():
+    assert texmod.clean_stem("weapon_empire_knight_sword.dds.png") == \
+        "weapon_empire_knight_sword"
+    assert texmod.clean_stem("character.t") == "character"
+    assert texmod.clean_stem("character_empire_inquisitor.tga") == \
+        "character_empire_inquisitor"
+    assert texmod.clean_stem("no_extension") == "no_extension"
+
+
+def test_export_carries_the_texture_its_g_names():
+    """An export must ship every diffuse its own `.g` names.
+
+    A unit re-textured from another unit's folder names a texture the export
+    folder does not have; in game the retail copy hides that, but reading the
+    export back (the add-on's own import, or anyone opening it) leaves the
+    part untextured.  The donor folder has the file, so the export carries it.
+    """
+    tmp = tempfile.mkdtemp(prefix="d3carry_")
+    try:
+        base = "character_empire_inquisitor"
+        shutil.copyfile(os.path.join(REPO, "Empire", "Inquisitor", base + ".g"),
+                        os.path.join(tmp, base + ".g"))
+        climod._carry_material_textures(tmp, base,
+                                        os.path.join(REPO, "Empire",
+                                                     "Inquisitor"), True)
+        for name in ("character_empire_inquisitor.t",
+                     "weapon_empire_inquisitor.t"):
+            assert os.path.isfile(os.path.join(tmp, name)), name
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_blender_texture_name_does_not_double_the_extension():
+    """A Blender image called ``x.dds`` must not become ``x.dds.tga``/``x.dds.t``.
+
+    Blender keeps the imported file name, so a re-saved texture arrives as
+    ``x.dds.png``; a naive stem left the ``.dds`` in place and the export wrote
+    a material ``x.dds.tga`` plus a file ``x.dds.t`` — a pair nothing (the
+    engine, our own importer, the add-on) can match to ``x``.
+    """
+    tmp = tempfile.mkdtemp(prefix="d3stem_")
+    try:
+        donor = os.path.join(tmp, "donor")
+        os.makedirs(donor)
+        for name in ("character_empire_inquisitor.g",
+                     "character_empire_inquisitor_baseanims.a",
+                     "character_empire_inquisitor.t",
+                     "character_empire_inquisitor.ac"):
+            shutil.copyfile(os.path.join(REPO, "Empire", "Inquisitor", name),
+                            os.path.join(donor, name))
+        fwd = os.path.join(tmp, "fwd")
+        os.makedirs(fwd)
+        gt, _bt = climod._export_gl(
+            os.path.join(donor, "character_empire_inquisitor.g"),
+            os.path.join(donor, "character_empire_inquisitor_baseanims.a"),
+            os.path.join(fwd, "out.gltf"), None, quiet=True)
+        png = bytes.fromhex(
+            "89504e470d0a1a0a0000000d4948445200000001000000010806000000"
+            "1f15c4890000000b49444154789c6300010000050001027d1c5b0000"
+            "000049454e44ae426082")
+        open(os.path.join(fwd, "blade_diffuse.dds.png"), "wb").write(png)
+        doc = json.load(open(gt))
+        doc["images"].append({"uri": "blade_diffuse.dds.png"})
+        doc["textures"].append({"source": len(doc["images"]) - 1})
+        mat = doc["meshes"][1]["primitives"][0]["material"]
+        doc["materials"][mat]["pbrMetallicRoughness"]["baseColorTexture"] = {
+            "index": len(doc["textures"]) - 1}
+        json.dump(doc, open(gt, "w"))
+
+        out = os.path.join(tmp, "back")
+        climod._export(gt, out, 0, anim=True, quiet=True, donor_dir=donor)
+        mesh = gfile.parse_geometry_file(
+            open(os.path.join(out, "out.g"), "rb").read())
+        part = gfile.iter_parts(mesh)[-1]
+        assert part.attrs.get("material0_diffuse") == "blade_diffuse.tga", \
+            part.attrs.get("material0_diffuse")
+        assert os.path.isfile(os.path.join(out, "blade_diffuse.t"))
+        assert not os.path.exists(os.path.join(out, "blade_diffuse.dds.t"))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0

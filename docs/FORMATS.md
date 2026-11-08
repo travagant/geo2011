@@ -442,6 +442,22 @@ Reverse rebuild details (byte-parity with the originals, see
 
 ---
 
+### Texture naming: the stem is the material name
+
+The attribute block names the material `material0_diffuse "<stem>.tga"` and
+the folder ships `<stem>.t` — the engine matches the two by **stem**, dropping
+the extension.  Everything that derives a name from an image has to reduce it
+to that stem first: a texture that entered Blender as `x.dds` is re-saved as
+`x.dds.png`, and a plain `splitext` leaves `x.dds` in the stem, producing a
+material `x.dds.tga` and a file `x.dds.t` — a pair nothing can match, so the
+part renders untextured in game and in Blender while every file looks present
+(`d3tool/texture.py::clean_stem`).  The same rule applies in the other
+direction: an export has to **carry** every diffuse its own `.g` names
+(`d3tool/cli.py::_carry_material_textures`), because a unit re-textured from
+another unit's folder otherwise names a texture it does not ship — invisible
+in game, where the retail copy still resolves, and immediately visible the
+moment the export is read back.
+
 ## 4. The `.scene` scene file
 
 Text, a `globalsettings { ... }` block then a `group "Scene Root"` tree:

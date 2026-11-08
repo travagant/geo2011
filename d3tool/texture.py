@@ -389,6 +389,34 @@ def convert_file(src_path: str, dst_path: str) -> TextureInfo:
 # --------------------------------------------------------------------------- #
 #  glTF texture discovery
 # --------------------------------------------------------------------------- #
+#: every extension a diffuse can arrive with: the GM attribute block names the
+#: material ``<stem>.tga`` while the file on disk is ``<stem>.t``, and a Blender
+#: re-save keeps the imported file name, so ``<stem>.dds`` comes back out of
+#: Blender as ``<stem>.dds.png``
+IMAGE_EXTS = (".t", ".dds", ".tga", ".png", ".jpg", ".jpeg", ".bmp", ".tif",
+              ".tiff", ".psd", ".exr", ".hdr")
+
+
+def clean_stem(name: str) -> str:
+    """``x.dds.png`` -> ``x``: strip *every* trailing image extension.
+
+    The engine matches a material to its file by stem: the attribute block says
+    ``x.tga``, the folder ships ``x.t``.  Anything that keeps a second
+    extension in the stem (a Blender image datablock is called ``x.dds``
+    because that is the file it was imported from) produces ``x.dds.tga`` and
+    ``x.dds.t`` — a pair that names a texture nothing can ever find, which is
+    exactly how a re-textured part ends up untextured in game and in Blender
+    while every file looks present.
+    """
+    stem = os.path.basename(name or "")
+    while True:
+        root, ext = os.path.splitext(stem)
+        if root and ext.lower() in IMAGE_EXTS:
+            stem = root
+        else:
+            return stem
+
+
 def find_diffuse_texture(g_path: str, attrs: Dict[str, str]) -> Optional[str]:
     """Find the on-disk diffuse texture referenced by a ``.g`` file.
 
@@ -407,12 +435,33 @@ def find_diffuse_texture(g_path: str, attrs: Dict[str, str]) -> Optional[str]:
         elif key.lower() in ("material0_diffuse", "diffuse") and val:
             names.append(val)
     for name in names:
-        stem = os.path.splitext(name)[0]
+        stem = clean_stem(name)
         for cand in (name, stem + ".dds", stem + ".t"):
             p = os.path.join(base_dir, cand)
             if os.path.exists(p):
                 return p
-    return None
+    # Nothing under the exact spelling: the folder may ship the same texture
+    # with a doubled extension (``x.dds.t``, which our own exporter used to
+    # write) or with different case (a pack authored on Windows).  Match on
+    # the cleaned stem, case-insensitively, preferring a real ``.t``.
+    try:
+        listing = os.listdir(base_dir)
+    except OSError:
+        return None
+    loose = []
+    for stem in (clean_stem(n) for n in names):
+        if not stem:
+            continue
+        for cand in listing:
+            if clean_stem(cand).lower() != stem.lower():
+                continue
+            path = os.path.join(base_dir, cand)
+            if not os.path.isfile(path):
+                continue
+            if cand.lower().endswith(".t"):
+                return path
+            loose.append(path)
+    return loose[0] if loose else None
 
 
 # --------------------------------------------------------------------------- #

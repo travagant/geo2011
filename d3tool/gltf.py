@@ -13,6 +13,7 @@ from typing import Dict, List, Optional, Tuple, cast
 
 from . import anim as animmod
 from . import frame as framemod
+from . import texture as texmod
 from .gfile import latin1
 from .model import (Bone, GltfModel, MeshPart, SkinnedMesh, Vertex,
                     pack_weights_joints)
@@ -120,8 +121,12 @@ def _texture_uri(gltf, texture_index: int) -> str:
     if src is None or src >= len(images):
         return ""
     uri = images[src].get("uri", "")
-    if uri.endswith(".dds"):
-        uri = uri[:-4] + ".tga"
+    # Blender keeps the imported file name, so a texture that reached the
+    # scene as ``x.dds`` comes back as ``x.dds.png``; strip *every* image
+    # extension before re-spelling it, or the attribute block ends up naming
+    # ``x.dds.tga`` and no file can match it
+    if uri and texmod.clean_stem(uri) != uri:
+        uri = texmod.clean_stem(uri) + ".tga"
     return uri
 
 
@@ -1432,8 +1437,7 @@ def mesh_to_skinned(m: GltfModel, weights_on_vertex: int = 0,
                    else _synth_part_attrs(sub, sbones))
         p_items = (list(dpart.attr_items) if dpart is not None else [])
         if sub.material_diffuse:
-            want = (os.path.splitext(os.path.basename(sub.material_diffuse))[0]
-                    + ".tga")
+            want = texmod.clean_stem(sub.material_diffuse) + ".tga"
             have = p_attrs.get("material0_diffuse") or p_mat or ""
             if (os.path.splitext(os.path.basename(have))[0].lower()
                     != os.path.splitext(os.path.basename(want))[0].lower()):
@@ -1605,7 +1609,7 @@ def _synth_part_attrs(sub: GltfModel, sbones: List[Bone]) -> Dict[str, str]:
     # the attribute block carries the historical `.tga` material name --
     # dis3tool's glTF points at the same stem as `.dds`, Blender writes a
     # re-saved `.png`; the emitted `.t` always takes the stem
-    stem = os.path.splitext(os.path.basename(sub.material_diffuse))[0]
+    stem = texmod.clean_stem(sub.material_diffuse)
     attrs = {
         "dwNode": "375048704",
         "dwParent": "55867360",

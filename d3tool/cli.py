@@ -371,7 +371,11 @@ def _export_textures(gltf_path: str, out_dir: str, base: str,
                         "(embedded bufferView) — no .t written for it")
             continue
         src = os.path.join(gltf_dir, os.path.basename(uri))
-        stem = os.path.splitext(os.path.basename(src))[0]
+        # strip every image extension: a Blender re-save of an imported
+        # ``x.dds`` writes ``x.dds.png``, and keeping the ``.dds`` in the stem
+        # produced ``x.dds.t`` — a texture the engine (which looks for
+        # ``x.t``) and the forward export both fail to find
+        stem = texmod.clean_stem(src)
 
         def _find_orig(ext: str) -> Optional[str]:
             # the original `.dds`/`.t` ships next to the glTF when assets
@@ -383,6 +387,18 @@ def _export_textures(gltf_path: str, out_dir: str, base: str,
                 p = os.path.join(d, stem + ext)
                 if os.path.exists(p):
                     return p
+            # same texture under a doubled extension (an export from before
+            # the stem fix) or a different case
+            for d in (gltf_dir, src_dir):
+                if not d or not os.path.isdir(d):
+                    continue
+                try:
+                    for cand in os.listdir(d):
+                        if (texmod.clean_stem(cand).lower() == stem.lower()
+                                and cand.lower().endswith(ext)):
+                            return os.path.join(d, cand)
+                except OSError:
+                    continue
             return None
 
         if not src.lower().endswith(".dds"):
@@ -891,9 +907,90 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
         ui.warn(f"{base}: the LOD model was not synced ({exc}) — an added "
                 f"weapon will not show on the battlefield")
 
+    _carry_material_textures(out_dir, base, src_dir, quiet)
     _battle_readiness_check(out_dir, base, quiet)
     if not quiet:
         print("")
+
+
+def _carry_material_textures(out_dir: str, base: str,
+                             src_dir: Optional[str], quiet: bool) -> None:
+    """Make the output folder carry every texture its own `.g` names.
+
+    A compound unit names one diffuse per part, and a part can be re-textured
+    from a texture that lives in *another* unit's folder (a sword wearing the
+    Knight's blade diffuse).  The glTF only carries the file while the scene
+    stays open: the export writes the `.g` with the material name and nothing
+    else, so the exported folder ended up naming a texture it did not ship.
+    In game that is invisible — the retail copy is still in the game data — but
+    the moment the export is read back (the add-on's own import, or anyone
+    else opening the folder) the part has no texture at all.  Copy the file in
+    from the donor folder (or the glTF's own folder), converting a `.dds`
+    when that is all there is, so an export is self-contained.
+    """
+    g_path = os.path.join(out_dir, base + ".g")
+    if not os.path.isfile(g_path):
+        return
+    try:
+        mesh = gfile.parse_geometry_file(open(g_path, "rb").read())
+    except Exception:  # noqa: BLE001 - a bad .g is reported by the checker
+        return
+    if getattr(mesh, "parse_error", None):
+        return
+    dirs = [out_dir] + ([src_dir] if src_dir else [])
+    wanted: List[str] = []
+    for blk in [mesh] + list(getattr(mesh, "parts", ()) or ()):
+        for key, value in (getattr(blk, "attrs", None) or {}).items():
+            low = key.lower()
+            if value and (low.endswith("_diffuse") or low.endswith("_lightmap")):
+                wanted.append(value)
+    for mat in dict.fromkeys(wanted):
+        stem = texmod.clean_stem(mat)
+        if not stem:
+            continue
+        if os.path.isfile(os.path.join(out_dir, stem + ".t")):
+            continue
+        src_t = src_dds = None
+        for d in dirs:
+            if not d or not os.path.isdir(d):
+                continue
+            if src_t is None and os.path.isfile(os.path.join(d, stem + ".t")):
+                src_t = os.path.join(d, stem + ".t")
+            if src_dds is None and os.path.isfile(os.path.join(d, stem + ".dds")):
+                src_dds = os.path.join(d, stem + ".dds")
+            if src_t is None:
+                # the folder may ship the texture under a doubled extension
+                # (``x.dds.t``, written by an export from before the stem fix)
+                try:
+                    for cand in os.listdir(d):
+                        if (cand.lower().endswith(".t")
+                                and texmod.clean_stem(cand).lower()
+                                == stem.lower()):
+                            src_t = os.path.join(d, cand)
+                            break
+                except OSError:
+                    pass
+            if src_t is not None:
+                break
+        dst = os.path.join(out_dir, stem + ".t")
+        try:
+            if src_t is not None:
+                if os.path.abspath(src_t) == os.path.abspath(dst):
+                    continue
+                shutil.copyfile(src_t, dst)
+                if not quiet:
+                    ui.wrote(dst, "carried with the unit (its .g names it)")
+            elif src_dds is not None:
+                texmod.convert_file(src_dds, dst)
+                if not quiet:
+                    ui.wrote(dst, "converted from the unit's .dds")
+            elif not quiet:
+                ui.warn(f"{stem}.t: no such texture next to the export or in "
+                        f"the donor folder — '{mat}' will load untextured "
+                        f"(drop {stem}.t into the output folder to fix it)")
+        except Exception as exc:  # noqa: BLE001 - never fail an export over it
+            if not quiet:
+                ui.warn(f"{stem}.t: could not be carried — {exc}")
 
 
 def _battle_readiness_check(out_dir: str, base: str, quiet: bool) -> None:
@@ -1140,7 +1237,7 @@ def _emit_compound_textures(g_path: str, mesh, out_dir: str,
     for value, _is_lm in _names():
         if not value:
             continue
-        stem = os.path.splitext(value)[0]
+        stem = texmod.clean_stem(value)
         dds = stem + ".dds"
         dst = os.path.join(out_dir, dds)
         if os.path.exists(dst):
