@@ -443,6 +443,98 @@ def manifest(files, source: str = "") -> dict:
     }
 
 
+def _check_weapon_trace(base: str, txt: str, files: Dict[str, bytes],
+                        findings: List[str]) -> None:
+    """Does a `.scene` weapon trail still name the unit's `Trail*` bones?
+
+    A unit that draws a weapon trail carries a `VDGoWeaponTrace` node whose
+    `boneid` lines are **indices into the unit's animation stream**, not
+    names.  All 54 such scenes of the retail corpus resolve them to
+    `Trail1`…`TrailN` — the bones a weapon's tip trail is built from, each
+    parented to the weapon bone.  An animation stream that lost those bones
+    (a re-exported `.a` that only holds the bones a *mesh* is weighted to,
+    which is what a Blender round-trip does to animation-only bones) leaves
+    the same indices pointing at whatever bone now sits there — an arm — and
+    the trail follows the wrong thing or the unit's load dies on it.
+
+    A unit names several streams and only the full one carries every bone
+    (a `_run.a` holds a reduced skeleton, and retail's own Grand Inquisitor
+    would flag on those), so a unit is only reported when **no** stream it
+    ships resolves the ids to trail bones.  A `.ac` naming an out-of-tree
+    animation says nothing at all — the game resolves it from the normal
+    mount.
+
+    The `_lod.scene` of a unit is skipped: its `.ac` names only the reduced
+    `…_lod.a` streams, which carry no trail bones even in retail
+    (Defender of Faith, Dark Servant and Grand Inquisitor all leave their
+    trail `boneid` pointing at a leg or past the end of the stream), so the
+    index is already stale there by design and the game loads those fine.
+    """
+    import re
+
+    from . import ac as acmod
+    from . import anim as animmod
+
+    stem = os.path.splitext(base)[0].lower()
+    if stem.endswith("_lod"):
+        return
+    ids = [int(v) for v in re.findall(r"boneid\s+(\d+)", txt)]
+    if not ids:
+        return
+    by_base: Dict[str, bytes] = {}
+    for name, blob in files.items():
+        by_base.setdefault(
+            os.path.basename(name.replace("\\", "/")).lower(), blob)
+    streams: List[str] = []
+    for mm in re.finditer(r'file\s+"([^"]+)"', txt):
+        ref = mm.group(1).replace("\\", "/")
+        if not ref.lower().endswith(".ac"):
+            continue
+        blob = by_base.get(os.path.basename(ref).lower())
+        if blob is None:
+            continue
+        try:
+            cfg = acmod.parse_ac(blob.decode("utf-8-sig", "replace"))
+        except Exception:  # noqa: BLE001  — the `.ac` branch reports its own
+            continue
+        for st in cfg.states:
+            if not st.file:
+                continue
+            want = os.path.basename(st.file.replace("\\", "/"))
+            if want.lower() in by_base and want not in streams:
+                streams.append(want)
+
+    best = None          # (bone count, stream, complaint per id)
+    for stream in streams:
+        try:
+            af = animmod.parse_anim(by_base[stream.lower()])
+        except Exception:  # noqa: BLE001
+            continue
+        if not af.bones:
+            continue
+        complaints: List[str] = []
+        for i in ids:
+            if i >= len(af.bones):
+                complaints.append(f"boneid {i} is past the end of {stream} "
+                                  f"({len(af.bones)} bones)")
+                continue
+            bone = af.bones[i].name
+            if not bone.lower().startswith("trail"):
+                complaints.append(f"boneid {i} lands on bone '{bone}' in "
+                                  f"{stream}")
+        if not complaints:
+            return                      # a stream that still has them: fine
+        if best is None or len(af.bones) > best[0]:
+            best = (len(af.bones), stream, complaints)
+    if best is None:
+        return
+    for line in best[2]:
+        findings.append(
+            f"{base}: weapon-trail {line} — every retail scene's trail boneid "
+            f"points at a Trail bone, so this unit's animation streams have "
+            f"lost them (the trail follows an arm, or the unit crashes)")
+
+
 def reference_findings(files: Dict[str, bytes]) -> ReferenceReport:
     """What a pack would fail to load in game: dangling internal references.
 
@@ -570,6 +662,7 @@ def reference_findings(files: Dict[str, bytes]) -> ReferenceReport:
                 elif not present(ref):
                     findings.append(f"{base}: references {ref}, which is not "
                                     f"in the pack")
+            _check_weapon_trace(base, txt, files, findings)
         elif low.endswith(".char"):
             from . import char as charmod
             prof = charmod.parse_char(blob)

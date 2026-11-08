@@ -2556,6 +2556,54 @@ def test_vdpack_warns_about_a_reference_in_the_wrong_folder():
     assert any("x.g" in n for n in report.notes), report.notes
 
 
+def test_vdpack_catches_a_weapon_trail_whose_bones_were_dropped():
+    """A `.scene`'s weapon trail names its bones by **index**, so an animation
+    stream that lost the animation-only `Trail*` bones silently repoints the
+    trail at an arm — and a unit whose trail node is built from them can die
+    on load.  Every one of the 54 trail-bearing retail scenes resolves its
+    `boneid` values to `Trail1`…`TrailN` in the unit's own stream, which is
+    what makes the check exact rather than a guess."""
+    import struct as stmod
+    from d3tool import anim as animmod
+    from d3tool import vdpack
+    folder = os.path.join(REPO, "Empire", "Inquisitor")
+    files = {name: open(os.path.join(folder, name), "rb").read()
+             for name in ("character_empire_inquisitor.scene",
+                          "character_empire_inquisitor_lod.scene",
+                          "character_empire_inquisitor.ac",
+                          "character_empire_inquisitor_baseanims.a",
+                          "character_empire_inquisitor.g")}
+    assert "boneid 11" in files["character_empire_inquisitor.scene"].decode()
+
+    report = vdpack.reference_findings(dict(files))
+    assert not [p for p in report.problems if "weapon-trail" in p], \
+        report.problems
+    stream = animmod.parse_anim(files["character_empire_inquisitor_baseanims.a"])
+    assert stream.bones[11].name == "Trail1"
+    assert stream.bones[12].name == "Trail2"
+
+    # a re-export keeps only the bones a *mesh* is weighted to: drop the two
+    # trail tracks the way a Blender round-trip does and every index shifts
+    stream.bones = [b for i, b in enumerate(stream.bones) if i not in (11, 12)]
+    stream.raw = b""
+    stream.bone_count = len(stream.bones)
+    header = bytearray(stream.header)
+    stmod.pack_into("<I", header, 8, len(stream.bones))
+    stream.header = bytes(header)
+    dropped = animmod.write_anim(stream)
+    assert len(animmod.parse_anim(dropped).bones) == 25
+    files["character_empire_inquisitor_baseanims.a"] = dropped
+    report = vdpack.reference_findings(dict(files))
+    trail = [p for p in report.problems if "weapon-trail" in p]
+    assert len(trail) == 2, report.problems          # boneid 11 and 12
+    assert "RightShoulder" in trail[0], trail
+    assert "RightArm" in trail[1], trail
+    # the reduced `_lod` streams of retail leave the index stale on purpose
+    # (Defender of Faith, Dark Servant, Grand Inquisitor), so only the main
+    # scene is judged
+    assert not [p for p in trail if "_lod.scene" in p], trail
+
+
 def test_vdpack_validate_is_strict_about_wrong_folders():
     """`--strict` turns the warning into a non-zero exit, so a build script can
     refuse to ship a pack whose paths were written with the wrong root."""
