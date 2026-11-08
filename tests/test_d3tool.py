@@ -3838,6 +3838,51 @@ def test_lod_sync_leaves_a_shorter_retail_lod_alone():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_the_export_reports_the_files_it_added_to_a_unit():
+    """Nothing is written into a unit's folder that the unit did not have.
+
+    The exporter's own report is the guarantee: every file it produced is
+    either byte-identical to the unit's own, a rewrite of one of them, or —
+    loudly — new.  `d3tool export` on a retail unit must come back with zero
+    new files and zero rewrites when nothing was edited.
+    """
+    tmp = tempfile.mkdtemp(prefix="d3delta_")
+    try:
+        donor = os.path.join(tmp, "unit")
+        out = os.path.join(tmp, "out")
+        os.makedirs(donor)
+        os.makedirs(out)
+        open(os.path.join(donor, "a.g"), "wb").write(b"aaaa")
+        open(os.path.join(donor, "a.t"), "wb").write(b"tttt")
+        open(os.path.join(out, "a.g"), "wb").write(b"bbbb")     # rewritten
+        open(os.path.join(out, "a.t"), "wb").write(b"tttt")     # identical
+        open(os.path.join(out, "extra.t"), "wb").write(b"x")    # added
+        open(os.path.join(out, "stale.scene"), "wb").write(b"s")  # was here
+        delta = climod._export_delta(out, {"stale.scene"}, donor)
+        assert delta["new"] == ["extra.t"], delta
+        assert delta["rewritten"] == ["a.g"], delta
+        assert delta["kept"] == ["a.t"], delta
+
+        # end to end: a retail unit re-exported changes nothing and adds
+        # nothing (the roundtrip harness asserts the bytes; this asserts the
+        # report the user reads)
+        folder = os.path.join(REPO, "Empire", "Inquisitor")
+        stem = os.path.join(folder, "character_empire_inquisitor")
+        gltf = os.path.join(tmp, "character_empire_inquisitor.gltf")
+        exported = os.path.join(tmp, "exported")
+        climod._export_gl(stem + ".g", climod._find_animation_for_geometry(
+            stem + ".g"), gltf, None, quiet=True)
+        before = set()
+        climod._export(gltf, exported, 0, anim=True, quiet=True,
+                       donor_dir=folder)
+        delta = climod._export_delta(exported, before, folder)
+        assert delta["new"] == [], delta["new"]
+        assert delta["rewritten"] == [], delta["rewritten"]
+        assert len(delta["kept"]) >= 7, delta["kept"]
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def test_repair_repaths_an_ac_to_the_folder_the_scene_names():
     """The crash-on-recruit of a shipped pack, in one file.
 

@@ -45,7 +45,12 @@ def run(root: str, tmp_root: str):
             if stem.lower().endswith("_lod"):
                 continue
             unit = os.path.relpath(folder, root)
-            out_dir = os.path.join(tmp_root, group, os.path.basename(folder))
+            # one output per `.g`: a folder can hold several (Cyclop ships a
+            # prop mesh next to the unit), and a shared output folder made the
+            # second export look like the first one had written files the
+            # folder never had
+            out_dir = os.path.join(tmp_root, group, os.path.basename(folder),
+                                   stem)
             os.makedirs(out_dir, exist_ok=True)
             gltf = os.path.join(out_dir, stem + ".gltf")
             produced = os.path.join(out_dir, "export")

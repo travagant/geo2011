@@ -32,7 +32,7 @@ import struct
 import sys
 import textwrap
 import traceback
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Set, Tuple
 
 from . import __version__
 from . import ac as acmod
@@ -663,6 +663,7 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
         # original asset's own label and may differ from the file base
         sm.geometry_file = base
     os.makedirs(out_dir, exist_ok=True)
+    before = set(os.listdir(out_dir))
     res = _resource_root(gltf_path, base, (src_dir,))
     if donor is not None and donor.attrs:
         # donated attribute block: keeps the historical `.tga` material
@@ -936,9 +937,69 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
                 f"weapon will not show on the battlefield")
 
     _carry_material_textures(out_dir, base, src_dir, quiet)
+    _report_export_delta(out_dir, before, src_dir, quiet)
     _battle_readiness_check(out_dir, base, quiet)
     if not quiet:
         print("")
+
+
+def _export_delta(out_dir: str, before: Set[str],
+                  src_dir: Optional[str]) -> Dict[str, List[str]]:
+    """What this export did to the folder: new, rewritten, identical.
+
+    "New" is the answer to the only question a modder asks of an exporter
+    besides "does the game load it": *did it put anything in my folder that I
+    did not have?*  A file this export created that the unit's own folder does
+    not ship is new data — a texture it reached for from somewhere else, a
+    `.scene` it invented — and it is exactly what a pack must not carry by
+    accident.  A file that came back byte-identical to the unit's own is not
+    touched, and one that differs is still the same file, rewritten.
+    """
+    def read(path: str) -> Optional[bytes]:
+        try:
+            with open(path, "rb") as fh:
+                return fh.read()
+        except OSError:
+            return None
+
+    donor = src_dir if src_dir and os.path.isdir(src_dir) else None
+    names = sorted(os.listdir(out_dir)) if os.path.isdir(out_dir) else []
+    out: Dict[str, List[str]] = {"new": [], "rewritten": [], "kept": []}
+    for name in names:
+        if not os.path.isfile(os.path.join(out_dir, name)):
+            continue
+        mine = read(os.path.join(out_dir, name))
+        if mine is None:
+            continue
+        theirs = read(os.path.join(donor, name)) if donor else None
+        if theirs is None:
+            # the unit never had this file — report it only if this export is
+            # what put it there (the folder may have held it all along)
+            if name not in before:
+                out["new"].append(name)
+            continue
+        out["kept" if mine == theirs else "rewritten"].append(name)
+    return out
+
+
+def _report_export_delta(out_dir: str, before: Set[str],
+                         src_dir: Optional[str], quiet: bool) -> None:
+    """Say what the export added to the folder, and complain if it added any."""
+    if quiet:
+        return
+    delta = _export_delta(out_dir, before, src_dir)
+    if delta["kept"]:
+        ui.info(f"{len(delta['kept'])} file(s) identical to the unit's own")
+    if delta["rewritten"]:
+        ui.wrote(out_dir, f"{len(delta['rewritten'])} file(s) rewritten: "
+                          + ", ".join(delta["rewritten"][:6])
+                          + (" …" if len(delta["rewritten"]) > 6 else ""))
+    if delta["new"]:
+        ui.warn("this export ADDED " + str(len(delta["new"]))
+                + " file(s) the unit did not have: "
+                + ", ".join(delta["new"])
+                + " — delete them if the game already has them, they are not "
+                  "part of the unit")
 
 
 def _shrink_texture(path: str, quiet: bool) -> bool:

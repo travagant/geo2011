@@ -516,10 +516,25 @@ def export_unit(context, path: str, use_anim: bool = True, weights: int = 0,
                 "texture name not attached to any node: "
                 + ", ".join(missing))
 
+        before = (set(os.listdir(out_dir)) if os.path.isdir(out_dir)
+                  else set())
         with contextlib.redirect_stdout(log), \
                 contextlib.redirect_stderr(log):
             cli._export(target, out_dir, weights, anim=use_anim,
                         quiet=quiet, donor_dir=donor_dir or None)
+
+        # what the export put in the folder that the unit did not have: the
+        # sidebar is where a user can still do something about it
+        try:
+            delta = cli._export_delta(out_dir, before, donor_dir or None)
+        except Exception:  # noqa: BLE001 - a report must never break an export
+            delta = {}
+        for name in delta.get("new", []):
+            warns.append(
+                f"'{name}' was written but the unit did not have it — new "
+                f"data in the folder; delete it unless the model needs it")
+        for name in delta.get("rewritten", []):
+            notes.append(f"rewritten: {name}")
 
         result = _verify(out_dir, base)
         if result["warnings"]:
