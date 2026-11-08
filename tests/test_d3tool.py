@@ -4541,6 +4541,22 @@ def test_gattr_inserts_an_attribute_and_keeps_the_part_readable():
     assert gfile.iter_parts(
         gfile.parse_geometry_file(same))[3].attrs["port_marker"] == "8"
 
+    # a value of a DIFFERENT length has to rewrite its own length prefix; when
+    # it does not, every reader after the block takes the old width and the
+    # parts stacked behind it disappear (`gattr --replace` once did exactly
+    # that, on the weapon slot of a two-part unit)
+    marker = gfile.iter_parts(gfile.parse_geometry_file(same))[3]
+    longer = gfile.replace_part_attr(same, marker, "port_marker", "long-value")
+    assert len(longer) != len(same)
+    reparsed = list(gfile.iter_parts(gfile.parse_geometry_file(longer)))
+    assert len(reparsed) == 4, [p.name for p in reparsed]
+    assert reparsed[3].attrs["port_marker"] == "long-value"
+    assert reparsed[3].vertex_count == part.vertex_count
+    shorter = gfile.replace_part_attr(longer, reparsed[3], "port_marker", "1")
+    reparsed = list(gfile.iter_parts(gfile.parse_geometry_file(shorter)))
+    assert len(reparsed) == 4, [p.name for p in reparsed]
+    assert reparsed[3].attrs["port_marker"] == "1"
+
 
 def test_gattr_cli_reports_and_reproduces_the_patch():
     src = os.path.join(REPO, "Empire", "Angel", "character_empire_angel.g")

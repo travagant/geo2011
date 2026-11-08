@@ -1269,7 +1269,11 @@ def replace_part_attr(data: bytes, part, key: str, value: str) -> bytes:
         o += 4 + key_len
         value_len = struct.unpack_from("<I", data, o)[0]
         if found == key:
-            return (data[:o + 4] + latin1(value) + b"\0"
+            # the length prefix counts the NUL too: a value of a different
+            # length has to rewrite it, or every reader after this block reads
+            # the old width and the rest of the container is lost
+            blob = latin1(value) + b"\0"
+            return (data[:o] + struct.pack("<I", len(blob)) + blob
                     + data[o + 4 + value_len:])
         o += 4 + value_len
     raise KeyError(f"part {getattr(part, 'name', '?')!r} has no {key!r}")
