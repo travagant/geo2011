@@ -188,11 +188,13 @@ def audit(folder: str) -> Tuple[Dict[str, List], List[str]]:
             # this.  Compare a LOD gobj against the file it is describing or
             # the check reports the corpus itself as broken.
             counted = part
+            counted_file = gobj.g_base
             if name.lower().endswith("_lod.scene") and gobj.g_base:
                 main_file = gobj.g_base[:-6] + ".g"
                 main_parts = parts_by_g.get(main_file)
                 if main_parts and gobj.index < len(main_parts):
                     counted = main_parts[gobj.index]
+                    counted_file = main_file
             # the gobj repeats the part's numbers; one stale copy is enough to
             # desynchronise the loader (buffer sizes come from here)
             checks = (
@@ -216,7 +218,7 @@ def audit(folder: str) -> Tuple[Dict[str, List], List[str]]:
                 if have != want:
                     findings.append(
                         f"{name}: gobj {gobj.name} says {key} {have}, part "
-                        f"#{gobj.index} of {gobj.g_base} has {want} {what}")
+                        f"#{gobj.index} of {counted_file} has {want} {what}")
             attr_name = gobj.attrs.get("name")
             # index 0 is the root block, whose own name is the geometry's
             # (`Standard_8`) while the gobj is named after the unit — retail

@@ -221,6 +221,35 @@ def parse_anim(data: bytes) -> AnimFile:
     return anim
 
 
+def same_motion(left: "AnimFile", right: "AnimFile",
+                tol: float = 1e-4) -> bool:
+    """True when two builds of a stream play the same animation.
+
+    A glTF round-trip re-quantises every keyframe (float32 -> decimal ->
+    float32), so a rebuilt stream differs from its donor in the last bits while
+    the motion is identical — 301 frames x 27 bones of noise that only makes
+    the file different from the one the game shipped with.  Comparing the
+    values lets an export keep the donor's own bytes instead of writing a
+    near-copy.
+    """
+    if left.frame_count != right.frame_count:
+        return False
+    if len(left.bones) != len(right.bones):
+        return False
+    for a, b in zip(left.bones, right.bones):
+        if a.name != b.name or len(a.frames) != len(b.frames):
+            return False
+        if a.parent != b.parent:
+            return False
+        for fa, fb in zip(a.frames, b.frames):
+            if len(fa) != len(fb):
+                return False
+            for x, y in zip(fa, fb):
+                if abs(float(x) - float(y)) > tol:
+                    return False
+    return True
+
+
 def concat_anims(anims: List[AnimFile]) -> AnimFile:
     """Concatenate several `.a` streams the way dis3tool does.
 

@@ -588,6 +588,23 @@ def _load_stream_donors(gltf_path: str, src_dir: str, base: str,
     return streams
 
 
+def _anim_bytes(animfile, donor) -> bytes:
+    """The `.a` bytes to write: the donor's own when nothing moved.
+
+    Rebuilding a stream from the glTF re-quantises every keyframe, so an export
+    that changed no pose still writes a file that differs from the shipped one
+    in the last bits of 300 frames.  Byte-identical output is worth more than a
+    near-copy: compare the motion and keep the donor's bytes.
+    """
+    if donor is not None:
+        try:
+            if animmod.same_motion(donor, animfile) and donor.raw:
+                return donor.raw
+        except Exception:  # noqa: BLE001 - a comparison must never fail a write
+            pass
+    return animmod.write_anim(animfile)
+
+
 def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
             anim: bool = True, quiet: bool = False,
             donor_dir: Optional[str] = None) -> None:
@@ -862,7 +879,7 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
                         continue
                     out_a = os.path.join(out_dir, nm)
                     with open(out_a, "wb") as fh:
-                        fh.write(animmod.write_anim(animfile))
+                        fh.write(_anim_bytes(animfile, stream_donor))
                     if not quiet:
                         ui.wrote(out_a, f"{os.path.getsize(out_a)} bytes, "
                                         f"{len(animfile.bones)} bones")
@@ -877,7 +894,7 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
                                                        streams=streams,
                                                        out_name=idle_base)
                 if animfile.bones or animfile.morphs:
-                    a_bytes = animmod.write_anim(animfile)
+                    a_bytes = _anim_bytes(animfile, donor_a)
                     out_a = os.path.join(out_dir, os.path.basename(idle_name))
                     with open(out_a, "wb") as fh:
                         fh.write(a_bytes)

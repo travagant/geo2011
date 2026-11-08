@@ -2881,6 +2881,65 @@ def test_the_audit_reports_a_scene_that_describes_the_old_mesh():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_same_motion_ignores_only_the_round_trip_noise():
+    """A rebuilt `.a` re-quantises every keyframe; that is not an edit.
+
+    The export compares the motion and keeps the donor's own bytes when nothing
+    moved — otherwise a re-export that changed no pose still writes a file that
+    differs from the shipped one in the last bits of 300 frames x 27 bones.
+    """
+    raw = open(os.path.join(REPO, "Empire", "Inquisitor",
+                            "character_empire_inquisitor_baseanims.a"), "rb").read()
+    left = animmod.parse_anim(raw)
+    right = animmod.parse_anim(raw)
+    assert animmod.same_motion(left, right)
+    # the noise his export carried: one float, last bit
+    frames = list(right.bones[0].frames)
+    frames[0] = tuple(x + 1e-6 for x in frames[0])
+    right.bones[0].frames = frames
+    assert animmod.same_motion(left, right)
+    # a real pose change is not noise
+    frames[0] = tuple(x + 0.25 for x in frames[0])
+    right.bones[0].frames = frames
+    assert not animmod.same_motion(left, right)
+    # ...and neither is a different structure
+    right = animmod.parse_anim(raw)
+    right.bones[1].name = "NotABone"
+    assert not animmod.same_motion(left, right)
+
+
+def test_an_unedited_animation_is_written_back_byte_for_byte():
+    """Export the Inquisitor without touching the rig: `.a` and `.ac` must not
+    change at all.  A near-copy of the animation is one more file that differs
+    from retail for no reason, and nothing in the `.g` needs it rewritten."""
+    tmp = tempfile.mkdtemp(prefix="d3animsame_")
+    try:
+        work = os.path.join(tmp, "unit")
+        os.makedirs(work)
+        for name in ("character_empire_inquisitor.g",
+                     "character_empire_inquisitor_baseanims.a",
+                     "character_empire_inquisitor.ac",
+                     "character_empire_inquisitor.scene",
+                     "character_empire_inquisitor.t"):
+            shutil.copyfile(os.path.join(REPO, "Empire", "Inquisitor", name),
+                            os.path.join(work, name))
+        gl = os.path.join(tmp, "character_empire_inquisitor.gltf")
+        climod._export_gl(os.path.join(work, "character_empire_inquisitor.g"),
+                          os.path.join(work,
+                                       "character_empire_inquisitor_baseanims.a"),
+                          gl, None, quiet=True)
+        out = os.path.join(tmp, "out")
+        climod._export(gl, out, 0, anim=True, quiet=True, donor_dir=work)
+        for name in ("character_empire_inquisitor_baseanims.a",
+                     "character_empire_inquisitor.ac"):
+            retail = open(os.path.join(REPO, "Empire", "Inquisitor", name),
+                          "rb").read()
+            got = open(os.path.join(out, name), "rb").read()
+            assert got == retail, name
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0
