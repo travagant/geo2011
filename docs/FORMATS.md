@@ -467,6 +467,15 @@ files it just saved (`d3tool/parts.py::texture_report`), and warns about a name
 whose texture is not in the folder — plus about every part that has no
 `d3unit_diffuse` of its own, i.e. one imported before 1.1.27 or hand-assembled.
 
+**Writing a `.t` compresses it.**  The container can hold raw A8R8G8B8
+(format code 4) as well as DXT blocks, and the raw form is eight times the size
+for identical pixels — a 128x1024 blade is 683 KiB raw and 86 KiB as DXT1.
+`png_to_t` (a texture re-saved from Blender) and every carried atlas are now
+block-compressed: DXT1 normally, DXT5 when the image really uses alpha.  The
+mip chain follows the container's own accounting — each level is exactly
+`w * h * rate` bytes with no 4x4 padding, so a re-encoded 128x1024 blade is
+87 439 bytes, the same as the shipped file.
+
 **Same atlas, different weight.**  A `.t` can hold DXT1 blocks (the Knight's
 blade atlas: 128x1024, 86 KiB) or raw A8R8G8B8 pixels (the same picture
 re-saved from Blender: 683 KiB) — an eightfold difference in size for identical

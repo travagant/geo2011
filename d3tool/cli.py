@@ -913,6 +913,54 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
         print("")
 
 
+def _shrink_texture(path: str, quiet: bool) -> bool:
+    """Block-compress a texture in place when it is stored as raw pixels.
+
+    A `.t` can hold A8R8G8B8, and everything that came out of Blender used to
+    be written that way: 683 KiB for a 128x1024 blade whose shipped copy is
+    86 KiB.  The pixels do not change, the format does, so this is done on
+    every export — including on a texture the artist dropped in himself.
+    """
+    try:
+        with open(path, "rb") as fh:
+            data = fh.read()
+        small = texmod.compress_t(data, path)
+    except Exception:  # noqa: BLE001 - an odd texture must not fail an export
+        return False
+    if small is None or len(small) >= len(data):
+        return False
+    try:
+        with open(path, "wb") as fh:
+            fh.write(small)
+    except OSError:
+        return False
+    if not quiet:
+        ui.wrote(path, f"re-encoded {len(data) // 1024} KB raw pixels -> "
+                       f"{len(small) // 1024} KB {texmod.describe(path, True)}")
+    return True
+
+
+def _write_texture(src: str, dst: str, quiet: bool, why: str) -> None:
+    """Copy a texture into the export folder, block-compressing it on the way."""
+    try:
+        with open(src, "rb") as fh:
+            data = fh.read()
+        small = texmod.compress_t(data, src)
+    except Exception:  # noqa: BLE001
+        small = None
+    if small is not None and len(small) < len(data):
+        with open(dst, "wb") as fh:
+            fh.write(small)
+        if not quiet:
+            ui.wrote(dst, f"{why}; re-encoded {len(data) // 1024} KB raw "
+                          f"pixels -> {len(small) // 1024} KB "
+                          f"{texmod.describe(dst, True)}")
+        return
+    shutil.copyfile(src, dst)
+    if not quiet:
+        ui.wrote(dst, why)
+
+
 def _carry_material_textures(out_dir: str, base: str,
                              src_dir: Optional[str], quiet: bool) -> None:
     """Make the output folder carry every texture its own `.g` names.
@@ -948,7 +996,9 @@ def _carry_material_textures(out_dir: str, base: str,
         stem = texmod.clean_stem(mat)
         if not stem:
             continue
-        if os.path.isfile(os.path.join(out_dir, stem + ".t")):
+        existing = os.path.join(out_dir, stem + ".t")
+        if os.path.isfile(existing):
+            _shrink_texture(existing, quiet)
             continue
         src_t = src_dds = None
         for d in dirs:
@@ -976,10 +1026,10 @@ def _carry_material_textures(out_dir: str, base: str,
         try:
             if src_t is not None:
                 if os.path.abspath(src_t) == os.path.abspath(dst):
+                    _shrink_texture(dst, quiet)
                     continue
-                shutil.copyfile(src_t, dst)
-                if not quiet:
-                    ui.wrote(dst, "carried with the unit (its .g names it)")
+                _write_texture(src_t, dst, quiet,
+                               "carried with the unit (its .g names it)")
             elif src_dds is not None:
                 texmod.convert_file(src_dds, dst)
                 if not quiet:

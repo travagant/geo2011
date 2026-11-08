@@ -569,6 +569,194 @@ def _paeth(a: int, b: int, c: int) -> int:
     return c
 
 
+# --------------------------------------------------------------------------- #
+#  DXT compression
+# --------------------------------------------------------------------------- #
+def _rgb565(r: int, g: int, b: int) -> int:
+    return ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3)
+
+
+def _un565(c: int):
+    r = (c >> 11) & 0x1F
+    g = (c >> 5) & 0x3F
+    b = c & 0x1F
+    return ((r << 3) | (r >> 2), (g << 2) | (g >> 4), (b << 3) | (b >> 2))
+
+
+def _block_pixels(rows, x0: int, y0: int, width: int, height: int) -> list:
+    """16 RGBA tuples of a 4x4 tile, clamped at the edges of the image."""
+    out = []
+    for dy in range(4):
+        y = min(y0 + dy, height - 1)
+        row = rows[y]
+        for dx in range(4):
+            x = min(x0 + dx, width - 1)
+            o = 4 * x
+            out.append((row[o], row[o + 1], row[o + 2], row[o + 3]))
+    return out
+
+
+def _bc1_block(px) -> bytes:
+    """One 8-byte BC1/DXT1 block (4-colour mode) of 16 RGBA pixels."""
+    first = px[0]
+    if all(p == first for p in px):
+        # a flat tile (background, UI plate, most of a blade's edge): one
+        # word and no search at all — this is the common case in an atlas
+        return struct.pack("<HHI", _rgb565(first[0], first[1], first[2]),
+                           _rgb565(first[0], first[1], first[2]), 0)
+    rs = [p[0] for p in px]
+    gs = [p[1] for p in px]
+    bs = [p[2] for p in px]
+    c0 = _rgb565(max(rs), max(gs), max(bs))
+    c1 = _rgb565(min(rs), min(gs), min(bs))
+    if c0 == c1:
+        # a flat block: one colour, every index pointing at it
+        return struct.pack("<HHI", c0, c1, 0)
+    if c0 < c1:
+        c0, c1 = c1, c0
+    p0, p1 = _un565(c0), _un565(c1)
+    palette = (p0, p1,
+               tuple((2 * p0[i] + p1[i]) // 3 for i in range(3)),
+               tuple((p0[i] + 2 * p1[i]) // 3 for i in range(3)))
+    bits = 0
+    for i, (r, g, b, _a) in enumerate(px):
+        best, best_d = 0, 1 << 30
+        for k, (pr, pg, pb) in enumerate(palette):
+            d = (r - pr) ** 2 + (g - pg) ** 2 + (b - pb) ** 2
+            if d < best_d:
+                best, best_d = k, d
+        bits |= best << (2 * i)
+    return struct.pack("<HHI", c0, c1, bits)
+
+
+def _bc3_alpha_block(px) -> bytes:
+    """The 8-byte alpha half of a BC3/DXT5 block, 3-bit indices per pixel."""
+    alphas = [p[3] for p in px]
+    a0, a1 = max(alphas), min(alphas)
+    if a0 == a1:
+        return struct.pack("<BB", a0, a0) + b"\x00" * 6
+    palette = [a0, a1]
+    for i in range(1, 7):
+        palette.append(((7 - i) * a0 + i * a1) // 7)
+    bits = 0
+    for i, a in enumerate(alphas):
+        best = min(range(8), key=lambda k: abs(a - palette[k]))
+        bits |= best << (3 * i)
+    return struct.pack("<BB", a0, a1) + bits.to_bytes(6, "little")
+
+
+def _mip_chain(rows, width: int, height: int) -> list:
+    """``[(w, h, rows)]`` from the full image down to 1xN, sliced in half."""
+    chain = []
+    cur, w, h = rows, width, height
+    while w >= 1 and h >= 1:
+        chain.append((w, h, cur))
+        if w == 1 and h == 1:
+            break
+        cur, w, h = _downsample_rows(cur, w, h), w >> 1, h >> 1
+    return chain
+
+
+def _downsample_rows(src, w: int, h: int) -> list:
+    """2x2 box average of RGBA rows -> the (w>>1, h>>1) level."""
+    half_w = max(w >> 1, 1)
+    out = []
+    for y in range(0, h, 2):
+        y1 = min(y + 1, h - 1)
+        r = bytearray(half_w * 4)
+        xo = 0
+        for x in range(0, w, 2):
+            x1 = min(x + 1, w - 1)
+            for c in range(4):
+                v = (src[y][4 * x + c] + src[y][4 * x1 + c]
+                     + src[y1][4 * x + c] + src[y1][4 * x1 + c])
+                r[xo + c] = (v + 2) >> 2
+            xo += 4
+        out.append(bytes(r))
+    return out
+
+
+def encode_dxt(rows, width: int, height: int, fourcc: bytes = b"DXT1") -> bytes:
+    """DXT payload of a whole mip chain, the way a GM ``.t`` stores it.
+
+    The container does *not* 4x4-align the tail mips: every level is exactly
+    ``w * h * rate`` bytes (``rate`` 0.5 for DXT1, 1.0 for DXT5), which is what
+    every shipped atlas uses and what `TextureInfo.payload_size` reproduces —
+    a 128x1024 blade with eight mips is 87 380 bytes, not the 87 408 a naive
+    block-aligned encoder would write.
+    """
+    rate = 0.5 if fourcc == b"DXT1" else 1.0
+    payload = bytearray()
+    for w, h, level in _mip_chain(rows, width, height):
+        data = bytearray()
+        for y in range(0, h, 4):
+            for x in range(0, w, 4):
+                px = _block_pixels(level, x, y, w, h)
+                if fourcc == b"DXT1":
+                    data += _bc1_block(px)
+                else:
+                    data += _bc3_alpha_block(px) + _bc1_block(px)
+        # clamp to the container's own accounting: the last levels are stored
+        # short (a 1x8 mip is 4 bytes, not the 8-byte block that produced it)
+        payload += data[:int(w * h * rate)]
+    return bytes(payload)
+
+
+def _has_alpha(rows) -> bool:
+    return any(row[3 + 4 * x] < 250
+               for row in rows for x in range(len(row) // 4))
+
+
+def _bgra_payload_to_rows(info: "TextureInfo", data: bytes) -> list:
+    """RGBA rows of an uncompressed 32-bit ``.t``'s base level."""
+    w, h = info.width, info.height
+    rows = []
+    for y in range(h):
+        src = data[y * w * 4:(y + 1) * w * 4]
+        row = bytearray(w * 4)
+        for x in range(w):
+            o = 4 * x
+            row[o] = src[o + 2]
+            row[o + 1] = src[o + 1]
+            row[o + 2] = src[o]
+            row[o + 3] = src[o + 3]
+        rows.append(bytes(row))
+    return rows
+
+
+def compress_t(data: bytes, source: str = "") -> Optional[bytes]:
+    """Re-encode an uncompressed 32-bit ``.t`` as DXT1/DXT5, ``None`` if not needed.
+
+    The container can hold raw A8R8G8B8, which is how a texture that came out
+    of Blender as a PNG used to be written: 683 KiB where the shipped atlas is
+    86 KiB for the *same pixels*.  In a folder that reads like the wrong
+    texture, and it is 8x the space in every pack.  Alpha that actually varies
+    goes to DXT5, everything else to DXT1.
+    """
+    try:
+        info = parse_t(data, source)
+    except ValueError:
+        return None
+    if info.gm_format not in _T_FMT_32BBP:
+        return None
+    if info.faces != 1:
+        return None
+    rows = _bgra_payload_to_rows(info, info.payload)
+    fourcc = b"DXT5" if _has_alpha(rows) else b"DXT1"
+    payload = encode_dxt(rows, info.width, info.height, fourcc)
+    new = TextureInfo(
+        width=info.width, height=info.height, mip_count=info.mip_count,
+        gm_format=_DDS_FOURCC_TO_T[fourcc], fourcc=fourcc, payload=payload,
+    )
+    out = bytearray(write_t(new, info.t_header))
+    # the source header describes an *uncompressed* texture; `_build_t_header`
+    # keeps an original header's opaque fields (the 16-bit codes need that),
+    # so the pixel-format word is corrected here or the file declares RGBA and
+    # carries DXT blocks
+    struct.pack_into("<I", out, 4, new.gm_format)
+    return bytes(out)
+
+
 def decode_png(data: bytes):
     """Minimal pure-Python PNG decoder -> ``(width, height, rgba_rows)``.
 
@@ -665,10 +853,11 @@ def decode_png(data: bytes):
 def png_to_t(data: bytes) -> bytes:
     """Re-encode a PNG into a native GM ``.t`` (uncompressed A8R8G8B8).
 
-    Blender saves textures as PNG; the engine wants a `.t`.  A DXT
-    compressor is out of scope, but the container also has an uncompressed
-    32-bit form (code 4) every shipped build accepts, so the texture ships
-    usable — just larger than the original DXT.
+    Blender saves textures as PNG; the engine wants a `.t`.  The pixels are
+    block-compressed here (DXT1, or DXT5 when the image really uses alpha):
+    writing the container's raw 32-bit form instead produced a 683 KiB file
+    where the shipped atlas is 86 KiB for the *same* picture, which reads like
+    the wrong texture in any folder listing and costs eight times the space.
     """
     width, height, rows = decode_png(data)
 
@@ -697,19 +886,11 @@ def png_to_t(data: bytes) -> bytes:
             out.append(bytes(r))
         return out
 
-    payload = bytearray()
-    cur_w, cur_h, cur = width, height, rows
-    while cur_w >= 1 and cur_h >= 1:
-        for row in cur:
-            for x in range(cur_w):
-                o = 4 * x
-                payload += bytes((row[o + 2], row[o + 1], row[o],
-                                  row[o + 3]))
-        cur = downsample(cur, cur_w, cur_h)
-        cur_w, cur_h = cur_w >> 1, cur_h >> 1
+    fourcc = b"DXT5" if _has_alpha(rows) else b"DXT1"
     info = TextureInfo(
         width=width, height=height,
         mip_count=mip_count_of(width, height),
-        gm_format=4, payload=bytes(payload),
+        gm_format=_DDS_FOURCC_TO_T[fourcc], fourcc=fourcc,
+        payload=encode_dxt(rows, width, height, fourcc),
     )
     return write_t(info)

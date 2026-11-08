@@ -2784,9 +2784,9 @@ def main():
 
 
 def test_png_to_t_roundtrip():
-    """A Blender re-saved .png must become a loadable native .t: right
-    dimensions, uncompressed 32-bit code 4, full mip chain sized the GM
-    way (each mip w>>i * h>>i * 4, no clamping to 1px), BGRA order."""
+    """A Blender re-saved .png must become a loadable native .t: DXT1 pixels,
+    a full mip chain sized the GM way (each mip ``w*h*0.5`` bytes, no 4x4
+    block padding), so a 128x1024 blade is 86 KiB and not 683."""
     import zlib
     from d3tool import texture as texmod
 
@@ -2805,10 +2805,107 @@ def test_png_to_t_roundtrip():
     t = texmod.png_to_t(png)
     ti = texmod.parse_t(t)
     assert (ti.width, ti.height) == (w, h)
-    assert ti.gm_format == 4
-    assert ti.mip_count == 4                      # 8,4,2,1
-    assert len(ti.payload) == (64 + 16 + 4 + 1) * 4
-    assert ti.payload[:4] == b"\x80\x00\x00\xff"  # RGBA(0,0,128,255)->BGRA
+    assert ti.gm_format == 6 and ti.fourcc == b"DXT1", (ti.gm_format, ti.fourcc)
+    assert ti.mip_count == 4                       # 8, 4, 2, 1
+    # 32 + 8 + 2 + int(1*0.5) bytes: the container's own accounting
+    assert len(ti.payload) == 32 + 8 + 2 + 0 == ti.payload_size()
+    assert len(t) == 59 + 42
+
+    # alpha that actually varies goes to DXT5 instead, so a cut-out atlas
+    # keeps its transparency
+    raw = b"".join(b"\x00" + b"".join(
+        bytes([(x * 32) % 256, 64, 128, (y * 32) % 256])
+        for x in range(w)) for y in range(h))
+    png_a = (b"\x89PNG\r\n\x1a\n"
+             + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0))
+             + chunk(b"IDAT", zlib.compress(raw))
+             + chunk(b"IEND", b""))
+    ti_a = texmod.parse_t(texmod.png_to_t(png_a))
+    assert ti_a.fourcc == b"DXT5" and ti_a.gm_format == 8, ti_a.fourcc
+
+
+def test_a_raw_texture_is_recompressed_and_a_packed_one_is_left_alone():
+    """The 683 KiB problem: a `.t` holding raw A8R8G8B8 of an atlas the game
+    ships as an 86 KiB DXT1.  Same pixels, eight times the size, and the file
+    listing reads like the wrong texture."""
+    from d3tool import texture as texmod
+
+    w, h = 32, 32
+    rows = [bytes(v for x in range(w)
+                  for v in ((x * 8) % 256, (y * 8) % 256, 64, 255))
+            for y in range(h)]
+    raw = bytearray()
+    cur, cw, ch = rows, w, h
+    while cw >= 1 and ch >= 1:
+        for row in cur:
+            for x in range(cw):
+                o = 4 * x
+                raw += bytes((row[o + 2], row[o + 1], row[o], row[o + 3]))
+        cur, cw, ch = texmod._downsample_rows(cur, cw, ch), cw >> 1, ch >> 1
+    big = texmod.write_t(texmod.TextureInfo(
+        width=w, height=h, mip_count=6, gm_format=4, payload=bytes(raw)))
+    assert texmod.parse_t(big).fourcc is None          # raw RGBA, not DXT
+    assert len(big) > 4000
+
+    small = texmod.compress_t(big)
+    assert small is not None and len(small) < len(big) // 3, (len(big), small and len(small))
+    ti = texmod.parse_t(small)
+    assert ti.fourcc == b"DXT1" and ti.gm_format == 6
+    assert (ti.width, ti.height, ti.mip_count) == (w, h, 6)
+    assert len(ti.payload) == ti.payload_size()
+    # already compressed: nothing to do, and the file is returned untouched
+    assert texmod.compress_t(small) is None
+    assert texmod.compress_t(b"junk") is None
+
+    # a flat block needs no search: one colour, every index on it
+    block = texmod._bc1_block([(255, 0, 0, 255)] * 16)
+    c0, c1, bits = struct.unpack("<HHI", block)
+    assert c0 == c1 == texmod._rgb565(255, 0, 0) and bits == 0
+
+
+def test_the_export_carries_a_compressed_texture_not_a_raw_one():
+    """End to end: a folder that holds a raw-pixel atlas exports a DXT1 `.t`."""
+    tmp = tempfile.mkdtemp(prefix="d3carry_")
+    try:
+        work = os.path.join(tmp, "unit")
+        os.makedirs(work)
+        for name in ("character_empire_inquisitor.g",
+                     "character_empire_inquisitor_baseanims.a",
+                     "character_empire_inquisitor.ac",
+                     "character_empire_inquisitor.scene"):
+            shutil.copyfile(os.path.join(REPO, "Empire", "Inquisitor", name),
+                            os.path.join(work, name))
+        # a raw-pixel stand-in for the unit's atlas: 64x64, DXT1 after export
+        w = h = 64
+        rows = [bytes(v for x in range(w)
+                      for v in ((x * 4) % 256, (y * 4) % 256, 32, 255))
+                for y in range(h)]
+        payload = bytearray()
+        cur, cw, ch = rows, w, h
+        while cw >= 1 and ch >= 1:
+            for row in cur:
+                for x in range(cw):
+                    o = 4 * x
+                    payload += bytes((row[o + 2], row[o + 1], row[o], row[o + 3]))
+            cur, cw, ch = texmod._downsample_rows(cur, cw, ch), cw >> 1, ch >> 1
+        big = texmod.write_t(texmod.TextureInfo(
+            width=w, height=h, mip_count=7, gm_format=4, payload=bytes(payload)))
+        open(os.path.join(work, "character_empire_inquisitor.t"), "wb").write(big)
+
+        g = os.path.join(work, "character_empire_inquisitor.g")
+        gl = os.path.join(tmp, "x.gltf")
+        climod._export_gl(g, os.path.join(work,
+                                          "character_empire_inquisitor_baseanims.a"),
+                          gl, None, quiet=True)
+        out = os.path.join(tmp, "out")
+        climod._export(gl, out, 0, anim=True, quiet=True, donor_dir=work)
+        carried = os.path.join(out, "character_empire_inquisitor.t")
+        assert os.path.isfile(carried)
+        got = open(carried, "rb").read()
+        assert len(got) < len(big) // 2, (len(big), len(got))
+        assert texmod.describe(carried, True) == "64x64 DXT1"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
 
 
 def test_anim_track_without_parent_uses_zero_length():
