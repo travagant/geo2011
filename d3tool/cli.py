@@ -944,6 +944,24 @@ def _battle_readiness_check(out_dir: str, base: str, quiet: bool) -> None:
                         f"({', '.join(dupes)}) — the engine keeps only one")
             except Exception as exc:  # noqa: BLE001
                 findings.append(f"{base}.g failed to re-parse: {exc}")
+        # the LOD model is a separate mesh and the profile swaps to it past a
+        # draw distance: a part the main `.g` gained (a weapon) is invisible
+        # on the battlefield until the LOD carries it as well
+        lod_g = os.path.join(out_dir, base + "_lod.g")
+        if os.path.isfile(lod_g) and os.path.isfile(out_g):
+            try:
+                main_parts = gfile.iter_parts(
+                    gfile.parse_geometry_file(open(out_g, "rb").read()))
+                lod_parts = gfile.iter_parts(
+                    gfile.parse_geometry_file(open(lod_g, "rb").read()))
+                if len(lod_parts) < len(main_parts):
+                    findings.append(
+                        f"{base}_lod.g has {len(lod_parts)} mesh part(s), "
+                        f"the main .g has {len(main_parts)} — the battle "
+                        f"camera swaps to the LOD at distance and the extra "
+                        f"part(s) will not be drawn (run `d3tool lod`)")
+            except Exception as exc:  # noqa: BLE001
+                findings.append(f"{base}_lod.g failed to re-parse: {exc}")
         for ac_path in glob.glob(os.path.join(out_dir, "*.ac")):
             cfg = acmod.parse_ac(open(ac_path, "r", encoding="utf-8-sig",
                                       errors="replace").read())

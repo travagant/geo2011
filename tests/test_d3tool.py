@@ -1771,6 +1771,36 @@ def test_lod_sync_appends_the_weapon_as_a_lod_part():
         assert open(lod_g, "rb").read() == after
 
 
+def test_battle_check_reports_a_lod_that_lost_the_added_part():
+    """A weapon the LOD mesh does not carry is invisible past the draw
+    distance — the export says so instead of leaving it to the battlefield."""
+    import shutil
+    import tempfile
+    from d3tool import cli as climod
+    from d3tool import gfile as gmod
+
+    angel = os.path.join(REPO, "Empire", "Angel", "character_empire_angel")
+    knight = gmod.parse_geometry_file(open(os.path.join(
+        REPO, "Empire", "Knight", "character_empire_knight.g"), "rb").read())
+    sword = gmod.iter_parts(knight)[1]          # a rigid single-bone weapon
+    with tempfile.TemporaryDirectory() as d:
+        for ext in (".g", "_lod.g"):
+            shutil.copyfile(angel + ext,
+                            os.path.join(d, "character_empire_angel" + ext))
+        main_g = os.path.join(d, "character_empire_angel.g")
+        grown = gmod.append_parts(open(main_g, "rb").read(), [sword])
+        open(main_g, "wb").write(grown)
+        seen = []
+        real = climod.ui.warn
+        climod.ui.warn = lambda msg="": seen.append(str(msg))
+        try:
+            climod._battle_readiness_check(d, "character_empire_angel", False)
+        finally:
+            climod.ui.warn = real
+        text = "\n".join(seen)
+        assert "_lod.g has 4 mesh part(s)" in text, text
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0
