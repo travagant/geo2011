@@ -79,7 +79,7 @@ def swap_weapon(retail: bytes, sword) -> bytes:
     return prelude + parts[0].raw + block.raw
 
 
-def patch_scene(text: str) -> str:
+def patch_scene(text: str, keep_material: bool = False) -> str:
     """Retail's scene text with the weapon node's material/counts updated."""
     head = 'child gobj "' + WEAPON + '"'
     if head not in text:
@@ -87,7 +87,8 @@ def patch_scene(text: str) -> str:
     start = text.index(head)
     end = text.index("\n}", start)
     block = text[start:end]
-    for old, new in SCENE_SWAPS:
+    swaps = SCENE_SWAPS[1:] if keep_material else SCENE_SWAPS
+    for old, new in swaps:
         if old not in block:
             raise SystemExit(f"scene block does not hold {old!r}")
         block = block.replace(old, new)
@@ -116,6 +117,11 @@ def main(argv=None) -> int:
     ap.add_argument("--texture", default="",
                     help="a .t to ship as the sword's diffuse (defaults to "
                          "the one the shape archive carries for the Angel)")
+    ap.add_argument("--keep-material", action="store_true",
+                    help="leave the weapon node on the texture the retail "
+                         "scene already names (the export's own .g says "
+                         "weapon_empire_inquisitor.tga) instead of "
+                         "repointing it at the knight-sword diffuse")
     ap.add_argument("--tree", default="",
                     help="where to stage the patched files (default: a "
                          "temporary folder)")
@@ -147,23 +153,28 @@ def main(argv=None) -> int:
         with open(os.path.join(args.retail, name), encoding="latin-1",
                   newline="") as fh:
             text = fh.read()
-        out = patch_scene(text)
+        out = patch_scene(text, args.keep_material)
         write(os.path.join(dest, name), out.encode("latin-1"))
-        ui.ok(f"{name}: retail text, weapon node repointed at {TEXTURE}")
+        ui.ok(f"{name}: retail text, weapon node counted for the export's "
+              f"block" + ("" if args.keep_material
+                          else f", repointed at {TEXTURE}"))
 
     for name in ("character_empire_inquisitor_baseanims.a",
                  "character_empire_inquisitor.ac"):
         write(os.path.join(dest, name), read(os.path.join(args.retail, name)))
-        ui.ok(f"{name}: from retail (the export's copy lost bone tracks)"
-              if name.endswith(".a") else f"{name}: from retail")
+        ui.ok(f"{name}: from retail")
 
-    texture = args.texture or os.path.join(
-        args.export, "resources", "Characters", "Empire", "Angel",
-        "weapon_empire_knight_sword_diffuse.t")
-    data = read(texture)
-    write(os.path.join(dest, "weapon_empire_knight_sword_diffuse.t"), data)
-    ui.ok(f"weapon_empire_knight_sword_diffuse.t: {len(data)} bytes from "
-          f"{os.path.basename(texture)}")
+    if args.keep_material:
+        texture = ""
+    else:
+        texture = args.texture or os.path.join(
+            args.export, "resources", "Characters", "Empire", "Angel",
+            "weapon_empire_knight_sword_diffuse.t")
+    if texture:
+        data = read(texture)
+        write(os.path.join(dest, "weapon_empire_knight_sword_diffuse.t"), data)
+        ui.ok(f"weapon_empire_knight_sword_diffuse.t: {len(data)} bytes from "
+              f"{os.path.basename(texture)}")
 
     source = vdpack.read_vdpack(args.pack)
     if source.parse_error:

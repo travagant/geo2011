@@ -1918,6 +1918,38 @@ def animation_from_gltf(m: GltfModel, donor: Optional["animmod.AnimFile"] = None
             samples.append((r[0], r[1], r[2], r[3], t[0], t[1], t[2]))
         frames.append((name, pname, samples))
 
+    # ---- a Blender re-save re-frames every bone --------------------------
+    # Blender cannot keep the `.g`'s bind frame: it bakes the scene's rest pose
+    # into the joints, merges the per-part skins into one armature-wide skin
+    # and re-parents the meshes, so the channel TRS are local matrices in
+    # *Blender's* frame.  The `.a` records have to go back through the
+    # calibrated frame change (`L_o = Q_parent . L_b . inv(Q_j)`, see
+    # d3tool/frame.py) — the mesh side always did.  The animation side only
+    # did further down, and only for a unit whose `.ac` names SEVERAL streams:
+    # every single-stream unit (62 of the 153 bundled `.a`, the Inquisitor
+    # among them) shipped Blender-frame rotations.  The character then
+    # contorts into the pose the screenshots show and a rigid weapon points
+    # somewhere else entirely, while every byte of the file looks sane.
+    if m.blender_layout and donor is not None:
+        Qd, _qw = _blender_q_map(m, [donor])
+        if Qd:
+            converted = []
+            for name, pname, samples in frames:
+                Qj, Qp = Qd.get(name), Qd.get(pname)
+                if Qj is None and Qp is None:
+                    converted.append((name, pname, samples))
+                    continue
+                rows = []
+                for s in samples:
+                    lo = framemod.convert_local(
+                        framemod.trs_matrix(s[:4], s[4:7], None),
+                        Qj or framemod.IDENTITY, Qp or framemod.IDENTITY)
+                    q = framemod.mat_to_quat(lo)
+                    rows.append((q[0], q[1], q[2], q[3],
+                                 lo[0][3], lo[1][3], lo[2][3]))
+                converted.append((name, pname, rows))
+            frames = converted
+
     anim = animmod.build_anim(frames, len(m.frames))
 
     # ---- a multi-stream unit: slice the concat back into the named stream ----

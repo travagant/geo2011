@@ -424,6 +424,21 @@ Reverse rebuild details (byte-parity with the originals, see
   word and magic, the record order/parents/preambles and the trailing
   block (tags + foreign streams), adopted when the rebuilt data
   verifies against it.
+* a **Blender re-save** cannot keep the `.g` bind frame: Blender bakes the
+  scene's rest pose into the joints (its bone axis is the bone's Y, the GM
+  skeleton's is not), merges the per-part skins into one armature-wide skin
+  and re-parents the meshes under the armature, so the channel TRS are local
+  matrices in *Blender's* frame.  Every record therefore goes back through
+  the calibrated per-bone change of basis `L_o = Q_parent · L_b · inv(Q_j)`
+  (`d3tool/frame.py`; `Q` is solved from the donor `.a`'s frame 0 against the
+  glTF's rest TRS, and is constant in time — verified on a real export, where
+  `inv(G_new)·G_retail` drifts by 0.0 over 301 frames for all 27 bones).
+  The animation side used to do this only for a unit whose `.ac` names
+  several streams; every single-stream unit (62 of the 153 corpus `.a`, the
+  Inquisitor among them) shipped Blender-frame rotations — off by up to 180°
+  per bone and 1.47 units of translation, which contorts the skinned body
+  into spikes, throws a rigid weapon across the model, and still parses with
+  every count and size matching.
 
 ---
 

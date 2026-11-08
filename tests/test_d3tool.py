@@ -2085,6 +2085,106 @@ def test_export_reports_a_part_that_is_out_of_scale_with_the_donor():
     assert "sits" in text and "along" in text, text
 
 
+def _blender_animation_model(donor, Q, frames, name="Idle"):
+    """A hand-built ``GltfModel`` shaped like a Blender re-save.
+
+    ``Q`` holds the per-bone frame change: the glTF channel locals are built
+    as ``L_b = Q_parent . L_o . inv(Q_j)`` from the donor's own records, which
+    is exactly what Blender's glTF writer produces when its rest pose differs
+    from the `.g` bind frame (Blender bakes the scene pose into the joints).
+    """
+    from d3tool import frame as framemod
+    from d3tool.model import GltfModel
+
+    names = [b.name for b in donor.bones]
+    by_name = {b.name: b for b in donor.bones}
+    ident = framemod.IDENTITY
+
+    nodes = [{"name": "Scene Root", "children": []}]
+    index = {}
+    for nm in names:
+        index[nm] = len(nodes)
+        nodes.append({"name": nm, "children": []})
+    for nm in names:
+        parent = by_name[nm].parent
+        holder = index.get(parent, 0)
+        nodes[holder]["children"].append(index[nm])
+
+    channels = {}
+    for nm in names:
+        parent = by_name[nm].parent
+        Qj = Q.get(nm, ident)
+        Qp = Q.get(parent, ident) if parent else ident
+        qt, tt = [], []
+        for f in frames:
+            L = framemod.sample_matrix(by_name[nm].frames[f][:7])
+            Lb = framemod.mm(Qp, framemod.mm(L, framemod.inv4(Qj)))
+            q = framemod.mat_to_quat(Lb)
+            qt.append(q)
+            tt.append((Lb[0][3], Lb[1][3], Lb[2][3]))
+        channels[index[nm]] = {"rotation": qt, "translation": tt}
+
+    return GltfModel(
+        mesh_name=name, nodes=nodes, frames=[float(i) for i in range(len(frames))],
+        animation={"channels": [{"target": {"node": i}} for i in channels]},
+        anim_channels=channels, blender_layout=True)
+
+
+def test_blender_resave_converts_a_single_stream_animation():
+    """A Blender re-save cannot keep the `.g`'s bind frame: it bakes the scene
+    pose into the joints, so its channel TRS are local matrices in *Blender's*
+    frame.  The mesh side always converted them back (``d3tool/frame.py``); the
+    animation side only did for a unit whose `.ac` names several streams, so
+    every single-stream unit — the Inquisitor among them — shipped
+    Blender-frame rotations and contorted on the next import / in game while
+    every byte of the file looked sane.
+    """
+    import math
+    from d3tool import anim as animmod
+    from d3tool import frame as framemod
+    from d3tool import gltf as gltfmod
+
+    donor = animmod.parse_anim(open(os.path.join(
+        REPO, "Empire", "Inquisitor",
+        "character_empire_inquisitor_baseanims.a"), "rb").read())
+    # a different constant change of basis per bone, the way a baked rest pose
+    # differs from the bind frame
+    Q = {}
+    for k, bone in enumerate(donor.bones):
+        ang = 0.25 + 0.07 * k
+        axis = ((k % 3) - 1.0, ((k + 1) % 3) - 1.0, ((k + 2) % 3) - 1.0)
+        ln = math.sqrt(sum(c * c for c in axis)) or 1.0
+        Q[bone.name] = framemod.quat_to_mat(
+            (math.sin(ang / 2) * axis[0] / ln,
+             math.sin(ang / 2) * axis[1] / ln,
+             math.sin(ang / 2) * axis[2] / ln, math.cos(ang / 2)))
+
+    frames = (0, 90, 240)
+    m = _blender_animation_model(donor, Q, frames)
+    built = gltfmod.animation_from_gltf(
+        m, donor=donor, streams=[("character_empire_inquisitor_baseanims.a",
+                                  donor)], out_name="Idle")
+    assert [b.name for b in built.bones] == [b.name for b in donor.bones]
+    by_name = {b.name: b for b in built.bones}
+    worst = 0.0
+    for k, f in enumerate(frames):
+        for bone in donor.bones:
+            got = by_name[bone.name].frames[k]
+            ref = bone.frames[f]
+            worst = max(worst, max(abs(a - b) for a, b in zip(got[:7], ref[:7])))
+    assert worst < 1e-4, worst
+
+    # a dis3tool glTF (its locals *are* the `.a` records) is copied verbatim:
+    # the conversion must not touch the byte-exact round trip
+    m.blender_layout = False
+    plain = gltfmod.animation_from_gltf(
+        m, donor=donor, streams=[("character_empire_inquisitor_baseanims.a",
+                                  donor)], out_name="Idle")
+    plain_by = {b.name: b for b in plain.bones}
+    got = plain_by[donor.bones[3].name].frames[0]
+    assert abs(got[0] - m.anim_channels[3 + 1]["rotation"][0][0]) < 1e-6
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0
