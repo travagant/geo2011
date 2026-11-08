@@ -160,25 +160,93 @@ def _extras_diffuse(gltf, mesh_json) -> str:
     return ""
 
 
+def _patch_material(attrs, items, mat, donor_name=""):
+    """Point a part's attribute block at the texture it really wears.
+
+    The block is written from ``items`` (the donor's ordered ``(key, value)``
+    list) — ``attrs`` only drives the counts — so setting
+    ``part.material_diffuse`` alone changes nothing in the file.  This is the
+    difference between "the export says the sword wears the blade atlas" and
+    the sword actually wearing it: the Knight's blade grafted onto the
+    Inquisitor's mace slot kept ``material0_diffuse`` = the mace's atlas for
+    exactly this reason.
+
+    Returns ``(attrs, items, written_name)``; ``written_name`` is ``""`` when
+    the part already named that texture (the donor's own bytes are left alone).
+    """
+    if not mat:
+        return attrs, items, ""
+    want = texmod.clean_stem(mat) + ".tga"
+    if donor_name and texmod.clean_stem(donor_name).lower() == \
+            texmod.clean_stem(want).lower():
+        return attrs, items, ""
+    attrs = dict(attrs)
+    attrs["material0_diffuse"] = want
+    patched, new_items = False, []
+    for key, value in items:
+        if key == "material0_diffuse":
+            new_items.append((key, want))
+            patched = True
+        else:
+            new_items.append((key, value))
+    if not patched and new_items:
+        new_items.append(("material0_diffuse", want))
+    return attrs, new_items, want
+
+
 def _mesh_material_maps(gltf, mesh_json):
-    """Diffuse/lightmap texture names of a mesh's first primitive."""
-    diffuse = lightmap = ""
+    """Diffuse/lightmap texture names of a mesh's first primitive.
+
+    Returns ``(diffuse, lightmap, override, image)``: the name to write, the
+    light-map name, the ``d3unit_diffuse`` the object carries (``""`` when it
+    carries none) and the name the primitive's own image spells.  The last two
+    are kept apart because "the part still names the atlas it was imported
+    with" and "the artist named this atlas" are the same string otherwise.
+    """
+    image = lightmap = ""
     pr = mesh_json["primitives"][0]
     materials = gltf.get("materials", [])
     if "material" in pr and pr["material"] < len(materials):
         mat = materials[pr["material"]]
         pbr = mat.get("pbrMetallicRoughness") or {}
         if "baseColorTexture" in pbr:
-            diffuse = _texture_uri(gltf, pbr["baseColorTexture"]["index"])
+            image = _texture_uri(gltf, pbr["baseColorTexture"]["index"])
         if "normalTexture" in mat:
             lightmap = _texture_uri(gltf, mat["normalTexture"]["index"])
     override = _extras_diffuse(gltf, mesh_json)
     if override:
         # spelled the way the attribute block wants it (``<stem>.tga``)
-        diffuse = (override if os.path.splitext(override)[1].lower()
-                   in (".tga", ".t", ".dds", ".png", ".jpg", ".jpeg")
-                   else override + ".tga")
-    return diffuse, lightmap
+        override = (override if os.path.splitext(override)[1].lower()
+                    in (".tga", ".t", ".dds", ".png", ".jpg", ".jpeg")
+                    else override + ".tga")
+    return (override or image), lightmap, override, image
+
+
+def _effective_diffuse(override: str, image: str, donor_name: str) -> str:
+    """Which texture a part really wears when the scene disagrees with itself.
+
+    ``override`` is the ``d3unit_diffuse`` on the object (set by hand, or the
+    name the add-on stamped when the part was imported), ``image`` the texture
+    the object's material actually carries, ``donor_name`` what the part is
+    called in the ``.g`` being replaced.
+
+    A name that is still the donor's default must not pin a *swapped* mesh to
+    the old atlas — graft a Knight's blade onto the Inquisitor's mace slot and
+    the inherited "weapon_empire_inquisitor.tga" would otherwise keep drawing
+    the mace's wood on a sword — so it yields to the material.  A name the
+    artist typed (anything else) always wins, which is what makes
+    "re-texture a part that has no usable material" possible at all.
+    """
+    if not override:
+        return image
+    if not image:
+        return override
+    mine = texmod.clean_stem(override).lower()
+    if mine == texmod.clean_stem(image).lower():
+        return override
+    if donor_name and mine == texmod.clean_stem(donor_name).lower():
+        return image
+    return override
 
 
 def _morph_targets_raw(gltf: dict, buf: bytes, targets) -> Tuple[str, List[bytes]]:
@@ -401,7 +469,8 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
 
         smorph_name, starget_positions = _morph_targets_raw(
             gltf, buf, spr.get("targets"))
-        sdiffuse, slightmap = _mesh_material_maps(gltf, mesh_json)
+        sdiffuse, slightmap, soverride, simage = _mesh_material_maps(
+            gltf, mesh_json)
         srigid = swts is None and sjts is None and not sbones
         sw_slots = 1 if srigid else _detect_sub_weights(swts, sjts)
         svertices = _build_vertices(svtf, snrm, suv, swts, sjts,
@@ -422,6 +491,8 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
             nodes=nodes,
             bones=sbones,
             material_diffuse=sdiffuse,
+            material_override=soverride,
+            material_image=simage,
             lightmap=slightmap,
             lm_uv=slm_uv,
             morph=bool(spr.get("targets")),
@@ -472,7 +543,7 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
             channels.setdefault(node, {})[path] = out
             chan_times.setdefault(node, {})[path] = [x[0] for x in tin]
 
-    main_diffuse, main_lightmap = _mesh_material_maps(gltf, mesh)
+    main_diffuse, main_lightmap, _mo, _mi = _mesh_material_maps(gltf, mesh)
     main_jnames, main_ibms = _skin_tables(main_skin_i)
     main_node_matrix = None
     if main_node is not None and not framemod.is_identity(
@@ -489,6 +560,8 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
         bones=bones,
         bone_indices=bone_indices,
         material_diffuse=main_diffuse,
+        material_override=_mo,
+        material_image=_mi,
         lightmap=main_lightmap,
         frames=frames,
         animation=anim,
@@ -1277,6 +1350,20 @@ def _mesh_to_skinned_blender(m: GltfModel, weights_on_vertex: int,
                 ml = max(ml, len(_lanes_by_name(list(v.gltf_weights),
                                                 list(v.gltf_joints), jn_s)))
             sw = max(sw, min(4, ml))
+            # the mesh's own texture wins over the donor slot's: the slot is
+            # the part this mesh *replaced*, and the artist's material is the
+            # only statement about what the new mesh wears.  A `d3unit_diffuse`
+            # the artist typed still beats it (`_effective_diffuse`).
+            mat = (_effective_diffuse(sub.material_override,
+                                      sub.material_image,
+                                      slot.material_diffuse)
+                   or slot.material_diffuse)
+            p_attrs, p_items, written = _patch_material(
+                slot.attrs, slot.attr_items, mat, slot.material_diffuse)
+            if written:
+                warns.append(
+                    f"part {slot.name}: texture {written} (the mesh's own, "
+                    f"not the donor's {slot.material_diffuse!r})")
             parts.append(MeshPart(
                 name=slot.name,
                 vertex_count=len(verts),
@@ -1286,13 +1373,12 @@ def _mesh_to_skinned_blender(m: GltfModel, weights_on_vertex: int,
                 bones=bones,
                 weights_on_vertex=sw,
                 morph=bool(slot.morph) or bool(sub.morph),
-                material_diffuse=(slot.material_diffuse
-                                  or sub.material_diffuse),
+                material_diffuse=mat,
                 lm_uv=_pick_lm(slot.lm_uv, sub.lm_uv, len(verts)),
                 lightmap=slot.lightmap or sub.lightmap,
                 vertex_magic=slot.vertex_magic or b"",
-                attrs=dict(slot.attrs),
-                attr_items=list(slot.attr_items),
+                attrs=p_attrs,
+                attr_items=p_items,
                 part_prefix=slot.part_prefix,
                 part_tail=slot.part_tail,
             ))
@@ -1468,6 +1554,21 @@ def mesh_to_skinned(m: GltfModel, weights_on_vertex: int = 0,
         # never had (a sword grafted onto the unit's mace slot) otherwise
         # inherits the *replaced* part's texture and the pack ships a `.t`
         # nothing references while the `.g` names one that is not there.
+        soverride = sub.material_override
+        simage = sub.material_image
+        if soverride or simage:
+            donor_name = dpart.material_diffuse if dpart is not None else ""
+            chosen = _effective_diffuse(soverride, simage, donor_name)
+            if chosen and texmod.clean_stem(chosen).lower() != \
+                    texmod.clean_stem(sub.material_diffuse or "").lower():
+                if soverride and texmod.clean_stem(soverride).lower() == \
+                        texmod.clean_stem(donor_name or "").lower():
+                    mwarns.append(
+                        f"part {sub.mesh_name}: the object still carries the "
+                        f"donor's texture name {donor_name!r}, so the "
+                        f"material's {simage!r} is used instead — set "
+                        f"'{DIFFUSE_EXTRAS}' on the object to pin a name")
+                sub.material_diffuse = chosen
         p_mat = (dpart.material_diffuse if dpart is not None
                  else sub.material_diffuse)
         p_attrs = (dict(dpart.attrs) if dpart is not None

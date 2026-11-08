@@ -467,6 +467,16 @@ files it just saved (`d3tool/parts.py::texture_report`), and warns about a name
 whose texture is not in the folder — plus about every part that has no
 `d3unit_diffuse` of its own, i.e. one imported before 1.1.27 or hand-assembled.
 
+**Whose name wins.**  Two rules, and the second one was wrong for a long
+time: a Blender re-save's part takes its texture from the *mesh*, not from the
+donor slot it replaced (`slot.material_diffuse or sub.material_diffuse` pinned
+a swapped sword to the mace's atlas), and the name is written from the block's
+ordered `attr_items` — `attrs` only drives the counts, so setting
+`material_diffuse` alone changes nothing in the file
+(`d3tool.gltf._patch_material`).  A `d3unit_diffuse` that still says what the
+part was imported with yields to the object's material once they disagree
+(`_effective_diffuse`); any other value is the artist's decision and wins.
+
 A part's material name is stored in **three** places that the engine reads
 independently: the `material0_diffuse` attribute of the block in the main
 `.g`, the same attribute in the `_lod.g`, and the `attr "material0_diffuse"`

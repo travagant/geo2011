@@ -2554,6 +2554,123 @@ def test_the_sword_takes_its_own_atlas_and_never_the_shield():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_a_swapped_mesh_does_not_keep_the_donors_texture_name():
+    """The name a part was imported with must not outlive the mesh it named.
+
+    Graft a Knight's blade onto the Inquisitor's mace slot and the object still
+    carries `d3unit_diffuse = weapon_empire_inquisitor.tga` — the name the
+    add-on stamped at import.  Writing it back pins the sword to the mace's
+    wooden atlas; the material the sword arrived with says otherwise, and
+    *that* is the name to keep.  A name the artist typed (anything but the
+    donor's) still wins, because it is the only way to texture a part that has
+    no usable material of its own.
+    """
+    tmp = tempfile.mkdtemp(prefix="d3swapped_")
+    try:
+        donor = os.path.join(tmp, "donor")
+        os.makedirs(donor)
+        for name in ("character_empire_inquisitor.g",
+                     "character_empire_inquisitor_baseanims.a",
+                     "character_empire_inquisitor.ac",
+                     "character_empire_inquisitor.scene",
+                     "character_empire_inquisitor.t"):
+            shutil.copyfile(os.path.join(REPO, "Empire", "Inquisitor", name),
+                            os.path.join(donor, name))
+        fwd = os.path.join(tmp, "fwd")
+        os.makedirs(fwd)
+
+        def swapped(extras):
+            """The unit's glTF with the weapon wearing the Knight's blade."""
+            gt, _bt = climod._export_gl(
+                os.path.join(donor, "character_empire_inquisitor.g"),
+                os.path.join(donor, "character_empire_inquisitor_baseanims.a"),
+                os.path.join(fwd, "character_empire_inquisitor.gltf"), None,
+                quiet=True)
+            doc = json.load(open(gt))
+            weapon = [m for m in doc["meshes"]
+                      if "weapon" in (m.get("name") or "")][0]
+            prim = weapon["primitives"][0]
+            doc.setdefault("images", []).append(
+                {"uri": "weapon_empire_knight_sword_diffuse.dds"})
+            doc.setdefault("textures", []).append(
+                {"source": len(doc["images"]) - 1})
+            doc["materials"][prim["material"]]["pbrMetallicRoughness"] = {
+                "baseColorTexture": {"index": len(doc["textures"]) - 1}}
+            if extras:
+                weapon.setdefault("extras", {})["d3unit_diffuse"] = extras
+            json.dump(doc, open(gt, "w"))
+            return gt
+
+        # the inherited default yields to the material of the swapped mesh
+        gt = swapped("weapon_empire_inquisitor.tga")
+        out = os.path.join(tmp, "back1")
+        climod._export(gt, out, 0, anim=True, quiet=True, donor_dir=donor)
+        parts = {p.name: p.attrs.get("material0_diffuse")
+                 for p in gfile.iter_parts(gfile.parse_geometry_file(
+                     open(os.path.join(out, "character_empire_inquisitor.g"),
+                          "rb").read()))}
+        assert parts["weapon_empire_inquisitor"] == \
+            "weapon_empire_knight_sword_diffuse.tga", parts
+
+        # ...but a name the artist chose beats any material
+        gt = swapped("weapon_empire_knight_shield_diffuse.tga")
+        out = os.path.join(tmp, "back2")
+        climod._export(gt, out, 0, anim=True, quiet=True, donor_dir=donor)
+        parts = {p.name: p.attrs.get("material0_diffuse")
+                 for p in gfile.iter_parts(gfile.parse_geometry_file(
+                     open(os.path.join(out, "character_empire_inquisitor.g"),
+                          "rb").read()))}
+        assert parts["weapon_empire_inquisitor"] == \
+            "weapon_empire_knight_shield_diffuse.tga", parts
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_a_parts_texture_is_written_from_the_attribute_items_not_the_dict():
+    """``attrs`` only drives the counts; the block is emitted from ``items``.
+
+    Setting ``part.material_diffuse`` — or even ``attrs["material0_diffuse"]``
+    — changes nothing in the file, because `gfile._attr_block` writes the
+    donor's ordered ``(key, value)`` list verbatim and only re-reads ``attrs``
+    for the counts it may patch.  That is how a Knight's blade grafted onto the
+    Inquisitor's mace slot kept naming the mace's atlas through every export:
+    the rebuild fed the right name into the dataclass and the donor's string
+    into the file.
+    """
+    from d3tool import gltf as gltfmod
+
+    old = "weapon_empire_inquisitor.tga"
+    want = "weapon_empire_knight_sword_diffuse.tga"
+    items = [("name", "weapon_empire_inquisitor"),
+             ("materials_num", "1"),
+             ("material0_diffuse", old),
+             ("vertexs_weights_num", "136")]
+    attrs = dict(items)
+
+    # the dataclass / the dict say the new name — the block does not
+    naive = dict(attrs)
+    naive["material0_diffuse"] = want
+    block = gfile._attr_block(naive, list(items))
+    assert want.encode() not in block, "attrs alone must not reach the file"
+    assert old.encode() in block
+
+    # rewriting the items is what actually changes it, and it keeps the block
+    # otherwise byte-identical
+    patched_attrs, patched_items, written = gltfmod._patch_material(
+        attrs, list(items), want, old)
+    assert written == want, written
+    block = gfile._attr_block(patched_attrs, patched_items)
+    assert want.encode() in block
+    assert old.encode() not in block
+    assert len(patched_items) == len(items)
+
+    # a part that already names that texture is left alone (the corpus round
+    # trip is byte-exact, so an untouched part must not be rewritten)
+    same_attrs, same_items, written = gltfmod._patch_material(
+        attrs, list(items), old, old)
+    assert written == "" and same_items == items
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0

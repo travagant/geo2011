@@ -280,6 +280,13 @@ class GltfModel:
     # sub-mesh material names (the historical `.tga` spelling) and light-map
     # payload, restored on reverse export
     material_diffuse: str = ""
+    # where `material_diffuse` came from: the `d3unit_diffuse` the object
+    # carries (``material_override``) and the texture its material actually
+    # names (``material_image``).  A reverse export needs both to tell "the
+    # part still wears the atlas it was imported with" from "the artist named
+    # this atlas" — see `d3tool.gltf._effective_diffuse`.
+    material_override: str = ""
+    material_image: str = ""
     lightmap: str = ""
     lm_uv: bytes = b""
     # the mesh carries morph targets (a morph-deformer sub-mesh)
