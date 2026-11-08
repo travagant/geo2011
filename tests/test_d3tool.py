@@ -4044,6 +4044,74 @@ def test_localdumps_reg_files_are_what_windows_expects():
         assert enable.count(key) == disable.count(key) == 2
 
 
+def _tiny_pe(code, rdata):
+    """A two-section PE32: one code section, one string section."""
+    text_rva, text_raw, rdata_rva = 0x1000, 0x200, 0x2000
+    rdata_raw = 0x200 + ((len(code) + 0x1FF) // 0x200) * 0x200
+    image = bytearray(rdata_raw + ((len(rdata) + 0x1FF) // 0x200) * 0x200)
+    image[0:2] = b"MZ"
+    struct.pack_into("<I", image, 0x3C, 0x80)
+    image[0x80:0x84] = b"PE\x00\x00"
+    struct.pack_into("<HHIII", image, 0x84, 0x14C, 2, 0, 0, 0)
+    struct.pack_into("<H", image, 0x94, 0xE0)          # SizeOfOptionalHeader
+    struct.pack_into("<H", image, 0x96, 0x0102)
+    base = 0x80 + 24
+    struct.pack_into("<I", image, base + 28, 0x400000)          # ImageBase
+    struct.pack_into("<II", image, base + 32, 0x1000, 0x200)
+    struct.pack_into("<I", image, base + 56, 0x3000)            # SizeOfImage
+    struct.pack_into("<I", image, base + 60, 0x200)
+    table = base + 0xE0
+    image[table:table + 8] = b".text\x00\x00\x00"
+    struct.pack_into("<IIII", image, table + 8, len(code), text_rva,
+                     len(code), text_raw)
+    struct.pack_into("<I", image, table + 36, 0x60000020)
+    image[table + 40:table + 48] = b".rdata\x00\x00"
+    struct.pack_into("<IIII", image, table + 48, len(rdata), rdata_rva,
+                     len(rdata), rdata_raw)
+    struct.pack_into("<I", image, table + 76, 0x40000040)
+    image[text_raw:text_raw + len(code)] = code
+    image[rdata_raw:rdata_raw + len(rdata)] = rdata
+    return bytes(image)
+
+
+def test_pe_find_resolves_a_string_its_xref_and_the_disassembly():
+    """`tools/pe_find.py` is how the retail loader's own answers are read: the
+    game executable keeps its code and strings in clear, so a refusal message
+    resolves to the address that logs it and then to the code around that
+    address.  Exercised on a synthetic two-section PE because the retail binary
+    deliberately stays out of git."""
+    try:
+        import capstone  # noqa: F401
+        import pefile  # noqa: F401
+    except ImportError:                                   # pragma: no cover
+        return                      # optional dependencies of the bench
+    import importlib.util
+    path = os.path.join(REPO, "tools", "pe_find.py")
+    spec = importlib.util.spec_from_file_location("pe_find", path)
+    pf = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(pf)
+
+    message_va = 0x400000 + 0x2000
+    code = b"\x68" + struct.pack("<I", message_va) + b"\xC3" + b"\xCC" * 8
+    with tempfile.TemporaryDirectory() as d:
+        exe = os.path.join(d, "tiny.exe")
+        open(exe, "wb").write(_tiny_pe(code, b"wrong index\x00"))
+        binary = pf.Binary(exe)
+        assert binary.base == 0x400000
+        assert binary.code_sections() == [".text"]
+        assert [text for _va, text in binary.strings()] == ["wrong index"]
+        assert binary.string_at(message_va) == "wrong index"
+        hits = binary.xrefs(message_va)
+        assert len(hits) == 1 and hits[0]["kind"] == "push imm32"
+        assert hits[0]["va"] == 0x400000 + 0x1001
+        lines = binary.disasm(0x401000, 3)
+        assert lines[0].startswith("0x00401000  push")
+        assert '"wrong index"' in lines[0]           # the immediate is annotated
+        assert binary.function_start(0x401002) <= 0x401002
+        # an address outside every section is reported, not guessed at
+        assert binary.section_of(0x900000) == (None, None)
+
+
 def test_scene_gains_a_gobj_for_a_part_it_cannot_bind():
     """The engine binds the i-th mesh part to the i-th `gobj`, in order — the
     LOD scenes prove it, since their gobj names (`empire_angel_wing`) never

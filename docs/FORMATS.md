@@ -976,6 +976,71 @@ one question only — whether the blob depends on the entry set or on the names
 alone — and packs rebuilt by this toolkit cannot answer it, because they inherit
 the `index` they were given.
 
+## 6c. The game executable is readable, and it names the pack rules
+
+`DisciplesIII.exe` (5 914 624 B, "rebirth exe #68 May 21 2012") is a different
+animal from the editor: six sections, `.text` 4 539 116 B at entropy **6.54**
+and `.rdata` at **5.78**, **24 277 printable strings** — real code and a real
+string table.  The only encrypted-looking region is `.bind` (376 832 B at
+entropy 8.00), which is the Steam stub; `.data` again declares 8.6 MB of
+virtual space against 98 KB of raw data, but that is uninitialised BSS, not a
+protector's hole.  Everything this document was waiting on can therefore be
+read out of the file, and `tools/pe_find.py` is the bench for it: resolve a
+string to its address, an address to the `push`/`mov` sites that use it, and a
+site to an annotated disassembly (the image is PE32 with absolute addressing,
+so a `.rdata` address appears in `.text` as a 4-byte immediate).
+
+**The pack layer mounts a set, not a file.**  `.rdata` holds the names the
+loader asks for, in this order of assembly: `system.vdpack`,
+`resources0.vdpack`, `resources1.vdpack`, `resources2.vdpack`, then the patches
+`system01..03.vdpatch`, `resources01..03.vdpatch`, then a `*.vdpack` scan
+(0x878444–0x8784d4).  Mods are ordered and checked against each other, and the
+messages say what the checks are: `"%s '%s' has wrong type"`,
+`"%s '%s' has wrong index"`, `"%s '%s' has wrong files : %s"`,
+`"%s '%s' intersects other mods"`, `"Error load %s '%s' index"`,
+`"Error open %s '%s' pak file"`, `"Index error : %s : %s"`
+(0x8785b8–0x87863c, referenced from the loader at 0x4149fa and 0x414bac).  A
+mod that fails any of these is not mounted — which is a *stronger* explanation
+for "the unit does not appear at all" than anything a payload check can give.
+
+**The `index` entry is a mod descriptor, not a file table.**  The strings next
+to it name the fields: `MOD_INDEX_FILE`, `MOD_INDEX_TYPE`, `MOD_INDEX_UUID`,
+`MOD_INDEX_NAME` (0x8782f4–0x878334), the field names `Name`, `UUID`, `Hash1`,
+`Hash2` and their serialised forms `Name="`, `UUID="`, `Hash1="`, `Hash2="`
+(0x878510–0x87854c), plus `:index` / `index` (0x878344, 0x87834c) as the VFS
+path the loader opens.  So the entry carries an identity (name, type, uuid) and
+**two hashes of the file list**, and the loader validates the list against them
+before it mounts anything (the same region logs `"Not found indexed file '%s'"`
+and `"Unindexed file '%s'"` at 0x8782a8/0x8782c4 for a file that is present but
+absent from the index, and the reverse).  The 4 738-byte blob a unit pack
+carries is consistent with that list serialised and encrypted: 1 674 bytes of
+names become 4 738 uniform bytes, an unstructured ~2.8× expansion — not a fixed
+record table, which is what the earlier "≈169 B per record" reading assumed and
+why no record stride exists (see §6b).
+
+Two consequences that change how a pack should be built:
+
+* a pack whose file list differs from the one its `index` describes is
+  rejected outright (`has wrong index` / `not found indexed file`), and carrying
+  the original `index` into a modified pack is exactly that mistake;
+* name lookup itself is a hand-inlined **case-insensitive `strcmp`** over the
+  entry list (0x41a540–0x41a56b compares two bytes at a time, `sbb` for the
+  ordering), so paths are not hashed and a path only resolves if an entry
+  spells it.
+
+The engine also checks the executable it is running from — `str_cant_read_exe_file`,
+`str_main_index_is_wrong`, `str_error_load_main_index` (0x878568–0x878598) — so
+patching the binary alive is not the way in; reading it is.
+
+What is left to pin down in this file, in order: the routine at 0x419830 that
+opens `index` through the VFS and hands the payload to the decoder (the call
+chain at 0x419963 continues through 0x41b030, a vector splice, to a virtual
+`[eax+0x10]`), and the hash the two fields hold — the binary carries CRC32
+(0xEDB88320 at 0x11837), MD5 (init 0x67452301 at 0xa56e) and SHA-1
+(0x6A09E667 at 0xe568) implementations, so the field is one of those over some
+canonical rendering of the list.  Once that is named, an index can be
+*recomputed*, and a pack that carries modified payloads becomes mountable.
+
 ## 6. The `.vdpack` mod archive
 
 A retail install keeps a unit as a loose folder; mods ship the whole tree as
