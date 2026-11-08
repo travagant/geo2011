@@ -259,10 +259,15 @@ Blender has to be shaped onto the weapon it replaces while the armature is in
 its rest pose: the part is bound 1.0 to one bone and the engine adds that
 bone's motion on top, so a mesh modelled onto an animated frame comes out
 displaced by the animation too.  The add-on's *Place Active Mesh on Reference*
-does that measurement for you — grip vertex onto grip vertex, the mesh's
-principal axis onto the reference weapon's shaft (`d3tool.weapon`, a 3x3
-symmetric eigenproblem solved with Jacobi rotations) — and `Roll` decides the
-one thing an axis cannot: which way the blade's flat face looks.
+does that measurement for you — grip onto grip, the mesh's principal axis onto
+the reference weapon's shaft (`d3tool.weapon`, a 3x3 symmetric eigenproblem
+solved with Jacobi rotations) — and `Roll` decides the one thing an axis cannot:
+which way the blade's flat face looks.  The grip is the object's own origin,
+which is where retail weapons carry it (`weapon_empire_inquisitor` spans
+`x -0.066 .. 1.896` measured from its origin); a single selected vertex is used
+instead when there is one.  Asking for a vertex selection *always* was a
+mistake worth recording: a freshly imported mesh has every vertex selected, so
+the operator's "exactly one vertex" check rejected the obvious first click.
 
 The leading 4-byte magic is constant *within* a file but differs between files;
 it must be preserved for round-trips.

@@ -8,16 +8,21 @@ pose** — posing it into the hand on an animated frame doubles the offset and
 the sword drifts away from the palm in game (that is exactly what the first
 attempts did).
 
-Two clicks, no manual snapping:
+One click, no manual snapping:
 
-1. In *Edit Mode* select the one vertex on the reference weapon that the hand
-   grips, then Tab out.  Same for the new mesh: one vertex, the middle of its
-   handle.
-2. Press **Place on Reference Weapon** — the new mesh is rotated about its own
-   grip until its long axis (a principal-component fit, ``d3tool.weapon``)
-   matches the reference weapon's shaft, and moved so the two grip vertices
-   coincide.  ``Roll`` spins the blade about that axis afterwards, which is
-   the one thing the axis cannot decide.
+1. Pick the reference weapon in the panel's *Reference* field (an object
+   picker — the eyedropper works), or leave it empty when the scene has only
+   one weapon-like mesh.
+2. Press **Place Active Mesh on Reference**: the new mesh is rotated about its
+   own grip until its long axis (a principal-component fit, ``d3tool.weapon``)
+   matches the reference weapon's shaft, and moved so the two grips coincide.
+   ``Roll`` spins the blade about that axis afterwards, which is the one thing
+   the axis cannot decide.
+
+The grip is the **object origin** — retail weapons are modelled that way and
+*Object > Set Origin > Origin to 3D Cursor* moves it in one step.  A mesh that
+already has exactly one vertex selected uses that vertex instead, which covers
+an origin that must stay where it is.
 
 Everything happens in world space, so object origins and existing parenting do
 not matter; with *Same Bone* on, the mesh is re-parented to the bone the
@@ -49,37 +54,52 @@ def _points(ob, limit: int = MAX_POINTS):
 
 
 def _grip(ob):
-    """The single selected vertex of ``ob`` in world space, and how many."""
+    """Where the hand holds ``ob``, in world space, and how it was decided.
+
+    The **object origin** is the answer in every practical case: retail
+    weapons are modelled with their origin at the grip (the Inquisitor flail
+    spans ``x -0.066 .. 1.896`` from its own origin), and a hand-made mesh can
+    be given that origin in one step — *Object > Set Origin > Origin to 3D
+    Cursor*.  Requiring a vertex selection instead was a dead end: a freshly
+    imported mesh has every vertex selected, so "exactly one vertex" is a trap
+    rather than a convention.
+
+    A single selected vertex still wins when there is one, which covers a mesh
+    whose origin cannot be moved (shared with other parts).
+    """
     sel = [v for v in ob.data.vertices if v.select]
-    if len(sel) != 1:
-        return None, len(sel)
-    return list(ob.matrix_world @ sel[0].co), 1
+    if len(sel) == 1:
+        return list(ob.matrix_world @ sel[0].co), "vertex"
+    return list(ob.matrix_world.translation), "origin"
+
+
+def _looks_like_a_weapon(ob) -> bool:
+    name = ob.name.lower()
+    return "weapon" in name or name.startswith(("sword", "mace", "axe",
+                                                "bow", "staff", "shield"))
 
 
 def _weapon_candidates(context, src):
-    """Meshes in the scene that look like a retail weapon (``weapon_*``)."""
-    out = []
-    for ob in context.scene.objects:
-        if ob.type != "MESH" or ob is src:
-            continue
-        if ob.name.lower().startswith("weapon_"):
-            out.append(ob)
-    return out
+    """Meshes in the scene that may be the reference weapon, best first."""
+    others = [ob for ob in context.scene.objects
+              if ob.type == "MESH" and ob is not src]
+    named = [ob for ob in others if _looks_like_a_weapon(ob)]
+    return named or others
 
 
 class D3UNIT_OT_place_weapon(Operator):
     bl_idname = "d3unit.place_weapon"
     bl_label = "Place on Reference Weapon"
     bl_description = ("Move the active mesh onto the reference weapon: its "
-                      "grip vertex on the reference's grip vertex, its long "
-                      "axis along the reference's shaft")
+                      "origin (or single selected vertex) on the reference's, "
+                      "its long axis along the reference's shaft")
     bl_options = {"UNDO", "REGISTER"}
 
     reference: StringProperty(
         name="Reference",
         default="",
-        description="Object name of the reference weapon; leave empty to use "
-                    "the only weapon_* mesh in the scene",
+        description="Object name of the reference weapon; empty = the panel's "
+                    "Reference field, else the only weapon-like mesh",
     )
     roll: FloatProperty(
         name="Roll",
@@ -99,6 +119,13 @@ class D3UNIT_OT_place_weapon(Operator):
 
     # -- helpers ---------------------------------------------------------- #
     def _reference(self, context, src):
+        """The weapon to copy the placement from, or ``None`` (already reported).
+
+        Resolution order: the operator's own ``reference`` (scripting), the
+        panel's eyedropper field, the only other selected mesh, the only
+        weapon-looking mesh in the scene, and finally the only other mesh —
+        so the common case is a plain click with both fields empty.
+        """
         if self.reference:
             ref = (context.scene.objects.get(self.reference)
                    or bpy.data.objects.get(self.reference))
@@ -106,17 +133,35 @@ class D3UNIT_OT_place_weapon(Operator):
                 self.report({"ERROR"}, f"no object named {self.reference!r}")
                 return None
             return ref
-        cands = _weapon_candidates(context, src)
-        if len(cands) == 1:
-            return cands[0]
-        if not cands:
-            self.report({"ERROR"},
-                        "no weapon_* mesh to use as a reference — type its "
-                        "name into the Reference field")
-            return None
+
+        picked = getattr(context.scene, "d3unit_weapon_ref", None)
+        if picked is not None:
+            try:
+                if picked.name in context.scene.objects:
+                    return picked
+            except ReferenceError:      # the object was deleted
+                pass
+
+        selected = [ob for ob in context.selected_objects
+                    if ob.type == "MESH" and ob is not src]
+        if len(selected) == 1:
+            return selected[0]
+
+        named = [ob for ob in _weapon_candidates(context, src)
+                 if _looks_like_a_weapon(ob)]
+        if len(named) == 1:
+            return named[0]
+
+        others = _weapon_candidates(context, src)
+        if len(others) == 1:
+            return others[0]
+
+        meshes = [ob.name for ob in context.scene.objects if ob.type == "MESH"]
         self.report({"ERROR"},
-                    "several candidates (%s) — type the reference name"
-                    % ", ".join(o.name for o in cands))
+                    "cannot tell which mesh is the reference weapon — pick it "
+                    "in the Reference field.  Meshes in the scene: "
+                    + (", ".join(sorted(meshes)[:12]) if meshes else "none")
+                    + (" ..." if len(meshes) > 12 else ""))
         return None
 
     def _reparent(self, src_obj, ref_obj):
@@ -156,18 +201,15 @@ class D3UNIT_OT_place_weapon(Operator):
             self.report({"ERROR"}, "the reference must be a mesh")
             return {"CANCELLED"}
 
-        src_grip, n_src = _grip(src)
-        ref_grip, n_ref = _grip(ref)
-        if src_grip is None:
-            self.report({"ERROR"},
-                        f"{src.name}: select exactly one vertex — the point "
-                        f"the hand grips it by (selected: {n_src})")
+        src_points, ref_points = _points(src), _points(ref)
+        if not src_points:
+            self.report({"ERROR"}, f"{src.name} has no vertices")
             return {"CANCELLED"}
-        if ref_grip is None:
-            self.report({"ERROR"},
-                        f"{ref.name}: select exactly one vertex as its grip "
-                        f"point (selected: {n_ref})")
+        if not ref_points:
+            self.report({"ERROR"}, f"{ref.name} has no vertices")
             return {"CANCELLED"}
+        src_grip, src_how = _grip(src)
+        ref_grip, ref_how = _grip(ref)
 
         try:
             wmod = bridge.module("weapon")
@@ -175,8 +217,8 @@ class D3UNIT_OT_place_weapon(Operator):
             self.report({"ERROR"}, str(exc))
             return {"CANCELLED"}
 
-        mat, info = wmod.align_matrix(_points(ref), ref_grip,
-                                      _points(src), src_grip,
+        mat, info = wmod.align_matrix(ref_points, ref_grip,
+                                      src_points, src_grip,
                                       float(self.roll))
         if not info.get("axis_found"):
             self.report({"WARNING"},
@@ -192,8 +234,9 @@ class D3UNIT_OT_place_weapon(Operator):
         posed = arm is not None and arm.data.pose_position == "POSE"
         self.report({"INFO"},
                     f"{src.name} onto {ref.name}: axes {info['angle_deg']:.1f}°"
-                    f" apart" + (f", re-parented to {ref.parent_bone!r}"
-                                 if moved else "")
+                    f" apart; grips from {src_how}/{ref_how}"
+                    + (f", re-parented to {ref.parent_bone!r}"
+                       if moved else "")
                     + (" — armature is posed, set Pose Position: Rest for a "
                        "bind-pose placement" if posed else ""))
         return {"FINISHED"}

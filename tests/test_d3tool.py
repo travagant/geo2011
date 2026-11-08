@@ -3443,6 +3443,55 @@ def test_weapon_alignment_survives_a_mesh_without_an_axis():
     assert max(abs(got[i] - want[i]) for i in range(3)) < 1e-9
 
 
+
+def _retail_part(rel_path, wanted):
+    mesh = gfile.parse_geometry_file(
+        open(os.path.join(REPO, *rel_path.split("/")), "rb").read())
+    for pt in gfile.iter_parts(mesh):
+        if wanted in pt.name:
+            return pt
+    raise AssertionError(f"no part {wanted!r} in {rel_path}")
+
+
+def test_weapon_axis_of_a_retail_weapon_is_its_long_axis():
+    """On shipped geometry the principal axis is the barrel, not the hilt."""
+    for path, name in (("Empire/Hierophant/character_empire_hierophant.g",
+                        "weapon_empire_hierophant"),
+                       ("Empire/Paladin/character_empire_paladin.g",
+                        "paladin_sword"),
+                       ("Neutrals/OrcKing/character_neutrals_orcking.g",
+                        "weapon_neutral_orcking")):
+        pt = _retail_part(path, name)
+        pts = [list(v.position) for v in pt.vertices]
+        size = weaponmod.bbox_size(pts)
+        longest = max(range(3), key=lambda i: size[i])
+        axis = weaponmod.main_axis(pts, [0.0, 0.0, 0.0])
+        assert abs(axis[longest]) > 0.95, (name, size, axis)
+
+
+def test_weapon_placement_of_retail_parts_is_rigid():
+    """Flail and sword from the corpus: grip onto grip, rigid, axis aligned."""
+    flail = _retail_part("Empire/Inquisitor/character_empire_inquisitor.g",
+                         "weapon_empire_inquisitor")
+    sword = _retail_part("Empire/Knight/character_empire_knight.g",
+                         "empire_knight_sword")
+    ref = [list(v.position) for v in flail.vertices]
+    src = [list(v.position) for v in sword.vertices]
+    # the flail's origin is its grip (it spans x -0.07 .. 1.90 from it); the
+    # sword's handle end is where an artist would put the origin
+    ref_grip = [0.0, 0.0, 0.0]
+    src_grip = min(src, key=lambda p: sum(c * c for c in p))[:]
+    mat, info = weaponmod.align_matrix(ref, ref_grip, src, src_grip)
+    assert info["axis_found"] is True
+    moved = weaponmod.place(src, mat)
+    grip = weaponmod.place([src_grip], mat)[0]
+    assert max(abs(grip[i] - ref_grip[i]) for i in range(3)) < 1e-9
+    assert weaponmod.angle_between(weaponmod.main_axis(moved, ref_grip),
+                                   weaponmod.main_axis(ref, ref_grip)) < 2.0
+    assert abs(_dist(src[0], src[-1]) - _dist(moved[0], moved[-1])) < 1e-9
+    assert len(moved) == len(src) == 136
+
+
 if __name__ == "__main__":
     # Keep this at the very end: `main()` collects every module-level
     # `test_*` function, so tests defined below an earlier guard would never

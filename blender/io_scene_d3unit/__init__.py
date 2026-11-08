@@ -26,7 +26,7 @@ package only builds and reads the Blender scene.
 bl_info = {
     "name": "Disciples III Unit (GM .g/.a/.scene/.ac/.t)",
     "author": "Arena agent / geo2011",
-    "version": (1, 1, 18),
+    "version": (1, 1, 19),
     "blender": (3, 0, 0),
     "location": "File > Import/Export > Disciples III Unit",
     "description": "Import and export Disciples III character units "
@@ -39,7 +39,8 @@ bl_info = {
 import os  # noqa: E402  (kept for the panels)
 
 import bpy  # noqa: E402
-from bpy.props import FloatProperty, StringProperty  # noqa: E402
+from bpy.props import (FloatProperty, PointerProperty,  # noqa: E402
+                       StringProperty)
 from bpy.types import Panel  # noqa: E402
 
 from . import (bridge, exporter, importer, preferences,  # noqa: E402
@@ -92,10 +93,13 @@ class D3UNIT_PT_panel(Panel):
         row.enabled = ob is not None and ob.type == "MESH"
         op = row.operator(weapon.D3UNIT_OT_place_weapon.bl_idname,
                           text="Place Active Mesh on Reference", icon="SNAP_ON")
-        op.reference = context.scene.d3unit_weapon_ref
         op.roll = context.scene.d3unit_weapon_roll
         if ob is not None and ob.type == "MESH":
             col.label(text=f"Active: {ob.name}", icon="MESH_DATA")
+            nested = col.column(align=True)
+            nested.scale_y = 0.8
+            nested.label(text="grip = the object's origin")
+            nested.label(text="(or its one selected vertex)")
         else:
             col.label(text="Select the mesh to place", icon="INFO")
 
@@ -153,11 +157,12 @@ def register():
     for prop in ("d3unit_weapon_ref", "d3unit_weapon_roll"):
         if hasattr(bpy.types.Scene, prop):
             delattr(bpy.types.Scene, prop)
-    bpy.types.Scene.d3unit_weapon_ref = StringProperty(
+    bpy.types.Scene.d3unit_weapon_ref = PointerProperty(
+        type=bpy.types.Object,
+        poll=lambda self, ob: ob.type == "MESH",
         name="Reference weapon",
-        default="",
-        description="Object whose grip and axis the placed mesh is aligned "
-                    "to; empty = the only weapon_* mesh in the scene")
+        description="Mesh whose grip and long axis the placed mesh is aligned "
+                    "to; empty = the only weapon-like mesh in the scene")
     bpy.types.Scene.d3unit_weapon_roll = FloatProperty(
         name="Roll",
         default=0.0,
