@@ -545,6 +545,21 @@ def _announce(url, token, transport, report, finish, httpd, unverified=False):
         print("Если нужен другой путь (например, свой VPN) — скажи, придумаем.")
         return finish(1, "no-address")
     line = f"link {url} {token}"
+    build = studio_link.build_marker()
+    # One small file to drag into the chat instead of hunting for the window and
+    # copying two values by hand — that hand-off is the step that keeps failing.
+    send_me = LINK_DIR / "SEND-ME.txt"
+    try:
+        send_me.write_text(
+            line + "\n"
+            + f"build: {build}\n"
+            + f"url: {url}\n"
+            + f"token: {token}\n"
+            + f"folder: {REPO_DIR}\n"
+            + f"verdict: {'unverified' if unverified else 'ok'}\n",
+            encoding="utf-8")
+    except OSError:
+        send_me = None
     copied = copy_to_clipboard(line)
     print("\n" + "=" * 64)
     print(f" Адрес : {url}")
@@ -557,9 +572,14 @@ def _announce(url, token, transport, report, finish, httpd, unverified=False):
     else:
         print(f" Канал проверен ({transport}): адрес отвечает снаружи."
               + ("  Строка в буфере." if copied else ""))
-    print(f" Сборка: {studio_link.build_marker()}  (папка {REPO_DIR})")
+    print(f" Сборка: {build}  (папка {REPO_DIR})")
     print(" Строка для чата:")
     print("   " + line)
+    if send_me is not None:
+        print("")
+        print(" Проще: перетащи в чат один файл")
+        print(f"   {send_me}")
+        print("   (там эта же строка; можно и просто скопировать её выше)")
     print("")
     print(" Окно не закрывай: пока оно открыто — канал жив. Enter = закрыть.")
     print(" Если в чате скажут «канал не отвечает» — проверь номер сборки выше:") 

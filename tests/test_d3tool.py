@@ -7105,3 +7105,44 @@ def test_link_moves_big_files_in_chunks_and_reads_logs():
         assert "cuda" in studio_link.OPS
         httpd.shutdown()
         httpd.server_close()
+
+
+def test_link_leaves_one_file_to_drag_into_the_chat():
+    """The hand-off, not the tunnel, is what keeps failing: the address lives in a
+    window and the token in another place, and a chat needs both. So the announce
+    step writes `SEND-ME.txt` — one line, ready to paste, plus the build and the
+    folder — and a user can simply drag that file in."""
+    import importlib
+
+    sys.path.insert(0, os.path.join(REPO, "bridge"))
+    link_up = importlib.import_module("link_up")
+    studio_link = importlib.import_module("studio_link")
+
+    link_up.LINK_DIR.mkdir(parents=True, exist_ok=True)
+    verdicts = []
+
+    def fake_finish(code, verdict):
+        verdicts.append((code, verdict))
+        return code
+
+    import builtins
+
+    real_input, real_print = builtins.input, builtins.print
+    real_copy = link_up.copy_to_clipboard
+    try:
+        builtins.input = lambda *a, **kw: (_ for _ in ()).throw(EOFError())
+        builtins.print = lambda *a, **kw: None
+        link_up.copy_to_clipboard = lambda text: True
+        link_up._announce("https://abc-def.trycloudflare.com", "SECRET-TOKEN-0123456789",
+                          "cloudflared QUIC", [], fake_finish, None)
+    finally:
+        builtins.input, builtins.print = real_input, real_print
+        link_up.copy_to_clipboard = real_copy
+
+    text = (link_up.LINK_DIR / "SEND-ME.txt").read_text(encoding="utf-8")
+    first = text.splitlines()[0]
+    assert first == "link https://abc-def.trycloudflare.com SECRET-TOKEN-0123456789"
+    assert "build: " + studio_link.build_marker() in text
+    assert "verdict: ok" in text
+    assert verdicts == [(0, "ok")]
+    (link_up.LINK_DIR / "SEND-ME.txt").unlink()
