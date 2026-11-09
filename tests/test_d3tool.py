@@ -6428,6 +6428,18 @@ def test_link_up_reads_the_tunnel_address_and_proves_it():
             "your admin panel: https://admin.localhost.run\n", encoding="utf-8")
         assert link_up.url_from_log(ssh_admin) == "https://abcd1234.lhr.life"
 
+        # serveo prints the tunnel on *.serveousercontent.com and its own console
+        # AFTER it; the console won, and the one ssh tunnel that came up was
+        # probed at the wrong host ("answered 200, but not our JSON")
+        serveo = pathlib.Path(d, "tunnel-serveo.log")
+        serveo.write_text(
+            "Forwarding HTTP traffic from "
+            "https://dfe2919faef15d26-188-170-193-238.serveousercontent.com\n"
+            "Tip (1): reserve names: https://console.serveo.net/settings?n=1\n",
+            encoding="utf-8")
+        assert link_up.url_from_log(serveo) == \
+            "https://dfe2919faef15d26-188-170-193-238.serveousercontent.com"
+
         # 2. a port nothing holds, and one that is already taken is skipped
         # a port pair chosen here, not a fixed one: the test must not depend on
         # what else is listening in the sandbox that runs it

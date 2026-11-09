@@ -52,7 +52,7 @@ CLOUDFLARED_URL = ("https://github.com/cloudflare/cloudflared/releases/latest/"
 URL_RE = re.compile(
     rb"https?://[a-z0-9][a-z0-9.-]*\.(?:trycloudflare\.com|lhr\.life|localhost\.run|"
     rb"lhr\.rocks|eu\.lhr\.life|pinggy\.link|pinggy\.io|serveo\.net|"
-    rb"loca\.lt)")
+    rb"serveousercontent\.com|loca\.lt)")
 # ssh is not on PATH on every Windows box, but it is installed
 SSH_CANDIDATES = (r"C:\Windows\System32\OpenSSH\ssh.exe",)
 PORTS = (3211, 3212, 3213, 3220, 3230)
@@ -75,10 +75,10 @@ class Abort(Exception):
 # a real Cloudflare 1010 — so the one transport that was actually connected got
 # reported as a failure of the whole bridge.
 SERVICE_LABELS = {b"admin", b"www", b"ssh", b"help", b"docs", b"api", b"app",
-                  b"dashboard", b"status", b"blog", b"labs"}
+                  b"dashboard", b"status", b"blog", b"labs", b"console"}
 TUNNEL_SUFFIXES = (".lhr.life", ".lhr.rocks", ".loca.lt", ".pinggy.link",
-                   ".pinggy.io", ".serveo.net", ".trycloudflare.com",
-                   ".localhost.run")
+                   ".pinggy.io", ".serveo.net", ".serveousercontent.com",
+                   ".trycloudflare.com", ".localhost.run")
 
 
 # The hand-off, without a human: the bridge announces its own address to a topic
