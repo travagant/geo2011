@@ -127,31 +127,100 @@ if (-not $cloudflared) {
 }
 Say "туннель : $cloudflared"
 
-$tunnelLog = Join-Path $link 'tunnel.log'
-if (Test-Path $tunnelLog) { Remove-Item $tunnelLog -Force }
-$tunnel = Start-Process -FilePath $cloudflared `
-    -ArgumentList @('tunnel', '--url', "http://127.0.0.1:$port", '--no-autoupdate',
-                    '--logfile', $tunnelLog, '--loglevel', 'info') `
-    -WindowStyle Hidden -PassThru
-
-$url = $null
-for ($i = 0; $i -lt 120; $i++) {
-    Start-Sleep -Milliseconds 500
-    if (Test-Path $tunnelLog) {
-        $hit = Select-String -Path $tunnelLog -Pattern 'https://[a-z0-9-]+\.trycloudflare\.com' `
-                             -AllMatches -ErrorAction SilentlyContinue | Select-Object -First 1
-        if ($hit) {
-            $url = $hit.Matches[0].Value
-            break
-        }
-    }
-    if ($tunnel.HasExited) { break }
-}
-if (-not $url) {
-    Say 'Туннель не отдал адрес. Лог:'
-    if (Test-Path $tunnelLog) { Get-Content $tunnelLog -Tail 25 }
+$localProbe = "http://127.0.0.1:$port/cmd?token=$token&op=hello"
+try {
+    $local = Invoke-WebRequest -Uri $localProbe -UseBasicParsing -TimeoutSec 20
+    Say "сервер отвечает локально: OK ($($local.StatusCode))"
+} catch {
+    Say "сервер не отвечает даже локально: $($_.Exception.Message)"
+    if (Test-Path $serverErr) { Get-Content $serverErr -Tail 20 }
     Read-Host 'Enter — закрыть'
     exit 1
+}
+
+# Start cloudflared and wait until the public URL actually serves our JSON.
+# A quick tunnel prints its address before it is routable, and on networks that
+# drop QUIC (many ISPs) the default transport never connects — so the address
+# alone proves nothing: we ask the address for `hello` and only then believe it.
+function Start-Tunnel([string[]]$extra) {
+    $log = Join-Path $link 'tunnel.log'
+    if (Test-Path $log) { Remove-Item $log -Force }
+    $cliArgs = @('tunnel', '--url', "http://127.0.0.1:$port", '--no-autoupdate',
+                 '--logfile', $log, '--loglevel', 'info') + $extra
+    $proc = Start-Process -FilePath $cloudflared -ArgumentList $cliArgs `
+                          -WindowStyle Hidden -PassThru
+    $found = $null
+    for ($i = 0; $i -lt 120; $i++) {
+        Start-Sleep -Milliseconds 500
+        if (Test-Path $log) {
+            $hit = Select-String -Path $log -Pattern 'https://[a-z0-9-]+\.trycloudflare\.com' `
+                                 -AllMatches -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($hit) { $found = $hit.Matches[0].Value; break }
+        }
+        if ($proc.HasExited) { break }
+    }
+    return @{ proc = $proc; url = $found; log = $log }
+}
+
+function Test-Tunnel([string]$address) {
+    $probe = "$address/cmd?token=$token&op=hello&_=probe"
+    for ($i = 0; $i -lt 10; $i++) {
+        try {
+            $resp = Invoke-WebRequest -Uri $probe -UseBasicParsing -TimeoutSec 15
+            if ($resp.Content -match '"ok"') { return 'ok' }
+        } catch {
+            # 1033 / 502 / timeout all mean "not routed yet": keep waiting
+        }
+        Start-Sleep -Seconds 3
+    }
+    return 'fail'
+}
+
+Say ''
+Say 'Поднимаю туннель…'
+$tunnel = Start-Tunnel @()
+$url = $tunnel.url
+$verdict = 'fail'
+if ($url) {
+    Say "адрес получен: $url — проверяю, доходит ли до тебя запрос"
+    $verdict = Test-Tunnel $url
+}
+if ($verdict -ne 'ok') {
+    if ($tunnel.proc) { try { Stop-Process -Id $tunnel.proc.Id -Force } catch { } }
+    Say 'Не проходит (частая причина — провайдер режет QUIC). Пробую по HTTP/2…'
+    $tunnel = Start-Tunnel @('--protocol', 'http2')
+    $url = $tunnel.url
+    if ($url) { $verdict = Test-Tunnel $url }
+}
+if (-not $url) {
+    Say 'Туннель не отдал адрес. Последние строки лога:'
+    if (Test-Path $tunnel.log) { Get-Content $tunnel.log -Tail 25 }
+    Read-Host 'Enter — закрыть'
+    exit 1
+}
+$attempt = Join-Path $link 'last-attempt.txt'
+$report = @()
+$report += "when:    " + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+$report += "local:   " + $localProbe + "  (OK)"
+$report += "tunnel:  " + $url
+$report += "verdict: " + $verdict
+$report += "python:  " + $pyExe
+$report += "studio:  " + $studio
+if (Test-Path $tunnel.log) { $report += "--- tunnel.log (tail) ---"; $report += (Get-Content $tunnel.log -Tail 25) }
+$report += "--- server.err.log (tail) ---"
+if (Test-Path $serverErr) { $report += (Get-Content $serverErr -Tail 15) }
+$report | Set-Content -Path $attempt -Encoding UTF8
+
+if ($verdict -ne 'ok') {
+    Say ''
+    Say 'Адрес есть, но Cloudflare до него не доходит (ошибка 1033/502).'
+    Say 'Что это значит: cloudflared не смог соединиться с сетью Cloudflare.'
+    Say 'Проверь: VPN/файрвол/антивирус, доступ к cloudflare.com, другой Wi-Fi.'
+    Say "Лог: $($tunnel.log)"
+    if (Test-Path $tunnel.log) { Get-Content $tunnel.log -Tail 20 }
+    Say ''
+    Say "Всё это записано сюда: $attempt — пришли этот файл, если не разберёмся."
+    Say 'Адрес ниже всё равно можно вставить в чат: иногда он оживает через минуту.'
 }
 
 $line = "link $url $token"
@@ -165,8 +234,10 @@ Say ''
 Say ' Скопировано в буфер. Вставь это в чат одной строкой:'
 Say '   ' + $line
 Say ''
-Say ' Пока это окно открыто — Arena видит студию.'
-Say ' Локально можно проверить: ' + "http://127.0.0.1:$port/cmd?token=$token&op=hello"
+if ($verdict -eq 'ok') { Say ' Канал проверен: адрес отвечает снаружи.' }
+else { Say ' ВНИМАНИЕ: канал не проверен — см. сообщение выше.' }
+Say ' Пока это окно открыто — Arena видит студию. Не закрывай его крестиком,'
+Say ' остановка — Enter. Проверка глазами: ' + $localProbe
 Say '============================================================='
 Say ''
 Read-Host 'Enter — остановить туннель и сервер'
