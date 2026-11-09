@@ -6907,6 +6907,8 @@ def test_link_has_more_than_one_way_out():
     finally:
         link_up._spawn = real
     logs = dict((name, cmd) for cmd, name in seen)
+    assert "tunnel-serveo.log" in logs, logs.keys()
+    assert "80:127.0.0.1:3211" in logs["tunnel-serveo.log"]
     assert "tunnel-pinggy.log" in logs
     assert "0:127.0.0.1:3211" in logs["tunnel-pinggy.log"]
     assert "443" in logs["tunnel-pinggy.log"]

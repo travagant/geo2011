@@ -155,6 +155,24 @@ def note(message: str, timeout: float = 10.0) -> None:
         pass
 
 
+def note_tail(name: str, log_path, note=note) -> None:
+    """Announce the last lines a tunnel client wrote, when it did not work.
+
+    A failure without its log is a riddle: "ssh → localhost.run gave an address
+    and then answered 502" can be a rate limit, a refused forward, or a session
+    that closed a second after connecting — and those need different fixes. The
+    lines are in a file on the user's disk, which is exactly where the session
+    cannot look, so they travel with the rest.
+    """
+    try:
+        lines = _tail(Path(log_path))[-12:]
+    except OSError:
+        return
+    if not lines:
+        return
+    note(f"{name}: хвост {Path(log_path).name}\n" + "\n".join(lines))
+
+
 def _announce_topic(line: str, say=print) -> None:
     """Announce now, then every minute while the window stays open."""
     topic = rendezvous_topic()
@@ -376,7 +394,7 @@ def start_ssh(port: int, host: str = "nokey@localhost.run", ssh: str = "",
            "-o", "ServerAliveInterval=20", "-o", "ExitOnForwardFailure=yes",
            *extra, "-R", f"{remote}:127.0.0.1:{port}", host]
     proc = _spawn(cmd, log_path)
-    url = _wait_for_url(proc, log_path, seconds=60)
+    url = _wait_for_url(proc, log_path, seconds=40)
     return proc, url, log_path
 
 
@@ -500,6 +518,11 @@ def transports(exe: str, port: int) -> list:
         # come second, not last — a fallback nobody reaches before the user gives
         # up is not a fallback.
         out.append(("ssh → localhost.run", lambda: start_ssh(port, ssh=ssh)))
+        # same shape, different operator: when one free ssh tunnel rate-limits or
+        # drops the session right after printing an address, the other one does
+        # not — and ssh is the only family that has ever connected from here
+        out.append(("ssh → serveo.net", lambda: start_ssh(
+            port, host="serveo.net", ssh=ssh, log_name="tunnel-serveo.log")))
         # pinggy answers on port 443, which survives networks that drop 22
         out.append(("ssh → pinggy (443)",
                     lambda: start_ssh(port, host="a.pinggy.io", ssh=ssh,
@@ -609,6 +632,7 @@ def run(args) -> int:
             if not url:
                 print("    адреса нет — смотрю лог")
                 note(f"{name}: адреса не дал")
+                note_tail(name, log_path)
                 tail = _tail(log_path)
                 for line in tail[-8:]:
                     print("      " + line)
@@ -627,6 +651,8 @@ def run(args) -> int:
                   f"ответ {outcome['detail']}")
             note(f"{name}: снаружи {outcome['detail']} "
                  f"({outcome['tries']} попыток)")
+            if not outcome["ok"]:
+                note_tail(name, log_path)
             report.append(f"{name}: probe status={outcome['status']} "
                           f"detail={outcome['detail']} tries={outcome['tries']}")
             if outcome["body"]:
