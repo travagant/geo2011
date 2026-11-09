@@ -42,6 +42,7 @@ Mods\<name>.vdpack   gated by `d3tool vdpack scan --strict`
 | `build_d3.py` | runs inside Blender (`--python build_d3.py -- …`); imports the GLB, prepares it, calls `export_unit`, writes a JSON report |
 | `config.example.json` | every knob; copy to `config.json` (git-ignored) and edit `donor`/`mods` |
 | `Get-model.cmd`, `get_model.py` | download a GGUF from Hugging Face into the studio, register it in Ollama (resume, sha256, GGUF header) |
+| `RAM-check.cmd`, `ram_check.py` | why Windows said «os error 1455»: commit limit, page file, loaded Ollama models; can unload them and resize the page file |
 
 The bridge never imports Blender or the add-on: it builds command lines, runs
 them, and reads their reports. That is why it is testable without a GPU
@@ -325,6 +326,38 @@ the file into `<студия>\data\models\checkpoints`, restart the studio, and 
 appears in the checkpoint list — the studio reads that list from
 `/object_info/ImageOnlyCheckpointLoader`, and the choice is stored as
 `imageCheckpoint`.
+
+## «Файл подкачки слишком мал (os error 1455)» is about commit, not free RAM
+
+Windows charges every allocation against the **commit limit** — RAM plus the page
+file — before the bytes are touched. A 16 GB machine with a 2 GB page file hits the
+wall at 18 GB while Task Manager still shows gigabytes free, and the message names
+the page file. The studio's engine plans with the same number
+(`engine/astra_engine/device.py`, `ram_room()` = min(free RAM, commit left)) and wants
+the model plus 3 GB for the system (`models.py`).
+
+«Ракурсы» with MV-Adapter are the heaviest case: `engine/plugins/mvadapter/nodes.py`
+asks for `ram = checkpoint + adapter` — `sd_xl_base_1.0.safetensors` (6.98 GB) plus
+`mvadapter_i2mv_sdxl.safetensors` (3.60 GB) = **9.9 GiB in RAM** before the card sees
+anything. The three views (`left,back,right`) are one batch inside one workflow, so
+they cannot be split — and splitting would not help: the weights are loaded once for
+all of them.
+
+```
+RAM-check.cmd                  → the numbers, and whether «Ракурсы» can start now
+RAM-check.cmd --need 14000     → any other task, in MB
+RAM-check.cmd --json           → the same for a script
+```
+
+It prints RAM, the commit limit and how much of it is the page file, free space on
+C:/D:, every model Ollama is holding (`ollama stop <name>` next to it), and the
+shortfall. Exit code 1 means the task does not fit; the menu then offers to unload
+Ollama, or to change the page file for you (automatic sizing, or a fixed size on the
+disk with most room) — that needs one UAC confirmation and a reboot.
+
+The advice it gives is arithmetic, not folklore: the page file has to grow by exactly
+the shortfall, rounded up to a whole gigabyte, and the disk has to have room for it —
+otherwise «automatic» sizing has nowhere to grow and the error comes back.
 
 ## The studio's "Connections" window is not the control channel
 
