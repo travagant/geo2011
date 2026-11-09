@@ -69,6 +69,9 @@ is how a POST reaches the studio — the link performs it locally.
 | `assets`, `studio_jobs`, `studio_job&id=` | the studio's own API, read side |
 | `api&path=/api/…[&method=POST][&body=…]` | any studio endpoint |
 | `read&path=…[&max=…]`, `ls&path=…` | files, inside the allowed roots only |
+| `tail&path=…&lines=…` | the end of a log (`comfy.log` is megabytes of startup noise) |
+| `get&path=…&offset=…[&max=…][&sum=1]` / `put&path=…&offset=…&b64=…[&total=…]` | binary in chunks: a texture, a config, a report, a patch |
+| `cuda&run=check` / `cuda&run=fix-torch` | the torch/Pascal diagnosis (and the fix) run in place, report back |
 | `write&path=…&b64=…` | small text files (config, notes) |
 | `d3tool&args=vdpack scan …` | the toolkit, JSON back |
 | `build`, `pack`, `run` | Blender export / pack / both — return a job id |
@@ -103,6 +106,15 @@ Four failure modes this link was bitten by, and what kills them:
   is printed in the banner, written to `last-attempt.txt` (`сборка:` / `папка:`),
   and returned by `op=ping`, so the number and the folder travel with every run;
   a copy sitting *inside* the studio folder is called out as a warning.
+
+Binary transfer is chunked through the query string, because a session can only
+send GET: the ceiling is therefore the **request line**, not memory. Cloudflare
+refuses URLs over ~16 KB and `http.server` answers 414 above 64 KB, and base64
+adds a third, so a chunk is 8 KB of file (~11 KB of URL). A 40 MB GLB is not
+something to pull through the link — `run`, `pack` and `d3tool` do that work on
+the machine where the file already is; `get`/`put` carry textures, configs,
+reports and patches, and `put` refuses a chunk whose offset does not match the
+file size, so a lost chunk is an error instead of a corrupt file.
 
 Safety: the server binds `127.0.0.1`, needs the token for every request (403
 otherwise), refuses any path outside the repository, the studio folder, the

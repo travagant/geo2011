@@ -7020,3 +7020,88 @@ def test_link_preview_shows_a_page_but_never_the_token():
     finally:
         httpd.shutdown()
         httpd.server_close()
+
+
+def test_link_moves_big_files_in_chunks_and_reads_logs():
+    """"Full control" fails at the first real artefact: `read` caps at 400 KB and
+    `write` at 256 KB, while a unit GLB is tens of megabytes. So the link needs a
+    chunked transfer — and it must fight corruption, not hide it: the first chunk
+    truncates, every later one has to continue exactly at the current size.
+    """
+    import hashlib
+    import importlib
+    import random as rnd
+    import threading
+    import urllib.parse
+    import urllib.request
+
+    sys.path.insert(0, os.path.join(REPO, "bridge"))
+    studio_link = importlib.import_module("studio_link")
+
+    with tempfile.TemporaryDirectory() as d:
+        link = studio_link.Link({"studio": d}, 3297, "http://127.0.0.1:3210")
+        studio_link.Handler.link = link
+        httpd = studio_link.StudioLinkServer(("127.0.0.1", 0), studio_link.Handler)
+        port = httpd.server_address[1]
+        threading.Thread(target=httpd.serve_forever, daemon=True).start()
+
+        def call(**params):
+            query = urllib.parse.urlencode({"token": link.token, **params})
+            with urllib.request.urlopen(f"http://127.0.0.1:{port}/cmd?{query}",
+                                        timeout=20) as resp:
+                answer = json.loads(resp.read())
+            assert answer["ok"] is True, answer
+            return answer["result"]
+
+        # bigger than one answer and than one chunk, like a real artefact
+        blob = bytes(rnd.randrange(256) for _ in range(64 * 1024))
+
+        # the chunk size is set by the request line, not by taste: a GET query
+        # string has to stay under Cloudflare's ~16 KB, so base64(+params) does
+        assert studio_link.MAX_CHUNK * 4 // 3 + 2048 <= 16_384, studio_link.MAX_CHUNK
+        assert studio_link.CHUNK <= studio_link.MAX_CHUNK
+        target = os.path.join(d, "unit.glb")
+        offset = 0
+        while offset < len(blob):
+            piece = blob[offset:offset + studio_link.CHUNK]
+            result = call(op="put", path=target, offset=offset, total=len(blob),
+                          b64=__import__("base64").b64encode(piece).decode())
+            assert result["size"] == offset + len(piece)
+            offset = result["next"]
+        assert result["eof"] is True
+        with open(target, "rb") as fh:
+            assert fh.read() == blob
+
+        # reading it back, chunk by chunk, gives the same bytes
+        back, offset = b"", 0
+        while True:
+            chunk = call(op="get", path=target, offset=offset, sum="1")
+            back += __import__("base64").b64decode(chunk["b64"])
+            assert chunk["sha256_chunk"] == hashlib.sha256(
+                __import__("base64").b64decode(chunk["b64"])).hexdigest()
+            if chunk["eof"]:
+                break
+            offset = chunk["next"]
+        assert back == blob
+
+        # a lost or repeated chunk is an error, not a silently corrupt file
+        try:
+            call(op="put", path=target, offset=10, b64="AAAA")
+        except urllib.error.HTTPError as exc:
+            assert exc.code == 400
+            assert "does not match the file size" in json.loads(exc.read())["error"]
+        else:                                              # pragma: no cover
+            raise AssertionError("a chunk at the wrong offset was accepted")
+
+        # logs: the tail of a file, without pulling megabytes through JSON
+        log = os.path.join(d, "comfy.log")
+        with open(log, "w", encoding="utf-8") as fh:
+            fh.write("\n".join(f"line {i}" for i in range(5000)))
+        tail = call(op="tail", path=log, lines=3)
+        assert tail["lines"] == ["line 4997", "line 4998", "line 4999"]
+        assert "line 4999" in tail["text"] and tail["size"] > 0
+
+        # and the CUDA diagnosis can be run through the link, not by hand
+        assert "cuda" in studio_link.OPS
+        httpd.shutdown()
+        httpd.server_close()

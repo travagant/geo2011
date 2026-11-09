@@ -33,6 +33,12 @@ Operations (all ``GET /cmd?token=…&op=…``):
     read&path=…[&max=…]       text file (within the allowed roots)
     ls&path=…                 folder listing (within the allowed roots)
     write&path=…&b64=…        write a small text file (config, notes)
+    get&path=…&offset=…[&max=…][&sum=1]
+                              one chunk of a binary file, base64 (a GLB, a pack)
+    put&path=…&offset=…&b64=…[&total=…]
+                              build a binary file chunk by chunk (offset 0 starts)
+    tail&path=…&lines=…       the end of a log
+    cuda&run=check|fix-torch  torch/Pascal diagnosis, and the fix, in place
     d3tool&args=vdpack scan … run the toolkit, JSON back
     build[&glb=…]             Blender: GLB -> .g/.scene/.ac/.a/.t   (background)
     pack                      unit folder -> Mods/<name>.vdpack     (background)
@@ -48,6 +54,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import hashlib
 import hmac
 import json
 import os
@@ -73,8 +80,17 @@ TOKEN_FILE = LINK_DIR / "token.txt"
 BUILD_FILE = BRIDGE_DIR / "BUILD.txt"
 DEFAULT_PORT = 3211
 STUDIO_DEFAULT = r"D:\AstraForge"
-MAX_TEXT = 400_000          # bytes returned by `read`
+MAX_TEXT = 400_000          # bytes returned by `read` (one JSON answer)
 MAX_WRITE = 256_000         # bytes accepted by `write`
+# Binary transfer goes through the QUERY STRING, because a session can only do
+# GET — so the chunk is bounded by the request line, not by memory: Cloudflare
+# refuses URLs over ~16 KB, and http.server answers 414 above 64 KB. base64 adds
+# a third, so 8 KB of file ≈ 11 KB of URL: safe on both. A 40 MB GLB is therefore
+# not something to pull through the link — `run`/`pack`/`d3tool` do the heavy work
+# on the machine where the file already is; `get`/`put` are for textures, configs,
+# reports and patches.
+CHUNK = 8 * 1024            # bytes per call
+MAX_CHUNK = 10 * 1024       # hard ceiling: 10 KB of file is a 14 KB URL
 
 sys.path.insert(0, str(BRIDGE_DIR))
 import astra_d3  # noqa: E402  - the bridge itself, reused for build/pack
@@ -360,6 +376,123 @@ def op_write(link, params):
     return {"path": str(path), "bytes": len(raw)}
 
 
+def op_get(link, params):
+    """One chunk of a binary file, base64 — how a GLB comes out of the studio.
+
+    ``read`` caps at MAX_TEXT because a JSON answer has to stay sane; bigger
+    files are pulled in chunks: ask with ``offset``, get ``next`` back, repeat
+    until ``eof``. ``sum=1`` adds the sha256 of that chunk.
+
+    The size limit is the URL, not this server: a chunk travels in a GET query
+    string, so it is kept well under the 16 KB request line Cloudflare accepts
+    (a 512 KB chunk answered 414 — that is how this limit was found).
+    """
+    path = link.resolve(params.get("path") or "")
+    if not path.is_file():
+        raise FileNotFoundError(str(path))
+    size = path.stat().st_size
+    offset = int(params.get("offset") or 0)
+    if offset < 0 or offset > size:
+        raise ValueError(f"offset {offset} is outside the file (size {size})")
+    limit = min(int(params.get("max") or CHUNK), MAX_CHUNK)
+    with open(path, "rb") as fh:
+        fh.seek(offset)
+        raw = fh.read(limit)
+    nxt = offset + len(raw)
+    out = {"path": str(path), "size": size, "offset": offset, "bytes": len(raw),
+           "next": nxt, "eof": nxt >= size,
+           "b64": base64.b64encode(raw).decode()}
+    if params.get("sum"):
+        out["sha256_chunk"] = hashlib.sha256(raw).hexdigest()
+    return out
+
+
+def op_put(link, params):
+    """Write one chunk of a binary file: ``offset=0`` starts it, then append.
+
+    Used to put a `.vdpack`, a texture or a patched file back on the machine
+    without copying anything by hand. The first chunk truncates, later ones must
+    continue exactly at the current size, so a lost or repeated chunk is an error
+    instead of a silently corrupt file.
+    """
+    path = link.resolve(params.get("path") or "")
+    if not params.get("path"):
+        raise ValueError("op=put needs &path=…")
+    raw = base64.b64decode(params.get("b64") or "")
+    if len(raw) > MAX_CHUNK:
+        raise ValueError(f"{len(raw)} bytes is more than {MAX_CHUNK} per call")
+    offset = int(params.get("offset") or 0)
+    total = int(params.get("total") or 0)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if offset == 0:
+        with open(path, "wb") as fh:
+            fh.write(raw)
+    else:
+        if not path.is_file():
+            raise ValueError(f"no file at {path}: start with offset=0")
+        size_now = path.stat().st_size
+        if size_now != offset:
+            raise ValueError(f"offset {offset} does not match the file size "
+                             f"{size_now} — chunk lost or repeated")
+        with open(path, "r+b") as fh:
+            fh.seek(offset)
+            fh.write(raw)
+    size = path.stat().st_size
+    return {"path": str(path), "offset": offset, "bytes": len(raw), "size": size,
+            "next": offset + len(raw),
+            "eof": bool(total and size >= total) or (not total and offset == 0)}
+
+
+def op_tail(link, params):
+    """The end of a log, cheaply — `comfy.log` is megabytes of startup noise."""
+    path = link.resolve(params.get("path") or "")
+    if not path.is_file():
+        raise FileNotFoundError(str(path))
+    want = min(max(int(params.get("lines") or 200), 1), 5000)
+    size = path.stat().st_size
+    block = min(size, 256 * 1024)
+    with open(path, "rb") as fh:
+        fh.seek(size - block)
+        text = fh.read().decode("utf-8", "replace")
+    rows = text.splitlines()[-want:]
+    return {"path": str(path), "size": size,
+            "truncated": size > block, "lines": rows,
+            "text": "\n".join(rows)[-MAX_TEXT:]}
+
+
+def op_cuda(link, params):
+    """Run the CUDA diagnosis (or the fix) here, without anyone double-clicking.
+
+    ``run=check`` answers in seconds; ``run=fix-torch`` does what
+    CUDA-fix-torch.cmd does — and therefore stops the studio, because Windows
+    will not let torch's DLLs be replaced under a running ComfyUI.
+    """
+    action = (params.get("run") or "check").strip()
+    if action not in ("check", "fix-torch", "fix-rasterizer"):
+        raise ValueError("run=check|fix-torch|fix-rasterizer")
+    script = BRIDGE_DIR / "cuda_check.py"
+    if not script.is_file():
+        raise FileNotFoundError(str(script))
+    report = JOBS_DIR / f"cuda-{action}-{time.strftime('%H%M%S')}.txt"
+    command = [sys.executable, str(script), action, "--report", str(report)]
+    studio = str(link.cfg.get("studio") or "")
+    if studio and Path(studio).is_dir():
+        # diagnose the same folder this link works with, not whatever the default is
+        command += ["--studio", studio]
+    if action != "check":
+        command.append("--yes")
+    if params.get("python"):
+        command += ["--python", params["python"]]
+    code, output = astra_d3.run(command, cwd=str(REPO_DIR))
+    text = ""
+    try:
+        text = report.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        pass
+    return {"run": action, "exit": code, "report": str(report),
+            "text": text[-MAX_TEXT:], "output": output[-4000:]}
+
+
 def op_d3tool(link, params):
     args = shlex.split(params.get("args") or "")
     if not args:
@@ -441,6 +574,10 @@ def op_ping(link, params):
 
 OPS = {
     "ping": op_ping,
+    "get": op_get,
+    "put": op_put,
+    "tail": op_tail,
+    "cuda": op_cuda,
     "hello": op_hello,
     "doctor": op_doctor,
     "list": op_list,
@@ -514,7 +651,7 @@ class Handler(BaseHTTPRequestHandler):
  <tr><th>студия</th><td><code>{self.link.studio_url}</code></td></tr>
 </table>
 <p class="note">Токен печатается в окне, которое запустило мост
- (<code>bridge\.link\token.txt</code> на твоём ПК) — в этой странице его нет
+ (<code>bridge\\.link\\token.txt</code> на твоём ПК) — в этой странице его нет
  намеренно. Без токена любой запрос к <code>/cmd</code> получает 403.</p>
 <p class="note">Проверить отсюда: <code>ping</code> отвечает без студии и без
  конфига; <code>hello</code> добавляет пути и состояние студии; остальные
