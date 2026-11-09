@@ -6418,6 +6418,16 @@ def test_link_up_reads_the_tunnel_address_and_proves_it():
                            "https://abcd1234.lhr.life\n", encoding="utf-8")
         assert link_up.url_from_log(ssh_log) == "https://abcd1234.lhr.life"
 
+        # localhost.run prints its own admin panel *after* the address; taking
+        # the newest match handed the chat a real host with a real Cloudflare
+        # answer, and the one connected transport was reported as a dead bridge
+        ssh_admin = pathlib.Path(d, "tunnel-ssh-admin.log")
+        ssh_admin.write_text(
+            "abcd1234.lhr.life tunneled with tls termination, "
+            "https://abcd1234.lhr.life\n"
+            "your admin panel: https://admin.localhost.run\n", encoding="utf-8")
+        assert link_up.url_from_log(ssh_admin) == "https://abcd1234.lhr.life"
+
         # 2. a port nothing holds, and one that is already taken is skipped
         assert link_up.free_port((3299, 3300)) in (3299, 3300)
 
@@ -6858,6 +6868,11 @@ def test_link_has_more_than_one_way_out():
     assert "cloudflared QUIC" in names and "cloudflared HTTP/2" in names
     assert any("pinggy" in name for name in names), names
     assert any("localhost.run" in name for name in names), names
+    # an ssh fallback only helps if it is reached before the user gives up: on
+    # the network we actually saw, cloudflared answered 520 and 530 from the edge
+    # while the ssh session connected, so localhost.run goes before the second
+    # cloudflared attempt
+    assert names.index("ssh → localhost.run") < names.index("cloudflared HTTP/2")
 
     # Windows' own ssh, even when PATH has none
     for candidate in link_up.SSH_CANDIDATES:

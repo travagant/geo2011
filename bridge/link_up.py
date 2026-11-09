@@ -69,14 +69,37 @@ class Abort(Exception):
 # --------------------------------------------------------------------------- #
 #  small pieces, each testable on its own
 # --------------------------------------------------------------------------- #
+# Hosts that belong to the tunnel *service*, not to our tunnel. localhost.run
+# prints a link to its own admin panel after the address, and taking the newest
+# match handed the chat ``https://admin.localhost.run`` — a real host, answering
+# a real Cloudflare 1010 — so the one transport that was actually connected got
+# reported as a failure of the whole bridge.
+SERVICE_LABELS = {b"admin", b"www", b"ssh", b"help", b"docs", b"api", b"app",
+                  b"dashboard", b"status", b"blog", b"labs"}
+TUNNEL_SUFFIXES = (".lhr.life", ".lhr.rocks", ".loca.lt", ".pinggy.link",
+                   ".pinggy.io", ".serveo.net", ".trycloudflare.com",
+                   ".localhost.run")
+
+
 def url_from_log(path: Path) -> str:
-    """The newest public address a tunnel client logged, or ''."""
+    """The newest public address a tunnel client logged, or ''.
+
+    Newest wins, but only among addresses that are tunnels: a service's own page
+    is never the way in, however late it is printed.
+    """
     try:
         raw = Path(path).read_bytes()
     except OSError:
         return ""
-    hits = URL_RE.findall(raw)          # the newest address wins: tunnels retry
-    return hits[-1].decode() if hits else ""
+    hits = [hit for hit in URL_RE.findall(raw)
+            if hit.decode().split("://", 1)[1].split(".")[0].encode()
+            not in SERVICE_LABELS]
+    if not hits:
+        return ""
+    for hit in reversed(hits):          # the newest address wins: tunnels retry
+        if hit.decode().endswith(TUNNEL_SUFFIXES):
+            return hit.decode()  # the newest *tunnel*, not the newest URL
+    return hits[-1].decode()
 
 
 def port_busy(port: int, host="127.0.0.1", timeout=0.4) -> bool:
@@ -261,7 +284,7 @@ def start_ssh(port: int, host: str = "nokey@localhost.run", ssh: str = "",
            "-o", "ServerAliveInterval=20", "-o", "ExitOnForwardFailure=yes",
            *extra, "-R", f"{remote}:127.0.0.1:{port}", host]
     proc = _spawn(cmd, log_path)
-    url = _wait_for_url(proc, log_path, seconds=45)
+    url = _wait_for_url(proc, log_path, seconds=60)
     return proc, url, log_path
 
 
@@ -377,17 +400,22 @@ def transports(exe: str, port: int) -> list:
     out = []
     if exe:
         out.append(("cloudflared QUIC", lambda: start_cloudflared(exe, port, "quic")))
-        out.append(("cloudflared HTTP/2",
-                    lambda: start_cloudflared(exe, port, "http2")))
     ssh = find_ssh()
     if ssh:
-        # pinggy answers on port 443, which survives networks that drop 22;
-        # localhost.run is the plain fallback (port 22)
+        # ssh reaches the far side differently from cloudflared: on the network we
+        # have seen, both cloudflared protocols answered 520/530 from the edge
+        # while the ssh session to localhost.run did connect. So the ssh tunnels
+        # come second, not last — a fallback nobody reaches before the user gives
+        # up is not a fallback.
+        out.append(("ssh → localhost.run", lambda: start_ssh(port, ssh=ssh)))
+        # pinggy answers on port 443, which survives networks that drop 22
         out.append(("ssh → pinggy (443)",
                     lambda: start_ssh(port, host="a.pinggy.io", ssh=ssh,
                                       extra=("-p", "443"), remote="0",
                                       log_name="tunnel-pinggy.log")))
-        out.append(("ssh → localhost.run", lambda: start_ssh(port, ssh=ssh)))
+    if exe:
+        out.append(("cloudflared HTTP/2",
+                    lambda: start_cloudflared(exe, port, "http2")))
     return out
 
 
@@ -395,7 +423,8 @@ def run(args) -> int:
     LINK_DIR.mkdir(parents=True, exist_ok=True)
     attempt = LINK_DIR / "last-attempt.txt"
     report = []
-    live = None          # the tunnel we are keeping alive
+    live = None          # the tunnel the chat is pointed at
+    live_all = []        # every tunnel left running, for a check from outside
     httpd = None
 
     def finish(code, verdict):
@@ -507,20 +536,27 @@ def run(args) -> int:
                 print("    туннель проверен; студия через него: "
                       + ("отвечает" if through["ok"] else through["detail"]))
                 break
+            # A 530 or a 520 seen from *this* machine can still answer from the
+            # other side — the session is outside his network, and the two paths
+            # are not the same. So nothing that produced an address is thrown
+            # away; the address that verified wins, the rest stay for the check
+            # from outside, and all of them are named in the report.
+            live_all.append((name, proc, url, log_path))
+            live = (name, proc, url, log_path)
             if index == last:
-                # the last transport is kept running: a 530 seen from this
-                # machine can still answer from the other side, and the session
-                # can only test that if the tunnel is still up
-                print("    не прошло, но канал оставляю включённым для проверки снаружи")
-                live = (name, proc, url, log_path)
+                print("    не прошло, но каналы оставляю включёнными для проверки снаружи")
             else:
-                print("    не прошло — пробую следующий способ")
-                _kill(proc)
+                print("    не прошло — пробую следующий способ (этот канал остаётся)")
 
         if winner:
             name, proc, url, log_path = winner
             live = winner
+            others = [f"{n}={u}" for n, _, u, _ in live_all if u != url]
+            if others:
+                report.append("also up: " + "  ".join(others))
             return _announce(url, link.token, name, report, finish, httpd)
+        if live:
+            report.append("urls:    " + "  ".join(u for _, _, u, _ in live_all))
         return _announce(live[2] if live else "", link.token,
                          live[0] if live else "", report, finish, httpd,
                          unverified=True)
@@ -534,8 +570,8 @@ def run(args) -> int:
         report.append(traceback.format_exc())
         return finish(1, "crash")
     finally:
-        if live is not None:
-            _kill(live[1])
+        for _, proc, _, _ in live_all:
+            _kill(proc)
         if httpd is not None:
             try:
                 httpd.shutdown()
