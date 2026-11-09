@@ -215,6 +215,28 @@ studio's own path does not use it — it takes geometry from `AstraForgeMesh`
 (Marching Cubes) and paints in Blender (`paint_from_concept`); the rasterizer
 belongs to a separately installed `ComfyUI-Hunyuan3DWrapper`.
 
+## The studio's "Connections" window is not the control channel
+
+`provider` is `ollama | openai | anthropic` (`server/schema.mjs`), and the keys
+from that window are used by exactly one place — `server/llm.mjs`, the in-studio
+chat assistant — which posts them to
+`https://api.openai.com/v1/chat/completions` or `api.anthropic.com`. Generation,
+checkpoints, ComfyUI and this bridge do not touch them (`server/jobs.mjs` wants an
+installed SDXL checkpoint for text prompts, nothing else). Keys are stored with
+Windows DPAPI (`server/vault.mjs`) or read from `OPENAI_API_KEY` /
+`ANTHROPIC_API_KEY` / `TRIPO_API_KEY`.
+
+So an invented key buys `LLM unavailable (401)`, and a real one buys a paid
+account plus "messages and the scene description are sent to the provider". The
+right choice on a local machine is the `ollama` provider with the model that is
+already installed.
+
+Access for a session comes from the link, and its key is the **token** printed by
+`Start studio link.cmd`: 24 random bytes in `bridge/.link/token.txt` (git
+ignored), stable across runs — only the tunnel address changes. A user-chosen
+token is accepted if it is at least 16 characters; it is weaker than the random
+one, so prefer it for convenience only. Everything without that token is 403.
+
 ## Blender requirement
 
 The add-on declares `blender: (3, 0, 0)`. Blender 5.0 (`runtime\blender\…`) is
