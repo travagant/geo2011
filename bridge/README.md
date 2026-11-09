@@ -94,6 +94,29 @@ the session reads both with one GET and takes the newest `verified` line. If
 announcing fails the window says so and the manual line still works, so nothing
 is lost — the copy becomes a fallback instead of the only way.
 
+When every tunnel dies: the post box
+------------------------------------
+
+Some networks kill long-lived connections outright, and it is not a bridge bug.
+Measured on one of them: cloudflared registered a QUIC tunnel and lost it nine
+seconds later (`failed to accept QUIC stream: timeout: no recent network
+activity`), the same over HTTP/2 (`control stream: client disconnected`), and
+both ssh providers answered `Connection reset` right after their banner — while
+a plain HTTPS request to a public notify relay worked for the whole session.
+
+`relay.py` (`Start studio relay.cmd`) therefore keeps no connection at all. The
+session publishes a command to `<topic>-cmd`, the program polls that topic, runs
+the op against its own `127.0.0.1` server — the same `op=ping`, `op=tail`,
+`op=api`, `op=cuda` strings the tunnel carried — and publishes the answer to
+`<topic>-out`. Both directions are one short request, the same size and shape as
+a page load, so nothing has to be tolerated by the network for minutes.
+
+Commands are space-separated (`n=12 key=… op=tail path=comfy.log lines=20`)
+because a relay message travels in a query string, where an unescaped `&` would
+cut it in half. Answers are cut at `LIMIT` characters with an explicit marker.
+Both topics and the key live in `bridge/.link/ntfy.txt`, written into the bundle
+and never into the repository.
+
 Transport order — one is not a plan, trycloudflare answers 530 often enough:
 cloudflared QUIC, cloudflared HTTP/2, `ssh -p 443 -R0:…` to pinggy,
 `ssh -R 80:…` to localhost.run. `ssh` is taken from PATH or from

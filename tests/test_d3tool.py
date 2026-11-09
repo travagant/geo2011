@@ -7466,3 +7466,113 @@ def test_the_network_is_described_before_a_tunnel_is_blamed():
     joined = "\n".join(announced)
     assert "203.0.113.9" in joined and "hosting" in joined
     assert "serveo.net:22 — refused" in joined
+
+
+def test_the_post_box_carries_an_op_where_a_tunnel_cannot():
+    """Measured on the machine that could not connect: every tunnel registered
+    and then died, while plain HTTPS to a notify relay kept working for twenty
+    minutes. So the link stops being a long-lived connection and becomes two
+    short requests: the session publishes a command, this program answers it.
+
+    The test runs the whole loop against a stub relay: a command is published,
+    the program picks it up, replays it against a real local studio-link server,
+    and publishes the answer where the session reads it.
+    """
+    import importlib
+    import threading
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    from urllib.parse import urlparse, parse_qs
+
+    sys.path.insert(0, os.path.join(REPO, "bridge"))
+    link_up = importlib.import_module("link_up")
+    studio_link = importlib.import_module("studio_link")
+    relay = importlib.import_module("relay")
+
+    topics = {}
+
+    class Stub(BaseHTTPRequestHandler):
+        protocol_version = "HTTP/1.1"
+
+        def log_message(self, *a):
+            pass
+
+        def _say(self, text):
+            body = text.encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def do_GET(self):                    # noqa: N802 - poll
+            parsed = urlparse(self.path)
+            topic = parsed.path.strip("/").split("/")[0]
+            since = int((parse_qs(parsed.query).get("since") or ["0"])[0])
+            lines = [json.dumps(m) for m in topics.get(topic, [])
+                     if m["time"] >= since]
+            self._say("\n".join(lines))
+
+        def do_POST(self):                   # noqa: N802 - publish
+            topic = urlparse(self.path).path.strip("/").split("/")[0]
+            size = int(self.headers.get("Content-Length") or 0)
+            body = self.rfile.read(size).decode("utf-8")
+            topics.setdefault(topic, []).append(
+                {"id": f"m{len(topics.get(topic, []))}", "time": int(time.time()),
+                 "event": "message", "message": body})
+            self._say("{}")
+
+    stub = ThreadingHTTPServer(("127.0.0.1", 0), Stub)
+    threading.Thread(target=stub.serve_forever, daemon=True).start()
+    base_url = f"http://127.0.0.1:{stub.server_address[1]}"
+
+    with tempfile.TemporaryDirectory() as d:
+        studio = pathlib.Path(d, "AstraForge")
+        (studio / "runtime" / "ComfyUI").mkdir(parents=True)
+        link_dir = pathlib.Path(d, ".link")
+        link_dir.mkdir()
+        real_up, real_link = link_up.LINK_DIR, studio_link.LINK_DIR
+        link_up.LINK_DIR = studio_link.LINK_DIR = link_dir
+        try:
+            config = pathlib.Path(d, "ntfy.txt")
+            config.write_text("# written into the bundle\n"
+                              "topic: astraforge-test-77\nkey: KEY-0123456789\n",
+                              encoding="utf-8")
+            conf = relay.read_config(config)
+            assert conf["topic"] == "astraforge-test-77"
+
+            httpd, port, token = relay.start_local({"studio": str(studio)}, 3297)
+            answers = []
+            thread = threading.Thread(target=lambda: answers.append(relay.serve(
+                conf["topic"], conf["key"], f"http://127.0.0.1:{port}", token,
+                say=lambda *a, **k: None, stop_after=1, relay=base_url)),
+                daemon=True)
+            thread.start()
+
+            # the session publishes one command, exactly as it will in the chat
+            ok, detail = relay.publish(f"{conf['topic']}-cmd",
+                                       "n=5 key=KEY-0123456789 op=ping",
+                                       base=base_url)
+            assert ok, detail
+            thread.join(30)
+            httpd.shutdown()
+
+            results = [relay.parse_result(str(m["message"]))
+                       for m in relay.fetch(f"{conf['topic']}-out", 0,
+                                            base=base_url)]
+        finally:
+            link_up.LINK_DIR, studio_link.LINK_DIR = real_up, real_link
+            stub.shutdown()
+
+        got = [r for r in results if r and r["n"] == 5]
+        assert got, results
+        assert got[0]["status"] == 200
+        body = json.loads(got[0]["body"])
+        assert body["ok"] is True and body["op"] == "ping"
+        assert answers == [1]
+
+    # the message shape itself: no '&' anywhere, because it travels in a query
+    assert relay.parse_command("n=1 key=x op=ping") == (1, "key=x&op=ping")
+    assert relay.parse_command("garbage") is None
+    assert relay.parse_command("n=9 nothing") is None
+    head, cut = relay.format_result(3, 200, "z" * 9000)
+    assert head == "n=3 s=200 len=9000" and "обрезано" in cut
+    assert len(cut) <= relay.LIMIT + 60
