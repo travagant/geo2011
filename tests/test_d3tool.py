@@ -6574,3 +6574,139 @@ if __name__ == "__main__":
     # `test_*` function, so tests defined below an earlier guard would never
     # run.
     sys.exit(main())
+
+
+def test_cuda_fix_uses_the_venv_the_studio_actually_runs():
+    """A "no kernel image" fix that installs into the wrong interpreter, or
+    through a pip that is not there, changes nothing and looks successful.
+
+    Facts this encodes, all from the studio's own sources:
+    * the studio runs Hunyuan3D in ``<app>/runtime/ComfyUI/.venv``
+      (server/storage.mjs: ``comfyDir``, server/runtime.mjs spawns it);
+    * that venv is made by ``uv venv`` and has **no pip**, so the fix has to go
+      through the studio's ``runtime\\uv\\uv.exe``;
+    * ``installer/Install.ps1`` gives every machine with a GPU the cu128 index,
+      which is why a 1080 Ti has no Pascal in torch at all.
+    """
+    import importlib
+
+    sys.path.insert(0, os.path.join(REPO, "bridge"))
+    cuda = importlib.import_module("cuda_check")
+
+    with tempfile.TemporaryDirectory() as d:
+        studio = os.path.join(d, "AstraForge")
+        venv = os.path.join(studio, "runtime", "ComfyUI", ".venv", "Scripts", "python.exe")
+        os.makedirs(os.path.dirname(venv), exist_ok=True)
+        open(venv, "wb").close()
+        uv = os.path.join(studio, "runtime", "uv", "uv.exe")
+        os.makedirs(os.path.dirname(uv), exist_ok=True)
+        open(uv, "wb").close()
+        # a second ComfyUI somewhere else, pointed at from data/config.json
+        other = os.path.join(d, "ComfyUI_elsewhere")
+        other_py = os.path.join(other, ".venv", "Scripts", "python.exe")
+        os.makedirs(os.path.dirname(other_py), exist_ok=True)
+        open(other_py, "wb").close()
+
+        assert cuda.studio_comfy_dir(studio) == os.path.join(studio, "runtime", "ComfyUI")
+        found = cuda.find_pythons(studio)
+        assert found and found[0] == venv, found          # the studio's own venv first
+        assert cuda.find_uv(studio) == uv
+
+        os.makedirs(os.path.join(studio, "data"), exist_ok=True)
+        with open(os.path.join(studio, "data", "config.json"), "w", encoding="utf-8") as f:
+            json.dump({"comfyDir": other}, f)
+        assert cuda.studio_comfy_dir(studio) == other     # comfyDir wins, as in storage.mjs
+        assert cuda.find_pythons(studio)[0] == other_py
+
+    # uv, not pip: the venv has no pip at all
+    command = cuda.install_command("PY", "UV", ["torch"])
+    assert command[:4] == ["UV", "pip", "install", "--python"]
+    assert "--index-url" in command and cuda.TORCH_INDEX_PASCAL in command
+    pip_only = cuda.install_command("PY", "", ["torch"])
+    assert pip_only[:3] == ["PY", "-m", "pip"]
+
+    # the fallback order matters: newest cu126 first, then the known-good set
+    labels = [label for label, _ in cuda.TORCH_ATTEMPTS]
+    assert "torch==2.8.0" in cuda.TORCH_ATTEMPTS[2][1]
+    assert len(labels) >= 2
+
+    # the studio's ports, and a fix that refuses to run while they answer
+    assert cuda.ENGINE_PORTS == (3210, 8190, 8191, 8192)
+    assert cuda.port_open(9, timeout=0.05) is False
+    real_port_open = cuda.port_open
+    try:
+        cuda.port_open = lambda port, **kw: port == 8190
+        assert cuda.stop_studio(wait=1) is False          # 8190 still listening
+        cuda.port_open = lambda port, **kw: False
+        assert cuda.stop_studio() is True                 # nothing runs, nothing to stop
+    finally:
+        cuda.port_open = real_port_open
+
+
+def test_cuda_fix_is_a_double_click_that_cannot_land_in_the_wrong_place():
+    """The launchers are ASCII + CRLF (cp866 console), never pass a guessed
+    --studio, and hand the fix its --yes so a double-click runs to the end."""
+    for name, args in (("CUDA-check.cmd", " check "),
+                       ("CUDA-fix-torch.cmd", " fix-torch --yes ")):
+        raw = open(os.path.join(REPO, "bridge", name), "rb").read()
+        raw.decode("ascii")                                  # raises if not ASCII
+        assert b"\r\n" in raw and b"\n" not in raw.replace(b"\r\n", b"")
+        text = raw.decode("ascii")
+        assert "--studio" not in text                        # the shape decides, not a path
+        assert args in text, name
+        assert "AstraForge" in text and "pause" in text
+        assert "cuda_check.py" in text
+
+
+def test_cuda_fix_tries_cu126_then_the_pinned_set_and_stops_when_a_kernel_runs():
+    """Installing the newest cu126 build is a guess until a kernel actually runs
+    on the card. The fix must try, verify, and only then report success — and it
+    must not leave a half-installed venv behind while still saying "ok"."""
+    import argparse
+    import importlib
+
+    sys.path.insert(0, os.path.join(REPO, "bridge"))
+    cuda = importlib.import_module("cuda_check")
+
+    broken = {"python": "3.12.11", "torch": "2.11.0+cu128", "cuda_build": "12.8",
+              "available": True, "device": "NVIDIA GeForce GTX 1080 Ti",
+              "capability": "6.1", "arch": ["sm_75", "sm_90", "sm_120"],
+              "smoke": "RuntimeError: CUDA error: no kernel image is available "
+                       "for execution on the device"}
+    working = dict(broken, torch="2.8.0+cu126", cuda_build="12.6",
+                   arch=["sm_50", "sm_60", "sm_70", "sm_75", "sm_80", "sm_90"],
+                   smoke="ok")
+
+    with tempfile.TemporaryDirectory() as d:
+        studio = os.path.join(d, "AstraForge")
+        venv = os.path.join(studio, "runtime", "ComfyUI", ".venv", "Scripts", "python.exe")
+        os.makedirs(os.path.dirname(venv), exist_ok=True)
+        open(venv, "wb").close()
+        uv = os.path.join(studio, "runtime", "uv", "uv.exe")
+        os.makedirs(os.path.dirname(uv), exist_ok=True)
+        open(uv, "wb").close()
+        report = os.path.join(d, "cuda-fix-report.txt")
+
+        calls = []
+
+        # "no kernel image" survives every attempt until the pinned set lands
+        def fake_probe(python, timeout=180):
+            return working if any("torch==2.8.0" in c for c in calls) else broken
+
+        real = cuda.probe, cuda.subprocess.call, cuda.stop_studio
+        try:
+            cuda.probe = fake_probe
+            cuda.subprocess.call = lambda cmd, **kw: (calls.append(cmd), 0)[1]
+            cuda.stop_studio = lambda wait=45: True
+            args = argparse.Namespace(studio=studio, python="", yes=True, all=False,
+                                      report=report, keep_engine=False, arch="6.1")
+            assert cuda.cmd_fix_torch(args) == 0
+        finally:
+            cuda.probe, cuda.subprocess.call, cuda.stop_studio = real
+
+        assert len(calls) >= 2, calls
+        assert calls[0][:5] == [uv, "pip", "install", "--python", venv]
+        assert "torch" in calls[0] and "torch==2.8.0" not in calls[0]
+        assert "torch==2.8.0" in calls[-1]          # fallen back to the known-good set
+        text = open(report, encoding="utf-8").read()
+        assert "fixed: " + venv in text and "failed: none" in text

@@ -137,22 +137,52 @@ without it. Two wheels can be at fault, and they fail at different moments:
 | **torch** | `cu128` wheels ship `sm_70…sm_120`; `cu126` is the last line that still carries Pascal. `torch.cuda.is_available()` keeps saying `True`, so the studio starts and looks healthy | the first tensor on the GPU — the *shape* never appears |
 | **Hunyuan3D's `custom_rasterizer_kernel`** | precompiled wheels are built for Ampere and newer | the model is made, the *texture* step dies inside `PyInit_custom_rasterizer_kernel` |
 
-`CUDA-check.cmd` walks every interpreter under the studio, imports torch in each,
-and runs a real kernel (`torch.zeros(8, device="cuda") + 1`) — the arch list alone
-proves nothing, and `sm_60` kernels legitimately run on a `sm_61` card, so the
-verdict is based on the kernel, not on the list. It also reports whether the
-rasterizer imports and whether `nvcc` exists. The report lands next to the script
-as `cuda-report.txt`.
+Where that torch comes from is the studio's own installer, not the user:
+`installer/Install.ps1` (`InstallComfyDeps`) asks one question — is there a GPU —
+and answers with the cu128 index for all of them:
 
-`CUDA-fix-torch.cmd` reinstalls `torch torchvision torchaudio` from
-`https://download.pytorch.org/whl/cu126` in the environment that failed
-(`--all` to touch the healthy ones too, `--yes` to skip the question). Nothing is
-done to an environment whose kernel already runs.
+```powershell
+$torchIndex = if ($hasGpu) { 'https://download.pytorch.org/whl/cu128' } else { '.../cpu' }
+uv pip install --python <venv> torch torchvision torchaudio --index-url $torchIndex
+```
+
+so a 1080 Ti gets a torch that cannot run on it. Two details decide where the fix
+has to go:
+
+* the studio runs Hunyuan3D in **its own** ComfyUI, `<app>/runtime/ComfyUI`, python
+  `runtime/ComfyUI/.venv/Scripts/python.exe` (`server/storage.mjs`: `comfyDir`,
+  which `data/config.json` can point elsewhere) — other interpreters are idle;
+* that venv is made by `uv venv`, so it has **no pip**; installing goes through
+  the studio's `runtime\uv\uv.exe pip install --python <exe>`;
+* Windows locks a loaded DLL, so `torch_cuda.dll` cannot be replaced while
+  ComfyUI runs: the fix calls the studio's `POST /api/shutdown` (which stops the
+  child ComfyUI too) and waits up to 45 s for ports 3210/8190/8191/8192 to close.
+
+`CUDA-check.cmd` walks every interpreter under the studio (the ComfyUI venv
+first), and runs a real kernel (`torch.zeros(8, device="cuda") + 1`, then a
+matmul) — the arch list alone proves nothing, and `sm_60` kernels legitimately run
+on a `sm_61` card, so the verdict is based on the kernel, not on the list. It also
+reports whether the rasterizer imports and whether `nvcc` exists. The report lands
+next to the script as `cuda-report.txt`.
+
+`CUDA-fix-torch.cmd` installs `torch torchvision torchaudio` from
+`https://download.pytorch.org/whl/cu126` through uv, and is built to be honest at
+every step: it probes first and leaves healthy environments alone (`--all` to
+touch them too, `--yes` to skip the question), tries the newest cu126 build and
+then the known-good `torch==2.8.0 / torchvision==0.23.0 / torchaudio==2.8.0` set,
+**re-runs the kernel after each attempt**, and only calls it fixed when a kernel
+actually executes. It writes `cuda-fix-report.txt` with `fixed:` / `failed:` per
+interpreter. Re-running the studio installer with a ComfyUI wipe would put cu128
+back; a normal start does not (the installer only installs torch when
+`import torch` fails).
 
 If torch is fixed and only texture generation still fails, the rasterizer itself
 was built for the wrong architecture: `cuda_check.py fix-rasterizer --python
 "<venv>\python.exe"` rebuilds it with `TORCH_CUDA_ARCH_LIST=6.1`, provided the
-`setup.py` sources are on disk and CUDA Toolkit 12.x + MSVC are installed.
+`setup.py` sources are on disk and CUDA Toolkit 12.x + MSVC are installed. The
+studio's own path does not use it — it takes geometry from `AstraForgeMesh`
+(Marching Cubes) and paints in Blender (`paint_from_concept`); the rasterizer
+belongs to a separately installed `ComfyUI-Hunyuan3DWrapper`.
 
 ## Blender requirement
 

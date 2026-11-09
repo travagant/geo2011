@@ -106,7 +106,7 @@ py bridge\astra_d3.py watch --interval 10
 | В чате адрес «не отвечает» | Окно с `.cmd` закрыто — туннель умер. Запусти снова, адрес будет другой. |
 | `blender not found` | Впиши `blender` в `bridge\config.json`. Если студийный Blender 5.0 падает на аддоне — поставь 4.2 LTS и укажи её. |
 | `the GLB has no mesh data` | В студии сначала «Generate 3D», потом Export. |
-| `no kernel image is available` | torch `cu128` на 1080 Ti: в нём нет кода для Pascal (`sm_61`). Двойной клик по `CUDA-check.cmd` — он скажет, какое окружение виновато; затем `CUDA-fix-torch.cmd` поставит torch `cu126`. Подробно — раздел «CUDA» ниже. |
+| `no kernel image is available` | торч на карте без Pascal: установщик студии (`installer/Install.ps1`) даёт любой видеокарте индекс `cu128`, а в нём нет `sm_61`. Двойной клик по `CUDA-check.cmd` — покажет виноватое окружение; затем `CUDA-fix-torch.cmd` поставит torch `cu126` и сам проверит ядром. Подробно — раздел «CUDA» ниже. |
 | `str_not_valid_hash_for_file` в игре | Мод собран не через `vdpack` (loose-файлы) или без `--like`. Мост такой пак не пропустит — гейт `vdpack scan` вернёт ошибку. |
 | `intersects other mods` | В `Mods` два мода с одинаковыми путями. |
 | мод есть, юнита нет | В `user.ini` нет `sModifications=mod:<имя>` (имя = имя файла `.vdpack`). |
@@ -118,35 +118,98 @@ py bridge\astra_d3.py watch --interval 10
   Корее не действует), Pixal3D требует RTX 30/40/50 — на 1080 Ti недоступен;
 - не меняет файлы в папке студии, кроме `data\runtime\d3bridge` (отчёты сборки).
 
-## 5. CUDA: «no kernel image is available for execution on the device»
+## 5. «CUDA error: no kernel image is available for execution on the device»
 
-Это значит: **программа, которую вызвали, не содержит машинного кода для твоей
-видеокарты**. 1080 Ti — это Pascal, `sm_61`. Карта исправна, виноват файл,
-собранный без Pascal. Виноватых может быть ровно два, и падают они в разные
-моменты:
+Это значит ровно одно: **вызванная CUDA-программа не содержит машинного кода
+для твоей карты**. 1080 Ti — это Pascal, `sm_61`. Карта исправна, виноват файл,
+собранный без Pascal. Драйвер, CUDA Toolkit и настройки студии тут ни при чём.
 
-| кто | почему | когда падает |
-| --- | --- | --- |
-| **torch** | сборки `cu128` содержат коды только для `sm_70` и новее; `cu126` — последняя линейка с Pascal. При этом `torch.cuda.is_available()` честно отвечает `True`, поэтому студия запускается и выглядит здоровой | на первом же тензоре — **модель даже не начинает строиться** |
-| **`custom_rasterizer_kernel` из Hunyuan3D** | готовые wheel'ы собраны под Ampere и новее | модель строится, падает **текстура** (в стеке видно `PyInit_custom_rasterizer_kernel`) |
+### Откуда берётся неправильный torch
 
-Какой случай у тебя, покажет один двойной клик:
+Причина не в тебе, а в установщике студии. `installer/Install.ps1`,
+функция `InstallComfyDeps`, выбирает индекс колёс по одному признаку — «есть ли
+видеокарта»:
 
-1. **`bridge\CUDA-check.cmd`** — проходит по всем python.exe студии, честно
-   запускает ядро на GPU (`torch.zeros(8).cuda()+1`, а не просто «CUDA
-   доступна») и пишет `bridge\cuda-report.txt`. В отчёте по каждому окружению:
-   версия torch, сборка CUDA, arch list, вердикт `[OK] / [БЕДА] / [!]`.
-2. Если `[БЕДА]` — двойной клик по **`bridge\CUDA-fix-torch.cmd`**. Он спросит
-   по каждому окружению и поставит torch/torchvision/torchaudio из
-   `https://download.pytorch.org/whl/cu126`. Скачается ~2.5–3 ГБ, ставится
-   ~7 ГБ, прерывать нельзя. Рабочие окружения (где ядро уже бегает) он не
-   трогает.
-3. Перезапусти студию и попробуй снова. Если модель строится, а падает только
-   текстура — это второй случай, нужен `CUDA-fix-rasterizer` (пересборка
-   `custom_rasterizer` под `6.1`); для него нужны CUDA Toolkit 12.x и MSVC
-   Build Tools. Скажи мне — соберём пошагово.
+```powershell
+$torchIndex = if ($hasGpu) { 'https://download.pytorch.org/whl/cu128' } else { '.../cpu' }
+uv pip install --python <venv> torch torchvision torchaudio --index-url $torchIndex
+```
 
-Пришли `cuda-report.txt` — по нему видно всё, и я скажу следующий шаг без гадания.
+`cu128` — линейка **без Pascal** (там только `sm_70` и новее). Поэтому на 1080 Ti
+ставится torch, который на этой карте не работает вообще. В репозитории студии
+это записано и в `ai/skills/astraforge/references/components.md`: «PyTorch
+**unpinned** … from `download.pytorch.org/whl/cu128`».
+
+Самое неприятное — это тихо: `torch.cuda.is_available()` отвечает `True`,
+ComfyUI стартует, модели грузятся, студия выглядит здоровой. Падает первый же
+вызов ядра. Отличить легко по дампу `/api/status`: `gpu.vram_total` есть, а
+`torch_vram_total: 0` — значит torch ещё ни разу не выделял память.
+
+### Где именно этот torch лежит
+
+Студия запускает Hunyuan3D в **своём** ComfyUI: `<студия>\runtime\ComfyUI`,
+python — `runtime\ComfyUI\.venv\Scripts\python.exe` (`server/storage.mjs`,
+ключ `comfyDir` в `data\config.json` может указывать в другое место). Чинить
+надо именно это окружение — остальные python.exe к генерации отношения не имеют.
+
+Вторая засада: это окружение создано командой `uv venv`, а **в нём нет pip**
+(`python -m pip` отвечает «No module named pip»). Ставить пакеты нужно через
+`<студия>\runtime\uv\uv.exe pip install --python <venv>\python.exe`.
+
+### Как починить: два двойных клика
+
+1. **`bridge\CUDA-check.cmd`** — находит студию по содержимому (папка считается
+   студией, только если внутри есть `data` или `runtime`), проходит по её
+   python.exe, честно запускает ядро на GPU (`torch.zeros(8).cuda()+1` и
+   матричное умножение, а не «CUDA доступна») и пишет `bridge\cuda-report.txt`.
+   В отчёте: версия torch, сборка CUDA, arch list, вердикт `[OK] / [БЕДА] / [!]`.
+2. Если `[БЕДА]` — **`bridge\CUDA-fix-torch.cmd`**. Что он делает сам, без
+   вопросов и без ввода команд:
+   - проверяет, кто именно сломан (рабочие окружения не трогает);
+   - закрывает студию через её же `POST /api/shutdown` — иначе Windows не даст
+     заменить `torch_cuda.dll`, пока ComfyUI держит файл; ждёт до 45 секунд,
+     пока освободятся порты 3210/8190/8191/8192;
+   - ставит torch/torchvision/torchaudio с индекса
+     `https://download.pytorch.org/whl/cu126` (последняя линейка с Pascal)
+     через `uv`; если новейшая сборка cu126 всё ещё без Pascal — пробует
+     проверенный набор `torch==2.8.0 / torchvision==0.23.0 / torchaudio==2.8.0`;
+   - после каждой попытки **сам запускает ядро на GPU** и продолжает, только
+     если оно прошло; иначе пробует следующий вариант;
+   - пишет `bridge\cuda-fix-report.txt` (`fixed:` / `failed:` по каждому пути).
+3. Запусти студию заново (`Start.cmd`) — уже запущенный ComfyUI держал старый
+   torch в памяти. Генерация должна пойти.
+
+Скачается ~2.5–3 ГБ, поставится ~7 ГБ: окно нельзя закрывать до строки
+`---- done ----`.
+
+### Чего делать не надо
+
+- **Не запускай заново `Install AstraForge.cmd` с очисткой ComfyUI** — он
+  поставит `cu128` обратно. Обычный запуск студии фикс не отменяет: установщик
+  ставит torch только если `import torch` падает, а после фикса он не падает.
+- **Не ищи виноватого в драйвере** и не переустанавливай CUDA Toolkit: ядро не
+  находится потому, что его нет в файле, а не потому, что «CUDA сломана».
+- **`TORCH_CUDA_ARCH_LIST` при запуске не помогает** — он влияет только на
+  компиляцию, а torch уже собран.
+
+### Второй, редкий случай: падает только текстура
+
+Если после фикса модель **строится**, а падает покраска, и в стеке видно
+`PyInit_custom_rasterizer_kernel` — это готовый wheel `custom_rasterizer`,
+собранный под Ampere и новее, и его надо пересобрать под `6.1` (нужны CUDA
+Toolkit 12.x и MSVC Build Tools):
+
+```
+python bridge\cuda_check.py fix-rasterizer --python "<venv>\python.exe" --arch 6.1
+```
+
+**К студии это не относится.** Её путь — геометрия: `AstraForgeMesh` (Marching
+Cubes) в её ComfyUI, а покраска идёт отдельным шагом (`paint_from_concept`) в
+Blender. Растеризатор нужен только внешнему `ComfyUI-Hunyuan3DWrapper` в
+отдельно установленном ComfyUI.
+
+Пришли `cuda-fix-report.txt` — по нему видно, что поставилось и что ответило
+ядро, и следующий шаг будет без гадания.
 
 ## 6. Студия не видит новый чекпоинт (например `lustifySDXLNSFWSFW_v20.safetensors`)
 

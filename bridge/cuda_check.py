@@ -22,10 +22,33 @@ can be at fault, and they fail at different moments:
   Fixing it means compiling that extension locally with
   ``TORCH_CUDA_ARCH_LIST=6.1``, which needs the CUDA toolkit and MSVC.
 
+Where this torch comes from is not a mystery either — it is the studio's own
+installer.  ``installer/Install.ps1`` (``InstallComfyDeps``) picks the wheel
+index by one question, "is there a GPU":
+
+    $torchIndex = if ($hasGpu) { 'https://download.pytorch.org/whl/cu128' } else { '.../cpu' }
+    uv pip install --python <venv> torch torchvision torchaudio --index-url $torchIndex
+
+so every machine with any video card — a 1080 Ti included — gets ``cu128``, the
+one line without Pascal.  The studio's ComfyUI lives in
+``<app>/runtime/ComfyUI/.venv`` (``server/storage.mjs``: ``comfyDir``), and the
+``import torch`` check before that line means a reinstall will *not* happen on
+its own: once the venv holds a working cu126 torch, the installer leaves it be.
+
+Two traps when fixing it from outside:
+
+* the venv is made by ``uv venv``, which **ships no pip** — ``python -m pip``
+  fails there with "No module named pip", so the studio's own
+  ``runtime\\uv\\uv.exe`` must be used (``uv pip install --python <exe>``);
+* "newest torch from cu126" is not guaranteed to be the same version the studio
+  had, so every attempt is verified by running a real kernel before it counts.
+
 So: ``check`` reports, per interpreter, what torch is installed, whether it
 really runs a kernel on this GPU, and whether the rasterizer is importable;
-``fix-torch`` reinstalls torch/torchvision/torchaudio from the cu126 index;
-``fix-rasterizer`` rebuilds the rasterizer for sm_61 if its sources are on disk.
+``fix-torch`` reinstalls torch/torchvision/torchaudio from the cu126 index
+(through uv), tries the known-good 2.8.0 set if the newest one still has no
+Pascal, and verifies each attempt; ``fix-rasterizer`` rebuilds the rasterizer
+for sm_61 if its sources are on disk.
 """
 
 from __future__ import annotations
@@ -35,9 +58,11 @@ import glob
 import json
 import os
 import shutil
+import socket
 import subprocess
 import sys
 import time
+import urllib.request
 from pathlib import Path
 
 STUDIO_DEFAULT = r"D:\AstraForge"
@@ -46,6 +71,21 @@ STUDIO_CANDIDATES = (r"C:\AstraForge", r"D:\AstraForge", r"E:\AstraForge",
 TORCH_INDEX_PASCAL = "https://download.pytorch.org/whl/cu126"
 RASTERIZER_MODULES = ("custom_rasterizer", "custom_rasterizer_kernel",
                       "differentiable_renderer", "mesh_processor")
+# the studio's own ComfyUI (server/storage.mjs: comfyDir, else <app>/runtime/ComfyUI)
+COMFY_REL = ("runtime", "ComfyUI")
+# ports the studio and its engines listen on (server/index.mjs, runtime.mjs)
+ENGINE_PORTS = (3210, 8190, 8191, 8192)
+# packages to try, in order; each entry is (what the user sees, requirement list).
+# cu126 is the last wheel line that still carries Pascal (sm_50/sm_60), and a
+# 1080 Ti (6.1) runs sm_60 kernels — same major, lower minor.
+TORCH_ATTEMPTS = (
+    ("новейшая сборка из cu126", ("torch", "torchvision", "torchaudio")),
+    ("новейшая сборка из cu126, без torchaudio", ("torch", "torchvision")),
+    ("проверенный набор torch 2.8.0 + cu126",
+     ("torch==2.8.0", "torchvision==0.23.0", "torchaudio==2.8.0")),
+    ("проверенный набор torch 2.8.0 без torchaudio",
+     ("torch==2.8.0", "torchvision==0.23.0")),
+)
 
 PROBE = r'''
 import json, sys
@@ -63,6 +103,9 @@ try:
         try:
             probe = torch.zeros(8, device="cuda")
             (probe + 1).sum().item()
+            # a second, different kernel: "no kernel image" can hide behind PTX
+            eye = torch.eye(16, device="cuda")
+            (eye @ eye).sum().item()
             out["smoke"] = "ok"
         except Exception as exc:
             out["smoke"] = "%s: %s" % (type(exc).__name__, exc)
@@ -91,10 +134,40 @@ def guess_studio() -> str:
     return STUDIO_DEFAULT
 
 
+def studio_comfy_dir(studio: str) -> str:
+    """The ComfyUI the studio itself starts.
+
+    ``server/storage.mjs``: ``ASTRA_COMFY_DIR`` or ``<app>/runtime/ComfyUI``; the
+    installer saves the answer as ``comfyDir`` in ``data/config.json``, which wins
+    when the user pointed the studio at a ComfyUI somewhere else.  This is the
+    only interpreter that matters — the studio runs Hunyuan3D in it (port 8190).
+    """
+    config = Path(studio) / "data" / "config.json"
+    if config.is_file():
+        try:
+            value = json.loads(config.read_text(encoding="utf-8", errors="replace"))
+        except (ValueError, OSError):
+            value = None
+        pointed = value.get("comfyDir") if isinstance(value, dict) else None
+        if pointed:
+            return str(pointed)
+    return str(Path(studio).joinpath(*COMFY_REL))
+
+
 def find_pythons(studio: str, extra=()) -> list:
-    """Every interpreter the studio might be running: venvs and embeds."""
+    """Every interpreter the studio might be running: venvs and embeds.
+
+    The studio's ComfyUI venv comes first — it is the one that runs Hunyuan3D.
+    """
     root = Path(studio)
     found = []
+
+    def add(path):
+        text = str(path)
+        if text not in found and Path(text).is_file():
+            found.append(text)
+
+    add(Path(studio_comfy_dir(studio)) / ".venv" / "Scripts" / "python.exe")
     # glob's ** does not descend into dotted folders, and the studio's venvs are
     # exactly that (.venv), so those are spelled out
     patterns = ("runtime/**/Scripts/python.exe", "runtime/**/python.exe",
@@ -104,13 +177,86 @@ def find_pythons(studio: str, extra=()) -> list:
                 "runtime/**/venv/Scripts/python.exe")
     for pattern in patterns:
         for hit in glob.glob(str(root / pattern), recursive=True):
-            if hit not in found:
-                found.append(hit)
+            add(hit)
     for candidate in extra:
-        if candidate and candidate not in found:
-            found.append(candidate)
-    # keep the ones that answer, in a stable order
-    return sorted(found)
+        if candidate:
+            add(candidate)
+    return found
+
+
+def find_uv(studio: str) -> str:
+    """The ``uv`` the studio installed — its venvs have no pip at all.
+
+    ``uv venv`` does not put pip inside, so ``python -m pip`` answers "No module
+    named pip" in ``runtime\\ComfyUI\\.venv``.  ``uv pip install --python <exe>``
+    works without it.
+    """
+    for candidate in (Path(studio) / "runtime" / "uv" / "uv.exe",
+                      Path(studio) / "runtime" / "uv" / "uv"):
+        if candidate.is_file():
+            return str(candidate)
+    return shutil.which("uv") or ""
+
+
+def has_pip(python: str) -> bool:
+    try:
+        done = subprocess.run([python, "-c", "import pip"], capture_output=True,
+                              timeout=60)
+        return done.returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
+def port_open(port: int, host="127.0.0.1", timeout=0.4) -> bool:
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+
+def stop_studio(wait=45) -> bool:
+    """Stop the studio and its ComfyUI, or torch cannot be replaced.
+
+    Windows keeps a loaded DLL locked, so ``pip install torch`` into a venv whose
+    python is running fails with "Access is denied" on ``torch_cuda.dll``.  The
+    studio stops its own ComfyUI on ``POST /api/shutdown`` (server/index.mjs:
+    ``shutdown = () => { stopOwnedRuntime(); … }``), so that is what we call.
+    """
+    if not any(port_open(port) for port in ENGINE_PORTS):
+        print("    студия и её движок не запущены — менять файлы можно")
+        return True
+    print("    окно студии придётся закрыть: Windows не даст заменить torch.dll, "
+          "пока ComfyUI держит его в памяти")
+    if port_open(3210):
+        try:
+            request = urllib.request.Request("http://127.0.0.1:3210/api/shutdown",
+                                             data=b"{}", method="POST",
+                                             headers={"Content-Type": "application/json"})
+            urllib.request.urlopen(request, timeout=3).read()
+            print("    студии отправлен /api/shutdown")
+        except OSError as exc:
+            print(f"    /api/shutdown не ответил ({type(exc).__name__}) — закрой окно сам")
+    deadline = time.time() + wait
+    while time.time() < deadline:
+        if not any(port_open(port) for port in ENGINE_PORTS):
+            print("    студия и движок остановлены")
+            return True
+        time.sleep(1.5)
+    left = [port for port in ENGINE_PORTS if port_open(port)]
+    print("    [!] всё ещё слушают порты: " + ", ".join(str(port) for port in left))
+    print("    закрой окно студии (и отдельный ComfyUI, если он запущен не ею)")
+    print("    и запусти этот файл снова — иначе установка упадёт на занятом файле")
+    return False
+
+
+def install_command(python: str, uv: str, requirements, index: str = TORCH_INDEX_PASCAL) -> list:
+    """``uv pip install --python <exe>`` when uv is around, otherwise pip."""
+    if uv:
+        return [uv, "pip", "install", "--python", python, "--index-url", index,
+                "--upgrade", *requirements]
+    return [python, "-m", "pip", "install", "--upgrade", "--force-reinstall",
+            "--no-cache-dir", "--index-url", index, *requirements]
 
 
 def probe(python: str, timeout=180) -> dict:
@@ -169,7 +315,8 @@ def verdict(info: dict) -> tuple:
     if smoke and smoke != "ok":
         if "no kernel image" in smoke:
             return "bad", (f"в torch нет кода для {pascal}: arch = "
-                           f"{', '.join(arch) or '—'} — нужен cu126")
+                           f"{', '.join(arch) or '—'} — сборка cu128 без Pascal, "
+                           "нужен cu126")
         return "bad", "первый же вызов CUDA падает: " + smoke.splitlines()[0][:160]
     if pascal and not compatible_arch(arch, capability):
         return "warn", (f"в arch list нет ничего для {pascal} "
@@ -214,12 +361,23 @@ def find_rasterizer_sources(studio: str) -> list:
 #  commands
 # --------------------------------------------------------------------------- #
 def cmd_check(args) -> int:
-    targets = [args.python] if args.python else find_pythons(args.studio, extra=())
+    studio = args.studio
+    comfy = studio_comfy_dir(studio)
+    print(f"студия: {studio}")
+    print(f"её ComfyUI (там и живёт Hunyuan3D): {comfy}")
+    if not Path(comfy).is_dir():
+        print("  [!] этой папки нет — студия берёт ComfyUI из другого места "
+              "(ASTRA_COMFY_DIR или поле comfyDir в data\\config.json)")
+    uv = find_uv(studio)
+    print("uv: " + (uv or "не найден (переустановка пойдёт через pip)"))
+    print()
+
+    targets = [args.python] if args.python else find_pythons(studio, extra=())
     if not targets:
-        print(f"не нашёл ни одного python.exe под {args.studio}")
+        print(f"не нашёл ни одного python.exe под {studio}")
         print("укажи вручную: --python \"<путь>\\python.exe\"")
         return 2
-    print(f"смотрю {len(targets)} интерпретатор(ов) под {args.studio}\n")
+    print(f"смотрю {len(targets)} интерпретатор(ов)\n")
     lines, worst = [], "ok"
     for python in targets:
         info = probe(python)
@@ -233,7 +391,7 @@ def cmd_check(args) -> int:
         elif level == "warn" and worst == "ok":
             worst = "warn"
 
-    sources = find_rasterizer_sources(args.studio)
+    sources = find_rasterizer_sources(studio)
     if sources:
         print("исходники custom_rasterizer: " + ", ".join(sources))
         lines.append("rasterizer sources: " + ", ".join(sources))
@@ -244,6 +402,13 @@ def cmd_check(args) -> int:
     print("nvcc: " + (nvcc or "не найден (для пересборки rasterizer нужен CUDA Toolkit 12.x + MSVC)"))
     lines.append(f"nvcc: {nvcc or 'missing'}")
 
+    lines.insert(0, f"studio: {studio}\ncomfy: {comfy}\nuv: {uv or 'missing'}\n")
+    if worst == "bad":
+        print("\n[БЕДА] — двойной клик по CUDA-fix-torch.cmd: он поставит torch "
+              "cu126 (последняя сборка с Pascal) и проверит результат.")
+        print("Откуда взялся cu128: установщик студии "
+              "(installer/Install.ps1) выбирает индекс по одному признаку — "
+              "«есть ли видеокарта», и любой карте даёт cu128.")
     report = Path(args.report) if args.report else Path.cwd() / "cuda-report.txt"
     report.write_text("\n".join(lines), encoding="utf-8")
     print(f"\nотчёт: {report}")
@@ -251,43 +416,106 @@ def cmd_check(args) -> int:
 
 
 def cmd_fix_torch(args) -> int:
-    targets = [args.python] if args.python else find_pythons(args.studio)
+    studio = args.studio
+    targets = [args.python] if args.python else find_pythons(studio)
     if not targets:
-        print("не нашёл python.exe под студией — укажи --python")
+        print(f"не нашёл python.exe под студией ({studio}) — укажи --python")
         return 2
+    uv = find_uv(studio)
+    log = [f"studio: {studio}", f"uv: {uv or 'missing'}",
+           f"python: {', '.join(targets)}", ""]
     print("Переустановка torch на сборку cu126 — последнюю, где есть Pascal (sm_61).")
-    print("Скачается ~2.5–3 ГБ, поставится ~7 ГБ. Прерывать нельзя.\n")
+    print("Скачается ~2.5–3 ГБ, ставится ~7 ГБ. Прерывать нельзя: окно должно дойти до конца.")
+    print("После каждого шага фикс сам запускает ядро на GPU и проверяет результат.\n")
+
+    # 1. decide what needs fixing before touching anything (or stopping anything)
+    broken = []
     for python in targets:
         before = probe(python)
         level, text = verdict(before)
-        print(f"\n--- {python}\n    сейчас: {text}")
-        if level == "info":
+        print(f"--- {python}\n    {text}")
+        log.extend([f"--- {python}", f"situation: {text}"])
+        if level in ("bad", "warn"):
+            broken.append(python)
+        elif level == "ok":
+            print("    уже работает, не трогаю (--all — переустановить всё равно)")
+            if args.all:
+                broken.append(python)
+        else:
             print("    torch не установлен — пропускаю (это не окружение генерации)")
-            continue
-        if level == "ok" and "--all" not in sys.argv:
-            print("    уже работает, ничего не меняю (--all — переустановить всё равно)")
-            continue
+    if not broken:
+        print("\nНечего исправлять: во всех окружениях ядро запускается.")
+        report = Path(args.report) if args.report else Path.cwd() / "cuda-report.txt"
+        report.write_text("\n".join(log + ["", "fixed: none", "failed: none"]), encoding="utf-8")
+        print(f"отчёт: {report}")
+        return 0
+
+    # 2. free the DLLs Windows will not let us overwrite
+    print("\nФайлы torch нельзя заменить, пока их держит запущенный движок.")
+    if not args.keep_engine and not stop_studio():
+        report = Path(args.report) if args.report else Path.cwd() / "cuda-report.txt"
+        report.write_text("\n".join(log + ["", "aborted: engine still running"]),
+                          encoding="utf-8")
+        print(f"\nотчёт: {report}")
+        return 2
+    print()
+
+    fixed, failed = [], []
+    for python in broken:
+        level, text = verdict(probe(python))
+        print(f"\n--- {python}\n    сейчас: {text}")
+        log.extend([f"--- {python}", f"situation: {text}"])
         if not args.yes:
             answer = input("    переустановить torch в этом окружении? [y/N] ").strip().lower()
             if answer not in ("y", "yes", "д", "да"):
                 print("    пропущено")
                 continue
-        command = [python, "-m", "pip", "install", "--upgrade", "--force-reinstall",
-                   "--no-cache-dir", "torch", "torchvision", "torchaudio",
-                   "--index-url", TORCH_INDEX_PASCAL]
-        print("    $ " + " ".join(command))
-        code = subprocess.call(command)
-        if code != 0:
-            print(f"    pip вышел с кодом {code} — окружение могло остаться без torch.")
-            print("    повтори запуск; если снова ошибка, пришли cuda-report.txt")
-            return code
-        after = probe(python)
-        level, text = verdict(after)
-        print("    после: " + text)
-        if level != "ok":
-            print("    не помогло — пришли этот вывод, будем смотреть rasterizer")
-            return 1
-    print("\nГотово. Перезапусти студию и попробуй генерацию снова.")
+        tool = uv
+        if not tool and not has_pip(python):
+            print("    в этом окружении нет pip (его создал uv) и uv не найден —")
+            print("    включу pip через ensurepip")
+            subprocess.call([python, "-m", "ensurepip", "--upgrade"])
+        done = False
+        for label, requirements in TORCH_ATTEMPTS:
+            command = install_command(python, tool, requirements)
+            print(f"\n    попытка: {label}")
+            print("    $ " + " ".join(command))
+            log.append("command: " + " ".join(command))
+            code = subprocess.call(command)
+            if code != 0:
+                print(f"    команда вышла с кодом {code} — пробую следующий вариант")
+                log.append(f"exit: {code}")
+                continue
+            after = probe(python)
+            level, text = verdict(after)
+            print("    после: " + text)
+            log.append(f"after ({label}): {text}")
+            if level == "ok":
+                done = True
+                break
+            if "no kernel image" not in (after.get("smoke") or ""):
+                print("    ядро уже не жалуется на отсутствие кода — другой сбой, "
+                      "разбираем отдельно")
+                break
+        if done:
+            fixed.append(python)
+        else:
+            failed.append(python)
+            print("    [!] не вышло. Пришли cuda-report.txt — по нему видно, что "
+                  "поставилось и что осталось")
+    report = Path(args.report) if args.report else Path.cwd() / "cuda-report.txt"
+    log.append("")
+    log.append("fixed: " + (", ".join(fixed) or "none"))
+    log.append("failed: " + (", ".join(failed) or "none"))
+    report.write_text("\n".join(log), encoding="utf-8")
+    print(f"\nотчёт: {report}")
+    if failed:
+        return 1
+    if fixed:
+        print("\nГотово. Теперь закрой студию (или «Связи → остановить движок») "
+              "и запусти заново — уже запущенный ComfyUI держит старый torch в памяти.")
+        print("Не запускай заново «Install AstraForge.cmd» с очисткой ComfyUI: он "
+              "поставит cu128 обратно. Обычный запуск студии фикс не отменяет.")
     return 0
 
 
@@ -295,8 +523,11 @@ def cmd_fix_rasterizer(args) -> int:
     sources = find_rasterizer_sources(args.studio)
     if not sources:
         print("Исходников custom_rasterizer нет — его поставили готовым wheel'ом.")
-        print("Нужно скачать исходники Hunyuan3D-2 (hy3dgen/texgen/custom_rasterizer)")
-        print("или взять их из установленного пакета, и только потом собирать.")
+        print("Важно: у студии его и не должно быть. Она ставит Hunyuan3D из своего")
+        print("ComfyUI и берёт только геометрию (AstraForgeMesh, Marching Cubes);")
+        print("растеризатор нужен внешнему ComfyUI-Hunyuan3DWrapper для текстуры.")
+        print("Если падает именно текстура во внешнем ComfyUI — нужны исходники")
+        print("hy3dgen/texgen/custom_rasterizer из Hunyuan3D-2 и CUDA Toolkit 12.x + MSVC.")
         return 2
     nvcc = shutil.which("nvcc")
     if not nvcc:
@@ -329,12 +560,18 @@ def main(argv=None) -> int:
                             ("fix-torch", "поставить torch cu126 (с Pascal)"),
                             ("fix-rasterizer", "пересобрать rasterizer под sm_61")):
         part = sub.add_parser(name, help=help_text)
-        part.add_argument("--studio", default=STUDIO_DEFAULT)
+        # empty means "look for it": the studio is on C: on this machine, on D:
+        # on the next one, and a folder can carry the right name without the
+        # studio inside it (guess_studio checks for data/ or runtime/)
+        part.add_argument("--studio", default="")
         part.add_argument("--python", default="", help="конкретный интерпретатор")
         part.add_argument("--yes", action="store_true", help="без вопросов")
         part.add_argument("--all", action="store_true", help="трогать и рабочие окружения")
         part.add_argument("--arch", default="6.1", help="TORCH_CUDA_ARCH_LIST")
         part.add_argument("--report", default="", help="куда писать cuda-report.txt")
+        part.add_argument("--keep-engine", action="store_true",
+                          dest="keep_engine",
+                          help="не останавливать студию (файлы torch могут быть заняты)")
     args = parser.parse_args(argv)
     if not args.studio:
         args.studio = guess_studio()
