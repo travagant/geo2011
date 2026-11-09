@@ -43,8 +43,9 @@ $pyPre = @()
 foreach ($cand in $candidates) {
     if ([string]::IsNullOrWhiteSpace($cand.exe)) { continue }
     if ($cand.exe -match '\\' -and -not (Test-Path $cand.exe)) { continue }
+    $pre = @($cand.pre)
     try {
-        $null = & $cand.exe @($cand.pre) -c "import sys" 2>&1
+        $null = & $cand.exe @pre -c "import sys" 2>&1
         if ($LASTEXITCODE -eq 0) { $pyExe = $cand.exe; $pyPre = $cand.pre; break }
     } catch { }
 }
@@ -66,11 +67,11 @@ if (-not (Test-Path $cfgPath)) {
 # ---------------------------------------------------------------- server
 $serverOut = Join-Path $link 'server.log'
 $serverErr = Join-Path $link 'server.err.log'
-Get-Process python, pythonw -ErrorAction SilentlyContinue | Out-Null
 
 $serverArgs = @()
 foreach ($a in $pyPre) { $serverArgs += $a }
-$serverArgs += @((Join-Path $here 'studio_link.py'), 'serve', '--port', "$port")
+$scriptPath = Join-Path $here 'studio_link.py'
+$serverArgs += @("`"$scriptPath`"", 'serve', '--port', "$port")   # quoted: paths may contain spaces
 
 $server = Start-Process -FilePath $pyExe -ArgumentList $serverArgs -WorkingDirectory $repo `
                         -RedirectStandardOutput $serverOut -RedirectStandardError $serverErr `
