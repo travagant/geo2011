@@ -29,6 +29,7 @@ d3studio/            1ivq-sM76QfVbU10zCR2P2BFKEoR-8R73
 | `NATIVE.md` (`1PBUlV7VSjjxwl08tizXZ5tolw7mBNKAa`) | `02-документы` | нативная часть на Rust: что есть, как собрать, что дальше |
 | `d3studio-src-0.3.2.zip` (`1RCKqaRU0VI9mkPQK4PmdtxYNyPIWjtJS`) | `01-исходники` | коммит `daa7931`: проверка модели перед импортом + `native/d3mesh` (Rust) |
 | `d3studio-src-0.3.3.zip` (`1GnaWViXjnocYBvkRbe0muvAyX_2t1fCp`) | `01-исходники` | коммит `cc87f51`: Unity в интерфейсе, резолвер модели из Кузницы |
+| `d3studio-src-0.3.4.zip` (`1BZdMfQhfNPG0tZGl1wNg6Hrn8pZMasyj`) | `01-исходники` | коммит `ffe0c15`: один сборщик пакетов для Unity и Godot |
 
 В **авторскую** папку `AstraForge` (не нашу) положено то, что принадлежит автору:
 
