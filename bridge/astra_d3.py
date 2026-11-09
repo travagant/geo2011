@@ -45,6 +45,12 @@ from pathlib import Path
 
 BRIDGE_DIR = Path(__file__).resolve().parent
 DEFAULT_STUDIO = r"D:\AstraForge"
+# the studio may be installed anywhere; these are the shapes it has been seen
+# in, and the markers are what tells a real installation from a folder that
+# merely carries the name (like a bridge unzipped into D:\AstraForge\bridge)
+STUDIO_CANDIDATES = (r"C:\AstraForge", r"D:\AstraForge", r"E:\AstraForge",
+                     r"C:\Program Files\AstraForge", r"D:\Program Files\AstraForge")
+STUDIO_MARKERS = ("data", "runtime")
 USER_MOD_FOLDER = r"Documents\Disciples III Reincarnation\Mods"
 
 DEFAULTS = {
@@ -94,6 +100,13 @@ class Config(dict):
     def resolve(self) -> None:
         """Derive what the user did not write down."""
         studio = Path(os.path.expandvars(str(self["studio"])))
+        if not looks_like_studio(studio):
+            # an explicitly configured folder wins only if it really is a studio:
+            # unzipping the bridge into D:\AstraForge creates a decoy with that
+            # name, and every path derived from it would point at the wrong disk
+            found = guess_studio()
+            if found:
+                studio = Path(found)
         self["studio"] = str(studio)
         self["assets"] = str(Path(os.path.expandvars(self["assets"])) if self["assets"]
                             else studio / "data" / "library" / "assets")
@@ -114,6 +127,25 @@ class Config(dict):
             json.dump(data, fh, indent=2, ensure_ascii=False)
             fh.write("\n")
         return target
+
+
+def looks_like_studio(path) -> bool:
+    """A studio folder holds ``data`` or ``runtime``; a same-named decoy does not."""
+    path = Path(path)
+    return path.is_dir() and any((path / marker).is_dir() for marker in STUDIO_MARKERS)
+
+
+def guess_studio(candidates=None) -> str:
+    """The folder that is actually the studio, or '' if none looks like one.
+
+    A directory counts only when it holds ``data`` or ``runtime``: unzipping the
+    bridge next to the studio creates a same-named folder that holds none of
+    them, and silently using it would point every path at the wrong disk.
+    """
+    for candidate in (candidates or STUDIO_CANDIDATES):
+        if looks_like_studio(candidate):
+            return str(candidate)
+    return ""
 
 
 def find_blender(studio: Path) -> str:

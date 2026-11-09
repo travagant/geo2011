@@ -41,6 +41,8 @@ import time
 from pathlib import Path
 
 STUDIO_DEFAULT = r"D:\AstraForge"
+STUDIO_CANDIDATES = (r"C:\AstraForge", r"D:\AstraForge", r"E:\AstraForge",
+                     r"C:\Program Files\AstraForge", r"D:\Program Files\AstraForge")
 TORCH_INDEX_PASCAL = "https://download.pytorch.org/whl/cu126"
 RASTERIZER_MODULES = ("custom_rasterizer", "custom_rasterizer_kernel",
                       "differentiable_renderer", "mesh_processor")
@@ -80,6 +82,15 @@ PROBE = PROBE.replace("__MODULES__", repr(list(RASTERIZER_MODULES)))
 # --------------------------------------------------------------------------- #
 #  discovery and reading
 # --------------------------------------------------------------------------- #
+def guess_studio() -> str:
+    """The installed studio: it has ``data`` or ``runtime`` next to itself."""
+    for candidate in STUDIO_CANDIDATES:
+        path = Path(candidate)
+        if path.is_dir() and any((path / name).is_dir() for name in ("data", "runtime")):
+            return str(path)
+    return STUDIO_DEFAULT
+
+
 def find_pythons(studio: str, extra=()) -> list:
     """Every interpreter the studio might be running: venvs and embeds."""
     root = Path(studio)
@@ -325,6 +336,8 @@ def main(argv=None) -> int:
         part.add_argument("--arch", default="6.1", help="TORCH_CUDA_ARCH_LIST")
         part.add_argument("--report", default="", help="куда писать cuda-report.txt")
     args = parser.parse_args(argv)
+    if not args.studio:
+        args.studio = guess_studio()
     return {"check": cmd_check, "fix-torch": cmd_fix_torch,
             "fix-rasterizer": cmd_fix_rasterizer}[args.cmd](args)
 

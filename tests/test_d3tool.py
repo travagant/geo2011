@@ -6,6 +6,7 @@ import hashlib
 import json
 import glob
 import os
+import pathlib
 import shutil
 import tempfile
 import struct
@@ -6523,6 +6524,49 @@ def test_cuda_check_names_the_wheel_that_lacks_pascal():
         assert cuda.find_rasterizer_sources(os.path.join(d, "nope")) == []
         # a probe of a missing interpreter is reported, not raised
         assert cuda.probe(os.path.join(d, "nope.exe")).get("error")
+
+
+def test_bridge_finds_the_studio_wherever_it_lives():
+    """The studio on this user's machine is C:\\AstraForge, while the bridge was
+    unzipped into D:\\AstraForge\\bridge — a folder with the right name and none
+    of the studio inside. Every derived path (assets, Blender, the ComfyUI
+    interpreter) hangs off that one answer, so it cannot be the name."""
+    import importlib
+
+    sys.path.insert(0, os.path.join(REPO, "bridge"))
+    astra_d3 = importlib.import_module("astra_d3")
+
+    with tempfile.TemporaryDirectory() as d:
+        decoy = pathlib.Path(d, "D", "AstraForge", "bridge")
+        decoy.mkdir(parents=True)
+        real = pathlib.Path(d, "C", "AstraForge", "data", "models")
+        real.mkdir(parents=True)
+
+        assert astra_d3.guess_studio((str(decoy.parent), str(real.parents[1]))) == \
+            str(pathlib.Path(d, "C", "AstraForge"))
+        assert astra_d3.guess_studio((str(decoy.parent),)) == ""
+        assert astra_d3.looks_like_studio(real.parents[1]) is True
+        assert astra_d3.looks_like_studio(decoy.parent) is False
+
+        # configured at the decoy, but the guess wins because the decoy is not a studio
+        cfg = astra_d3.Config({"studio": str(decoy.parent)})
+        astra_d3.STUDIO_CANDIDATES = (str(real.parents[1]),)
+        try:
+            cfg.resolve()
+            assert cfg["studio"] == str(pathlib.Path(d, "C", "AstraForge"))
+            assert cfg["assets"].replace("\\", "/").endswith(
+                "AstraForge/data/library/assets")
+        finally:
+            astra_d3.STUDIO_CANDIDATES = astra_d3.STUDIO_CANDIDATES
+
+        # nothing found anywhere: the configured value is kept rather than lost
+        cfg2 = astra_d3.Config({"studio": str(decoy.parent)})
+        astra_d3.STUDIO_CANDIDATES = (str(pathlib.Path(d, "nope")),)
+        try:
+            cfg2.resolve()
+            assert cfg2["studio"] == str(decoy.parent)
+        finally:
+            astra_d3.STUDIO_CANDIDATES = astra_d3.STUDIO_CANDIDATES
 
 
 if __name__ == "__main__":

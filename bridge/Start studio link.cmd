@@ -1,15 +1,18 @@
 @echo off
-rem Double-click this file. It starts the local link server, opens a tunnel and
-rem prints the line to paste into the chat. ASCII only: the Russian messages come
-rem from link_up.py, which prints them through the Windows console API.
+rem Double-click: start the local link server and a tunnel, then paste the printed line into the chat. ASCII only: Russian text comes from link_up.py.
 setlocal
 cd /d "%~dp0"
-set "D3_LINK_NO_PAUSE=1"
-title AstraForge - Arena link
+rem The studio may be on C: or D: - take whichever actually has data or runtime.
+set "STUDIO="
+if exist "C:\AstraForge\data" set "STUDIO=C:\AstraForge"
+if not defined STUDIO if exist "D:\AstraForge\data" set "STUDIO=D:\AstraForge"
+if not defined STUDIO if exist "C:\AstraForge\runtime" set "STUDIO=C:\AstraForge"
+if not defined STUDIO if exist "D:\AstraForge\runtime" set "STUDIO=D:\AstraForge"
 set "PYEXE="
 where py >nul 2>&1 && set "PYEXE=py -3"
 if not defined PYEXE ( where python >nul 2>&1 && set "PYEXE=python" )
-if not defined PYEXE if exist "D:\AstraForge\runtime\comfy\.venv\Scripts\python.exe" set PYEXE="D:\AstraForge\runtime\comfy\.venv\Scripts\python.exe"
+if not defined PYEXE if defined STUDIO if exist "%STUDIO%\runtime\comfy\.venv\Scripts\python.exe" set PYEXE="%STUDIO%\runtime\comfy\.venv\Scripts\python.exe"
+if not defined PYEXE if defined STUDIO if exist "%STUDIO%\runtime\python\python.exe" set PYEXE="%STUDIO%\runtime\python\python.exe"
 if not defined PYEXE (
   echo.
   echo Python not found. Install Python 3.10+ from python.org
@@ -18,8 +21,11 @@ if not defined PYEXE (
   pause
   exit /b 1
 )
+echo studio: %STUDIO%
 echo python: %PYEXE%
 echo.
+set "D3_LINK_NO_PAUSE=1"
+title AstraForge - Arena link
 %PYEXE% "%~dp0link_up.py" %*
 set "RC=%ERRORLEVEL%"
 echo.
