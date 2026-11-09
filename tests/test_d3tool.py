@@ -6093,6 +6093,59 @@ def test_vdpack_scan_reports_two_mods_carrying_one_path():
                    for f in doc["findings"])
 
 
+def test_vdpack_scan_crosses_a_run_log_against_the_packs():
+    """`run.log` says `Index error : str_not_valid_hash_for_file : <path>` and
+    never the archive; the scan knows the archive — crossed, the two name the
+    pack to rebuild, and say when no pack is to blame at all."""
+    from d3tool import vdpack
+    folder = os.path.join(REPO, "Neutrals", "AirElemental")
+    files = vdpack.reindex_pack(vdpack.pack_folder(folder))
+    stale = [(n, data + b"\x00") if n.lower().endswith(".g") else (n, data)
+             for n, data in files]
+    rejected = [n for n, _ in stale if n.lower().endswith(".g")][0]
+    with tempfile.TemporaryDirectory() as d:
+        good = os.path.join(d, "good.vdpack")
+        bad = os.path.join(d, "bad.vdpack")
+        with open(good, "wb") as fh:
+            fh.write(vdpack.build_vdpack(files))
+        with open(bad, "wb") as fh:
+            fh.write(vdpack.build_vdpack(stale))
+        log_path = os.path.join(d, "run.log")
+        # a Windows log: CRLF, no translation on the way out
+        with open(log_path, "w", encoding="utf-8", newline="") as fh:
+            fh.write("[  ] Game version: 1.03\r\n")
+            fh.write("[WW] resources0.vdpack:resources\\x.effect(9) : odd\r\n")
+            fh.write(f"[EE] scene : Index error : str_not_valid_hash_for_file"
+                     f" : {rejected}\r\n")
+            fh.write("[EE] scene : Index error : str_not_valid_hash_for_file"
+                     " : resources\\nowhere\\ghost.g\r\n")
+            fh.write("[EE] mod 'ruru' not found\r\n")
+        log = vdpack.read_run_log(log_path)
+        assert log["lines"] == 5
+        assert log["rejected"] == [rejected, "resources\\nowhere\\ghost.g"]
+        assert log["missing_mods"] == ["ruru"]
+        assert log["packs"] == ["resources0.vdpack"]
+        findings = vdpack.log_findings(vdpack.scan_packs([d]), log)
+        text = "\n".join(level + ": " + line for level, line in findings)
+        # the path with a stale carrier: name it and say how to fix it
+        assert f"run.log rejects {rejected}" in text
+        assert "bad.vdpack (stale)" in text
+        assert "vdpack pack --like bad.vdpack --reindex" in text
+        # the path nobody carries: not a pack problem at all
+        assert "no scanned pack carries it" in text
+        # a mod the log cannot find, and no archive answers to
+        assert "mod 'ruru' not found` and no scanned archive" in text
+        # ... and when the pack *is* there, the message says where it lives
+        named = os.path.join(d, "Mods")
+        os.makedirs(named)
+        with open(os.path.join(named, "ruru.vdpack"), "wb") as fh:
+            fh.write(vdpack.build_vdpack(files))
+        rows = vdpack.scan_packs([d])
+        text = "\n".join(line for _lvl, line in
+                         vdpack.log_findings(rows, log))
+        assert "the scan found a pack for it at" in text
+
+
 if __name__ == "__main__":
     # Keep this at the very end: `main()` collects every module-level
     # `test_*` function, so tests defined below an earlier guard would never

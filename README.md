@@ -97,6 +97,8 @@ python3 -m d3tool vdpack pack hierophant/ --like ruru.vdpack -o my.vdpack
 # which installed pack is the one the game rejects? `run.log` names the file,
 # never the archive — scan the install (or the Mods folder) and it names both
 python3 -m d3tool vdpack scan "/path/to/Disciples III Rebirth" --strict
+# ... and cross a run.log against it: which archive carries the rejected path?
+python3 -m d3tool vdpack scan "/path/to/Mods" --log "/path/to/run.log"
 
 # the .char unit profile: what a unit declares, and which profile is whose
 python3 -m d3tool char show Profiles/empire_angel.char

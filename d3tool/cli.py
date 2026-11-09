@@ -2122,6 +2122,13 @@ def _vdpack(args) -> int:
     if args.vd_cmd == "scan":
         rows = vdmod.scan_packs(args.targets, recursive=args.recursive)
         findings = vdmod.scan_findings(rows)
+        log = {}
+        if args.log:
+            if not os.path.isfile(args.log):
+                ui.fail(f"not a file: {args.log}")
+                return 1
+            log = vdmod.read_run_log(args.log)
+            findings = findings + vdmod.log_findings(rows, log)
         if not rows:
             ui.section("vdpack scan")
             ui.info("no .vdpack found under " +
@@ -2131,7 +2138,7 @@ def _vdpack(args) -> int:
             return 1
         bad = any(level == "bad" for level, _ in findings)
         if args.json:
-            print(json.dumps({"packs": rows,
+            print(json.dumps({"packs": rows, "log": log,
                               "findings": [{"level": level, "text": text}
                                            for level, text in findings]},
                              ensure_ascii=False, indent=2) + "\n")
@@ -2141,6 +2148,12 @@ def _vdpack(args) -> int:
                    "no-manifest": "no `index`",
                    "opaque-manifest": "`index` unreadable",
                    "broken": "unreadable archive"}
+        if log:
+            ui.info(f"{args.log}: {log['lines']} line(s), "
+                    f"{len(log['rejected'])} rejected path(s), "
+                    f"{len(log['missing_mods'])} missing mod(s), "
+                    f"packs it names: "
+                    f"{', '.join(log['packs']) or 'none'}")
         ui.table([(row["file"],
                    row["type"] or "-",
                    f"{row['entries']}",
@@ -2671,6 +2684,13 @@ def _build_parser() -> argparse.ArgumentParser:
                            "subfolder is always scanned)")
     p_vs.add_argument("--strict", action="store_true",
                       help="exit 1 when any pack would be rejected")
+    p_vs.add_argument("--log", metavar="RUN_LOG",
+                      help="a run.log to cross against the scan: for every "
+                           "`Index error : str_not_valid_hash_for_file : "
+                           "<path>`, `Unindexed file` and `mod '<name>' not "
+                           "found` it names the archive that carries it, or "
+                           "says that no scanned pack does (a loose folder, "
+                           "another install)")
     p_vp = p_vd_sub.add_parser("pack", help="pack a folder into an archive")
     p_vp.add_argument("folder")
     p_vp.add_argument("-o", "--out",

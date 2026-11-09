@@ -1378,6 +1378,20 @@ a `Name` that does not match the file name, and paths carried by two mods.
 `--strict` exits 1 while anything would be rejected, so it can gate a release.
 `--json` prints the same answer for a script.
 
+`--log run.log` closes the other half of the loop: every
+`Index error : str_not_valid_hash_for_file : <path>`, `Unindexed file` and
+`mod '<name>' not found` in the log is matched against the scanned packs, so
+the answer is "this path, this archive, rebuild it" — or, when no scanned pack
+carries the path, "the game is reading a loose folder or another install and
+rebuilding packs will not help".
+
+```bash
+d3tool vdpack scan "…\Disciples III Rebirth" --log "…\run.log" --strict
+#   ✘ run.log rejects …\character_empire_inquisitor.g: carried by
+#     ruru.vdpack (ok), D3_test_faction6_mod.vdpack (stale) — rebuild
+#     D3_test_faction6_mod.vdpack with `vdpack pack --like … --reindex`
+```
+
 ## 6. The `.vdpack` mod archive
 
 A retail install keeps a unit as a loose folder; mods ship the whole tree as

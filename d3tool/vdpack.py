@@ -1574,3 +1574,107 @@ def scan_findings(rows) -> List[Tuple[str, str]]:
                                  f"({sample}{more}) — only one of them can "
                                  f"load (`intersects other mods`)"))
     return findings
+
+
+_LOG_REJECT = re.compile(
+    r"(?:Index error : )?(?:str_not_valid_hash_for_file|str_cant_read)\s*:\s*"
+    r"([A-Za-z0-9_\-\\/. :]+?)\s*$")
+_LOG_UNINDEXED = re.compile(r"Unindexed file '([^']+)'")
+_LOG_MISSING_MOD = re.compile(r"mod '([^']+)' not found")
+_LOG_PACK = re.compile(r"^\s*\[[A-Za-z]{2}\]\s*([A-Za-z0-9_.\- ]+\.vdpack):")
+
+
+def read_run_log(path: str) -> Dict[str, object]:
+    r"""The three things a `run.log` says that a modder has to act on.
+
+    The log writes ``Index error : str_not_valid_hash_for_file : <path>``,
+    ``Unindexed file '<path>'``, ``mod '<name>' not found``, and it prefixes a
+    message with ``<pack>.vdpack:`` when the asset came out of a pack.  It
+    never says *which* archive a rejected path came from, which is the whole
+    reason :func:`scan_packs` and this reader exist — together they answer it.
+    """
+    out: Dict[str, object] = {"rejected": [], "unindexed": [],
+                              "missing_mods": [], "packs": [], "lines": 0}
+    with open(path, encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            out["lines"] = int(out["lines"]) + 1
+            line = line.rstrip("\r\n")
+            for match in _LOG_REJECT.finditer(line):
+                name = match.group(1).strip()
+                if name and name not in out["rejected"]:
+                    out["rejected"].append(name)
+            for match in _LOG_UNINDEXED.finditer(line):
+                name = match.group(1).strip()
+                if name and name not in out["unindexed"]:
+                    out["unindexed"].append(name)
+            for match in _LOG_MISSING_MOD.finditer(line):
+                name = match.group(1).strip()
+                if name and name not in out["missing_mods"]:
+                    out["missing_mods"].append(name)
+            match = _LOG_PACK.match(line)
+            if match:
+                name = match.group(1).strip()
+                if name not in out["packs"]:
+                    out["packs"].append(name)
+    return out
+
+
+def log_findings(rows, log: Dict[str, object]) -> List[Tuple[str, str]]:
+    """Cross a `run.log` against the packs that were scanned.
+
+    This closes the loop the log leaves open: for each path the loader
+    rejected it names the archive that carries it, and — because the scan
+    already verified every payload — whether that archive is the stale one.
+    A path no scanned pack carries is just as useful: the game is reading a
+    loose folder or another install, and rebuilding packs will not touch it.
+    """
+    findings: List[Tuple[str, str]] = []
+    owners: Dict[str, List[Dict[str, object]]] = {}
+    for row in rows:
+        for name in row["paths"]:
+            owners.setdefault(_norm_name(name).lower(), []).append(row)
+    for path in list(log.get("rejected") or []):
+        key = _norm_name(path.replace("/", "\\")).lower().strip("\\")
+        holders = owners.get(key, [])
+        if not holders:
+            findings.append(("warn", f"run.log rejects {path}, but no scanned "
+                                     f"pack carries it — the game reads a "
+                                     f"loose folder or another install, so "
+                                     f"rebuilding the packs will not fix it"))
+            continue
+        states = ", ".join(f"{row['file']} ({row['state']})" for row in holders)
+        stale = [row for row in holders if row["state"] == "stale"]
+        if stale:
+            findings.append(("bad", f"run.log rejects {path}: carried by "
+                                    f"{states} — rebuild "
+                                    f"{stale[0]['file']} with `vdpack pack "
+                                    f"--like {stale[0]['file']} --reindex`"))
+        else:
+            findings.append(("warn", f"run.log rejects {path}: carried by "
+                                     f"{states}, and both archives verify — "
+                                     f"the running copy is a different build "
+                                     f"of that pack than the one scanned"))
+    for path in list(log.get("unindexed") or []):
+        key = _norm_name(path.replace("/", "\\")).lower().strip("\\")
+        holders = owners.get(key, [])
+        if holders:
+            findings.append(("bad", f"run.log: `Unindexed file '{path}'` — "
+                                    f"carried by " +
+                                    ", ".join(row["file"] for row in holders) +
+                                    f"; the loader wants it listed in `index`"))
+    known = {row["stem"].lower() for row in rows}
+    known |= {str(row["index_name"]).lower() for row in rows if row["index_name"]}
+    for name in list(log.get("missing_mods") or []):
+        if name.lower() in known:
+            where = ", ".join(row["path"] for row in rows
+                              if row["stem"].lower() == name.lower()
+                              or str(row["index_name"]).lower() == name.lower())
+            findings.append(("bad", f"run.log: `mod '{name}' not found`, but "
+                                    f"the scan found a pack for it at {where} "
+                                    f"— the loader only mounts "
+                                    f"`$(UserFolder)\\Mods\\<name>.vdpack`"))
+        else:
+            findings.append(("warn", f"run.log: `mod '{name}' not found` and no "
+                                     f"scanned archive answers to that name — "
+                                     f"fix `sModifications` or ship the file"))
+    return findings
