@@ -473,6 +473,54 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):  # keep stdout for the operator
         pass
 
+    def _send_html(self, html: str, status=200):
+        raw = html.encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(raw)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(raw)
+
+    def _landing(self):
+        """A page for a browser opening the address without a token.
+
+        `/cmd` stays token-only: this page says what the server is and where the
+        token comes from, and nothing about the machine it is running on. The
+        agent side never needs it — it calls `/cmd?op=ping` — it exists because a
+        live preview of this port shows *something* instead of `{"error": "bad
+        token"}`.
+        """
+        self._send_html(f"""<!doctype html>
+<meta charset="utf-8">
+<title>studio link — build {build_marker()}</title>
+<style>
+ body {{ font: 15px/1.5 system-ui, sans-serif; margin: 2.5rem auto; max-width: 44rem;
+        padding: 0 1.25rem; color: #1c1f23; background: #fff; }}
+ h1 {{ font-size: 1.35rem; margin: 0 0 .25rem; }}
+ .tag {{ display: inline-block; padding: .1rem .5rem; border-radius: .5rem;
+        background: #e8f5ec; color: #17663a; font-size: .85rem; }}
+ code {{ background: #f3f4f6; padding: .1rem .35rem; border-radius: .3rem; }}
+ table {{ border-collapse: collapse; margin-top: 1rem; }}
+ td, th {{ text-align: left; padding: .3rem .8rem .3rem 0; vertical-align: top; }}
+ th {{ font-weight: 600; color: #4b5563; font-size: .85rem; text-transform: uppercase; }}
+ .note {{ margin-top: 1.5rem; color: #4b5563; }}
+</style>
+<h1>studio link <span class="tag">сборка {build_marker()}</span></h1>
+<p>Приёмник запросов к твоей студии: <b>только JSON, только с токеном</b>.</p>
+<table>
+ <tr><th>порт</th><td><code>{self.link.port}</code></td></tr>
+ <tr><th>адрес API</th><td><code>/cmd?token=…&amp;op=…</code></td></tr>
+ <tr><th>студия</th><td><code>{self.link.studio_url}</code></td></tr>
+</table>
+<p class="note">Токен печатается в окне, которое запустило мост
+ (<code>bridge\.link\token.txt</code> на твоём ПК) — в этой странице его нет
+ намеренно. Без токена любой запрос к <code>/cmd</code> получает 403.</p>
+<p class="note">Проверить отсюда: <code>ping</code> отвечает без студии и без
+ конфига; <code>hello</code> добавляет пути и состояние студии; остальные
+ операции перечислены в <code>bridge/README.md</code>.</p>
+""")
+
     def _send(self, payload, status=200):
         raw = json.dumps(payload, indent=2, ensure_ascii=False,
                          default=str).encode("utf-8")
@@ -489,6 +537,10 @@ class Handler(BaseHTTPRequestHandler):
                   for key, values in urllib.parse.parse_qs(parsed.query,
                                                            keep_blank_values=True).items()}
         started = time.time()
+        if parsed.path == "/" and not params.get("token"):
+            self._landing()
+            self._audit(params, "landing", started)
+            return
         if parsed.path in ("/", "/cmd", "/ping"):
             if not hmac.compare_digest(params.get("token", ""), self.link.token):
                 self._send({"ok": False, "error": "bad token", "port": self.link.port,

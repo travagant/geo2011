@@ -6968,3 +6968,55 @@ def test_tunnel_address_never_comes_from_a_previous_run():
     assert "stale-from-yesterday" not in url
     assert "--protocol" in seen["cmd"] and "quic" in seen["cmd"]
     log.write_text("", encoding="utf-8")
+
+
+def test_link_preview_shows_a_page_but_never_the_token():
+    """A browser opening the port must see something readable, and the JSON API
+    must stay token-only.
+
+    The page exists for a live preview of this port (a plain 403 JSON in an
+    iframe says nothing). It must not carry the token or anything about the PC:
+    anyone with the preview link would otherwise be able to drive the studio.
+    """
+    import importlib
+    import threading
+    import urllib.error
+    import urllib.request
+
+    sys.path.insert(0, os.path.join(REPO, "bridge"))
+    studio_link = importlib.import_module("studio_link")
+
+    link = studio_link.Link({"studio": "."},
+                            int(os.environ.get("D3_PREVIEW_PORT", "3298")),
+                            "http://127.0.0.1:3210")
+    studio_link.Handler.link = link
+    httpd = studio_link.StudioLinkServer(("127.0.0.1", 0), studio_link.Handler)
+    port = httpd.server_address[1]
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=5) as resp:
+            page = resp.read().decode("utf-8")
+            assert resp.status == 200
+            assert resp.headers["Content-Type"].startswith("text/html")
+        assert "studio link" in page
+        assert studio_link.build_marker() in page
+        assert link.token not in page                     # never the token
+        assert str(link.port) in page                     # but its own port is fine
+
+        # the API itself keeps refusing: with and without a query, `/cmd` needs a token
+        for path in ("/cmd", "/cmd?op=ping", "/ping"):
+            try:
+                urllib.request.urlopen(f"http://127.0.0.1:{port}{path}", timeout=5)
+            except urllib.error.HTTPError as exc:
+                assert exc.code == 403, path
+            else:                                          # pragma: no cover
+                raise AssertionError(f"{path} answered without a token")
+
+        # with the token, "/" is the JSON API again
+        with urllib.request.urlopen(
+                f"http://127.0.0.1:{port}/?token={link.token}&op=ping", timeout=5) as resp:
+            answer = json.loads(resp.read())
+        assert answer["ok"] is True and answer["result"]["build"] == studio_link.build_marker()
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
