@@ -6439,6 +6439,75 @@ def test_link_up_reads_the_tunnel_address_and_proves_it():
             httpd.server_close()
 
 
+def test_cuda_check_names_the_wheel_that_lacks_pascal():
+    """The studio's "no kernel image is available" has exactly two causes —
+    torch built without sm_61, or Hunyuan3D's precompiled rasterizer — and the
+    difference is where it dies. The report has to say which, from the probe,
+    because the machine it runs on cannot be reached from here."""
+    import importlib
+
+    sys.path.insert(0, os.path.join(REPO, "bridge"))
+    cuda = importlib.import_module("cuda_check")
+
+    pascal_broken = {
+        "python": "3.11.9", "torch": "2.8.0+cu128", "cuda_build": "12.8",
+        "available": True, "device": "NVIDIA GeForce GTX 1080 Ti",
+        "capability": "6.1",
+        "arch": ["sm_70", "sm_75", "sm_80", "sm_86", "sm_90", "sm_100", "sm_120"],
+        "smoke": "RuntimeError: CUDA error: no kernel image is available for "
+                 "execution on the device",
+        "mod_custom_rasterizer": "ModuleNotFoundError",
+    }
+    level, text = cuda.verdict(pascal_broken)
+    assert level == "bad"
+    assert "sm_61" in text and "cu126" in text
+    assert any("[БЕДА]" in line for line in cuda.report_lines("x", pascal_broken))
+
+    working = dict(pascal_broken, torch="2.8.0+cu126", cuda_build="12.6",
+                   arch=["sm_50", "sm_60", "sm_70", "sm_75", "sm_80", "sm_86",
+                         "sm_90"], smoke="ok")
+    assert cuda.verdict(working)[0] == "ok"
+    # a 6.1 card is fine with sm_60 kernels: same major, lower minor
+    assert cuda.compatible_arch(["sm_50", "sm_60"], "6.1")
+    assert not cuda.compatible_arch(["sm_75", "sm_90"], "6.1")
+    assert not cuda.compatible_arch(["sm_120"], "6.1")
+    assert not cuda.compatible_arch(["bogus"], "6.1")
+
+    # the rasterizer case: torch is fine, the extension is what breaks
+    texture_only = dict(working, mod_custom_rasterizer="ok",
+                        mod_differentiable_renderer="ImportError")
+    assert cuda.verdict(texture_only)[0] == "ok"
+    assert "differentiable_renderer=ImportError" in "\n".join(
+        cuda.report_lines("x", texture_only))
+
+    assert cuda.verdict({"error": "No module named 'torch'"})[0] == "info"
+    assert cuda.verdict({"error": "boom"})[0] == "info"
+    assert cuda.verdict(dict(working, available=False))[0] == "warn"
+    # sm_61 missing but the kernel ran anyway (PTX/JIT): a warning, not a failure
+    jit = dict(working, arch=["sm_75", "sm_90"], smoke="ok")
+    assert cuda.verdict(jit)[0] == "warn"
+
+    # discovery: every venv the studio may run, and the rasterizer's sources
+    with tempfile.TemporaryDirectory() as d:
+        studio = os.path.join(d, "AstraForge")
+        made = [
+            os.path.join(studio, "runtime", "comfy", ".venv", "Scripts", "python.exe"),
+            os.path.join(studio, "runtime", "python", "python.exe"),
+            os.path.join(studio, "runtime", "hunyuan", "custom_rasterizer", "setup.py"),
+        ]
+        for path in made:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            open(path, "wb").close()
+        hits = cuda.find_pythons(studio)
+        assert len(hits) == 2, hits
+        assert all(hit.endswith("python.exe") for hit in hits)
+        sources = cuda.find_rasterizer_sources(studio)
+        assert len(sources) == 1 and sources[0].endswith("setup.py")
+        assert cuda.find_rasterizer_sources(os.path.join(d, "nope")) == []
+        # a probe of a missing interpreter is reported, not raised
+        assert cuda.probe(os.path.join(d, "nope.exe")).get("error")
+
+
 if __name__ == "__main__":
     # Keep this at the very end: `main()` collects every module-level
     # `test_*` function, so tests defined below an earlier guard would never

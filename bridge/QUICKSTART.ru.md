@@ -106,7 +106,7 @@ py bridge\astra_d3.py watch --interval 10
 | В чате адрес «не отвечает» | Окно с `.cmd` закрыто — туннель умер. Запусти снова, адрес будет другой. |
 | `blender not found` | Впиши `blender` в `bridge\config.json`. Если студийный Blender 5.0 падает на аддоне — поставь 4.2 LTS и укажи её. |
 | `the GLB has no mesh data` | В студии сначала «Generate 3D», потом Export. |
-| `no kernel image is available` | torch `cu128` на 1080 Ti: Pascal нет в новых сборках, нужен `cu121`/`cu126`. Это окружение студии, мост его не меняет. |
+| `no kernel image is available` | torch `cu128` на 1080 Ti: в нём нет кода для Pascal (`sm_61`). Двойной клик по `CUDA-check.cmd` — он скажет, какое окружение виновато; затем `CUDA-fix-torch.cmd` поставит torch `cu126`. Подробно — раздел «CUDA» ниже. |
 | `str_not_valid_hash_for_file` в игре | Мод собран не через `vdpack` (loose-файлы) или без `--like`. Мост такой пак не пропустит — гейт `vdpack scan` вернёт ошибку. |
 | `intersects other mods` | В `Mods` два мода с одинаковыми путями. |
 | мод есть, юнита нет | В `user.ini` нет `sModifications=mod:<имя>` (имя = имя файла `.vdpack`). |
@@ -117,3 +117,33 @@ py bridge\astra_d3.py watch --interval 10
 - не обходит лицензии: Hunyuan3D-2 — Tencent Community Licence (в ЕС/UK/Южной
   Корее не действует), Pixal3D требует RTX 30/40/50 — на 1080 Ti недоступен;
 - не меняет файлы в папке студии, кроме `data\runtime\d3bridge` (отчёты сборки).
+
+## 5. CUDA: «no kernel image is available for execution on the device»
+
+Это значит: **программа, которую вызвали, не содержит машинного кода для твоей
+видеокарты**. 1080 Ti — это Pascal, `sm_61`. Карта исправна, виноват файл,
+собранный без Pascal. Виноватых может быть ровно два, и падают они в разные
+моменты:
+
+| кто | почему | когда падает |
+| --- | --- | --- |
+| **torch** | сборки `cu128` содержат коды только для `sm_70` и новее; `cu126` — последняя линейка с Pascal. При этом `torch.cuda.is_available()` честно отвечает `True`, поэтому студия запускается и выглядит здоровой | на первом же тензоре — **модель даже не начинает строиться** |
+| **`custom_rasterizer_kernel` из Hunyuan3D** | готовые wheel'ы собраны под Ampere и новее | модель строится, падает **текстура** (в стеке видно `PyInit_custom_rasterizer_kernel`) |
+
+Какой случай у тебя, покажет один двойной клик:
+
+1. **`bridge\CUDA-check.cmd`** — проходит по всем python.exe студии, честно
+   запускает ядро на GPU (`torch.zeros(8).cuda()+1`, а не просто «CUDA
+   доступна») и пишет `bridge\cuda-report.txt`. В отчёте по каждому окружению:
+   версия torch, сборка CUDA, arch list, вердикт `[OK] / [БЕДА] / [!]`.
+2. Если `[БЕДА]` — двойной клик по **`bridge\CUDA-fix-torch.cmd`**. Он спросит
+   по каждому окружению и поставит torch/torchvision/torchaudio из
+   `https://download.pytorch.org/whl/cu126`. Скачается ~2.5–3 ГБ, ставится
+   ~7 ГБ, прерывать нельзя. Рабочие окружения (где ядро уже бегает) он не
+   трогает.
+3. Перезапусти студию и попробуй снова. Если модель строится, а падает только
+   текстура — это второй случай, нужен `CUDA-fix-rasterizer` (пересборка
+   `custom_rasterizer` под `6.1`); для него нужны CUDA Toolkit 12.x и MSVC
+   Build Tools. Скажи мне — соберём пошагово.
+
+Пришли `cuda-report.txt` — по нему видно всё, и я скажу следующий шаг без гадания.
