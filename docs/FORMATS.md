@@ -1090,6 +1090,53 @@ separators) from the 0x41eeb0 builder.  With those, a pack carrying modified
 payloads can have a *correct* index computed for it, which is the difference
 between a pack the engine mounts and one it rejects as `has wrong index`.
 
+## 6e. The engine's own attribute vocabulary and diagnostics
+
+The mesh loader in `DisciplesIII.exe` (`.d_rc_mesh.cpp`, 0x89c488) keeps its
+attribute names and its complaints in one run of `.rdata` (0x89c004–0x89ccf8).
+Read together they are the closest thing to a specification of what a `.g` may
+say, and they confirm the vocabulary this toolkit writes:
+
+* per material — `material%d_diffuse`, `material%d_detail`, `material%d_bump`,
+  `material%d_lightmap`, `material%d_triangles_num` (0x89c990–0x89c9fc);
+* per mesh — `materials_num`, `vertexnum`, `trianglesnum`, `bonesnum` /
+  `bones_num`, `texnum`, `tex%d`, `texname%d`, `uniquename`
+  (0x89ca40–0x89cb8c);
+* vertex data — `normals`, `tangent`, `weights_on_vertex`,
+  `new_vertex_weights_format`, `vertexs_copy`, `rotatez`, `df_lm_nm`,
+  `lmuvdata`, `bumpuvdata`, `detailuvdata`, and the morph family
+  `morph_frames`, `morph_normal`, `morph_cyclic_blend`, `morph_uv%d`
+  (0x89c448–0x89caa8);
+* material binding — `system\materials.s` with `material "%s"` and
+  `invalid name in materials list` (0x89caa28–0x89caad8), plus `vdmtl` and
+  `groupname` (0x89c514–0x89c51c).
+
+The diagnostics separate cleanly into **cosmetic** and **structural**, and one
+of them says so in words:
+
+* `Object '%s' have no material - checker assigned` (0x89ca10) with
+  `CreateCheckerIfNoTexture` (0x89c5f0) — a part with no material still draws,
+  wearing the checker texture.  Cosmetic.
+* `%s has empty texture` (0x89caf8), `0 triangles in object: '%s' with
+  material: %d` (0x89c8fc), `Invalide bones num:%d` (0x89cab0),
+  `*** Error: out of memory: mesh "%s"` (0x89cad0) — the mesh is built from
+  declared counts, so these are the structural ones: a count that disagrees
+  with its data.
+* `error MeshMake, texture "%s" not found in model "%s : %s"`,
+  `error MakeMesh, not found uv set ...`, `not found technique "%s", set in
+  mesh "%s"`, `unknown mesh`, `invalid object: %s` (0x89cc40–0x89ccf8,
+  0x89c980) — the binding failures: a name the model does not carry.
+
+`d3tool audit` already checks the structural half of that list — `materials_num`,
+`material0_triangles_num`, `vertexs_weights_num`, `weights_on_vertex`,
+`bones_num` against the counts actually found, and "no triangles at all" per
+part (see `d3tool/audit.py`), so this run of `.rdata` is a confirmation rather
+than a to-do list.  Two items it does *not* cover yet and that the engine names
+explicitly: a `.t` that exists but is empty (`has empty texture`), and a
+`technique` that is not in `system\materials.s` — the first is cheap to add,
+the second needs the materials file to compare against, which retail ships as
+text.
+
 ## 6. The `.vdpack` mod archive
 
 A retail install keeps a unit as a loose folder; mods ship the whole tree as
