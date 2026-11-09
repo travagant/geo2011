@@ -7255,6 +7255,44 @@ def test_last_attempt_carries_both_halves_of_the_channel():
         assert send_me.splitlines()[1] == "build: " + studio_link.build_marker()
 
 
+def test_a_log_tail_keeps_the_sentence_and_drops_the_qr_code():
+    """localhost.run greets with a QR code drawn in ANSI colours. Published
+    verbatim it filled the channel with escape sequences and said nothing, while
+    the one useful line - `client_loop: send disconnect: Connection reset` - sat
+    at the end of it."""
+    import importlib
+
+    sys.path.insert(0, os.path.join(REPO, "bridge"))
+    link_up = importlib.import_module("link_up")
+
+    sent = []
+    real_publish, real_topic = link_up.publish, link_up.rendezvous_topic
+    try:
+        link_up.rendezvous_topic = lambda path=None: "topic-x"
+        link_up.publish = lambda message, topic="", timeout=10.0: sent.append(message) or (True, "ok")
+        with tempfile.TemporaryDirectory() as d:
+            log = pathlib.Path(d, "tunnel-ssh.log")
+            log.write_text(
+                "\x1b[7m \x1b[0m\x1b[49m \x1b[7m \x1b[0m\x1b[49m\n"
+                "\u2580\u2584\u2588\u2580\u2584\u2588\n"
+                "** your connection id is 8f2c **\n"
+                "client_loop: send disconnect: Connection reset\n",
+                encoding="utf-8")
+            link_up.note_tail("ssh → localhost.run", log)
+            for _ in range(100):
+                if sent:
+                    break
+                time.sleep(0.05)
+    finally:
+        link_up.publish, link_up.rendezvous_topic = real_publish, real_topic
+
+    body = sent[0]
+    assert "\x1b" not in body
+    assert "your connection id is 8f2c" in body
+    assert "client_loop: send disconnect: Connection reset" in body
+    assert "\u2588" not in body
+
+
 def test_the_bridge_announces_its_own_address_to_the_session():
     """The hand-off, without a human: the bridge posts one line to a topic only
     this copy knows, and the session reads that topic with a GET.

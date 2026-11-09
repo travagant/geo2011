@@ -86,6 +86,9 @@ TUNNEL_SUFFIXES = (".lhr.life", ".lhr.rocks", ".loca.lt", ".pinggy.link",
 # never into the repository). The session reads the topic with one GET, so the
 # two things that kept failing — finding the window and copying two values out
 # of it — stop being the user's job at all.
+ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[a-zA-Z]|\x1b\][^\x07]*\x07")
+# a line made only of box/block characters is a rendered QR code, not a message
+BLOCK_RE = re.compile(r"^[\s\u2580-\u259f\u2500-\u257f]+$")
 RENDEZVOUS_FILE = LINK_DIR / "rendezvous.txt"
 # Two public relays, because one is not a plan: if his network cannot reach the
 # first, the second usually answers, and the session reads both.
@@ -240,6 +243,15 @@ def note_tail(name: str, log_path, note=note) -> None:
         lines = _tail(Path(log_path))[-12:]
     except OSError:
         return
+    # localhost.run greets with a QR code in ANSI colours: 12 lines of escape
+    # sequences that say nothing. Keep the sentences, drop the picture.
+    cleaned = []
+    for line in lines:
+        line = ANSI_RE.sub("", line).strip()
+        if not line or BLOCK_RE.match(line):
+            continue
+        cleaned.append(line)
+    lines = cleaned[-12:]
     if not lines:
         return
     note(f"{name}: хвост {Path(log_path).name}\n" + "\n".join(lines))
