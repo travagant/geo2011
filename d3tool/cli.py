@@ -1908,6 +1908,72 @@ def _vdpack(args) -> int:
             return 1
         return 0
 
+    if args.vd_cmd == "index":
+        if os.path.isdir(args.target):
+            files = vdmod.pack_folder(args.target)
+            label = os.path.basename(os.path.normpath(args.target))
+        else:
+            pack = vdmod.read_vdpack(args.target)
+            if pack.parse_error:
+                ui.section("vdpack index")
+                ui.fail(f"{args.target}: {pack.parse_error}")
+                return 1
+            files = list(pack.files().items())
+            label = os.path.basename(args.target)
+        report = vdmod.index_report(files)
+        if args.raw:
+            doc = report["document"]
+            if doc is None:
+                ui.fail(report["error"] or "no `index` entry")
+                return 1
+            sys.stdout.write(doc.text)
+            return 0
+        if args.json:
+            doc = report["document"]
+            print(json.dumps({
+                "present": report["present"],
+                "decoded": report["decoded"],
+                "error": report["error"],
+                "name": doc.name if doc else None,
+                "uuid": doc.uuid if doc else None,
+                "type": doc.type if doc else None,
+                "records": report["records"],
+                "mismatched": report["mismatched"],
+                "unlisted": report["unlisted"],
+                "missing": report["missing"],
+            }, ensure_ascii=False, indent=2))
+            return 0 if report["decoded"] else 1
+        ui.section(f"vdpack index  {label}")
+        if not report["present"]:
+            ui.warn("no `index` entry — every retail and ported pack carries "
+                    "one; `vdpack pack --reindex` writes it")
+            return 0 if not args.strict else 1
+        if not report["decoded"]:
+            ui.fail(f"`index` does not decode: {report['error']}")
+            return 1
+        doc = report["document"]
+        ui.info(f'mod: {doc.name}  ({doc.type})')
+        ui.info(f"UUID: {doc.uuid}")
+        ui.info(f"{report['records']} file record(s), "
+                f"{len(files)} entr(ies) in the archive")
+        for name in report["mismatched"]:
+            ui.warn(f"payload differs from its hash: {name}")
+        for name in report["unlisted"]:
+            ui.warn(f"no File record: {name}  "
+                    f"(the loader answers `Unindexed file`)")
+        for name in report["missing"]:
+            ui.warn(f"listed but absent: {name}  "
+                    f"(the loader answers `Not found indexed file`)")
+        if not (report["mismatched"] or report["unlisted"]
+                or report["missing"]):
+            ui.ok("every payload matches the MD5 and SHA-256 the manifest "
+                  "records, and every path is listed")
+        else:
+            ui.info("rewrite it for these bytes with `vdpack pack <folder> "
+                    "--like <pack> --reindex`")
+            return 1
+        return 0
+
     if args.vd_cmd == "diff":
         loaded = []
         for path in (args.base, args.other):
@@ -2065,7 +2131,8 @@ def _vdpack(args) -> int:
         if source.parse_error:
             ui.fail(f"{args.like}: {source.parse_error}")
             return 1
-        blob, extra = vdmod.pack_like(source, files, drop=args.drop)
+        blob, extra = vdmod.pack_like(source, files, drop=args.drop,
+                                      reindex=args.reindex)
         for name in extra:
             ui.warn(f"{name}: not in {os.path.basename(args.like)}, dropped — "
                     "a pack that adds paths is not the confirmed shape")
@@ -2092,8 +2159,23 @@ def _vdpack(args) -> int:
         for name in args.drop:
             ui.info(f"dropped: {name}")
         for name, before, after in changed:
+            if vdmod._norm_name(name).lower() == vdmod.INDEX_ENTRY:
+                continue
             ui.ok(f"{name.split(chr(92))[-1]}: {before} -> {after} bytes — "
                   "everything else carried over byte for byte")
+        audit = vdmod.index_report(list(check.files().items()))
+        if args.reindex:
+            ui.ok("`index` rewritten for these bytes: "
+                  f"{audit['records']} record(s), every payload matches its "
+                  "MD5 and SHA-256")
+        elif audit["decoded"] and (audit["mismatched"] or audit["unlisted"]):
+            ui.warn(f"the carried-over `index` no longer describes this "
+                    f"archive: {len(audit['mismatched'])} payload(s) differ "
+                    f"from their recorded hash, {len(audit['unlisted'])} "
+                    f"path(s) are unlisted. The loader validates the archive "
+                    f"against the manifest before mounting and answers `has "
+                    f"wrong index` / `Unindexed file` — rebuild with "
+                    f"`--reindex`.")
         ui.wrote(out, f"{len(blob)} bytes")
         return 0
     if args.keep_index:
@@ -2109,18 +2191,21 @@ def _vdpack(args) -> int:
             ui.fail(f"{args.folder} already carries an `index` entry")
             return 1
         files = files + [taken]
+    if args.reindex:
+        files = vdmod.reindex_pack(files)
     out = args.out or (os.path.basename(os.path.normpath(args.folder)) +
                        ".vdpack")
     blob = vdmod.build_vdpack(files)
-    # Every pack the Heroes-VII port examined carries one opaque `index`
+    # Every pack the Heroes-VII port examined carries one `index`
     # resource; same-path replacement inside such a pack is game-confirmed,
     # a pack that added paths is not.  Say so instead of implying that any
     # archive this tool writes will be mounted.
     if vdmod.index_entry(files) is None:
-        ui.warn("no opaque `index` entry: retail and ported packs carry one, "
-                "and only in-place replacement inside such a pack has been "
-                "confirmed to load — pass `--keep-index <existing.vdpack>` "
-                "to build on that proven shape")
+        ui.warn("no `index` entry: every retail and ported pack carries one "
+                "(the mod's per-file MD5/SHA-256 manifest) and the loader "
+                "validates the archive against it — pass `--reindex` to write "
+                "one, or `--keep-index <existing.vdpack>` to carry over the "
+                "manifest of the pack this one replaces")
     # never ship an archive this toolkit cannot read back
     check = vdmod.parse_vdpack(blob)
     if check.parse_error or len(check) != len(files):
@@ -2133,6 +2218,19 @@ def _vdpack(args) -> int:
              headers=("file", "bytes"))
     if len(files) > 20:
         ui.info(f"... and {len(files) - 20} more")
+    if vdmod.index_entry(files) is not None:
+        audit = vdmod.index_report(list(check.files().items()))
+        if audit["decoded"]:
+            if audit["mismatched"] or audit["unlisted"]:
+                ui.warn(f"the `index` in this archive disagrees with it: "
+                        f"{len(audit['mismatched'])} payload(s) differ from "
+                        f"their recorded hash, {len(audit['unlisted'])} "
+                        f"path(s) unlisted — rebuild with `--reindex`")
+            else:
+                ui.ok(f"`index`: {audit['records']} record(s), every payload "
+                      f"matches its MD5 and SHA-256")
+        else:
+            ui.warn(f"the `index` entry does not decode: {audit['error']}")
     ui.wrote(out, f"{len(files)} file(s), {len(blob)} bytes")
     # the same reference audit `vdpack validate` runs, on what was just written:
     # a pack whose `.ac` names a folder it does not carry loads in a viewer and
@@ -2481,6 +2579,21 @@ def _build_parser() -> argparse.ArgumentParser:
     p_vpl.add_argument("--strict", action="store_true",
                        help="exit 1 when a file names a path the pack does not "
                             "carry")
+    p_vi = p_vd_sub.add_parser(
+        "index",
+        help="decode the `index` manifest and check every payload against it",
+        description="`index` is the mod's manifest: the mod's Name/UUID/Type "
+                    "and one MD5 + SHA-256 record per resource, stored "
+                    "obfuscated (65 43 74 FF, a seed, and an LCG keystream — "
+                    "see docs/FORMATS.md §6f). The loader checks the archive "
+                    "against it before mounting, so a payload that does not "
+                    "match is why a unit never appears.")
+    p_vi.add_argument("target", help="a .vdpack file or a folder in its shape")
+    p_vi.add_argument("--json", action="store_true")
+    p_vi.add_argument("--raw", action="store_true",
+                      help="print the manifest text itself")
+    p_vi.add_argument("--strict", action="store_true",
+                      help="exit 1 when there is no `index` entry")
     p_vp = p_vd_sub.add_parser("pack", help="pack a folder into an archive")
     p_vp.add_argument("folder")
     p_vp.add_argument("-o", "--out",
@@ -2496,8 +2609,14 @@ def _build_parser() -> argparse.ArgumentParser:
              "names, flags and `index`, only the payloads from the folder — "
              "the one form replacement that is confirmed to load in game")
     p_vp.add_argument(
+        "--reindex", action="store_true",
+        help="write a correct `index` manifest for the files that go in "
+             "(MD5 + SHA-256 each) — required for any set of bytes that is "
+             "not byte-identical to the one the carried-over manifest "
+             "describes, since the loader validates the archive against it")
+    p_vp.add_argument(
         "--keep-index", metavar="ARCHIVE",
-        help="copy the opaque `index` resource of an existing pack into the "
+        help="copy the `index` manifest of an existing pack into the "
              "new one (the only game-confirmed pack shape)")
 
     return parser

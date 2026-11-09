@@ -87,8 +87,12 @@ python3 -m d3tool vdpack extract hierophant.vdpack -o hierophant/
 python3 -m d3tool vdpack validate hierophant.vdpack   # every internal reference inside?
 python3 -m d3tool vdpack validate hierophant.vdpack --strict   # ... and no wrong folder
 python3 -m d3tool vdpack manifest hierophant/ -o manifest.json  # sha256 per file
-# build on the only game-confirmed pack shape: keep the opaque `index`
+# build on the only game-confirmed pack shape: keep the `index` manifest
 python3 -m d3tool vdpack pack hierophant/ -o my.vdpack --keep-index NewUnit.vdpack
+# ... or write a correct one for these bytes — `index` is a text manifest of
+# per-file MD5 + SHA-256, and the loader checks the archive against it
+python3 -m d3tool vdpack index ruru.vdpack                       # decode + verify
+python3 -m d3tool vdpack pack hierophant/ --like ruru.vdpack -o my.vdpack --reindex
 
 # the .char unit profile: what a unit declares, and which profile is whose
 python3 -m d3tool char show Profiles/empire_angel.char

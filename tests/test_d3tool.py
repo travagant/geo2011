@@ -4112,36 +4112,121 @@ def test_pe_find_resolves_a_string_its_xref_and_the_disassembly():
         assert binary.section_of(0x900000) == (None, None)
 
 
-def test_vdpack_diff_flags_an_inherited_index_over_new_payloads():
-    """The `index` entry is a per-file hash manifest (MD5 + SHA-256, written by
-    the packer's `vd_hash.cpp`) and the loader validates it before mounting, so
-    a pack that replaces payloads while carrying the original index is not the
-    confirmed shape — it is the first suspect when a unit disappears."""
+def test_vdpack_index_is_a_decodable_manifest_the_loader_checks():
+    """`index` is not opaque: it is a text manifest behind an eight byte
+    header and an LCG keystream — `Name`/`UUID`/`Type`, one `File` line per
+    resource with its MD5 and SHA-256.  The toolkit's deobfuscator at
+    0x40a290 is the same three instructions, and every digest in a shipped
+    pack matches the payload it names."""
+    import hashlib
     from d3tool import vdpack as vmod
-    base = [("index", b"opaque"), ("resources\\U\\a.g", b"old"),
+    files = [("index", b"placeholder"),
+             ("resources\\Unit\\a.g", b"geometry"),
+             ("resources\\Unit\\a.t", b"atlas"),
+             ("russian.txt", b"russian")]
+    text, blob = vmod.build_index(files, name="unit", uuid="u-1", type_="Mod")
+    assert blob[:4] == vmod.INDEX_MAGIC == b"\x65\x43\x74\xff"
+    assert vmod.U32.unpack_from(blob, 4)[0] == vmod.INDEX_SEED
+    assert len(blob) == 8 + len(text.encode("utf-8")) + 1
+    # the header is a magic and a seed; the body is the text XOR the keystream
+    assert vmod.decode_index(blob) == text
+    assert vmod.encode_index(text) == blob            # byte for byte
+    doc = vmod.parse_index(text)
+    assert (doc.name, doc.uuid, doc.type) == ("unit", "u-1", "Mod")
+    assert [f.path for f in doc.files] == ["resources\\Unit\\a.g",
+                                           "resources\\Unit\\a.t"]
+    assert doc.files[0].md5 == hashlib.md5(b"geometry").hexdigest()
+    assert doc.files[0].sha256 == hashlib.sha256(b"geometry").hexdigest()
+    assert "russian.txt" not in text           # a root marker is not a resource
+    assert 'File = "index"' not in text         # nor is the manifest itself
+
+    # what the loader asks of a pack: is every listing still true?
+    packed = [(n, blob if n == "index" else d) for n, d in files]
+    report = vmod.index_report(packed)
+    assert report["decoded"] and report["records"] == 2
+    assert not (report["mismatched"] or report["unlisted"] or report["missing"])
+    stale = [("index", blob), ("resources\\Unit\\a.g", b"edited"),
+             ("resources\\Unit\\a.t", b"atlas")]
+    report = vmod.index_report(stale)
+    assert report["mismatched"] == ["resources\\Unit\\a.g"]
+    assert report["missing"] == [] and report["unlisted"] == []
+    # a path the manifest never saw is the case the port watched vanish
+    added = stale + [("resources\\Unit\\b.g", b"new")]
+    assert vmod.index_report(added)["unlisted"] == ["resources\\Unit\\b.g"]
+
+
+def test_vdpack_reindex_lists_a_new_path_and_refreshes_a_stale_one():
+    """Writing the manifest is what lifts the "replace only, never add" rule:
+    a rebuilt archive can carry a path no shipped pack listed, with its own
+    `File` record, and can carry edited bytes with correct digests."""
+    from d3tool import vdpack as vmod
+    base = [("index", vmod.build_index([("index", b""),
+                                        ("resources\\U\\a.g", b"old")],
+                                       name="m", uuid="id")[1]),
+            ("resources\\U\\a.g", b"old"),
             ("resources\\U\\a.t", b"atlas")]
-    replaced = [("index", b"opaque"), ("resources\\U\\a.g", b"new"),
-                ("resources\\U\\a.t", b"atlas")]
+    # the shipped manifest still describes the shipped bytes
+    assert vmod.index_report(base)["mismatched"] == []
+
+    newer = [("index", base[0][1]),          # the pack's own manifest goes in
+             ("resources\\U\\a.g", b"new"),
+             ("resources\\U\\a.t", b"atlas"),
+             ("resources\\U\\b.g", b"added")]
+    rebuilt = vmod.reindex_pack(newer)
+    assert rebuilt[0][0] == "index"            # where every pack keeps it
+    report = vmod.index_report(rebuilt)
+    assert report["decoded"], report["error"]
+    assert report["records"] == 3             # the new path got a record
+    assert report["unlisted"] == [] and report["mismatched"] == []
+    doc = report["document"]
+    assert (doc.name, doc.uuid) == ("m", "id")   # the mod keeps its identity
+    assert "resources\\U\\b.g" in doc.paths
+    # the archive it lands in reads back and still checks out
+    back = vmod.parse_vdpack(vmod.build_vdpack(rebuilt))
+    assert back.parse_error == "" and len(back) == 4   # index + 3
+    assert vmod.index_report(list(back.files().items()))["mismatched"] == []
+
+
+def test_vdpack_diff_reports_a_manifest_that_no_longer_fits():
+    """A pack that replaces payloads while carrying the original manifest has
+    a stale digest on every replaced payload — worth saying, and worth saying
+    precisely: the one in-game confirmation (the Angel pack) replaced two
+    `.g` payloads under the original `index` and still loaded, so it is a
+    warning about the manifest, not a verdict on the pack.  A path with no
+    record at all is the other question, and that one is the port's failure."""
+    from d3tool import vdpack as vmod
+    text, blob = vmod.build_index([("index", b""),
+                                   ("resources\\U\\a.g", b"old")],
+                                  name="m", uuid="id")
+    base = [("index", blob), ("resources\\U\\a.g", b"old")]
+    replaced = [("index", blob), ("resources\\U\\a.g", b"new")]
     result = vmod.diff_entries(base, replaced)
-    assert result["index_present"] is True
-    assert result["index_changed"] is False
-    assert result["changed"] == ["resources\\U\\a.g"]
-    grades = [grade for grade, _ in vmod.shape_verdict(result)]
-    assert "warn" in grades
-    assert "ok" not in grades          # it is not the confirmed shape any more
-    text = " ".join(line for _grade, line in vmod.shape_verdict(result))
-    assert "index" in text and "hash manifest" in text
-    # a rewritten index is reported as a different, weaker claim
-    rewritten = [("index", b"other"), ("resources\\U\\a.g", b"new"),
-                 ("resources\\U\\a.t", b"atlas")]
-    again = vmod.diff_entries(base, rewritten)
-    assert again["index_changed"] is True
-    lines = " ".join(line for _g, line in vmod.shape_verdict(again))
-    assert "rewritten" in lines
-    # and with no index at all, the old reading stands
-    plain = vmod.diff_entries([("a.g", b"1")], [("a.g", b"2")])
-    assert plain["index_present"] is False
-    assert [grade for grade, _ in vmod.shape_verdict(plain)] == ["ok"]
+    assert result["index_present"] is True and result["index_changed"] is False
+    assert result["index_decoded"] is True and result["index_records"] == 1
+    assert result["index_mismatched"] == ["resources\\U\\a.g"]
+    verdict = vmod.shape_verdict(result)
+    grades = [grade for grade, _ in verdict]
+    assert "bad" not in grades                 # stale digest is not the failure
+    text_lines = " ".join(line for _g, line in verdict)
+    assert "no longer match" in text_lines and "--reindex" in text_lines
+    # a correctly reindexed replacement grades ok, manifest and all
+    fixed = [("index", vmod.build_index([("index", b""),
+                                         ("resources\\U\\a.g", b"new")],
+                                        name="m", uuid="id")[1]),
+             ("resources\\U\\a.g", b"new")]
+    again = vmod.diff_entries(base, fixed)
+    assert again["index_mismatched"] == [] and again["index_unlisted"] == []
+    assert [g for g, _ in vmod.shape_verdict(again)] == ["ok"]
+    # an added path with no record is the bad one
+    added = fixed + [("resources\\U\\b.g", b"new")]
+    bad = vmod.diff_entries(base, added)
+    assert bad["index_unlisted"] == ["resources\\U\\b.g"]
+    assert "bad" in [g for g, _ in vmod.shape_verdict(bad)]
+    # and a manifest that decodes to nonsense is reported, not guessed at
+    broken = [("index", b"not-a-manifest"), ("resources\\U\\a.g", b"new")]
+    assert vmod.diff_entries(base, broken)["index_error"]
+    assert "warn" in [g for g, _ in vmod.shape_verdict(
+        vmod.diff_entries(base, broken))]
 
 
 def test_vdpack_plan_notices_payloads_the_index_no_longer_describes():
@@ -4909,9 +4994,9 @@ def test_vdpack_manifest_of_folder_and_archive_match():
 
 
 def test_vdpack_pack_can_keep_the_opaque_index():
-    """Only in-place replacement inside a pack that keeps its opaque `index`
-    is confirmed to load in game, so building on that shape must be possible
-    (and a pack without one has to say so)."""
+    """A pack's `index` can be carried over from the pack it replaces
+    (`--keep-index`), and a pack built without one has to say so — the loader
+    validates the archive against that manifest."""
     import contextlib
     import io
     from d3tool import vdpack
@@ -4921,7 +5006,7 @@ def test_vdpack_pack_can_keep_the_opaque_index():
         # a stock pack has no `index` and warns about it
         plain = os.path.join(d, "plain.vdpack")
         assert climod._run(["vdpack", "pack", folder, "-o", plain]) == 0
-        assert "no opaque `index` entry" in buf.getvalue()
+        assert "no `index` entry" in buf.getvalue()
         # the reference archive: a folder copy plus the opaque resource
         shared = os.path.join(d, "shared")
         for name, data in vdpack.pack_folder(folder):
@@ -4956,7 +5041,7 @@ def test_vdpack_pack_can_keep_the_opaque_index():
         buf.truncate()
         assert climod._run(["vdpack", "pack", folder, "-o", out,
                             "--keep-index", archive]) == 0
-        assert "no opaque `index` entry" not in buf.getvalue()
+        assert "no `index` entry" not in buf.getvalue()
         kept = vdpack.read_vdpack(out)
         assert not kept.parse_error, kept.parse_error
         index = vdpack.index_entry(list(kept.files().items()))

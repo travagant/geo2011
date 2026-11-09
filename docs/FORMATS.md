@@ -1083,12 +1083,9 @@ What the packer says about the `index`:
 So an `index` is not a mystery any more, it is a *derived artefact*: a textual
 table per file — name, uuid, type, `Hash1` = MD5 of the content, `Hash2` =
 SHA-256 of the content — serialised and then stored in the pack, which is why
-the stored bytes are uniform (4 738 of them for 27 files and 1 674 bytes of
-names).  Two things remain before `d3tool` can emit one: the storage transform
-in the 0x4207dc path, and the exact grammar of the text (field order, quoting,
-separators) from the 0x41eeb0 builder.  With those, a pack carrying modified
-payloads can have a *correct* index computed for it, which is the difference
-between a pack the engine mounts and one it rejects as `has wrong index`.
+the stored bytes are uniform.  §6f closes the last two gaps: the storage
+transform and the grammar, both of which `d3tool` now implements in both
+directions.
 
 ## 6e. The engine's own attribute vocabulary and diagnostics
 
@@ -1137,6 +1134,66 @@ explicitly: a `.t` that exists but is empty (`has empty texture`), and a
 the second needs the materials file to compare against, which retail ships as
 text.
 
+## 6f. `index` decoded: the mod manifest, and what the loader checks
+
+The storage transform is in the packer at **0x40a290**, and it is thirty
+instructions: compare the first four bytes against `65 43 74 FF`, load the next
+four as a seed, then step a 32-bit LCG and XOR its high byte into every byte
+that follows:
+
+```
+[0:4]   65 43 74 FF                 magic
+[4:8]   u32 little endian           seed
+[8:]    text + NUL                  ^ ((state >> 16) & 0xFF) per byte
+
+state = state * 0x34405 + 0x269EC9  (mod 2**32, stepped before each byte)
+```
+
+`imul ecx, ecx, 0x34405` / `add ecx, 0x269EC9` / `shr edx, 0x10` / `xor dl, bl`
+is MSVC's `rand()`, so this is obfuscation, not encryption — the seed travels
+in the file.  Run over the 4 738-byte `index` of `ruru.vdpack` it yields 4 730
+bytes of text, and re-encoding that text with the same seed reproduces the
+shipped payload **byte for byte**, which is the test that says the transform is
+understood rather than approximated.
+
+The text (`\n` line ends, quotes mandatory, `;` terminator, this order)::
+
+```
+Name = "ruru";
+UUID = "6af75149-9223-4e52-b5cc-ccb9ac990071";
+Type = "Mod";
+File = "resources\\Characters\\Empire\\Inquisitor\\x.g", "<32 hex>", "<64 hex>";
+...
+```
+
+`Name`/`UUID`/`Type` are the mod's identity, and one `File` line follows per
+indexed resource: the path in archive spelling, the **MD5** of the payload,
+then its **SHA-256**, lowercase.  In `ruru.vdpack` all **26** records verify
+against the payloads they name — no exceptions — and the two entries that are
+*not* listed are `index` itself and the root-level `russian.txt`.  So the
+manifest covers the resource tree, not the archive.
+
+Two questions the game answers differently, and both matter when planning a
+pack:
+
+* **A payload whose bytes no longer match its recorded digest is not known to
+  block anything.**  The Angel pack replaced both of its `.g` payloads and
+  kept the original `index`, and its battle loaded with the rebuilt geometry
+  on screen.  A stale manifest describes bytes that are not in the archive;
+  it is a consistency problem to fix, not the smoking gun.
+* **A path with no `File` record is the failure.**  That is what the port did
+  when it added entries, and the game showed no units — with `Unindexed file
+  '%s'` (0x41a583) as the loader's own wording, and `Not found indexed file
+  '%s'` (0x41a5c7) for the mirror case of a record whose file is gone.
+
+Which means the "replace only, never add" rule that this toolkit enforced was
+a limitation of *our* side, not the engine's: nothing in the archive format
+forbids a new path, it just needs a `File` record.  `d3tool` writes those now —
+`vdpack index <pack>` decodes and verifies a manifest, `vdpack pack --reindex`
+and `vdpack pack --like <pack> --reindex` build one for the exact bytes that
+land (keeping the mod's `Name`/`UUID`/`Type`), and `vdpack diff` grades a
+rebuilt pack against the two questions above instead of guessing.
+
 ## 6. The `.vdpack` mod archive
 
 A retail install keeps a unit as a loose folder; mods ship the whole tree as
@@ -1174,35 +1231,37 @@ past the end of the file, and two entries sharing bytes.  On extraction the
 stored name is re-validated, so an archive cannot write outside the target
 folder (`..`, absolute paths and drive letters are refused).
 
-**The opaque `index` entry decides whether a pack is mounted.**  Every pack
-the port examined carries one resource named exactly `index` (20 362 bytes in
-`NewUnit.vdpack`) that nobody has decoded.  What the port established at
-runtime: replacing a payload *inside* such a pack works; adding six entries to
-it (index untouched) did **not** show the new units in game.  So the writer
-here does not claim otherwise — `vdpack pack` prints a warning when the bundle
-has no `index`, and `--keep-index <existing.vdpack>` copies the resource from
-a proven pack into the new one (same paths, new payloads: the shape that is
-confirmed to load).  `--like <existing.vdpack>` goes further and rebuilds the
-archive **in the proven pack's own shape** — same entry order, same name
-spelling, same per-entry flags, same `index`, payloads taken from the folder —
-because an unchanged bundle that the game ignores anyway has to differ from
-the working one in payload bytes alone.  Any folder path the source pack does
-not carry is dropped with a warning: that is the unchecked direction.
-`--drop <path>` leaves an entry out entirely.  In the game it turned out to be
-the *wrong* tool: a pack whose entry set no longer matched its `index` (the
-Angel pack minus that one path) never appeared in the mods list at all, while
-the same pack with all 26 entries mounted and only complained about the bad
-references.  So **the entry set and the `index` have to stay together** — do
-not add paths, do not drop them; fix the payload.  What the Angel pack needs
-is the generated `character_empire_angel_lod.ac` repathed: every `meshfile` /
-`file` line in it points at `resources\characters\character_empire_angel_lod\`,
-a folder no install has, so a pack that ships it stops the load with a
-missing-file dialog naming `<pack>.vdpack:resources\characters\…` — exactly
-the reference the `wrong folder` warning already flags.  Rewriting that prefix
-to `resources\characters\empire\angel\` (the folder the pack does carry)
-leaves every reference resolving, `vdpack validate --strict` clean, and the
-26-entry shape intact.  `vdpack manifest` records `index: {bytes, sha256}` (or
-`null`), so a manifest says which of the two you are looking at.
+**The `index` entry decides whether a pack is mounted**, and since §6f we know
+what it is: the mod's manifest, one MD5 + SHA-256 record per resource.  The
+three observations the port made at runtime map onto the loader's own three
+messages, which is why they looked contradictory:
+
+| the pack | the manifest says | loader | what was seen |
+|---|---|---|---|
+| payloads replaced, manifest untouched | hashes stale | nothing — a digest is not compared against the file list | mounted, rebuilt geometry on screen |
+| six paths added, manifest untouched | path has no record | `Unindexed file '%s'` (0x41a583) | no units in game |
+| a path dropped, manifest untouched | record's file is gone | `Not found indexed file '%s'` (0x41a5c7) | one attempt never appeared in the mods list; another still mounted — those two attempts differed in more than the dropped path, so read this row as the mechanism, not as a verdict |
+
+So the rule was never "replace only" — it was "the entry set and the manifest
+have to agree", and only one of the three ways to disagree was survivable.
+`d3tool` can now write the manifest, so all three are fixable instead of
+avoidable:
+
+* `vdpack pack <folder> --like <pack> --reindex` — same paths and order, a
+  manifest written for the payloads that actually landed (the mod keeps its
+  `Name`/`UUID`/`Type`);
+* `vdpack pack <folder> --reindex` — a fresh archive from a folder, manifest
+  included: the way to ship a *new* unit, which was previously untestable;
+* `vdpack index <pack>` — decode and check, so "does this pack agree with
+  itself" is a command rather than a guess;
+* `--keep-index <existing.vdpack>` copies a proven manifest over (correct only
+  when the payloads are the ones it describes).
+
+`--like` also rebuilds the archive in the proven pack's own entry order and
+spelling, which is worth keeping for one reason: an unchanged bundle that the
+game ignores anyway has to differ from the working one in payload bytes alone.
+Any folder path the source pack does not carry is dropped with a warning;
+`--drop <path>` leaves an entry out entirely.
 
 Confirmed later on one real unit pack (the Empire Angel, 24 entries, the
 original 4100-byte `index`, both `.g` payloads replaced in place): loading is
@@ -1222,7 +1281,7 @@ its source*, and that is where the loop stopped being productive.  It is worth
 recording what the container itself cannot be blamed for: a folder packed back
 `--like` the working archive with every payload left alone reproduces that
 archive **byte for byte** (md5 equal), so the writer, the header, the name
-spelling, the flags and the opaque `index` are all carried exactly; only a
+spelling, the flags and the `index` manifest are all carried exactly; only a
 changed payload can make the engine complain.
 
 The sword that never appeared was a payload problem of a different kind, and
