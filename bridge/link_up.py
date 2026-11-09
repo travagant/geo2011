@@ -155,6 +155,78 @@ def note(message: str, timeout: float = 10.0) -> None:
         pass
 
 
+# What a tunnel needs to reach, one port each. A refusal here is about this
+# machine or its network; a success means the block is on the provider's side.
+ENDPOINTS = (("region1.v2.argotunnel.com", 7844),   # cloudflared, QUIC
+             ("region1.v2.argotunnel.com", 443),    # cloudflared, HTTP/2
+             ("ssh.localhost.run", 22),             # localhost.run
+             ("a.pinggy.io", 443),                  # pinggy
+             ("serveo.net", 22),                    # serveo
+             ("ntfy.sh", 443))                      # the channel that works
+
+IP_INFO = ("http://ip-api.com/json/?fields=status,country,isp,org,as,"
+           "proxy,hosting,mobile,query")
+
+
+def check_endpoints(connect=None, timeout: float = 4.0) -> list:
+    """``[(host, port, 'open'|'refused'|'timeout')]`` — can this machine reach them?"""
+    connect = connect or socket.create_connection
+    out = []
+    for host, port in ENDPOINTS:
+        try:
+            with connect((host, port), timeout):
+                out.append((host, port, "open"))
+        except socket.gaierror:
+            out.append((host, port, "no-dns"))
+        except (socket.timeout, TimeoutError):
+            out.append((host, port, "timeout"))
+        except OSError as exc:
+            out.append((host, port, "refused" if getattr(exc, "errno", 0) in
+                        (61, 111, 10061) else f"{type(exc).__name__}"))
+    return out
+
+
+def public_identity(opener=None, timeout: float = 8.0) -> dict:
+    """What the internet sees behind this machine — the honest VPN test.
+
+    A VPN changes the address a tunnel provider sees, and free tunnels answer
+    502 or refuse outright for datacenter ranges. ``hosting`` and ``proxy`` from
+    ip-api say it without asking the user to inspect his own tray.
+    """
+    opener = opener or (lambda url, timeout: urllib.request.urlopen(url, timeout=timeout))
+    try:
+        raw = opener(IP_INFO, timeout=timeout).read()
+        data = json.loads(raw.decode("utf-8", "replace"))
+        if not isinstance(data, dict):
+            return {"error": "unexpected answer"}
+        return data
+    except Exception as exc:      # noqa: BLE001 - a diagnostic must not fail the run
+        return {"error": f"{type(exc).__name__}: {exc}"}
+
+
+def preflight(note=note) -> dict:
+    """Report what this machine's network looks like, before blaming a tunnel."""
+    info = public_identity()
+    lines = []
+    if "error" in info:
+        lines.append(f"ip-api: {info['error']}")
+    else:
+        lines.append(f"внешний IP {info.get('query')} — {info.get('isp')} "
+                     f"({info.get('country')})")
+        flags = [name for name in ("proxy", "hosting", "mobile") if info.get(name)]
+        lines.append("признаки: " + (", ".join(flags) if flags else "нет") +
+                     ("" if not info.get("hosting") else
+                      "  ← hosting значит VPN/сервер, а не домашний интернет"))
+    problems = []
+    for host, port, state in check_endpoints():
+        lines.append(f"{host}:{port} — {state}")
+        if state != "open":
+            problems.append(f"{host}:{port}={state}")
+    for line in lines:
+        note(line)
+    return {"identity": info, "lines": lines, "problems": problems}
+
+
 def note_tail(name: str, log_path, note=note) -> None:
     """Announce the last lines a tunnel client wrote, when it did not work.
 
@@ -599,6 +671,15 @@ def run(args) -> int:
         return finish(1, "local-fail")
     print("сервер отвечает локально: OK")
     note(f"сервер поднят на 127.0.0.1:{port}, студия {cfg['studio']}")
+    # before blaming a tunnel: is this machine behind a VPN, and can it reach the
+    # four providers at all? Both questions are answered here, not by guessing
+    try:
+        where = preflight()
+        for line in where["lines"]:
+            print("    " + line)
+        report.extend("net: " + line for line in where["lines"])
+    except Exception as exc:      # noqa: BLE001 - diagnostics never stop the run
+        print(f"    проверка сети не удалась: {type(exc).__name__}: {exc}")
 
     try:
         exe = args.cloudflared or find_cloudflared(cfg["studio"])

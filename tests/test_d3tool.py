@@ -7356,3 +7356,63 @@ def test_every_step_is_announced_while_it_happens():
         assert "пробую ssh → localhost.run (2 из 4)" in message
         assert "build: " + link_up.studio_link.build_marker() in message
         assert "at: " in message
+
+
+def test_the_network_is_described_before_a_tunnel_is_blamed():
+    """'Maybe it is the VPN or the antivirus?' deserves an answer, not a shrug.
+
+    A VPN changes the address a provider sees, and free tunnels answer 502 for
+    datacenter ranges; a firewall shows up as a refused port. Both are visible
+    from the machine itself, so the bridge reports them before it starts trying:
+    the public identity (with `hosting`/`proxy` flags) and one TCP attempt per
+    endpoint. A diagnostic that fails must not stop the run.
+    """
+    import importlib
+    import socket as _socket
+
+    sys.path.insert(0, os.path.join(REPO, "bridge"))
+    link_up = importlib.import_module("link_up")
+
+    def fake_connect(address, timeout=None):
+        host, port = address
+        if host == "serveo.net":
+            raise OSError(10061, "refused")
+        if host == "a.pinggy.io":
+            raise _socket.timeout("timed out")
+
+        class Ok:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+        return Ok()
+
+    states = {(h, p): st for h, p, st in link_up.check_endpoints(connect=fake_connect)}
+    assert states[("region1.v2.argotunnel.com", 7844)] == "open"
+    assert states[("serveo.net", 22)] == "refused"
+    assert states[("a.pinggy.io", 443)] == "timeout"
+
+    class FakeBody:
+        def read(self):
+            return json.dumps({"status": "success", "query": "203.0.113.9",
+                               "isp": "Some ISP", "country": "Poland",
+                               "hosting": True, "proxy": False}).encode("utf-8")
+
+    identity = link_up.public_identity(opener=lambda url, timeout: FakeBody())
+    assert identity["hosting"] is True and identity["query"] == "203.0.113.9"
+
+    announced = []
+    real_endpoints, real_identity = link_up.check_endpoints, link_up.public_identity
+    try:
+        link_up.check_endpoints = lambda connect=None, timeout=4.0: [
+            ("ntfy.sh", 443, "open"), ("serveo.net", 22, "refused")]
+        link_up.public_identity = lambda opener=None, timeout=8.0: identity
+        result = link_up.preflight(note=lambda line: announced.append(line))
+    finally:
+        link_up.check_endpoints, link_up.public_identity = real_endpoints, real_identity
+
+    assert result["problems"] == ["serveo.net:22=refused"]
+    joined = "\n".join(announced)
+    assert "203.0.113.9" in joined and "hosting" in joined
+    assert "serveo.net:22 — refused" in joined
