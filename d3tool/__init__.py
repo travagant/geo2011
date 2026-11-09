@@ -13,7 +13,8 @@ from .model import (
     Vertex, pack_weights_joints,
 )
 from .gfile import (
-    parse_attributes, parse_geometry_file, vertex_stride, write_geometry_file,
+    lod_part, normalize_part_identity, parse_attributes,
+    parse_geometry_file, vertex_stride, write_geometry_file,
 )
 from .gltf import (
     animation_from_gltf, detect_weights_on_vertex, load_gltf, mesh_to_skinned,
@@ -51,8 +52,8 @@ __all__ = [
     "DEFAULT_DIFFUSE", "Bone", "GltfModel", "MeshPart", "MorphTrack",
     "SkinnedMesh", "Vertex", "pack_weights_joints",
     # .g geometry
-    "parse_attributes", "parse_geometry_file", "vertex_stride",
-    "write_geometry_file",
+    "lod_part", "normalize_part_identity", "parse_attributes",
+    "parse_geometry_file", "vertex_stride", "write_geometry_file",
     # glTF -> GM
     "animation_from_gltf", "detect_weights_on_vertex", "load_gltf",
     "mesh_to_skinned",

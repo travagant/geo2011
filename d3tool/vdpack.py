@@ -28,20 +28,24 @@ porting corpus (``docs/PORT_ANALYSIS_COMPARE_RU.md``); the toolkit's own
 corpus ships no ``.vdpack``, so this reader is validated against synthetic
 archives and against the *layout* the port used, not against a retail pack.
 
-One thing the port could not explain, and this module deliberately does not
-pretend to either: every pack it saw contains one resource named ``index``
-(20 362 bytes in its reference archive) that no tool has decoded.
-Same-path payload replacement inside such a pack is confirmed working in
-game; a pack that *added* resources did not show them.  :func:`index_entry`
-finds that resource so `vdpack pack --keep-index` can carry it over, and
-:func:`manifest` records whether a bundle has one.
+Every pack also carries one resource named ``index``: the mod's manifest, a
+short text file of per-file MD5 and SHA-256 digests (see :func:`parse_index`),
+wrapped in eight bytes and XOR-obfuscated with a 32-bit LCG keystream (see
+:func:`decode_index`).  Same-path payload replacement inside such a pack is
+confirmed working in game; a pack that *added* resources did not show them,
+exactly because the loader validates the file list against this manifest
+before it mounts anything.  :func:`build_index` therefore writes a manifest
+for any file set, and `vdpack pack --reindex` / `vdpack pack --like ... 
+--reindex` put a correct one into a rebuilt archive.
 """
 from __future__ import annotations
 
 import hashlib
 import os
+import re
 import struct
 from dataclasses import dataclass, field
+from uuid import uuid4
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 U32 = struct.Struct("<I")
@@ -247,6 +251,79 @@ def build_vdpack(files: Sequence[Tuple[str, bytes]],
     return bytes(index) + bytes(payload)
 
 
+def _manifest_readable(pack: "Vdpack") -> bool:
+    """Does this archive carry a manifest this toolkit can read and rewrite?
+
+    Only then can a rebuild keep the mod's ``Name``/``UUID``/``Type``; an
+    archive whose `index` is a blob of unknown provenance is left exactly as
+    it is, because replacing it would throw away the only copy.
+    """
+    try:
+        return index_document(list(pack.files().items())) is not None
+    except ValueError:
+        return False
+
+
+def pack_like(source: "Vdpack", files, drop=(),
+              reindex: bool = True) -> Tuple[bytes, List[str]]:
+    """Rebuild a pack with `source`'s entry order, names, flags and `index`.
+
+    The only in-game-confirmed shape is *the same paths, different payloads*,
+    and the archive is a flat list whose order nothing here wants to disturb:
+    a rebuild that reuses it is byte-comparable with the pack it replaces.  So a patch pack must not be re-sorted: this walks the source
+    archive entry by entry, takes each payload from ``files`` (matched
+    case-insensitively on the backslash path), keeps the source's spelling and
+    flags, and falls back to the source payload for anything the folder does
+    not carry (the `index` resource itself, most of all).
+
+    ``drop`` removes entries from the result (paths as they appear in the
+    source archive, matched case-insensitively): a pack that ships a file the
+    engine will request and cannot resolve — the Angel's generated
+    ``*_lod.ac``, whose own ``meshfile`` names a folder no retail install has —
+    stops the load with a missing-file dialog, while *removing* a path is the
+    direction the port confirmed as survivable.
+
+    ``reindex`` replaces the carried-over manifest with one written for the
+    payloads that actually landed, keeping the mod's ``Name``/``UUID``/``Type``
+    — this is the mode to ship in, since the loader checks every payload
+    against the manifest before it mounts anything.
+
+    Returns the archive bytes and the list of folder paths that had no place
+    in the archive (paths the source does not carry), since *adding* paths is
+    exactly the unconfirmed case.
+    """
+    dropped = {str(name).replace("/", "\\").strip("\\").lower()
+               for name in drop}
+    pairs = list(files.items()) if isinstance(files, dict) else list(files)
+    folder = {name.replace("/", "\\").strip("\\").lower(): data
+              for name, data in pairs}
+    entries: List[Tuple[str, bytes, int]] = []
+    used = set()
+    for entry in source.entries:
+        key = entry.name.replace("/", "\\").strip("\\").lower()
+        if key in dropped:
+            used.add(key)
+            continue
+        blob = folder.get(key)
+        if blob is None:
+            blob = source.payload(entry)
+        else:
+            used.add(key)
+        entries.append((entry.name, blob, entry.flags))
+    extra = sorted(k for k in folder if k not in used and k != INDEX_ENTRY)
+    if reindex and _manifest_readable(source):
+        # Same paths, same order, different payloads is only half the shape:
+        # the manifest has to agree with the new bytes, or the loader logs
+        # `Index error : str_not_valid_hash_for_file` and hands nothing back.
+        # A source that carries no manifest is left alone — inventing one
+        # there would change the shape the caller asked to reproduce.
+        flags = {_norm_name(n).lower(): f for n, _, f in entries}
+        entries = [(n, b, flags.get(_norm_name(n).lower(), 0))
+                   for n, b in reindex_pack([(n, b) for n, b, _ in entries])]
+    return build_vdpack([(n, b) for n, b, _ in entries],
+                        flags=[f for _, _, f in entries]), extra
+
+
 def pack_folder(root: str) -> List[Tuple[str, bytes]]:
     """Every file under ``root`` as sorted ``(name, bytes)`` pairs."""
     files: List[Tuple[str, bytes]] = []
@@ -258,6 +335,121 @@ def pack_folder(root: str) -> List[Tuple[str, bytes]]:
             files.append((rel, open(full, "rb").read()))
     files.sort(key=lambda item: item[0].lower())
     return files
+
+
+# --------------------------------------------------------------------------- #
+#  planning a build
+# --------------------------------------------------------------------------- #
+
+def infer_prefix(base, folder_names: Sequence[str]) -> Optional[str]:
+    """Which archive folder a loose unit folder belongs to.
+
+    A mod's folder is shallow (``Empire/Inquisitor``) while the archive path is
+    deep (``resources\\Characters\\Empire\\Inquisitor``), so a plan has to line
+    the two up before it can say anything about "new paths".  The pack is the
+    authority: the entry that carries one of the folder's own files names the
+    folder, and a file name match outranks a bare ``.g`` stem match.
+    """
+    wanted = {n.replace("/", "\\").lower() for n in folder_names}
+    stems = {os.path.splitext(n)[0].lower() for n in folder_names
+             if n.lower().endswith(".g")}
+    scores: Dict[str, int] = {}
+    for name, _ in _pairs(base):
+        parts = _norm_name(name).split("\\")
+        if len(parts) < 2:
+            continue
+        leaf = parts[-1].lower()
+        parent = "\\".join(parts[:-1])
+        if leaf in wanted:
+            scores[parent] = scores.get(parent, 0) + 3
+        elif leaf.endswith(".g") and os.path.splitext(leaf)[0] in stems:
+            scores[parent] = scores.get(parent, 0) + 1
+    if not scores:
+        return None
+    return max(scores.items(), key=lambda kv: (kv[1], len(kv[0])))[0]
+
+
+def _scene_prefix(files: Sequence[Tuple[str, bytes]]) -> Optional[str]:
+    """The archive folder a unit's own `.scene` says its mesh lives in."""
+    import re
+    for name, data in files:
+        if not name.lower().endswith(".scene"):
+            continue
+        text = data.decode("latin-1", "replace")
+        hit = re.search(r'"([^"]*[\\/][^"]*\.g)"', text, re.IGNORECASE)
+        if hit:
+            return "\\".join(hit.group(1).replace("/", "\\").split("\\")[:-1])
+    return None
+
+
+def plan_bundle(folder, base=None, prefix: Optional[str] = None) -> dict:
+    """How to ship `folder` so the engine actually sees it.
+
+    ``base`` is the pack the game already loads (or a folder in the same
+    shape).  The plan answers the three questions a modder ships on:
+
+    * which files **replace** a path the pack already carries — the only shape
+      with a runtime confirmation behind it;
+    * which files are **new paths**, i.e. the shape the port tried in game and
+      saw no units at all, with the names already available in that folder as
+      the rename targets;
+    * which of the pack's own files the folder does **not** carry — those stay
+      whatever the vanilla tree has, which is fine and worth seeing.
+
+    With no ``base`` it still plans the loose install the engine's own mount
+    understands (``resources\\...\\<file>``), which is the way to ship a file
+    that no pack shape can add.
+    """
+    pairs = _pairs(folder)
+    names = [n.replace("/", "\\") for n, _ in pairs]
+    base_pairs = _pairs(base) if base is not None else []
+    where = prefix or (infer_prefix(base_pairs, names) if base_pairs
+                       else None) or _scene_prefix(pairs) or ""
+    where = where.strip("\\")
+    existing = {_norm_name(n).lower() for n, _ in base_pairs}
+    base_bytes = {_norm_name(n).lower(): d for n, d in base_pairs}
+    textures: Dict[str, List[str]] = {}     # archive folder -> texture stems
+    for name, _ in base_pairs:
+        norm = _norm_name(name)
+        parts = norm.split("\\")
+        if parts[-1].lower().endswith(".t"):
+            textures.setdefault("\\".join(parts[:-1]).lower(), []).append(
+                os.path.splitext(parts[-1])[0])
+    entries = []
+    for name, data in pairs:
+        leaf = name.replace("/", "\\").split("\\")[-1]
+        path = f"{where}\\{leaf}" if where else leaf
+        if not base_pairs:
+            kind = "loose"          # nothing to compare against: a bare layout
+        else:
+            kind = ("replaces" if path.lower() in existing else "new")
+        entries.append({"path": path, "file": leaf, "bytes": len(data),
+                        "kind": kind})
+    carried = {e["path"].lower() for e in entries}
+    missing = [n for n, _ in base_pairs
+               if where and _norm_name(n).lower().startswith(where.lower() + "\\")
+               and _norm_name(n).lower() not in carried]
+    added = [e for e in entries if e["kind"] == "new"]
+    here = sorted(textures.get(where.lower(), []))
+    for entry in added:
+        entry["alternatives"] = []
+        if entry["file"].lower().endswith(".t"):
+            # a `.g` attribute holds a bare texture name, resolved inside the
+            # unit's own folder first: these are the names a rename can take,
+            # and every one of them is a path the pack's `index` already lists.
+            entry["alternatives"] = here[:4]
+    by_leaf = {n.replace("/", "\\").split("\\")[-1].lower(): d
+               for n, d in pairs}
+    stale = [e["path"] for e in entries
+             if e["kind"] == "replaces"
+             and base_bytes.get(e["path"].lower()) is not None
+             and base_bytes[e["path"].lower()] != by_leaf.get(e["file"].lower())]
+    return {"prefix": where, "entries": entries, "added": added,
+            "replaced": [e for e in entries if e["kind"] == "replaces"],
+            "missing": sorted(missing), "has_base": bool(base_pairs),
+            "index_present": any(_norm_name(n).lower() == "index"
+                                 for n, _ in base_pairs),
+            "payloads_changed": sorted(stale)}
 
 
 # --------------------------------------------------------------------------- #
@@ -329,19 +521,19 @@ class ReferenceReport:
         return bool(self.problems)
 
 
-INDEX_ENTRY = "index"
-
-
 def index_entry(files) -> Optional[Tuple[str, bytes]]:
-    """The opaque ``index`` entry a retail-style pack carries, if any.
+    r"""The ``index`` entry a retail-style pack carries, if any.
 
     Every pack the Heroes-VII port saw contains one resource named exactly
-    ``index`` (20 362 bytes in `NewUnit.vdpack`) whose format nobody has
-    decoded.  It is not a directory of the archive: same-path payload
-    replacement works with it untouched, while a pack that *added* paths
-    (and kept the old `index`) did not show its units in game.  So the only
-    game-confirmed way to ship new content is a pack that keeps the original
-    `index` — which is why `vdpack pack --keep-index` exists.
+    ``index`` (20 362 bytes in `NewUnit.vdpack`, 4 100 in the Angel pack,
+    4 738 in `ruru.vdpack`) — the mod's manifest, decoded by
+    :func:`decode_index`.  It is not a directory of the archive: same-path
+    payload replacement works with it untouched, while a pack that *added*
+    paths (and kept the old `index`) did not show its units in game, because
+    the loader checks the archive against this manifest first.  Carrying it
+    over is still the safe move for a pure replacement pack
+    (`vdpack pack --keep-index`), and :func:`build_index` is the way to get a
+    correct manifest for a file set that differs.
 
     Two more things are confirmed on the Angel unit pack (24 entries, original
     4100-byte `index`, both `.g` payloads replaced in place and one path — a
@@ -359,6 +551,490 @@ def index_entry(files) -> Optional[Tuple[str, bytes]]:
         if name.replace("/", "\\").strip("\\").lower() == INDEX_ENTRY:
             return name, data
     return None
+
+
+# --------------------------------------------------------------------------- #
+#  the `index` resource: the mod manifest
+# --------------------------------------------------------------------------- #
+#
+# `index` is a text manifest, stored obfuscated.  On disk:
+#
+#     [0:4]   65 43 74 FF              magic
+#     [4:8]   u32 little endian        seed for the keystream
+#     [8:]    text + NUL, XOR-obfuscated byte by byte
+#
+# and the keystream is the high byte of a 32-bit LCG seeded with those four
+# bytes, stepped *before* each byte is used:
+#
+#     state = state * 0x34405 + 0x269EC9   (mod 2**32)
+#     plain = cipher ^ ((state >> 16) & 0xFF)
+#
+# That is the whole of `0x40a290` in the retail toolkit (magic compare, seed
+# load, the multiply/add, the `shr edx,0x10` and the `xor dl,bl`), which runs
+# over a resource that starts exactly with these bytes; the text it yields
+# hashes every payload with MD5 and SHA-256 and matches all of them.  The
+# LCG is MSVC's `rand()`, so this is obfuscation, not encryption: the seed is
+# in the file.
+#
+# The text is (`\n` line ends, quotes mandatory, `;` terminator, fields in
+# this order)::
+#
+#     Name = "ruru";
+#     UUID = "6af75149-9223-4e52-b5cc-ccb9ac990071";
+#     Type = "Mod";
+#     File = "resources\\Characters\\...\\x.g", "<md5 hex>", "<sha256 hex>";
+#     ...
+#
+# `Name`/`UUID`/`Type` are the mod's identity (`MOD_INDEX_NAME`,
+# `MOD_INDEX_UUID`, `MOD_INDEX_TYPE` in the toolkit, ids 0x32..0x35), and one
+# `File` line follows per indexed path, lowercase hex.  Paths are indexed with
+# backslashes, `index` itself is not listed, and neither is a root-level
+# marker such as `russian.txt` — the manifest covers the resource tree.
+
+INDEX_ENTRY = "index"
+INDEX_MAGIC = b"\x65\x43\x74\xff"
+INDEX_SEED = 0xC6931EDD      # the seed every observed pack carries
+INDEX_MUL = 0x34405
+INDEX_ADD = 0x269EC9
+
+_INDEX_HEAD = re.compile(r'^(Name|UUID|Type) = "([^"]*)";$')
+_INDEX_FILE = re.compile(r'^File = "([^"]+)", "([0-9a-f]{32})", '
+                         r'"([0-9a-f]{64})";$')
+
+
+def _index_keystream(seed: int, count: int) -> bytes:
+    """The LCG keystream, one byte per call *after* stepping the state."""
+    state = seed & 0xFFFFFFFF
+    out = bytearray(count)
+    for i in range(count):
+        state = (state * INDEX_MUL + INDEX_ADD) & 0xFFFFFFFF
+        out[i] = (state >> 16) & 0xFF
+    return bytes(out)
+
+
+def decode_index(blob: bytes) -> str:
+    """Obfuscated `index` payload -> the manifest text (no trailing NUL).
+
+    Raises ``ValueError`` if the eight-byte header is not there, so a caller
+    can tell "not a manifest" from "manifest with odd contents" — the first
+    is what a hand-written pack looks like, the second is a bug.
+    """
+    if len(blob) < 8:
+        raise ValueError(f"`index` too short for a header ({len(blob)} bytes)")
+    if blob[:4] != INDEX_MAGIC:
+        raise ValueError("`index` does not start with the 65 43 74 FF header "
+                         f"(got {blob[:4].hex()})")
+    seed = U32.unpack_from(blob, 4)[0]
+    body = blob[8:]
+    plain = bytes(b ^ k for b, k in zip(body, _index_keystream(seed, len(body))))
+    plain = plain.rstrip(b"\x00")
+    for encoding in ("utf-8", "cp1251", "latin-1"):
+        try:
+            return plain.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    raise ValueError("`index` decoded to bytes no encoding accepts")  # pragma:
+
+
+def encode_index(text: str, seed: int = INDEX_SEED) -> bytes:
+    """Manifest text -> an obfuscated `index` payload the loader will read."""
+    body = text.encode("utf-8") + b"\x00"
+    obfuscated = bytes(b ^ k for b, k in
+                       zip(body, _index_keystream(seed, len(body))))
+    return INDEX_MAGIC + U32.pack(seed & 0xFFFFFFFF) + obfuscated
+
+
+@dataclass
+class IndexFile:
+    """One `File` line: a path and the two digests the loader checks."""
+    path: str
+    md5: str
+    sha256: str
+
+
+@dataclass
+class IndexDocument:
+    """A parsed manifest."""
+    name: str = ""
+    uuid: str = ""
+    type: str = ""
+    files: List[IndexFile] = field(default_factory=list)
+    text: str = ""
+
+    @property
+    def paths(self) -> List[str]:
+        return [f.path for f in self.files]
+
+
+def parse_index(text: str) -> IndexDocument:
+    """Manifest text -> :class:`IndexDocument`; unknown lines are an error.
+
+    Being strict is the point: a manifest this reader half-understands is a
+    manifest whose hashes cannot be trusted, and the whole resource exists to
+    be checked.
+    """
+    doc = IndexDocument(text=text)
+    for number, line in enumerate(text.split("\n"), start=1):
+        line = line.strip("\r")
+        if not line:
+            continue
+        head = _INDEX_HEAD.match(line)
+        if head:
+            key, value = head.group(1), head.group(2)
+            if key == "Name":
+                doc.name = value
+            elif key == "UUID":
+                doc.uuid = value
+            else:
+                doc.type = value
+            continue
+        record = _INDEX_FILE.match(line)
+        if record:
+            doc.files.append(IndexFile(*record.groups()))
+            continue
+        raise ValueError(f"`index` line {number} is not a field: {line!r}")
+    return doc
+
+
+def _digests(blob: bytes) -> Tuple[str, str]:
+    return hashlib.md5(blob).hexdigest(), hashlib.sha256(blob).hexdigest()
+
+
+def _prefixed(pairs) -> bool:
+    """Does this archive spell its entries as ``resources\\...`` paths?
+
+    A pack the engine mounts does (every observed one, `index` and a root
+    marker aside); a folder packed straight out of a unit directory spells
+    ``Aliases\\attack00.alias`` instead.  The two need different answers to
+    "what belongs in the manifest", so the rule follows what is there.
+    """
+    return any(_norm_name(name).lower().startswith("resources\\")
+               for name, _data in pairs)
+
+
+def _indexed(name: str, prefixed: bool = True) -> bool:
+    """Does a path belong in the manifest?
+
+    `index` cannot hash itself, and in a pack whose entries are ``resources``
+    paths the manifest lists exactly those: `russian.txt`, the root marker
+    every observed pack carries, is not among the 26 records of a 28-entry
+    pack.  A pack with no ``resources`` prefix at all (a folder packed as-is)
+    lists everything, because dropping half of it would be worse than listing
+    it.
+    """
+    norm = _norm_name(name).lower()
+    if norm == INDEX_ENTRY:
+        return False
+    if not prefixed:
+        return True
+    return norm.startswith("resources\\")
+
+
+def build_index(files, name: Optional[str] = None,
+                uuid: Optional[str] = None, type_: str = "Mod",
+                seed: int = INDEX_SEED,
+                keep: Optional["IndexDocument"] = None) -> Tuple[str, bytes]:
+    """Manifest text and payload for ``files``, hashes included.
+
+    ``keep`` is the manifest an archive already carries: its ``Name``,
+    ``UUID`` and ``Type`` win over the defaults, so rebuilding a mod's pack
+    keeps the mod's identity.  Without it the identity is taken from the
+    arguments and a fresh UUID is generated — the loader only needs the field
+    to be there and to be unique per mod.
+    """
+    if keep is not None:
+        name = keep.name or name
+        uuid = keep.uuid or uuid
+        type_ = keep.type or type_
+    if not name:
+        name = "mod"
+    if not uuid:
+        uuid = str(uuid4())
+    if not type_:
+        type_ = "Mod"
+    lines = [f'Name = "{name}";', f'UUID = "{uuid}";', f'Type = "{type_}";']
+    # The packer writes the `File` records sorted by path, not in archive
+    # order (a shipped pack proves it: its archive runs descending, its
+    # manifest ascending).  Keeping that order is what makes a rewrite of an
+    # already-correct manifest byte-identical to the one it replaces, so a
+    # rebuild with unchanged payloads does not churn.
+    pairs = _pairs(files)
+    prefixed = _prefixed(pairs)
+    records = sorted((_norm_name(path), blob) for path, blob in pairs
+                     if _indexed(path, prefixed))
+    for path, blob in records:
+        md5, sha256 = _digests(blob)
+        lines.append(f'File = "{path}", "{md5}", "{sha256}";')
+    text = "\n".join(lines) + "\n"
+    return text, encode_index(text, seed)
+
+
+def index_document(files) -> Optional[IndexDocument]:
+    """The manifest ``files`` carries, parsed — ``None`` if there is none.
+
+    A manifest that cannot be decoded or parsed raises, because that is a
+    finding in itself and the caller (``vdpack index``, ``vdpack diff``) is
+    supposed to report it rather than to fall back to silence.
+    """
+    found = index_entry(files)
+    if found is None:
+        return None
+    return parse_index(decode_index(found[1]))
+
+
+def index_report(files) -> Dict[str, object]:
+    """Check a bundle's manifest against the bundle itself.
+
+    Answers the three questions that decide whether the loader accepts a pack:
+    which listed paths hold different bytes than the manifest says, which
+    payloads the manifest does not mention at all, and which listed paths the
+    pack no longer carries.
+    """
+    pairs = _pairs(files)
+    by_name = {_norm_name(n).lower(): d for n, d in pairs}
+    report: Dict[str, object] = {
+        "present": index_entry(pairs) is not None,
+        "decoded": False, "document": None, "records": 0,
+        "mismatched": [], "unlisted": [], "missing": [], "error": "",
+    }
+    try:
+        doc = index_document(pairs)
+    except ValueError as exc:
+        report["error"] = str(exc)
+        return report
+    if doc is None:
+        return report
+    report["decoded"] = True
+    report["document"] = doc
+    report["records"] = len(doc.files)
+    listed = set()
+    for record in doc.files:
+        key = record.path.lower()
+        listed.add(key)
+        blob = by_name.get(key)
+        if blob is None:
+            report["missing"].append(record.path)
+            continue
+        md5, sha256 = _digests(blob)
+        if md5 != record.md5 or sha256 != record.sha256:
+            report["mismatched"].append(record.path)
+    prefixed = _prefixed(pairs)
+    report["unlisted"] = sorted(n for n, _ in pairs
+                                if _indexed(n, prefixed) and _norm_name(n)
+                                .lower() not in listed)
+    return report
+
+
+def reindex_pack(files, seed: int = INDEX_SEED,
+                 name: Optional[str] = None) -> List[Tuple[str, bytes]]:
+    """``files`` with a manifest written for those exact bytes.
+
+    The archive's own identity (``Name``/``UUID``/``Type``) is taken from the
+    manifest it already carries when there is one, so rebuilding a mod's pack
+    keeps the mod's name; otherwise ``name`` is used, and a fresh UUID is
+    generated.  The `index` entry keeps its position when the archive has one
+    and goes to the front when it does not, which is where every observed pack
+    keeps it.
+
+    ``name`` matters for a pack built from scratch: the loader is asked for a
+    mod by the name in ``sModifications`` and mounts ``Mods\\<name>.vdpack``,
+    so a manifest calling itself ``mod`` makes the file and the archive
+    disagree about what the mod is.  `vdpack pack` passes its output's stem.
+    """
+    pairs = _pairs(files)
+    keep = None
+    try:
+        keep = index_document(pairs)
+    except ValueError:
+        keep = None
+    _text, blob = build_index(pairs, name=name, keep=keep, seed=seed)
+    out: List[Tuple[str, bytes]] = []
+    placed = False
+    for name, data in pairs:
+        if _norm_name(name).lower() == INDEX_ENTRY:
+            out.append((name, blob))
+            placed = True
+        else:
+            out.append((name, data))
+    if not placed:
+        out.insert(0, (INDEX_ENTRY, blob))
+    return out
+
+
+def _pairs(files) -> List[Tuple[str, bytes]]:
+    return list(files.items()) if isinstance(files, dict) else list(files)
+
+
+def _norm_name(name: str) -> str:
+    return name.replace("/", "\\").strip("\\")
+
+
+def diff_entries(base, other) -> Dict[str, object]:
+    """What separates two bundles of the same unit, entry by entry.
+
+    ``base`` is normally the pack the game already loads and ``other`` the one
+    a mod is about to ship, so the answer reads as "what did I change": the
+    paths only in one of them, the paths whose payload differs, and whether
+    the *order* of the shared paths moved.
+
+    The order matters for reproducibility: ``pack_like`` rebuilds an archive
+    in the source's order so a rebuild with unchanged payloads is byte for
+    byte the source, and a diff that reports ``reordered`` is telling the
+    modder the same thing `vdpack pack --like` enforces.  (The ``index``
+    manifest itself is per path, so it does not care — see `index_report`.)
+
+    Names are compared in archive form (backslash separated, no leading
+    separator), so a folder and the pack built from it compare clean.
+    """
+    left = _pairs(base)
+    right = _pairs(other)
+    lmap = {_norm_name(n): d for n, d in left}
+    rmap = {_norm_name(n): d for n, d in right}
+    added = sorted(set(rmap) - set(lmap))
+    removed = sorted(set(lmap) - set(rmap))
+    changed = sorted(n for n in set(lmap) & set(rmap) if lmap[n] != rmap[n])
+    order_left = [_norm_name(n) for n, _ in left if _norm_name(n) in rmap]
+    order_right = [_norm_name(n) for n, _ in right if _norm_name(n) in lmap]
+    index_left = lmap.get("index")
+    index_right = rmap.get("index")
+    manifest = index_report(right)
+    return {
+        "base": len(left),
+        "other": len(right),
+        "added": added,
+        "removed": removed,
+        "changed": changed,
+        "unchanged": len(order_left) - len(changed),
+        "reordered": order_left != order_right,
+        "index_present": index_right is not None,
+        "index_changed": (index_left is not None and index_right is not None
+                          and index_left != index_right),
+        "index_decoded": manifest["decoded"],
+        "index_records": manifest["records"],
+        "index_mismatched": manifest["mismatched"],
+        "index_unlisted": manifest["unlisted"],
+        "index_missing": manifest["missing"],
+        "index_error": manifest["error"],
+        "bytes": (sum(len(d) for _, d in left), sum(len(d) for _, d in right)),
+    }
+
+
+def shape_verdict(result: Dict[str, object]) -> List[Tuple[str, str]]:
+    """Turn a :func:`diff_entries` result into the "will it load" reading.
+
+    Three grades, all of them measured against the one pack shape with a
+    runtime confirmation behind it (the Heroes-VII port, see
+    ``docs/PORT_ANALYSIS_COMPARE_RU.md`` §4): **same paths, different
+    payloads**.
+
+    * ``ok``   — the archive adds nothing and drops nothing;
+    * ``warn`` — a path went away (the Angel pack dropped a generated
+      ``*_lod.ac`` and its battle still loaded, so removal is survivable) or
+      the shared paths changed places (the `index` may be order-dependent);
+    * ``bad``  — a path was added.  The port tried exactly that (six new
+      entries, original `index`) and the game showed no units at all.
+
+    A ``bad`` grade is not a claim that the pack cannot work; it is a claim
+    that it is not the shape anything has been confirmed to load in.
+    """
+    lines: List[Tuple[str, str]] = []
+    added = result.get("added") or []
+    removed = result.get("removed") or []
+    if added:
+        lines.append((
+            "bad",
+            f"{len(added)} path(s) added — the only shape confirmed to load "
+            f"in game is the same paths with different payloads. An added "
+            f"path needs its own `File` record in `index`; "
+            f"`vdpack pack --like <base> --reindex` writes one, and until it "
+            f"has one the loader reports `Unindexed file '%s'` and the path "
+            f"stays invisible. Renaming the file after one the pack already "
+            f"carries (`texture add --name`) avoids the question."))
+        for name in added:
+            lines.append(("bad", f"  + {name}"))
+    if removed:
+        lines.append((
+            "warn",
+            f"{len(removed)} path(s) removed — survivable (the Angel pack "
+            f"dropped a path and its battle loaded), but every reference "
+            f"that names one of them now ends in a missing-file dialog."))
+        for name in removed:
+            lines.append(("warn", f"  - {name}"))
+    if result.get("reordered"):
+        lines.append((
+            "warn",
+            "the shared paths changed order — rebuild with "
+            "`vdpack pack <folder> --like <this pack>` so the entry order and "
+            "the `index` stay on the confirmed shape"))
+    changed = result.get("changed") or []
+    error = str(result.get("index_error") or "")
+    mismatched = result.get("index_mismatched") or []
+    unlisted = result.get("index_unlisted") or []
+    missing = result.get("index_missing") or []
+
+    # `index` is the mod's manifest: the file list and a MD5 + SHA-256 per
+    # resource.  Two different questions live in it, and the game answered
+    # them differently, so they are graded differently:
+    #
+    # * a payload whose bytes no longer match the recorded digest — the Angel
+    #   pack replaced both of its `.g` payloads under the original `index` and
+    #   its battle loaded, so a stale digest is *not* known to block anything;
+    # * a path with no record at all — that is the `Unindexed file` the port
+    #   hit when it added entries, and the pack showed no units.
+    if result.get("index_present") and error:
+        lines.append((
+            "warn",
+            f"the `index` entry does not decode ({error}), so the file list "
+            f"and the per-file digests it carries cannot be checked at all. "
+            f"`vdpack pack --like <base> --reindex` writes a readable one."))
+    if mismatched:
+        lines.append((
+            "warn",
+            f"{len(mismatched)} payload(s) no longer match the MD5/SHA-256 "
+            f"`index` records for them. The one pack with a runtime "
+            f"confirmation replaced both of its `.g` payloads under the "
+            f"original manifest and its battle loaded, so a stale digest is "
+            f"not known to block the mount — but the manifest then describes "
+            f"bytes that are not in the archive. `vdpack pack --like <base> "
+            f"--reindex` makes both true again."))
+        for name in mismatched[:8]:
+            lines.append(("warn", f"  ~ {name}"))
+        if len(mismatched) > 8:
+            lines.append(("warn", f"  ... and {len(mismatched) - 8} more"))
+    if unlisted:
+        lines.append((
+            "bad",
+            f"{len(unlisted)} path(s) have no `File` record in `index`. This "
+            f"is the failure the port saw in game — a pack that added paths "
+            f"under a manifest that did not list them showed no unit at all — "
+            f"and `Unindexed file '%s'` is the loader's wording for it. "
+            f"`vdpack pack --like <base> --reindex` writes the records."))
+        for name in unlisted[:8]:
+            lines.append(("bad", f"  + {name}"))
+        if len(unlisted) > 8:
+            lines.append(("bad", f"  ... and {len(unlisted) - 8} more"))
+    if missing:
+        lines.append((
+            "warn",
+            f"{len(missing)} path(s) are listed in `index` but absent from the "
+            f"archive — `Not found indexed file '%s'` is the loader's answer "
+            f"to that, so drop the records or carry the files."))
+        for name in missing[:8]:
+            lines.append(("warn", f"  - {name}"))
+    if (not added and not removed and not result.get("reordered")
+            and not unlisted):
+        if changed and result.get("index_present") and not (error or mismatched):
+            lines.append((
+                "ok",
+                f"same {result.get('other', 0)} path(s) in the same order, "
+                f"{len(changed)} payload(s) replaced, and the `index` "
+                f"manifest describes those exact bytes — the confirmed shape"))
+        else:
+            lines.append((
+                "ok",
+                f"same {result.get('other', 0)} path(s) in the same order, "
+                f"{len(changed)} payload(s) replaced — the confirmed shape"))
+    return lines
 
 
 def manifest(files, source: str = "") -> dict:
@@ -396,6 +1072,98 @@ def manifest(files, source: str = "") -> dict:
         "references": {"problems": report.problems, "notes": report.notes,
                        "warnings": report.warnings},
     }
+
+
+def _check_weapon_trace(base: str, txt: str, files: Dict[str, bytes],
+                        findings: List[str]) -> None:
+    """Does a `.scene` weapon trail still name the unit's `Trail*` bones?
+
+    A unit that draws a weapon trail carries a `VDGoWeaponTrace` node whose
+    `boneid` lines are **indices into the unit's animation stream**, not
+    names.  All 54 such scenes of the retail corpus resolve them to
+    `Trail1`…`TrailN` — the bones a weapon's tip trail is built from, each
+    parented to the weapon bone.  An animation stream that lost those bones
+    (a re-exported `.a` that only holds the bones a *mesh* is weighted to,
+    which is what a Blender round-trip does to animation-only bones) leaves
+    the same indices pointing at whatever bone now sits there — an arm — and
+    the trail follows the wrong thing or the unit's load dies on it.
+
+    A unit names several streams and only the full one carries every bone
+    (a `_run.a` holds a reduced skeleton, and retail's own Grand Inquisitor
+    would flag on those), so a unit is only reported when **no** stream it
+    ships resolves the ids to trail bones.  A `.ac` naming an out-of-tree
+    animation says nothing at all — the game resolves it from the normal
+    mount.
+
+    The `_lod.scene` of a unit is skipped: its `.ac` names only the reduced
+    `…_lod.a` streams, which carry no trail bones even in retail
+    (Defender of Faith, Dark Servant and Grand Inquisitor all leave their
+    trail `boneid` pointing at a leg or past the end of the stream), so the
+    index is already stale there by design and the game loads those fine.
+    """
+    import re
+
+    from . import ac as acmod
+    from . import anim as animmod
+
+    stem = os.path.splitext(base)[0].lower()
+    if stem.endswith("_lod"):
+        return
+    ids = [int(v) for v in re.findall(r"boneid\s+(\d+)", txt)]
+    if not ids:
+        return
+    by_base: Dict[str, bytes] = {}
+    for name, blob in files.items():
+        by_base.setdefault(
+            os.path.basename(name.replace("\\", "/")).lower(), blob)
+    streams: List[str] = []
+    for mm in re.finditer(r'file\s+"([^"]+)"', txt):
+        ref = mm.group(1).replace("\\", "/")
+        if not ref.lower().endswith(".ac"):
+            continue
+        blob = by_base.get(os.path.basename(ref).lower())
+        if blob is None:
+            continue
+        try:
+            cfg = acmod.parse_ac(blob.decode("utf-8-sig", "replace"))
+        except Exception:  # noqa: BLE001  — the `.ac` branch reports its own
+            continue
+        for st in cfg.states:
+            if not st.file:
+                continue
+            want = os.path.basename(st.file.replace("\\", "/"))
+            if want.lower() in by_base and want not in streams:
+                streams.append(want)
+
+    best = None          # (bone count, stream, complaint per id)
+    for stream in streams:
+        try:
+            af = animmod.parse_anim(by_base[stream.lower()])
+        except Exception:  # noqa: BLE001
+            continue
+        if not af.bones:
+            continue
+        complaints: List[str] = []
+        for i in ids:
+            if i >= len(af.bones):
+                complaints.append(f"boneid {i} is past the end of {stream} "
+                                  f"({len(af.bones)} bones)")
+                continue
+            bone = af.bones[i].name
+            if not bone.lower().startswith("trail"):
+                complaints.append(f"boneid {i} lands on bone '{bone}' in "
+                                  f"{stream}")
+        if not complaints:
+            return                      # a stream that still has them: fine
+        if best is None or len(af.bones) > best[0]:
+            best = (len(af.bones), stream, complaints)
+    if best is None:
+        return
+    for line in best[2]:
+        findings.append(
+            f"{base}: weapon-trail {line} — every retail scene's trail boneid "
+            f"points at a Trail bone, so this unit's animation streams have "
+            f"lost them (the trail follows an arm, or the unit crashes)")
 
 
 def reference_findings(files: Dict[str, bytes]) -> ReferenceReport:
@@ -525,6 +1293,7 @@ def reference_findings(files: Dict[str, bytes]) -> ReferenceReport:
                 elif not present(ref):
                     findings.append(f"{base}: references {ref}, which is not "
                                     f"in the pack")
+            _check_weapon_trace(base, txt, files, findings)
         elif low.endswith(".char"):
             from . import char as charmod
             prof = charmod.parse_char(blob)
@@ -588,3 +1357,331 @@ def reference_findings(files: Dict[str, bytes]) -> ReferenceReport:
     report.notes = list(dict.fromkeys(report.notes))
     report.warnings = list(dict.fromkeys(report.warnings))
     return report
+
+
+MOD_FOLDER = "Mods"
+r"""Where the loader enumerates mods: ``$(UserFolder)\Mods\*.vdpack``.
+
+Both paths are strings in the retail executable (`$(UserFolder)\Mods\` at
+``0x878074``, the find mask ``*.vdpack`` at ``0x8784d4``, the suffix
+``.vdpack`` at ``0x878680``), and ``user.ini``'s ``sModifications`` names a
+mod the way the file is named — ``mod:ruru`` for ``Mods\\ruru.vdpack``.
+A pack that sits next to the game instead answers ``mod 'ruru' not found`` in
+``run.log`` and is never mounted, which is why :func:`scan_findings` says so
+out loud.
+"""
+
+_MOD_DIAGNOSTICS = {
+    "not_found": "mod '%s' not found",
+    "wrong_files": "%s '%s' has wrong files : %s",
+    "wrong_index": "%s '%s' has wrong index",
+    "wrong_type": "%s '%s' has wrong type",
+    "intersects": "%s '%s' intersects other mods",
+    "error": "Error load %s '%s' index",
+}
+"""The loader's own words, as :func:`scan_findings` quotes them back.
+
+All six are format strings in the retail executable (``0x8785b8``…
+``0x87863c``), the same table the static ``.vdpack`` name strings live in.
+Quoting the message the game would print beats inventing one: a modder can
+grep ``run.log`` for it and land on the same line this tool reported.
+"""
+
+
+def scan_targets(targets, recursive: bool = False) -> List[str]:
+    """Expand files and folders into the packs a scan should look at.
+
+    A folder contributes its own ``*.vdpack`` files; when it holds a ``Mods``
+    subfolder (or is one), that folder is scanned too — that is the directory
+    the loader reads, so scanning the game folder alone would miss exactly the
+    packs that matter.
+    """
+    found: List[str] = []
+
+    def add(path: str) -> None:
+        if path not in found:
+            found.append(path)
+
+    def scan_dir(root: str, deep: bool) -> None:
+        if deep:
+            for base, _dirs, names in os.walk(root):
+                for name in sorted(names):
+                    if name.lower().endswith(".vdpack"):
+                        add(os.path.join(base, name))
+            return
+        for name in sorted(os.listdir(root)):
+            if name.lower().endswith(".vdpack"):
+                path = os.path.join(root, name)
+                if os.path.isfile(path):
+                    add(path)
+        for name in sorted(os.listdir(root)):
+            if name.lower() == MOD_FOLDER.lower():
+                sub = os.path.join(root, name)
+                if os.path.isdir(sub):
+                    scan_dir(sub, deep)
+
+    for target in targets:
+        if os.path.isdir(target):
+            scan_dir(target, recursive)
+        elif os.path.isfile(target):
+            add(target)
+    return found
+
+
+def scan_pack(path: str) -> Dict[str, object]:
+    """One row of :func:`scan_packs`: what this pack is, and will it load."""
+    row: Dict[str, object] = {
+        "path": path,
+        "file": os.path.basename(path),
+        "stem": os.path.splitext(os.path.basename(path))[0],
+        "bytes": os.path.getsize(path) if os.path.exists(path) else 0,
+        "mod": any(part.lower() == MOD_FOLDER.lower()
+                   for part in os.path.normpath(path).split(os.sep)[:-1]),
+        "entries": 0, "manifest": False, "decoded": False, "state": "",
+        "type": "", "index_name": "", "uuid": "", "records": 0,
+        "mismatched": [], "unlisted": [], "missing": [], "error": "",
+        "paths": [],
+    }
+    try:
+        pack = read_vdpack(path) if isinstance(path, str) else path
+    except OSError as exc:
+        row["state"] = "broken"
+        row["error"] = f"{type(exc).__name__}: {exc}"
+        return row
+    if pack.parse_error:
+        row["state"] = "broken"
+        row["error"] = pack.parse_error
+        return row
+    files = list(pack.files().items())
+    row["entries"] = len(files)
+    row["paths"] = [_norm_name(name) for name, _ in files]
+    report = index_report(files)
+    row["manifest"] = bool(report["present"])
+    row["decoded"] = bool(report["decoded"])
+    row["records"] = int(report["records"])
+    row["mismatched"] = list(report["mismatched"])
+    row["unlisted"] = list(report["unlisted"])
+    row["missing"] = list(report["missing"])
+    row["error"] = str(report["error"])
+    doc = report["document"]
+    if doc is not None:
+        row["type"] = doc.type
+        row["index_name"] = doc.name
+        row["uuid"] = doc.uuid
+    if not row["manifest"]:
+        row["state"] = "no-manifest"
+    elif not row["decoded"]:
+        row["state"] = "opaque-manifest"
+    elif row["mismatched"] or row["unlisted"] or row["missing"]:
+        row["state"] = "stale"
+    else:
+        row["state"] = "ok"
+    return row
+
+
+def scan_packs(targets, recursive: bool = False) -> List[Dict[str, object]]:
+    """Every pack under ``targets``, with the loader's verdict for each.
+
+    The single question this answers is the one a ``run.log`` raises and does
+    not answer itself: *which* pack the game is rejecting, and for which
+    paths.  ``Index error : str_not_valid_hash_for_file : <path>`` names a
+    file, never the archive it came from, and a modder with two packs
+    installed cannot tell them apart — see ``docs/FORMATS.md`` §6h.
+    """
+    return [scan_pack(path) for path in scan_targets(targets, recursive)]
+
+
+def scan_findings(rows) -> List[Tuple[str, str]]:
+    """Turn :func:`scan_packs` rows into the sentences worth acting on.
+
+    Each entry is ``(level, text)`` with ``level`` one of ``ok``, ``warn`` or
+    ``bad`` — ``bad`` meaning the loader will refuse the content, which is
+    what ``vdpack scan --strict`` exits non-zero on.
+    """
+    findings: List[Tuple[str, str]] = []
+    mods = [r for r in rows if r["type"].lower() == "mod" or r["mod"]]
+    for row in rows:
+        name = row["file"]
+        state = row["state"]
+        if state == "broken":
+            findings.append(("bad", f"{name}: not a readable archive "
+                                    f"({row['error']}) — the loader answers "
+                                    f"`Error open mod '{row['stem']}' pak "
+                                    f"file`"))
+            continue
+        if state == "no-manifest":
+            findings.append(("bad", f"{name}: no `index` entry — the loader "
+                                    f"has only `Unindexed file` / "
+                                    f"`has wrong index` for such an archive; "
+                                    f"rebuild it with `vdpack pack --like`"))
+            continue
+        if state == "opaque-manifest":
+            findings.append(("bad", f"{name}: the `index` entry does not "
+                                    f"decode ({row['error']}) — its hashes "
+                                    f"cannot be checked, so the loader "
+                                    f"answers `has wrong index`"))
+            continue
+        if state == "stale":
+            bits = []
+            if row["mismatched"]:
+                bits.append(f"{len(row['mismatched'])} payload(s) differ "
+                            f"from their recorded MD5/SHA-256")
+            if row["unlisted"]:
+                bits.append(f"{len(row['unlisted'])} path(s) the manifest "
+                            f"never lists")
+            if row["missing"]:
+                bits.append(f"{len(row['missing'])} listed path(s) the "
+                            f"archive no longer carries")
+            example = (row["mismatched"] or row["unlisted"]
+                       or row["missing"])[0]
+            findings.append(("bad", f"{name}: " + ", ".join(bits) +
+                                    f" — the loader answers `Index error : "
+                                    f"str_not_valid_hash_for_file : {example}` "
+                                    f"and serves no data for them; rebuild "
+                                    f"with `vdpack pack --like {name} "
+                                    f"--reindex`"))
+            detail = row["mismatched"] or row["unlisted"] or row["missing"]
+            for path in detail[1:9]:
+                findings.append(("bad", f"  {path}"))
+            continue
+        findings.append(("ok", f"{name}: {row['entries']} file(s), "
+                               f"`index` describes every payload"))
+    for row in rows:
+        name = row["file"]
+        name_in_index = row["index_name"]
+        if name_in_index and name_in_index != row["stem"]:
+            findings.append(("warn", f"{name}: the manifest calls this mod "
+                                     f"'{name_in_index}' but the game names "
+                                     f"it after the file — `sModifications` "
+                                     f"has to say `mod:{row['stem']}`"))
+        if (row["type"].lower() == "mod" or row["mod"]) and not row["mod"]:
+            findings.append(("bad", f"{name}: a mod pack outside "
+                                    f"`$(UserFolder)\\{MOD_FOLDER}\\` is "
+                                    f"never mounted — the log says "
+                                    f"`mod '{name_in_index or row['stem']}' "
+                                    f"not found`"))
+    # two mods carrying one path: the loader keeps the first and answers
+    # `intersects other mods` for the other (0x8785d8).  The manifest itself
+    # is not a resource, so it never counts as a clash.
+    owners: Dict[str, List[str]] = {}
+    for row in mods:
+        for path in row["paths"]:
+            if _norm_name(path).lower() == INDEX_ENTRY:
+                continue
+            owners.setdefault(path.lower(), []).append(row["file"])
+    clashes: Dict[Tuple[str, ...], List[str]] = {}
+    for path, who in owners.items():
+        if len(who) > 1:
+            clashes.setdefault(tuple(sorted(who)), []).append(path)
+    for who, paths in sorted(clashes.items()):
+        sample = ", ".join(sorted(paths)[:3])
+        more = f" and {len(paths) - 3} more" if len(paths) > 3 else ""
+        findings.append(("warn", f"{' and '.join(who)} carry "
+                                 f"{len(paths)} path(s) in common "
+                                 f"({sample}{more}) — only one of them can "
+                                 f"load (`intersects other mods`)"))
+    return findings
+
+
+_LOG_REJECT = re.compile(
+    r"(?:Index error : )?(?:str_not_valid_hash_for_file|str_cant_read)\s*:\s*"
+    r"([A-Za-z0-9_\-\\/. :]+?)\s*$")
+_LOG_UNINDEXED = re.compile(r"Unindexed file '([^']+)'")
+_LOG_MISSING_MOD = re.compile(r"mod '([^']+)' not found")
+_LOG_PACK = re.compile(r"^\s*\[[A-Za-z]{2}\]\s*([A-Za-z0-9_.\- ]+\.vdpack):")
+
+
+def read_run_log(path: str) -> Dict[str, object]:
+    r"""The three things a `run.log` says that a modder has to act on.
+
+    The log writes ``Index error : str_not_valid_hash_for_file : <path>``,
+    ``Unindexed file '<path>'``, ``mod '<name>' not found``, and it prefixes a
+    message with ``<pack>.vdpack:`` when the asset came out of a pack.  It
+    never says *which* archive a rejected path came from, which is the whole
+    reason :func:`scan_packs` and this reader exist — together they answer it.
+    """
+    out: Dict[str, object] = {"rejected": [], "unindexed": [],
+                              "missing_mods": [], "packs": [], "lines": 0}
+    with open(path, encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            out["lines"] = int(out["lines"]) + 1
+            line = line.rstrip("\r\n")
+            for match in _LOG_REJECT.finditer(line):
+                name = match.group(1).strip()
+                if name and name not in out["rejected"]:
+                    out["rejected"].append(name)
+            for match in _LOG_UNINDEXED.finditer(line):
+                name = match.group(1).strip()
+                if name and name not in out["unindexed"]:
+                    out["unindexed"].append(name)
+            for match in _LOG_MISSING_MOD.finditer(line):
+                name = match.group(1).strip()
+                if name and name not in out["missing_mods"]:
+                    out["missing_mods"].append(name)
+            match = _LOG_PACK.match(line)
+            if match:
+                name = match.group(1).strip()
+                if name not in out["packs"]:
+                    out["packs"].append(name)
+    return out
+
+
+def log_findings(rows, log: Dict[str, object]) -> List[Tuple[str, str]]:
+    """Cross a `run.log` against the packs that were scanned.
+
+    This closes the loop the log leaves open: for each path the loader
+    rejected it names the archive that carries it, and — because the scan
+    already verified every payload — whether that archive is the stale one.
+    A path no scanned pack carries is just as useful: the game is reading a
+    loose folder or another install, and rebuilding packs will not touch it.
+    """
+    findings: List[Tuple[str, str]] = []
+    owners: Dict[str, List[Dict[str, object]]] = {}
+    for row in rows:
+        for name in row["paths"]:
+            owners.setdefault(_norm_name(name).lower(), []).append(row)
+    for path in list(log.get("rejected") or []):
+        key = _norm_name(path.replace("/", "\\")).lower().strip("\\")
+        holders = owners.get(key, [])
+        if not holders:
+            findings.append(("warn", f"run.log rejects {path}, but no scanned "
+                                     f"pack carries it — the game reads a "
+                                     f"loose folder or another install, so "
+                                     f"rebuilding the packs will not fix it"))
+            continue
+        states = ", ".join(f"{row['file']} ({row['state']})" for row in holders)
+        stale = [row for row in holders if row["state"] == "stale"]
+        if stale:
+            findings.append(("bad", f"run.log rejects {path}: carried by "
+                                    f"{states} — rebuild "
+                                    f"{stale[0]['file']} with `vdpack pack "
+                                    f"--like {stale[0]['file']} --reindex`"))
+        else:
+            findings.append(("warn", f"run.log rejects {path}: carried by "
+                                     f"{states}, and both archives verify — "
+                                     f"the running copy is a different build "
+                                     f"of that pack than the one scanned"))
+    for path in list(log.get("unindexed") or []):
+        key = _norm_name(path.replace("/", "\\")).lower().strip("\\")
+        holders = owners.get(key, [])
+        if holders:
+            findings.append(("bad", f"run.log: `Unindexed file '{path}'` — "
+                                    f"carried by " +
+                                    ", ".join(row["file"] for row in holders) +
+                                    f"; the loader wants it listed in `index`"))
+    known = {row["stem"].lower() for row in rows}
+    known |= {str(row["index_name"]).lower() for row in rows if row["index_name"]}
+    for name in list(log.get("missing_mods") or []):
+        if name.lower() in known:
+            where = ", ".join(row["path"] for row in rows
+                              if row["stem"].lower() == name.lower()
+                              or str(row["index_name"]).lower() == name.lower())
+            findings.append(("bad", f"run.log: `mod '{name}' not found`, but "
+                                    f"the scan found a pack for it at {where} "
+                                    f"— the loader only mounts "
+                                    f"`$(UserFolder)\\Mods\\<name>.vdpack`"))
+        else:
+            findings.append(("warn", f"run.log: `mod '{name}' not found` and no "
+                                     f"scanned archive answers to that name — "
+                                     f"fix `sModifications` or ship the file"))
+    return findings

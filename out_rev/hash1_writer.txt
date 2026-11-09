@@ -1,0 +1,77 @@
+function head guess: 0x41d860  (from 0x41dd0b)
+
+0x0041d860  mov      eax, dword ptr fs:[0]
+0x0041d866  mov      ecx, dword ptr [esp + 0x10]
+0x0041d86a  push     -1
+0x0041d86c  push     0x88f4a8  ; .text+0x48e4a8
+0x0041d871  push     eax
+0x0041d872  mov      dword ptr fs:[0], esp
+0x0041d879  mov      eax, dword ptr [ecx + 4]
+0x0041d87c  mov      edx, dword ptr [ecx]
+0x0041d87e  sub      esp, 0x68
+0x0041d881  push     ebp
+0x0041d882  push     esi
+0x0041d883  push     edi
+0x0041d884  push     eax
+0x0041d885  push     edx
+0x0041d886  call     0x41af40  ; .text+0x19f40
+0x0041d88b  lea      ecx, [esp + 0x28]
+0x0041d88f  call     0x40f420  ; .text+0xe420
+0x0041d894  lea      ecx, [esp + 0x38]
+0x0041d898  call     0x40f460  ; .text+0xe460
+0x0041d89d  mov      edi, dword ptr [esp + 0x88]
+0x0041d8a4  mov      ecx, 0xc
+0x0041d8a9  lea      esi, [esp + 0x28]
+0x0041d8ad  rep movsd dword ptr es:[edi], dword ptr [esi]
+0x0041d8af  lea      ecx, [esp + 0x28]
+0x0041d8b3  call     0x40f420  ; .text+0xe420
+0x0041d8b8  lea      ecx, [esp + 0x38]
+0x0041d8bc  call     0x40f460  ; .text+0xe460
+0x0041d8c1  mov      edi, dword ptr [esp + 0x8c]
+0x0041d8c8  mov      eax, dword ptr [esp + 0x84]
+0x0041d8cf  mov      ecx, 0xc
+0x0041d8d4  lea      esi, [esp + 0x28]
+0x0041d8d8  rep movsd dword ptr es:[edi], dword ptr [esi]
+0x0041d8da  mov      eax, dword ptr [eax]
+0x0041d8dc  xor      ebp, ebp
+0x0041d8de  cmp      eax, ebp
+0x0041d8e0  je       0x41d8e7  ; .text+0x1c8e7
+0x0041d8e2  cmp      byte ptr [eax], 0
+0x0041d8e5  jne      0x41d8fb  ; .text+0x1c8fb
+0x0041d8e7  pop      edi
+0x0041d8e8  pop      esi
+0x0041d8e9  mov      al, 1
+0x0041d8eb  pop      ebp
+0x0041d8ec  mov      ecx, dword ptr [esp + 0x68]
+0x0041d8f0  mov      dword ptr fs:[0], ecx
+0x0041d8f7  add      esp, 0x74
+0x0041d8fa  ret      
+0x0041d8fb  push     ebx
+0x0041d8fc  mov      dword ptr [esp + 0x20], ebp
+0x0041d900  mov      dword ptr [esp + 0x24], ebp
+0x0041d904  mov      dword ptr [esp + 0x28], ebp
+0x0041d908  lea      ecx, [esp + 0x20]
+0x0041d90c  push     ecx
+0x0041d90d  push     0xa
+0x0041d90f  push     eax
+0x0041d910  mov      dword ptr [esp + 0x8c], ebp
+0x0041d917  call     0x41c8d0  ; .text+0x1b8d0
+0x0041d91c  mov      eax, dword ptr [esp + 0x30]
+0x0041d920  sub      eax, dword ptr [esp + 0x2c]
+0x0041d924  sar      eax, 2
+0x0041d927  add      esp, 0xc
+0x0041d92a  cmp      eax, ebp
+0x0041d92c  mov      dword ptr [esp + 0x14], ebp
+0x0041d930  mov      dword ptr [esp + 0x1c], eax
+0x0041d934  jbe      0x41e12a  ; .text+0x1d12a
+0x0041d93a  lea      ebx, [ebx]
+0x0041d940  lea      ecx, [esp + 0x2c]
+0x0041d944  call     0x4258d0  ; .text+0x248d0
+0x0041d949  mov      dword ptr [esp + 0x3c], ebp
+0x0041d94d  lea      ecx, [esp + 0x40]
+0x0041d951  mov      byte ptr [esp + 0x80], 1
+0x0041d959  call     0x40f420  ; .text+0xe420
+0x0041d95e  lea      ecx, [esp + 0x50]
+0x0041d962  call     0x40f460  ; .text+0xe460
+0x0041d967  mov      dword ptr [esp + 0x70], ebp
+0x0041d96b  mov      dword ptr [esp + 0x74], ebp

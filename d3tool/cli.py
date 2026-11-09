@@ -11,9 +11,11 @@ writers:
 * ``bundle <folder>``   — run the full pipeline over a unit folder (both ways).
 * ``validate <gltf>``   — structural self-check of a glTF.
 * ``import <g>``        — dump the parsed `.g` as JSON.
-* ``texture convert|info`` — native `.t` <-> `.dds`.
-* ``vdpack list|extract|validate|manifest|pack`` — the one-file form of a unit bundle
-  (what a mod ships; see ``d3tool/vdpack.py``).
+* ``texture convert|info|add`` — native `.t` <-> `.dds`, and bringing a
+  texture the artist painted into a unit folder.
+* ``vdpack list|extract|validate|manifest|plan|pack|scan`` — the one-file
+  form of a unit bundle (what a mod ships) and the pass that says which
+  installed pack the game is rejecting (see ``d3tool/vdpack.py``).
 * ``char show|list|find|validate|set-id`` — the ``.char`` unit profile that
   names a unit's scene, icons and sounds (see ``d3tool/char.py``).
 * ``weights <g> [--against <g>]`` — what a `.g` carries weight-wise, and
@@ -26,20 +28,25 @@ import argparse
 import glob
 import json
 import os
+import re
+import shutil
 import struct
 import sys
 import textwrap
 import traceback
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Set, Tuple
 
 from . import __version__
 from . import ac as acmod
 from . import alias as aliasmod
 from . import char as charmod
 from . import anim as animmod
+from . import audit as auditmod
+from . import roundtrip as rtmmod
 from . import gfile
 from . import gltf as gltfmod
 from . import gltf_out as gltfout
+from . import parts as partsmod
 from . import scene as scenemod
 from . import texture as texmod
 from . import ui as ui
@@ -345,9 +352,17 @@ def _export_textures(gltf_path: str, out_dir: str, base: str,
     """Emit the GM ``.t`` textures referenced by a glTF's images.
 
     dis3tool's glTF references its diffuse texture as a ``.dds``.  The GM
-    engine instead wants the native ``.t`` container, so if the referenced
-    ``.dds`` exists on disk (next to the glTF) we convert it to a ``.t`` and
-    write it into the output directory.
+    engine instead wants the native ``.t`` container, so the file the image
+    names is resolved on disk and written into the output directory as
+    ``<stem>.t``.
+
+    * a shipped ``.dds`` is converted (and its own ``.t`` header reused, which
+      is what makes an untouched re-export byte-identical);
+    * a shipped ``.t`` is copied verbatim;
+    * a texture the artist supplied himself — a ``.png``/``.tga``/``.bmp`` he
+      painted for a new part — is decoded and block-compressed, because the
+      engine can only read ``.t`` and a part whose atlas never got written
+      loads with no texture at all.
 
     Returns the basename of the first emitted texture (the diffuse), or
     ``None`` if none was written, so the caller can point ``material0_diffuse``
@@ -359,124 +374,139 @@ def _export_textures(gltf_path: str, out_dir: str, base: str,
     except (OSError, ValueError):
         return None
     gltf_dir = os.path.dirname(os.path.abspath(gltf_path))
+    # where a texture may live, in the order that is most likely right:
+    # next to the glTF (a Blender re-save, a new atlas the artist dropped
+    # there), then the unit's own folder, then whatever is already in the
+    # output folder
+    dirs = [d for d in (gltf_dir, src_dir, out_dir) if d]
     images = doc.get("images") or []
     first = None
     for img in images:
         uri = img.get("uri")
         if not uri or uri.startswith("data:"):
             if not quiet:
-                ui.warn("texture image without a file URI "
-                        "(embedded bufferView) — no .t written for it")
+                # A packed image carries no path into the glTF.  That is the
+                # normal state of a part whose atlas already sits in the unit
+                # folder (`d3unit_diffuses` names it), so this is a note, not
+                # a warning: `_carry_material_textures` fails loudly when a
+                # texture the `.g` names really is missing.
+                ui.info("a texture image is packed into the glTF (no file "
+                        "path) — the .t next to the unit is what the engine "
+                        "reads; run `d3tool texture add <image> -o <folder>` "
+                        "if it is not there yet")
             continue
-        src = os.path.join(gltf_dir, os.path.basename(uri))
-        stem = os.path.splitext(os.path.basename(src))[0]
+        # strip every image extension: a Blender re-save of an imported
+        # ``x.dds`` writes ``x.dds.png``, and keeping the ``.dds`` in the stem
+        # produced ``x.dds.t`` — a texture the engine (which looks for
+        # ``x.t``) and the forward export both fail to find
+        stem = texmod.clean_stem(uri)
 
         def _find_orig(ext: str) -> Optional[str]:
-            # the original `.dds`/`.t` ships next to the glTF when assets
-            # were imported in place, or in the donor folder when the
-            # Blender re-save lives elsewhere (weight-paint workflow)
-            for d in (gltf_dir, src_dir):
-                if not d:
-                    continue
+            for d in dirs:
                 p = os.path.join(d, stem + ext)
                 if os.path.exists(p):
                     return p
+            # same texture under a doubled extension (an export from before
+            # the stem fix) or a different case
+            for d in dirs:
+                if not os.path.isdir(d):
+                    continue
+                try:
+                    for cand in os.listdir(d):
+                        if (texmod.clean_stem(cand).lower() == stem.lower()
+                                and cand.lower().endswith(ext)):
+                            return os.path.join(d, cand)
+                except OSError:
+                    continue
             return None
 
-        if not src.lower().endswith(".dds"):
-            # Blender re-saves textures as .png/.jpg next to the glTF.  The
-            # engine wants the native `.t`, and a re-encoded DXT of a
-            # re-saved PNG would not be byte-faithful anyway — so resolve
-            # the ORIGINAL by stem: the sibling `.dds` (convert) or the
-            # shipped `.t` (pass through verbatim).
-            alt_dds = _find_orig(".dds")
-            alt_t = _find_orig(".t")
-            if alt_dds is not None:
-                src = alt_dds
-                if not quiet:
-                    ui.info(f"{os.path.basename(uri)}: not a .dds — using "
-                            f"the original {os.path.basename(alt_dds)}")
-            elif alt_t is not None:
-                out_t = os.path.join(out_dir, stem + ".t")
-                with open(alt_t, "rb") as fh:
-                    payload = fh.read()
-                with open(out_t, "wb") as fh:
-                    fh.write(payload)
-                if not quiet:
-                    ui.wrote(out_t, "copied the shipped .t "
-                             "(the glTF image is a re-saved PNG)")
-                if first is None:
-                    first = os.path.basename(out_t)
-                continue
-            elif src.lower().endswith(".png") and os.path.exists(src):
-                # Last resort: re-encode the PNG into an uncompressed .t.
-                # Not byte-faithful to any original, but the unit ships
-                # with a loadable texture instead of a missing one.
-                try:
-                    payload = texmod.png_to_t(open(src, "rb").read())
-                except ValueError as exc:
-                    if not quiet:
-                        ui.warn(f"{os.path.basename(uri)}: PNG re-encode "
-                                f"failed ({exc}) — no .t written")
-                    continue
-                out_t = os.path.join(out_dir, stem + ".t")
-                with open(out_t, "wb") as fh:
-                    fh.write(payload)
-                if not quiet:
-                    ui.wrote(out_t, "re-encoded from PNG as uncompressed "
-                             "32-bit (place the original .dds next to the "
-                             "glTF for a byte-faithful .t)")
-                if first is None:
-                    first = os.path.basename(out_t)
-                continue
-            else:
-                if not quiet:
-                    ui.warn(f"{os.path.basename(uri)}: no {stem}.dds/.t "
-                            f"next to the glTF — no .t written; the engine "
-                            f"will miss this texture")
-                continue
-        if not os.path.exists(src):
+        # The shipped containers win over a re-save (their bytes are the ones
+        # the game reads); anything else is a texture the artist supplied.
+        src = None
+        for ext in (".dds", ".t") + texmod.DECODABLE_EXTS:
+            src = _find_orig(ext)
+            if src is not None:
+                break
+        if src is None:
             if not quiet:
-                ui.warn(f"{os.path.basename(uri)}: file not found — "
-                        f"no .t written")
+                ui.warn(f"{os.path.basename(uri)}: no {stem}.dds / .t / .png / "
+                        f".tga / .bmp next to the glTF or in the unit folder "
+                        f"— no .t written; the engine will miss this texture")
             continue
         out_t = os.path.join(out_dir, stem + ".t")
+        ext = os.path.splitext(src)[1].lower()
+        if ext == ".t":
+            if os.path.abspath(src) == os.path.abspath(out_t):
+                if first is None:
+                    first = os.path.basename(out_t)
+                continue
+            with open(src, "rb") as fh:
+                payload = fh.read()
+            with open(out_t, "wb") as fh:
+                fh.write(payload)
+            if not quiet:
+                ui.wrote(out_t, "copied the .t the unit ships")
+            if first is None:
+                first = os.path.basename(out_t)
+            continue
         with open(src, "rb") as fh:
             data = fh.read()
-        # If the source asset ships a native .t next to the .dds, reuse its
-        # header so the emitted .t round-trips byte-identically (the @24/@52
-        # flags are not stored in a .dds and cannot be reconstructed).
-        src_t = _find_orig(".t")
-        orig_header = None
-        if src_t is not None:
-            with open(src_t, "rb") as fh:
-                orig_header = fh.read()[:59]
-        try:
-            payload = texmod.dds_to_t(data, orig_header, os.path.basename(src))
-        except ValueError as exc:
-            # An unreadable source texture must not sink the whole unit export
-            # (e.g. OrcKing's sword ships a .dds whose header declares 24-bit
-            # RGB while the payload is 32-bit — dis3tool wrote it that way).
-            # The native `.t` next to it is authoritative, so pass it through.
-            if orig_header is not None and os.path.exists(src_t):
+        if ext == ".dds":
+            # If the source asset ships a native .t next to the .dds, reuse
+            # its header so the emitted .t round-trips byte-identically (the
+            # @24/@52 flags are not stored in a .dds and cannot be
+            # reconstructed).
+            src_t = _find_orig(".t")
+            orig_header = None
+            if src_t is not None:
                 with open(src_t, "rb") as fh:
-                    payload = fh.read()
-                if not quiet:
-                    ui.warn(f"{os.path.basename(src)}: {exc} — reusing the "
-                            f"shipped {stem}.t verbatim")
-            else:
-                if not quiet:
-                    ui.warn(f"{os.path.basename(src)}: not converted — {exc}")
-                continue
+                    orig_header = fh.read()[:59]
+            try:
+                payload = texmod.dds_to_t(data, orig_header,
+                                          os.path.basename(src))
+            except ValueError as exc:
+                # An unreadable source texture must not sink the whole unit
+                # export (e.g. OrcKing's sword ships a .dds whose header
+                # declares 24-bit RGB while the payload is 32-bit — dis3tool
+                # wrote it that way).  The native `.t` next to it is
+                # authoritative, so pass it through.
+                if orig_header is not None and os.path.exists(src_t):
+                    with open(src_t, "rb") as fh:
+                        payload = fh.read()
+                    if not quiet:
+                        ui.warn(f"{os.path.basename(src)}: {exc} — reusing "
+                                f"the shipped {stem}.t verbatim")
+                else:
+                    if not quiet:
+                        ui.warn(f"{os.path.basename(src)}: not converted — "
+                                f"{exc}")
+                    continue
+            with open(out_t, "wb") as fh:
+                fh.write(payload)
+            if not quiet:
+                ui.wrote(out_t, "converted from .dds")
+            if first is None:
+                first = os.path.basename(out_t)
+            continue
+        # a texture the artist painted himself (.png / .tga / .bmp): decode it
+        # and block-compress, so the `.t` the `.g` names actually exists
+        try:
+            payload = texmod.image_to_t(data, src)
+        except ValueError as exc:
+            if not quiet:
+                ui.warn(f"{os.path.basename(src)}: {exc} — no .t written; "
+                        f"the engine will miss this texture")
+            continue
         with open(out_t, "wb") as fh:
             fh.write(payload)
         if not quiet:
-            ui.wrote(out_t, "converted from .dds")
+            ui.wrote(out_t, f"converted from {ext}"
+                          + ("" if stem.lower() in
+                             os.path.basename(src).lower()
+                             else f" ({os.path.basename(src)})"))
         if first is None:
             first = os.path.basename(out_t)
     return first
-
-
 
 
 def _donor_dir(gltf_path: str, base: str) -> str:
@@ -569,6 +599,56 @@ def _load_stream_donors(gltf_path: str, src_dir: str, base: str,
     return streams
 
 
+def _anim_bytes(animfile, donor) -> bytes:
+    """The `.a` bytes to write: the donor's own when nothing moved.
+
+    Rebuilding a stream from the glTF re-quantises every keyframe, so an export
+    that changed no pose still writes a file that differs from the shipped one
+    in the last bits of 300 frames.  Byte-identical output is worth more than a
+    near-copy: compare the motion and keep the donor's bytes.
+    """
+    if donor is not None:
+        try:
+            if animmod.same_motion(donor, animfile) and donor.raw:
+                return donor.raw
+        except Exception:  # noqa: BLE001 - a comparison must never fail a write
+            pass
+    return animmod.write_anim(animfile)
+
+
+def _unit_file_for(src_dir: str, base: str, ext: str) -> str:
+    """The unit's own `.ac`/`.scene`, however the folder spells it.
+
+    A unit's mesh and its scene/action files do not always share a stem
+    (Wolfsnow ships `character_neutrals_wolf.g` with
+    `character_neutrals_wolfsnow.scene`), so a name-keyed lookup misses them
+    and the export generates a second, empty copy next to the real file.  The
+    file that names *this* mesh is the unit's own.
+    """
+    exact = os.path.join(src_dir, base + ext)
+    if os.path.isfile(exact):
+        return exact
+    try:
+        names = sorted(n for n in os.listdir(src_dir)
+                       if n.lower().endswith(ext))
+    except OSError:
+        return exact
+    needle = (base + ".g").lower()
+    for name in names:
+        try:
+            with open(os.path.join(src_dir, name), "rb") as fh:
+                text = fh.read().decode("latin-1").lower()
+        except OSError:
+            continue
+        if needle in text.replace("\\", "/"):
+            return os.path.join(src_dir, name)
+    if ext == ".ac" and len(names) == 1 and not base.endswith("_lod"):
+        # an `.ac` names the animation stream, not the mesh: when the folder
+        # holds exactly one, it is this unit's
+        return os.path.join(src_dir, names[0])
+    return exact
+
+
 def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
             anim: bool = True, quiet: bool = False,
             donor_dir: Optional[str] = None) -> None:
@@ -625,6 +705,7 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
         # original asset's own label and may differ from the file base
         sm.geometry_file = base
     os.makedirs(out_dir, exist_ok=True)
+    before = set(os.listdir(out_dir))
     res = _resource_root(gltf_path, base, (src_dir,))
     if donor is not None and donor.attrs:
         # donated attribute block: keeps the historical `.tga` material
@@ -644,17 +725,46 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
     # textures (glTF .dds -> native .t), and point the .g at the emitted file
     emitted = _export_textures(gltf_path, out_dir, base, quiet,
                                src_dir=src_dir)
-    if emitted and "material0_diffuse" not in attrs:
+    # The texture the *body* wears, resolved through the main mesh's material
+    # chain -- not `emitted`, which is whichever image happened to convert
+    # first (compound units list one image per sub-mesh, and a failed
+    # conversion skips its turn, so the two are not the same question).
+    uri0 = _main_image_uri(gltf_path)
+    stem0 = texmod.clean_stem(uri0) if uri0 else ""
+    donated = str(attrs.get("material0_diffuse") or "")
+    if stem0 and (not donated
+                  or texmod.clean_stem(donated).lower() != stem0.lower()):
+        # A re-save of the same atlas comes back under the same stem (Blender
+        # writes `x.dds.png`, which `clean_stem` folds back to `x`), so a
+        # different stem means the material now wears something else: an
+        # armour / body retexture.  Keeping the donated name there left the
+        # old atlas in the file with the new `.t` sitting unused next to it --
+        # the unit looked untouched in the game.
+        ext = ".tga" if donated.lower().endswith(".tga") else ""
+        attrs["material0_diffuse"] = stem0 + ext
+        if not quiet:
+            ui.wrote(os.path.join(out_dir, base + ".g"),
+                     f"main texture is now {attrs['material0_diffuse']}"
+                     + (f" (was {donated})" if donated else ""))
+    elif emitted and not donated:
         attrs["material0_diffuse"] = emitted
-    elif emitted and attrs.get("material0_diffuse", "").endswith(".tga"):
-        pass  # the donated `.tga` name is the convention the engine expects
     else:
         # No texture was emitted; fall back to the unit base if a .t/.dds
         # happened to be written next to the output (or keep the .tga name).
         for cand in (base + ".t", base + ".dds"):
             if os.path.exists(os.path.join(out_dir, cand)):
-                attrs["material0_diffuse"] = cand
+                if not attrs.get("material0_diffuse"):
+                    attrs["material0_diffuse"] = cand
                 break
+
+    # every block of a compound mesh must hang off the file's own parent node
+    # (retail: 376/376 sub-meshes) -- a block the glTF lane synthesized gets
+    # the placeholder ids of `_default_attrs` otherwise, and a part whose
+    # parent names no node in the file is drawn as a loose object instead of
+    # following the bone it is bound to
+    for line in gfile.normalize_part_identity(sm, attrs.get("dwParent")):
+        if not quiet:
+            ui.info(f"{base}.g: {line}")
 
     # geometry
     g_bytes = gfile.write_geometry_file(sm, attrs)
@@ -663,44 +773,96 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
         fh.write(g_bytes)
     if not quiet:
         ui.wrote(out_g, f"{len(g_bytes)} bytes")
+    written = None
     try:
         written = gfile.parse_geometry_file(g_bytes)
         for line in gfile.count_mismatches(written):
             ui.warn(f"{base}.g: {line} — the engine will crash loading it")
     except Exception:  # noqa: BLE001 - the re-read is a diagnostic only
-        pass
+        written = None
+
+    # What the export wrote about every part's size and placement, against the
+    # donor the game ships.  A `.g` carries no transform, so a part that was
+    # scaled/moved in Blender without applying the transform exports the way it
+    # looks — 1.8x too big, a hand's width off the grip — and nothing in the
+    # file looks wrong.
+    if written is not None and donor is not None:
+        try:
+            for line in partsmod.donor_mismatches(written, donor):
+                ui.warn(f"{base}.g: {line}")
+        except Exception as exc:  # noqa: BLE001 - never fail an export over it
+            ui.warn(f"{base}.g: not compared with the donor ({exc})")
 
     # scene (reuse the original if present to keep particle emitters)
-    out_scene = os.path.join(out_dir, base + ".scene")
-    src_scene = os.path.join(src_dir, base + ".scene")
+    # named after the donor, not after the `.g`: a unit whose scene carries
+    # another stem (Wolfsnow's `character_neutrals_wolf.g` lives with
+    # `character_neutrals_wolfsnow.scene`) got a second, empty scene next to
+    # the real one, and the game reads the real one
+    src_scene = _unit_file_for(src_dir, base, ".scene")
+    out_scene = os.path.join(out_dir, os.path.basename(src_scene)
+                             if os.path.isfile(src_scene) else base + ".scene")
     if os.path.exists(src_scene):
         # Some shipped `.scene` files are Latin-1, not UTF-8 (the two large
         # Neutrals/Ship scenes), and `_export` must copy them verbatim.
         with open(src_scene, "rb") as fh:
             scene_bytes = fh.read()
-        with open(out_scene, "wb") as fh:
-            fh.write(scene_bytes)
-        if not quiet:
-            ui.wrote(out_scene, "reused (particle emitters preserved)")
+        note = "reused (particle emitters preserved)"
         try:
             scenemod.parse_scene(scene_bytes.decode("latin-1"))
         except Exception as exc:  # noqa: BLE001
             ui.warn(f"{base}.scene copied but does not parse: {exc}")
     else:
-        scene_text = scenemod.write_scene(sm.name, base, res, attrs,
-                                          gobj_name=sm.name)
-        with open(out_scene, "w", encoding="utf-8") as fh:
-            fh.write(scene_text)
-        if not quiet:
-            ui.wrote(out_scene, "generated (no particles)")
+        scene_bytes = scenemod.write_scene(sm.name, base, res, attrs,
+                                           gobj_name=sm.name).encode("latin-1")
+        note = "generated (no particles)"
+    # A `.g` can carry parts the scene never names — anything the donor's
+    # scene had no `gobj` for, e.g. a weapon added in Blender.  The engine
+    # one `gobj` per mesh part, in order — a part past the last block sits in
+    # the geometry with no node to draw it; give it one, cloned from a sibling.
+    if written is not None:
+        try:
+            patched, added = scenemod.ensure_part_gobjs(
+                scene_bytes.decode("latin-1"), gfile.iter_parts(written))
+        except Exception as exc:  # noqa: BLE001 - a scene we cannot patch
+            patched, added = None, []
+            ui.warn(f"{base}.scene: could not add the parts it does not name "
+                    f"({exc}) — they are in the .g and will not be drawn")
+        if added and patched is not None:
+            scene_bytes = patched.encode("latin-1")
+            note += f"; +{len(added)} gobj ({', '.join(added)})"
+            ui.warn(f"{base}.scene did not name {', '.join(added)}: added a "
+                    f"`gobj` for each, without which the engine never draws "
+                    f"that part")
+        try:
+            # the donor tells the restate *which* parts this export rewrote: a
+            # `gobj` whose part came back unchanged keeps the numbers the game
+            # shipped, so an untouched unit re-exports byte for byte, and a
+            # weapon the export replaced still gets its own `gobj` corrected
+            fresh, restated = scenemod.refresh_part_gobjs(
+                scene_bytes.decode("latin-1"), gfile.iter_parts(written),
+                reference=(gfile.iter_parts(donor) if donor is not None
+                           else None))
+            if restated:
+                scene_bytes = fresh.encode("latin-1")
+                note += f"; {len(restated)} gobj restated"
+                ui.info(f"{base}.scene: restated {', '.join(restated)} from "
+                        f"the mesh parts (material, counts, weights, bones)")
+        except Exception as exc:  # noqa: BLE001 - never fail an export over it
+            ui.warn(f"{base}.scene: gobj attributes were left as the donor "
+                    f"had them ({exc})")
+    with open(out_scene, "wb") as fh:
+        fh.write(scene_bytes)
+    if not quiet:
+        ui.wrote(out_scene, note)
 
     # animation config — reuse the original when it ships next to the glTF,
     # exactly like the `.scene`.  Regenerating it from the template would drop
     # every `event2` entry (the attack/damage/death sound aliases and the
     # FxStrike/fxcast cues): the AirElemental alone carries seven of them.
     anim_files = acmod.detect_anim_files(src_dir, base)
-    out_ac = os.path.join(out_dir, base + ".ac")
-    src_ac = os.path.join(src_dir, base + ".ac")
+    src_ac = _unit_file_for(src_dir, base, ".ac")
+    out_ac = os.path.join(out_dir, os.path.basename(src_ac)
+                          if os.path.isfile(src_ac) else base + ".ac")
     if os.path.exists(src_ac):
         with open(src_ac, "rb") as fh:
             ac_bytes = fh.read()
@@ -728,7 +890,11 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
             counts[idle_guess] = len(m.frames)
         cfg = acmod.default_ac(f'{res}\\{base}.g', f'{res}\\{base}',
                                anim_files, frame_counts=counts)
-        with open(out_ac, "w", encoding="utf-8") as fh:
+        # newline="\n": the engine reads these as text and every retail
+        # `.ac` is LF.  A plain "w" is CRLF on Windows, so an export there
+        # rewrote a file it had no reason to touch (96 of 96 lines), which no
+        # diff can then tell apart from a real edit.
+        with open(out_ac, "w", encoding="utf-8", newline="\n") as fh:
             fh.write(acmod.write_ac(cfg))
         if not quiet:
             ui.wrote(out_ac, "generated (no source .ac to preserve)")
@@ -794,7 +960,7 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
                         continue
                     out_a = os.path.join(out_dir, nm)
                     with open(out_a, "wb") as fh:
-                        fh.write(animmod.write_anim(animfile))
+                        fh.write(_anim_bytes(animfile, stream_donor))
                     if not quiet:
                         ui.wrote(out_a, f"{os.path.getsize(out_a)} bytes, "
                                         f"{len(animfile.bones)} bones")
@@ -809,7 +975,7 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
                                                        streams=streams,
                                                        out_name=idle_base)
                 if animfile.bones or animfile.morphs:
-                    a_bytes = animmod.write_anim(animfile)
+                    a_bytes = _anim_bytes(animfile, donor_a)
                     out_a = os.path.join(out_dir, os.path.basename(idle_name))
                     with open(out_a, "wb") as fh:
                         fh.write(a_bytes)
@@ -819,9 +985,288 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
         except Exception as exc:  # noqa: BLE001
             if not quiet:
                 ui.skipped(base + " <anim>", str(exc))
+    # The LOD model is a separate `.g` pair: a part this export added (a
+    # weapon) stays invisible on the battlefield — where the profile swaps to
+    # `unit_scene_lod` — until the LOD mesh carries it and the LOD scene has
+    # its `gobj`.  The LOD is not part of the export (it is the shipped
+    # low-detail copy), so it is taken from the donor folder when the output
+    # folder has none, then synced.
+    if donor_dir and os.path.abspath(donor_dir) != os.path.abspath(out_dir):
+        for ext in ("_lod.g", "_lod.scene"):
+            src = _unit_file_for(donor_dir, base, ext)
+            if not os.path.isfile(src):
+                # a `.g` names no other file, so the content search has
+                # nothing to match: the folder's only LOD model is this unit's
+                lop = sorted(fn for fn in os.listdir(donor_dir)
+                             if fn.endswith(ext))
+                src = (os.path.join(donor_dir, lop[0]) if len(lop) == 1
+                       else src)
+            dst = os.path.join(out_dir, os.path.basename(src))
+            if os.path.isfile(src) and not os.path.isfile(dst):
+                shutil.copyfile(src, dst)
+                if not quiet:
+                    ui.wrote(dst, "copied from the donor (the LOD model)")
+    try:
+        if any(fn.endswith("_lod.g") for fn in os.listdir(out_dir)):
+            _lod_sync(out_dir, quiet=quiet,
+                      reference=(gfile.iter_parts(donor) if donor is not None
+                                 else None))
+    except Exception as exc:  # noqa: BLE001 - never fail an export over it
+        ui.warn(f"{base}: the LOD model was not synced ({exc}) — an added "
+                f"weapon will not show on the battlefield")
+
+    _carry_material_textures(out_dir, base, src_dir, quiet)
+    _report_export_delta(out_dir, before, src_dir, quiet)
     _battle_readiness_check(out_dir, base, quiet)
     if not quiet:
         print("")
+
+
+def _export_delta(out_dir: str, before: Set[str],
+                  src_dir: Optional[str]) -> Dict[str, List[str]]:
+    """What this export did to the folder: new, rewritten, identical.
+
+    "New" is the answer to the only question a modder asks of an exporter
+    besides "does the game load it": *did it put anything in my folder that I
+    did not have?*  A file this export created that the unit's own folder does
+    not ship is new data — a texture it reached for from somewhere else, a
+    `.scene` it invented — and it is exactly what a pack must not carry by
+    accident.  A file that came back byte-identical to the unit's own is not
+    touched, and one that differs is still the same file, rewritten.
+    """
+    def read(path: str) -> Optional[bytes]:
+        try:
+            with open(path, "rb") as fh:
+                return fh.read()
+        except OSError:
+            return None
+
+    donor = src_dir if src_dir and os.path.isdir(src_dir) else None
+    names = sorted(os.listdir(out_dir)) if os.path.isdir(out_dir) else []
+    out: Dict[str, List[str]] = {"new": [], "rewritten": [], "kept": []}
+    for name in names:
+        if not os.path.isfile(os.path.join(out_dir, name)):
+            continue
+        mine = read(os.path.join(out_dir, name))
+        if mine is None:
+            continue
+        theirs = read(os.path.join(donor, name)) if donor else None
+        if theirs is None:
+            # the unit never had this file — report it only if this export is
+            # what put it there (the folder may have held it all along)
+            if name not in before:
+                out["new"].append(name)
+            continue
+        out["kept" if mine == theirs else "rewritten"].append(name)
+    return out
+
+
+def _atlases_the_gs_name(out_dir: str) -> Set[str]:
+    """Every ``<stem>.t`` the folder's own `.g`/`_lod.g` name, by file name."""
+    names: Set[str] = set()
+    try:
+        listing = os.listdir(out_dir)
+    except OSError:
+        return names
+    for fn in listing:
+        if not fn.endswith(".g"):
+            continue
+        try:
+            parsed = gfile.parse_geometry_file(
+                open(os.path.join(out_dir, fn), "rb").read())
+        except Exception:  # noqa: BLE001 - a bad `.g` is reported elsewhere
+            continue
+        for blk in [parsed] + list(getattr(parsed, "parts", ()) or ()):
+            for key, value in (getattr(blk, "attrs", None) or {}).items():
+                low = key.lower()
+                if value and (low.endswith("_diffuse")
+                              or low.endswith("_lightmap")):
+                    names.add(texmod.clean_stem(value) + ".t")
+    return names
+
+
+def _report_export_delta(out_dir: str, before: Set[str],
+                         src_dir: Optional[str], quiet: bool) -> None:
+    """Say what the export added to the folder, and complain if it added any."""
+    if quiet:
+        return
+    delta = _export_delta(out_dir, before, src_dir)
+    if delta["kept"]:
+        ui.info(f"{len(delta['kept'])} file(s) identical to the unit's own")
+    if delta["rewritten"]:
+        ui.wrote(out_dir, f"{len(delta['rewritten'])} file(s) rewritten: "
+                          + ", ".join(delta["rewritten"][:6])
+                          + (" …" if len(delta["rewritten"]) > 6 else ""))
+    if delta["new"]:
+        # A texture the parts themselves name is not spare data: it is the
+        # atlas of a part this export wrote (the artist painted a new one for
+        # a new mesh).  Report it by name, but as what it is.  Everything else
+        # is a file that appeared without being asked for.
+        owned = _atlases_the_gs_name(out_dir)
+        mine = [n for n in delta["new"] if n in owned]
+        rest = [n for n in delta["new"] if n not in owned]
+        if mine:
+            ui.info("the export wrote the atlas of a part: "
+                    + ", ".join(mine))
+        if rest:
+            ui.warn("this export ADDED " + str(len(rest))
+                    + " file(s) the unit did not have: "
+                    + ", ".join(rest)
+                    + " — delete them if the game already has them, they are "
+                      "not part of the unit")
+
+
+def _shrink_texture(path: str, quiet: bool) -> bool:
+    """Block-compress a texture in place when it is stored as raw pixels.
+
+    A `.t` can hold A8R8G8B8, and everything that came out of Blender used to
+    be written that way: 683 KiB for a 128x1024 blade whose shipped copy is
+    86 KiB.  The pixels do not change, the format does, so this is done on
+    every export — including on a texture the artist dropped in himself.
+    """
+    try:
+        with open(path, "rb") as fh:
+            data = fh.read()
+        small = texmod.compress_t(data, path)
+    except Exception:  # noqa: BLE001 - an odd texture must not fail an export
+        return False
+    if small is None or len(small) >= len(data):
+        return False
+    try:
+        with open(path, "wb") as fh:
+            fh.write(small)
+    except OSError:
+        return False
+    if not quiet:
+        ui.wrote(path, f"re-encoded {len(data) // 1024} KB raw pixels -> "
+                       f"{len(small) // 1024} KB {texmod.describe(path, True)}")
+    return True
+
+
+def _write_texture(src: str, dst: str, quiet: bool, why: str) -> None:
+    """Copy a texture into the export folder, block-compressing it on the way."""
+    try:
+        with open(src, "rb") as fh:
+            data = fh.read()
+        small = texmod.compress_t(data, src)
+    except Exception:  # noqa: BLE001
+        small = None
+    if small is not None and len(small) < len(data):
+        with open(dst, "wb") as fh:
+            fh.write(small)
+        if not quiet:
+            ui.wrote(dst, f"{why}; re-encoded {len(data) // 1024} KB raw "
+                          f"pixels -> {len(small) // 1024} KB "
+                          f"{texmod.describe(dst, True)}")
+        return
+    shutil.copyfile(src, dst)
+    if not quiet:
+        ui.wrote(dst, why)
+
+
+def _carry_material_textures(out_dir: str, base: str,
+                             src_dir: Optional[str], quiet: bool) -> None:
+    """Make the output folder carry every texture its own `.g` names.
+
+    A compound unit names one diffuse per part, and a part can be re-textured
+    from a texture that lives in *another* unit's folder (a sword wearing the
+    Knight's blade diffuse).  The glTF only carries the file while the scene
+    stays open: the export writes the `.g` with the material name and nothing
+    else, so the exported folder ended up naming a texture it did not ship.
+    In game that is invisible — the retail copy is still in the game data — but
+    the moment the export is read back (the add-on's own import, or anyone
+    else opening the folder) the part has no texture at all.  Copy the file in
+    from the donor folder (or the glTF's own folder), converting a `.dds`
+    when that is all there is, so an export is self-contained.
+    """
+    dirs = [out_dir] + ([src_dir] if src_dir else [])
+    wanted: List[str] = []
+    meshes = []
+    for name in (base + ".g", base + "_lod.g"):
+        g_path = os.path.join(out_dir, name)
+        if not os.path.isfile(g_path):
+            continue
+        try:
+            parsed = gfile.parse_geometry_file(open(g_path, "rb").read())
+        except Exception:  # noqa: BLE001 - a bad .g is reported by the checker
+            continue
+        if getattr(parsed, "parse_error", None):
+            continue
+        meshes.append(parsed)
+    if not meshes:
+        return
+    for blk in [b for mesh in meshes
+                for b in [mesh] + list(getattr(mesh, "parts", ()) or ())]:
+        for key, value in (getattr(blk, "attrs", None) or {}).items():
+            low = key.lower()
+            if value and (low.endswith("_diffuse") or low.endswith("_lightmap")):
+                wanted.append(value)
+    for mat in dict.fromkeys(wanted):
+        stem = texmod.clean_stem(mat)
+        if not stem:
+            continue
+        existing = os.path.join(out_dir, stem + ".t")
+        if os.path.isfile(existing):
+            # Raw-pixel atlases are re-encoded on every export, the shipped
+            # ones included: an A8R8G8B8 `.t` is eight times the size of the
+            # same pixels as DXT (the 683 KiB blade that is 86 KiB in the game
+            # data), and the engine reads both.  The pixels do not change.
+            _shrink_texture(existing, quiet)
+            continue
+        src_t = src_dds = src_img = None
+        for d in dirs:
+            if not d or not os.path.isdir(d):
+                continue
+            if src_t is None and os.path.isfile(os.path.join(d, stem + ".t")):
+                src_t = os.path.join(d, stem + ".t")
+            if src_dds is None and os.path.isfile(os.path.join(d, stem + ".dds")):
+                src_dds = os.path.join(d, stem + ".dds")
+            if src_t is None:
+                # the folder may ship the texture under a doubled extension
+                # (``x.dds.t``, written by an export from before the stem fix)
+                try:
+                    for cand in os.listdir(d):
+                        if (cand.lower().endswith(".t")
+                                and texmod.clean_stem(cand).lower()
+                                == stem.lower()):
+                            src_t = os.path.join(d, cand)
+                            break
+                except OSError:
+                    pass
+            if src_t is None and src_dds is None and src_img is None:
+                # a texture the artist supplied himself: the game reads
+                # `<stem>.t` only, so his `.png`/`.tga`/`.bmp` has to be
+                # converted into the folder the `.g` points at
+                for ext in texmod.DECODABLE_EXTS:
+                    if os.path.isfile(os.path.join(d, stem + ext)):
+                        src_img = os.path.join(d, stem + ext)
+                        break
+            if src_t is not None or src_dds is not None or src_img is not None:
+                break
+        dst = os.path.join(out_dir, stem + ".t")
+        try:
+            if src_t is not None:
+                if os.path.abspath(src_t) == os.path.abspath(dst):
+                    _shrink_texture(dst, quiet)
+                    continue
+                _write_texture(src_t, dst, quiet,
+                               "carried with the unit (its .g names it)")
+            elif src_dds is not None:
+                texmod.convert_file(src_dds, dst)
+                if not quiet:
+                    ui.wrote(dst, "converted from the unit's .dds")
+            elif src_img is not None:
+                texmod.add_texture(src_img, out_dir, stem)
+                if not quiet:
+                    ui.wrote(dst, f"converted from "
+                                  f"{os.path.basename(src_img)}")
+            elif not quiet:
+                ui.warn(f"{stem}.t: no such texture next to the export or in "
+                        f"the donor folder — '{mat}' will load untextured "
+                        f"(drop {stem}.t into the output folder to fix it)")
+        except Exception as exc:  # noqa: BLE001 - never fail an export over it
+            if not quiet:
+                ui.warn(f"{stem}.t: could not be carried — {exc}")
 
 
 def _battle_readiness_check(out_dir: str, base: str, quiet: bool) -> None:
@@ -836,6 +1281,7 @@ def _battle_readiness_check(out_dir: str, base: str, quiet: bool) -> None:
     """
     try:
         findings: List[str] = []
+        skeleton: List[str] = []          # every bone name the .g declares
         out_g = os.path.join(out_dir, base + ".g")
         if os.path.isfile(out_g):
             g_data = open(out_g, "rb").read()
@@ -888,6 +1334,12 @@ def _battle_readiness_check(out_dir: str, base: str, quiet: bool) -> None:
                         findings.append(
                             f"{base}.g part {prt.name}: material0_diffuse "
                             f"'{pmat}' has no {pwant} in the output")
+                # skinning that came out of the round-trip rigid or missing:
+                # the unit folds around one bone (or hangs loose) in game and
+                # nothing in the file looks broken enough to notice
+                findings.extend(weightsmod.skinning_problems(sm_g))
+                for blk in [sm_g] + list(sm_g.parts):
+                    skeleton.extend(b.name for b in (blk.bones or ()))
                 names = [p.name for p in sm_g.parts]
                 if len(set(names)) != len(names):
                     dupes = sorted({n for n in names if names.count(n) > 1})
@@ -896,6 +1348,24 @@ def _battle_readiness_check(out_dir: str, base: str, quiet: bool) -> None:
                         f"({', '.join(dupes)}) — the engine keeps only one")
             except Exception as exc:  # noqa: BLE001
                 findings.append(f"{base}.g failed to re-parse: {exc}")
+        # the LOD model is a separate mesh and the profile swaps to it past a
+        # draw distance: a part the main `.g` gained (a weapon) is invisible
+        # on the battlefield until the LOD carries it as well
+        lod_g = os.path.join(out_dir, base + "_lod.g")
+        if os.path.isfile(lod_g) and os.path.isfile(out_g):
+            try:
+                main_parts = gfile.iter_parts(
+                    gfile.parse_geometry_file(open(out_g, "rb").read()))
+                lod_parts = gfile.iter_parts(
+                    gfile.parse_geometry_file(open(lod_g, "rb").read()))
+                if len(lod_parts) < len(main_parts):
+                    findings.append(
+                        f"{base}_lod.g has {len(lod_parts)} mesh part(s), "
+                        f"the main .g has {len(main_parts)} — the battle "
+                        f"camera swaps to the LOD at distance and the extra "
+                        f"part(s) will not be drawn (run `d3tool lod`)")
+            except Exception as exc:  # noqa: BLE001
+                findings.append(f"{base}_lod.g failed to re-parse: {exc}")
         for ac_path in glob.glob(os.path.join(out_dir, "*.ac")):
             cfg = acmod.parse_ac(open(ac_path, "r", encoding="utf-8-sig",
                                       errors="replace").read())
@@ -919,6 +1389,18 @@ def _battle_readiness_check(out_dir: str, base: str, quiet: bool) -> None:
                             f".ac state {st.name}: frames go to "
                             f"{st.frame1} but {fn} has {a.frame_count} "
                             f"(last index {a.frame_count - 1})")
+                    # A stream that carries one track named after the object
+                    # instead of the armature is what a Blender export leaves
+                    # behind when the meshes are not skinned to the armature:
+                    # the unit then stands in its rest pose (or falls apart)
+                    # while the skeleton it belongs to is 20+ bones.
+                    if skeleton and len(a.bones) <= 1:
+                        only = a.bones[0].name if a.bones else "-"
+                        findings.append(
+                            f"{fn}: {len(a.bones)} bone track ({only!r}) for "
+                            f"a {len(set(skeleton))}-bone skeleton — the "
+                            f"armature was not exported, the unit cannot "
+                            f"animate")
                 if st.meshfile:
                     mf = os.path.basename(st.meshfile.replace("\\", "/")
                                           .rsplit("/", 1)[-1])
@@ -939,6 +1421,9 @@ def _battle_readiness_check(out_dir: str, base: str, quiet: bool) -> None:
                 if not os.path.isfile(os.path.join(out_dir, fn)):
                     findings.append(f"{os.path.basename(sc)} references "
                                     f"{fn}, which was not written")
+        # one line per distinct problem: a unit whose `.ac` names the same
+        # stream in five states must not repeat the finding five times
+        findings = list(dict.fromkeys(findings))
         if findings and not quiet:
             ui.warn("battle-readiness check FAILED — fix before shipping:")
             for f in findings:
@@ -1028,7 +1513,7 @@ def _emit_compound_textures(g_path: str, mesh, out_dir: str,
     for value, _is_lm in _names():
         if not value:
             continue
-        stem = os.path.splitext(value)[0]
+        stem = texmod.clean_stem(value)
         dds = stem + ".dds"
         dst = os.path.join(out_dir, dds)
         if os.path.exists(dst):
@@ -1424,6 +1909,184 @@ def _vdpack(args) -> int:
             return 1
         return 0
 
+    if args.vd_cmd == "index":
+        if os.path.isdir(args.target):
+            files = vdmod.pack_folder(args.target)
+            label = os.path.basename(os.path.normpath(args.target))
+        else:
+            pack = vdmod.read_vdpack(args.target)
+            if pack.parse_error:
+                ui.section("vdpack index")
+                ui.fail(f"{args.target}: {pack.parse_error}")
+                return 1
+            files = list(pack.files().items())
+            label = os.path.basename(args.target)
+        report = vdmod.index_report(files)
+        if args.raw:
+            doc = report["document"]
+            if doc is None:
+                ui.fail(report["error"] or "no `index` entry")
+                return 1
+            sys.stdout.write(doc.text)
+            return 0
+        if args.json:
+            doc = report["document"]
+            print(json.dumps({
+                "present": report["present"],
+                "decoded": report["decoded"],
+                "error": report["error"],
+                "name": doc.name if doc else None,
+                "uuid": doc.uuid if doc else None,
+                "type": doc.type if doc else None,
+                "records": report["records"],
+                "mismatched": report["mismatched"],
+                "unlisted": report["unlisted"],
+                "missing": report["missing"],
+            }, ensure_ascii=False, indent=2))
+            return 0 if report["decoded"] else 1
+        ui.section(f"vdpack index  {label}")
+        if not report["present"]:
+            ui.warn("no `index` entry — every retail and ported pack carries "
+                    "one; `vdpack pack --reindex` writes it")
+            return 0 if not args.strict else 1
+        if not report["decoded"]:
+            ui.fail(f"`index` does not decode: {report['error']}")
+            return 1
+        doc = report["document"]
+        ui.info(f'mod: {doc.name}  ({doc.type})')
+        ui.info(f"UUID: {doc.uuid}")
+        ui.info(f"{report['records']} file record(s), "
+                f"{len(files)} entr(ies) in the archive")
+        for name in report["mismatched"]:
+            ui.warn(f"payload differs from its hash: {name}")
+        for name in report["unlisted"]:
+            ui.warn(f"no File record: {name}  "
+                    f"(the loader answers `Unindexed file`)")
+        for name in report["missing"]:
+            ui.warn(f"listed but absent: {name}  "
+                    f"(the loader answers `Not found indexed file`)")
+        if not (report["mismatched"] or report["unlisted"]
+                or report["missing"]):
+            ui.ok("every payload matches the MD5 and SHA-256 the manifest "
+                  "records, and every path is listed")
+        else:
+            ui.info("rewrite it for these bytes with `vdpack pack <folder> "
+                    "--like <pack> --reindex`")
+            return 1
+        return 0
+
+    if args.vd_cmd == "diff":
+        loaded = []
+        for path in (args.base, args.other):
+            if os.path.isdir(path):
+                loaded.append((vdmod.pack_folder(path),
+                               os.path.basename(os.path.normpath(path))))
+                continue
+            pack = vdmod.read_vdpack(path)
+            if pack.parse_error:
+                ui.section("vdpack diff")
+                ui.fail(f"{path}: {pack.parse_error}")
+                return 1
+            loaded.append((list(pack.files().items()), os.path.basename(path)))
+        (base_files, base_label), (other_files, other_label) = loaded
+        result = vdmod.diff_entries(base_files, other_files)
+        ui.section(f"vdpack diff  {base_label} -> {other_label}")
+        before, after = result["bytes"]
+        ui.info(f"{base_label}: {result['base']} file(s), {before} bytes")
+        ui.info(f"{other_label}: {result['other']} file(s), {after} bytes")
+        for name in result["changed"]:
+            ui.info(f"replaced  {name}")
+        verdict = vdmod.shape_verdict(result)
+        worst = "ok"
+        for grade, line in verdict:
+            if grade == "ok":
+                ui.ok(line)
+            elif grade == "bad":
+                ui.warn(line)
+                worst = "bad"
+            else:
+                ui.warn(line)
+                if worst == "ok":
+                    worst = "warn"
+        if args.json:
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        if worst == "bad" and args.strict:
+            return 1
+        return 0
+
+    if args.vd_cmd == "plan":
+        if not os.path.isdir(args.folder):
+            ui.section("vdpack plan")
+            ui.fail(f"{args.folder} is not a folder")
+            return 1
+        base = None
+        if args.like:
+            pack = vdmod.read_vdpack(args.like)
+            if pack.parse_error:
+                ui.section("vdpack plan")
+                ui.fail(f"{args.like}: {pack.parse_error}")
+                return 1
+            base = list(pack.files().items())
+        plan = vdmod.plan_bundle(vdmod.pack_folder(args.folder), base,
+                                 prefix=args.prefix)
+        ui.section(f"vdpack plan  {os.path.basename(os.path.normpath(args.folder))}")
+        if not plan["prefix"]:
+            ui.warn("could not line the folder up with an archive path — "
+                    "pass `--prefix resources\\Characters\\Empire\\<Unit>`")
+        else:
+            ui.info(f"archive folder: {plan['prefix']}")
+        for entry in plan["replaced"]:
+            ui.ok(f"replaces  {entry['path']}")
+        for entry in plan["entries"]:
+            if entry["kind"] == "loose":
+                ui.info(f"loose    {entry['path']}")
+        for entry in plan["added"]:
+            ui.warn(f"new path  {entry['path']}")
+            names = entry.get("alternatives") or []
+            if names:
+                ui.info(f"    the pack carries in that folder: {', '.join(names)}")
+                ui.info(f"    point the part at one of them "
+                        f"(`d3tool g attr <file>.g --set material0_diffuse=<name>`) "
+                        f"or ship this file loose")
+            else:
+                ui.info("    nothing in the pack carries this name — ship it "
+                        "loose (see the layout below)")
+        if plan["index_present"] and plan["payloads_changed"]:
+            ui.warn(f"{len(plan['payloads_changed'])} payload(s) differ from "
+                    f"the pack's, and its `index` still describes the old "
+                    f"ones — the index is a per-file hash manifest (MD5 and "
+                    f"SHA-256) that the loader validates before mounting, so a "
+                    f"pack built like this is the first suspect when the unit "
+                    f"does not appear")
+            for path in plan["payloads_changed"][:3]:
+                ui.info(f"    differs  {path}")
+        if base is not None and plan["missing"]:
+            for name in plan["missing"][:5]:
+                ui.info(f"stays vanilla  {name}")
+            if len(plan["missing"]) > 5:
+                ui.info(f"stays vanilla  ... and {len(plan['missing']) - 5} "
+                        f"more (each keeps the vanilla tree's copy)")
+        if plan["prefix"]:
+            loose = plan["prefix"].replace("\\", os.sep)
+            ui.info(f"loose layout: game{os.sep}{loose}{os.sep}<file> — the "
+                    f"engine's own mount reaches a path no pack can add")
+        if args.json:
+            print(json.dumps(plan, ensure_ascii=False, indent=2))
+        worst = "new" if plan["added"] else "ok"
+        if base is None:
+            ui.info("no `--like`: this is the loose-install shape")
+        elif worst == "ok":
+            ui.ok("every file replaces a path the pack already carries — "
+                  "rebuild with `vdpack pack --like` and it loads as a "
+                  "replacement")
+        else:
+            ui.info(f"{len(plan['added'])} file(s) name a path the pack does "
+                    f"not carry: a pack built from this folder cannot add "
+                    f"them (the engine only reaches paths its `index` lists)")
+        if worst == "new" and args.strict:
+            return 1
+        return 0
+
     if args.vd_cmd == "validate":
         if os.path.isdir(args.target):
             files = dict(vdmod.pack_folder(args.target))
@@ -1456,6 +2119,58 @@ def _vdpack(args) -> int:
             ui.warn("  " + line)
         return 1
 
+    if args.vd_cmd == "scan":
+        rows = vdmod.scan_packs(args.targets, recursive=args.recursive)
+        findings = vdmod.scan_findings(rows)
+        log = {}
+        if args.log:
+            if not os.path.isfile(args.log):
+                ui.fail(f"not a file: {args.log}")
+                return 1
+            log = vdmod.read_run_log(args.log)
+            findings = findings + vdmod.log_findings(rows, log)
+        if not rows:
+            ui.section("vdpack scan")
+            ui.info("no .vdpack found under " +
+                    ", ".join(args.targets) +
+                    " — pass the game folder, or the folder user.ini's "
+                    "`sModifications` names mods in")
+            return 1
+        bad = any(level == "bad" for level, _ in findings)
+        if args.json:
+            print(json.dumps({"packs": rows, "log": log,
+                              "findings": [{"level": level, "text": text}
+                                           for level, text in findings]},
+                             ensure_ascii=False, indent=2) + "\n")
+            return 1 if (bad and args.strict) else 0
+        ui.section(f"vdpack scan  {len(rows)} archive(s)")
+        verdict = {"ok": "loads", "stale": "rejected file(s)",
+                   "no-manifest": "no `index`",
+                   "opaque-manifest": "`index` unreadable",
+                   "broken": "unreadable archive"}
+        if log:
+            ui.info(f"{args.log}: {log['lines']} line(s), "
+                    f"{len(log['rejected'])} rejected path(s), "
+                    f"{len(log['missing_mods'])} missing mod(s), "
+                    f"packs it names: "
+                    f"{', '.join(log['packs']) or 'none'}")
+        ui.table([(row["file"],
+                   row["type"] or "-",
+                   f"{row['entries']}",
+                   verdict.get(row["state"], row["state"]))
+                  for row in rows],
+                 headers=("pack", "type", "files", "verdict"))
+        for level, text in findings:
+            if level == "ok":
+                ui.ok(text)
+            elif level == "warn":
+                ui.warn(text)
+            else:
+                ui.fail(text)
+        if bad:
+            ui.info("`--strict` exits 1 while any pack above is rejected")
+        return 1 if (bad and args.strict) else 0
+
     # pack
     if not os.path.isdir(args.folder):
         ui.fail(f"not a folder: {args.folder}")
@@ -1464,6 +2179,71 @@ def _vdpack(args) -> int:
     if not files:
         ui.fail(f"{args.folder} has no files to pack")
         return 1
+    # Writing the manifest is the default, because the loader compares every
+    # payload against it.  Two flags override that: `--no-reindex`, and
+    # `--keep-index`, whose whole point is to carry one over verbatim.
+    reindex = True if args.reindex is None else args.reindex
+    if args.keep_index and args.reindex is None:
+        reindex = False
+    if args.like:
+        source = vdmod.read_vdpack(args.like)
+        if source.parse_error:
+            ui.fail(f"{args.like}: {source.parse_error}")
+            return 1
+        blob, extra = vdmod.pack_like(source, files, drop=args.drop,
+                                      reindex=reindex)
+        for name in extra:
+            ui.warn(f"{name}: not in {os.path.basename(args.like)}, dropped — "
+                    "a pack that adds paths is not the confirmed shape")
+        out = args.out or (os.path.basename(os.path.normpath(args.folder)) +
+                           ".vdpack")
+        check = vdmod.parse_vdpack(blob)
+        if check.parse_error or not len(check):
+            ui.fail(f"the archive would not read back: {check.parse_error}")
+            return 1
+        with open(out, "wb") as fh:
+            fh.write(blob)
+        changed = []
+        for entry in source.entries:
+            landed = check.find(entry.name)
+            if landed is None:                  # dropped, reported below
+                continue
+            before = source.payload(entry)
+            after = check.payload(landed)
+            if before != after:
+                changed.append((entry.name, len(before), len(after)))
+        ui.section(f"vdpack {os.path.basename(out)}")
+        ui.info(f"{len(check)} file(s) in {os.path.basename(args.like)}'s "
+                f"order, {len(blob)} bytes")
+        for name in args.drop:
+            ui.info(f"dropped: {name}")
+        for name, before, after in changed:
+            if vdmod._norm_name(name).lower() == vdmod.INDEX_ENTRY:
+                continue
+            ui.ok(f"{name.split(chr(92))[-1]}: {before} -> {after} bytes — "
+                  "everything else carried over byte for byte")
+        audit = vdmod.index_report(list(check.files().items()))
+        if reindex:
+            kept = vdmod.index_entry(list(source.files().items()))
+            same = (kept is not None
+                    and vdmod.index_entry(list(check.files().items())) == kept)
+            if same:
+                ui.ok("`index` left exactly as it was — it already describes "
+                      "these bytes")
+            else:
+                ui.ok("`index` rewritten for these bytes: "
+                      f"{audit['records']} record(s), every payload matches "
+                      "its MD5 and SHA-256")
+        elif audit["decoded"] and (audit["mismatched"] or audit["unlisted"]):
+            ui.warn(f"the carried-over `index` no longer describes this "
+                    f"archive: {len(audit['mismatched'])} payload(s) differ "
+                    f"from their recorded hash, {len(audit['unlisted'])} "
+                    f"path(s) are unlisted. The loader compares each payload "
+                    f"with the manifest as it is read and answers `Index "
+                    f"error : str_not_valid_hash_for_file : <path>`, which is "
+                    f"the crash `run.log` shows — rebuild with `--reindex`.")
+        ui.wrote(out, f"{len(blob)} bytes")
+        return 0
     if args.keep_index:
         source = vdmod.read_vdpack(args.keep_index)
         if source.parse_error:
@@ -1479,16 +2259,23 @@ def _vdpack(args) -> int:
         files = files + [taken]
     out = args.out or (os.path.basename(os.path.normpath(args.folder)) +
                        ".vdpack")
+    if reindex:
+        # the loader is asked for a mod by the name in `sModifications` and
+        # mounts `Mods\<name>.vdpack`, so a pack built from scratch names
+        # itself after the file it is written to
+        identity = args.name or os.path.splitext(os.path.basename(out))[0]
+        files = vdmod.reindex_pack(files, name=identity)  # no-op when right
     blob = vdmod.build_vdpack(files)
-    # Every pack the Heroes-VII port examined carries one opaque `index`
+    # Every pack the Heroes-VII port examined carries one `index`
     # resource; same-path replacement inside such a pack is game-confirmed,
     # a pack that added paths is not.  Say so instead of implying that any
     # archive this tool writes will be mounted.
     if vdmod.index_entry(files) is None:
-        ui.warn("no opaque `index` entry: retail and ported packs carry one, "
-                "and only in-place replacement inside such a pack has been "
-                "confirmed to load — pass `--keep-index <existing.vdpack>` "
-                "to build on that proven shape")
+        ui.warn("no `index` entry (`--no-reindex`): every retail and ported "
+                "pack carries the mod's per-file MD5/SHA-256 manifest and the "
+                "loader compares the archive against it, answering `Index "
+                "error : str_not_valid_hash_for_file` / `Unindexed file` for "
+                "anything that disagrees — drop the flag to have one written")
     # never ship an archive this toolkit cannot read back
     check = vdmod.parse_vdpack(blob)
     if check.parse_error or len(check) != len(files):
@@ -1501,6 +2288,19 @@ def _vdpack(args) -> int:
              headers=("file", "bytes"))
     if len(files) > 20:
         ui.info(f"... and {len(files) - 20} more")
+    if vdmod.index_entry(files) is not None:
+        audit = vdmod.index_report(list(check.files().items()))
+        if audit["decoded"]:
+            if audit["mismatched"] or audit["unlisted"]:
+                ui.warn(f"the `index` in this archive disagrees with it: "
+                        f"{len(audit['mismatched'])} payload(s) differ from "
+                        f"their recorded hash, {len(audit['unlisted'])} "
+                        f"path(s) unlisted — rebuild with `--reindex`")
+            else:
+                ui.ok(f"`index`: {audit['records']} record(s), every payload "
+                      f"matches its MD5 and SHA-256")
+        else:
+            ui.warn(f"the `index` entry does not decode: {audit['error']}")
     ui.wrote(out, f"{len(files)} file(s), {len(blob)} bytes")
     # the same reference audit `vdpack validate` runs, on what was just written:
     # a pack whose `.ac` names a folder it does not carry loads in a viewer and
@@ -1522,6 +2322,34 @@ def _texture_convert(src: str, dst: str, quiet: bool = False) -> None:
     if not quiet:
         ui.wrote(dst, f"{info.width}x{info.height} {_format_label(info)}"
                       f" mips={info.mip_count}")
+
+
+def _texture_add(src: str, out_dir: str, name: Optional[str] = None,
+                 force: bool = False) -> int:
+    """``d3tool texture add <image> -o <unit folder>`` — a new atlas, in place.
+
+    The engine only ever reads ``<stem>.t`` next to the unit, while a texture
+    an artist paints comes as a ``.png``/``.tga``/``.bmp``/``.dds``.  This is
+    the "add the texture too" step of modelling a new part: convert it into
+    the unit folder under the name the ``.g``/``.scene`` will carry
+    (``<stem>.tga``).
+    """
+    ui.section("Texture add")
+    try:
+        dst = texmod.add_texture(src, out_dir, name, force=force)
+    except (OSError, ValueError) as exc:
+        ui.fail(str(exc))
+        return 1
+    with open(dst, "rb") as fh:
+        info = texmod.parse_t(fh.read(), dst)
+    stem = texmod.clean_stem(os.path.basename(dst))
+    ui.wrote(dst, f"{info.width}x{info.height} {_format_label(info)} "
+                  f"mips={info.mip_count}, {max(1, os.path.getsize(dst) // 1024)} KB")
+    ui.info(f'name it "{stem}.tga" on the part (its material, or the Material '
+            f"field in the sidebar) — the export then writes that name into the "
+            f".g, the _lod.g and both .scene files, and this .t sits next to "
+            f"the unit where the engine looks for it")
+    return 0
 
 
 def _texture_info(path: str) -> None:
@@ -1585,7 +2413,8 @@ def _build_parser() -> argparse.ArgumentParser:
               d3tool analyze Neutrals/AirElemental
               d3tool export-all Neutrals -o gltf
               d3tool bundle Neutrals/AirElemental -o bundle
-              d3tool validate out/unit.gltf
+              d3tool audit   Empire/Inquisitor --against <retail>   # what the loader reads
+              d3tool lod out/     # LOD mesh takes the parts the main one gained
         """),
     )
     parser.add_argument("--version", action="version",
@@ -1668,7 +2497,9 @@ def _build_parser() -> argparse.ArgumentParser:
     p_dump.add_argument("gfile")
 
     p_texture = sub.add_parser(
-        "texture", help="inspect / convert .t (GM) <-> .dds textures")
+        "texture",
+        help="inspect / convert .t (GM) <-> .dds textures; add a texture to "
+             "a unit folder")
     p_texture_sub = p_texture.add_subparsers(dest="tex_cmd", required=True)
     p_tc = p_texture_sub.add_parser(
         "convert", help="convert a .t to .dds (or .dds to .t)")
@@ -1677,6 +2508,17 @@ def _build_parser() -> argparse.ArgumentParser:
     p_ti = p_texture_sub.add_parser(
         "info", help="describe a .t / .dds texture")
     p_ti.add_argument("file")
+    p_ta = p_texture_sub.add_parser(
+        "add", help="put an image (.png/.tga/.bmp/.dds/.t) into a unit "
+                    "folder as the <name>.t the engine reads")
+    p_ta.add_argument("image")
+    p_ta.add_argument("-o", "--out", required=True,
+                      help="the unit's folder (where the .g lives)")
+    p_ta.add_argument("--name", help="texture name (default: the file's stem)")
+    p_ta.add_argument("--force", action="store_true",
+                      help="replace a texture of the same name that the unit "
+                           "already ships (the export prefers the shipped "
+                           ".dds/.t, so this is rarely what you want)")
 
     p_vd = sub.add_parser(
         "vdpack", help="list / extract / pack a .vdpack mod archive")
@@ -1701,6 +2543,18 @@ def _build_parser() -> argparse.ArgumentParser:
         "manifest", help="sha256 inventory of a folder or an archive")
     p_vm.add_argument("target", help="a .vdpack file or a unit folder")
     p_vm.add_argument("-o", "--out", help="write JSON here instead of stdout")
+    p_vdf = p_vd_sub.add_parser(
+        "diff",
+        help="what separates two packs: added / removed / replaced paths",
+        description="Compare the pack the game already loads with the one a "
+                    "mod is about to ship, path by path, and grade the result "
+                    "against the only shape confirmed to load in game: the "
+                    "same paths, different payloads.")
+    p_vdf.add_argument("base", help="the pack that already loads (or its folder)")
+    p_vdf.add_argument("other", help="the new pack (or the folder to pack)")
+    p_vdf.add_argument("--json", action="store_true", help="machine output")
+    p_vdf.add_argument("--strict", action="store_true",
+                       help="exit 1 when the pack adds a path")
     p_ch = sub.add_parser(
         "char", help="read / relink a .char unit profile")
     p_ch_sub = p_ch.add_subparsers(dest="char_cmd", required=True)
@@ -1730,13 +2584,153 @@ def _build_parser() -> argparse.ArgumentParser:
     p_ci.add_argument("--scene", help="also point unit_scene at this scene")
     p_ci.add_argument("-o", "--out", help="write here instead of in place")
 
+    p_lod = sub.add_parser(
+        "lod", help="give a unit's LOD mesh the parts its main mesh gained")
+    p_lod.add_argument("unit_dir", help="folder holding <stem>.g and "
+                                        "<stem>_lod.g")
+    p_lod.add_argument("-o", "--out", default=None,
+                       help="write the patched files here instead of in place")
+
+    p_au = sub.add_parser(
+        "audit",
+        help="cross-check a unit folder the way the engine loads it",
+        description="Read the .g, the _lod.g, both .scene files and the .ac "
+                    "of a unit and report what disagrees: a gobj pointing past "
+                    "the mesh, a gobj whose triangle/vertex/bone counts belong "
+                    "to the mesh it replaced, a part the scene still draws with "
+                    "another atlas, an atlas that is not in the folder. The "
+                    "same checks the loader makes, before the game makes them.",
+    )
+    p_au.add_argument("unit_dir", help="folder holding the unit's bundle")
+    p_au.add_argument("--against", metavar="REF", default=None,
+                      help="compare with a known-good bundle (e.g. the retail "
+                           "folder) and list what changed")
+    p_rt = sub.add_parser(
+        "roundtrip",
+        help="export a unit folder and diff every file against the original",
+        description="Run the format path the add-on's export uses (.g -> "
+                    "glTF -> .g, with the folder itself as the donor) and "
+                    "report, file by file, what came back different and at "
+                    "which byte. The add-on's own Self-test runs the same "
+                    "comparison through Blender's glTF importer/exporter; this "
+                    "is the version that needs no Blender.",
+    )
+    p_rt.add_argument("unit_dir", help="folder holding the unit's bundle")
+    p_rt.add_argument("-o", "--out", default=None,
+                      help="write the re-export here (default: a temp folder)")
+    p_rt.add_argument("--keep", action="store_true",
+                      help="leave the re-exported files on disk for inspection")
+
+    p_ga = sub.add_parser(
+        "gattr", help="insert or replace one attribute in a .g part")
+    p_ga.add_argument("file", help="the .g to edit")
+    p_ga.add_argument("--part", type=int, action="append", default=[],
+                      metavar="N",
+                      help="part index, in file order (repeatable; default: "
+                           "every part)")
+    p_ga.add_argument("--insert", action="append", default=[],
+                      metavar="KEY=VALUE",
+                      help="add an attribute the part does not carry")
+    p_ga.add_argument("--set", action="append", default=[], metavar="KEY=VALUE",
+                      help="rewrite an attribute the part already carries")
+    p_ga.add_argument("-o", "--out", help="write here instead of in place")
+
+    p_vpl = p_vd_sub.add_parser(
+        "plan", help="how to ship a unit folder so the engine sees it: which "
+                     "files replace a path, which are new, and the loose layout")
+    p_vpl.add_argument("folder", help="the exported unit folder")
+    p_vpl.add_argument("--like", metavar="ARCHIVE",
+                       help="the pack the game already loads (or a folder in "
+                            "that shape)")
+    p_vpl.add_argument("--prefix", metavar="PATH",
+                       help="override the archive folder, e.g. "
+                            "resources\\Characters\\Empire\\Inquisitor")
+    p_vpl.add_argument("--json", action="store_true")
+    p_vpl.add_argument("--strict", action="store_true",
+                       help="exit 1 when a file names a path the pack does not "
+                            "carry")
+    p_vi = p_vd_sub.add_parser(
+        "index",
+        help="decode the `index` manifest and check every payload against it",
+        description="`index` is the mod's manifest: the mod's Name/UUID/Type "
+                    "and one MD5 + SHA-256 record per resource, stored "
+                    "obfuscated (65 43 74 FF, a seed, and an LCG keystream — "
+                    "see docs/FORMATS.md §6f). The loader checks the archive "
+                    "against it before mounting, so a payload that does not "
+                    "match is why a unit never appears.")
+    p_vi.add_argument("target", help="a .vdpack file or a folder in its shape")
+    p_vi.add_argument("--json", action="store_true")
+    p_vi.add_argument("--raw", action="store_true",
+                      help="print the manifest text itself")
+    p_vi.add_argument("--strict", action="store_true",
+                      help="exit 1 when there is no `index` entry")
+    p_vs = p_vd_sub.add_parser(
+        "scan",
+        help="check every pack under a folder the way the loader will",
+        description="Point this at the game folder, at `$(UserFolder)\\Mods`, "
+                    "or at a few .vdpack files: each archive is read, its "
+                    "`index` manifest decoded, and every payload checked "
+                    "against the MD5/SHA-256 the manifest records. A pack "
+                    "that disagrees is the one `run.log` blames with `Index "
+                    "error : str_not_valid_hash_for_file : <path>` — the log "
+                    "names the file, never the archive, so with two mods "
+                    "installed this is the only way to tell them apart. The "
+                    "same pass reports the mistakes that stop a mod from "
+                    "loading at all: a pack outside `$(UserFolder)\\Mods` "
+                    "(`mod '<name>' not found`), a `Name` the game does not "
+                    "use, and two mods carrying one path (`intersects other "
+                    "mods`). See docs/FORMATS.md §6h.")
+    p_vs.add_argument("targets", nargs="+",
+                      help="a game folder, a Mods folder, or .vdpack files")
+    p_vs.add_argument("--json", action="store_true")
+    p_vs.add_argument("--recursive", action="store_true",
+                      help="descend into subfolders (a folder's `Mods` "
+                           "subfolder is always scanned)")
+    p_vs.add_argument("--strict", action="store_true",
+                      help="exit 1 when any pack would be rejected")
+    p_vs.add_argument("--log", metavar="RUN_LOG",
+                      help="a run.log to cross against the scan: for every "
+                           "`Index error : str_not_valid_hash_for_file : "
+                           "<path>`, `Unindexed file` and `mod '<name>' not "
+                           "found` it names the archive that carries it, or "
+                           "says that no scanned pack does (a loose folder, "
+                           "another install)")
     p_vp = p_vd_sub.add_parser("pack", help="pack a folder into an archive")
     p_vp.add_argument("folder")
     p_vp.add_argument("-o", "--out",
                       help="output .vdpack (default: <folder>.vdpack)")
     p_vp.add_argument(
+        "--drop", action="append", default=[], metavar="PATH",
+        help="with --like: leave this entry out of the new archive (repeatable) "
+             "— for a file the engine requests and cannot resolve, which stops "
+             "the load with a missing-file dialog")
+    p_vp.add_argument(
+        "--like", metavar="ARCHIVE",
+        help="rebuild in an existing pack's exact shape: same entry order, "
+             "names, flags and `index`, only the payloads from the folder — "
+             "the one form replacement that is confirmed to load in game")
+    p_vp.add_argument(
+        "--reindex", dest="reindex", action="store_true", default=None,
+        help="write the `index` manifest for the files that go in (MD5 + "
+             "SHA-256 each, sorted by path) — the default, because the loader "
+             "compares every payload against it and answers `Index error : "
+             "str_not_valid_hash_for_file : <path>` when they disagree. A "
+             "rewrite of an already-correct manifest is byte-identical, so "
+             "this costs nothing on a pack that was consistent to begin with")
+    p_vp.add_argument(
+        "--no-reindex", dest="reindex", action="store_false",
+        help="carry the manifest over untouched (only correct when the "
+             "payloads are the ones it already describes)")
+    p_vp.add_argument(
+        "--name", metavar="MOD",
+        help="the mod's `Name` in the `index` it writes (default: the output "
+             "file's name minus .vdpack) — the loader resolves "
+             "`sModifications=mod:<MOD>` to `Mods\\<MOD>.vdpack`, so a "
+             "manifest naming itself something else is a mod the game has to "
+             "be told about twice")
+    p_vp.add_argument(
         "--keep-index", metavar="ARCHIVE",
-        help="copy the opaque `index` resource of an existing pack into the "
+        help="copy the `index` manifest of an existing pack into the "
              "new one (the only game-confirmed pack shape)")
 
     return parser
@@ -1826,10 +2820,520 @@ def main(argv=None) -> int:
             _texture_convert(args.src, args.out)
         elif args.tex_cmd == "info":
             _texture_info(args.file)
+        elif args.tex_cmd == "add":
+            return _texture_add(args.image, args.out, args.name, args.force)
     elif args.cmd == "vdpack":
         return _vdpack(args)
     elif args.cmd == "char":
         return _char(args)
+    elif args.cmd == "lod":
+        return _lod_sync(args.unit_dir, args.out)
+    elif args.cmd == "audit":
+        return _audit_cmd(args)
+    elif args.cmd == "roundtrip":
+        return _roundtrip_cmd(args)
+    elif args.cmd == "gattr":
+        return _gattr(args)
+    return 0
+
+
+def _roundtrip_cmd(args) -> int:
+    """`roundtrip <folder>` — re-export a unit and diff it against itself.
+
+    The most useful question a modder can ask of a toolkit is "did importing
+    and exporting this unit, without touching anything, give the same files
+    back?"  Every answer is a byte comparison, so the comparison is the
+    feature: this runs the format path, the add-on's Self-test operator runs
+    the same thing through Blender, and both say which file differs and where.
+    """
+    import tempfile
+    folder = os.path.abspath(args.unit_dir)
+    stems = [os.path.join(folder, fn[:-2]) for fn in sorted(os.listdir(folder))
+             if fn.lower().endswith(".g") and not fn[:-2].lower().endswith("_lod")]
+    if not stems:
+        ui.section("roundtrip")
+        ui.fail(f"no .g in {folder}")
+        return 1
+    tmp = args.out or tempfile.mkdtemp(prefix="d3roundtrip_")
+    os.makedirs(tmp, exist_ok=True)
+    ui.section(f"roundtrip {os.path.basename(folder)}")
+    rc = 0
+    for stem in stems:
+        base = os.path.basename(stem)
+        gltf = os.path.join(tmp, base + ".gltf")
+        out = os.path.join(tmp, "out")
+        try:
+            _export_gl(stem + ".g", _find_animation_for_geometry(stem + ".g"),
+                       gltf, None, quiet=True)
+            _export(gltf, out, 0, anim=True, quiet=True, donor_dir=folder)
+        except Exception as exc:  # noqa: BLE001 - a failed export is the report
+            ui.fail(f"{base}: export failed ({exc})")
+            rc = 1
+            continue
+        diffs = rtmmod.diff_folders(folder, out)
+        for line in rtmmod.report_lines(diffs):
+            print("    " + line)
+        counts = rtmmod.summary(diffs)
+        if counts["differing"]:
+            rc = 1
+            ui.warn(f"{base}: {counts['differing']} file(s) differ from the "
+                    f"folder they came from")
+        else:
+            ui.ok(f"{base}: every written file is identical")
+        _facts, findings = auditmod.audit(out)
+        for finding in findings:
+            ui.warn("  " + finding)
+        if findings:
+            rc = 1
+    if args.keep or args.out:
+        ui.info(f"re-export kept in {tmp}")
+    return rc
+
+
+def _gattr(args) -> int:
+    """`gattr <g>` — insert or replace one attribute in a `.g` part.
+
+    The whole reason this exists: a `.g` part that a tool wrote without the
+    attributes the engine reads its vertex block by is drawn as nothing at
+    all, while every reader that takes the layout from ``weights_on_vertex``
+    (this package included) sees a perfectly good mesh.  The Angel's appended
+    sword part was exactly that — no ``new_vertex_weights_format`` — and the
+    game never drew it.
+    """
+    ui.section("g attribute")
+    if not os.path.isfile(args.file):
+        ui.fail(f"no such file: {args.file}")
+        return 1
+    wanted = []
+    for spec in list(args.insert) + list(args.set):
+        if "=" not in spec:
+            ui.fail(f"expected KEY=VALUE, got {spec!r}")
+            return 1
+        key, _, value = spec.partition("=")
+        wanted.append((key, value))
+    if not wanted:
+        ui.fail("nothing to do: pass --insert and/or --set")
+        return 1
+
+    data = open(args.file, "rb").read()
+    mesh = gfile.parse_geometry_file(data)
+    if mesh.parse_error:
+        ui.fail(f"{os.path.basename(args.file)}: unparsed ({mesh.parse_error})")
+        return 1
+    parts = gfile.iter_parts(mesh)
+    indexes = args.part or list(range(len(parts)))
+    for index in indexes:
+        if not 0 <= index < len(parts):
+            ui.fail(f"no part {index}; the file has {len(parts)}")
+            return 1
+
+    before = len(data)
+    changed = 0
+    for index in indexes:
+        part = parts[index]
+        for key, value in wanted:
+            carries = key in dict(part.attr_items or ())
+            if key in args.set or carries and key not in args.insert:
+                if not carries:
+                    ui.warn(f"part {index} ({part.name}): no {key!r} to set")
+                    continue
+                data = gfile.replace_part_attr(data, part, key, value)
+            else:
+                if carries:
+                    ui.info(f"part {index} ({part.name}): already has {key!r}")
+                    continue
+                data = gfile.insert_part_attr(data, part, key, value)
+            ui.ok(f"part {index} ({part.name}): {key} = {value}")
+            changed += 1
+            # re-parse: offsets moved, later parts are at new positions
+            mesh = gfile.parse_geometry_file(data)
+            parts = gfile.iter_parts(mesh)
+    if not changed:
+        return 0
+    target = args.out or args.file
+    with open(target, "wb") as fh:
+        fh.write(data)
+    ui.wrote(target, f"{len(data) - before:+d} bytes")
+    check = gfile.parse_geometry_file(data)
+    if check.parse_error:
+        ui.fail(f"the result no longer parses: {check.parse_error}")
+        return 1
+    return 0
+
+
+def _retag_scene_text(text: str, renames) -> str:
+    """Point a `.scene`'s `attr ... "<texture>"` lines at renamed atlases.
+
+    The scene names the texture as well as the `.g` does, so a retexture that
+    only reaches the mesh leaves the old atlas on the model the scene builds --
+    which is the one the game draws.
+    """
+    if not renames:
+        return text
+    table = {old.lower(): new for old, new in renames if old and new}
+    out = []
+    for chunk in text.split('"'):
+        low = chunk.lower()
+        out.append(table.get(low, chunk) if low in table else chunk)
+    return '"'.join(out)
+
+
+def _lod_sync(unit_dir: str, out_dir: Optional[str] = None,
+              quiet: bool = False, reference=None) -> int:
+    """`lod <unit folder>` — make a unit's LOD model carry its added parts.
+
+    The engine swaps to `unit_scene_lod` (marked in the `.char` profile with a
+    draw distance, `10` for nearly every unit) as soon as a squad is further
+    away than that, and the LOD `.g` is a separate, lower-poly mesh.  A part
+    added to the main `.g` — a weapon — is therefore invisible on the
+    battlefield until it is appended to the LOD mesh and the LOD scene has the
+    `gobj` for it.
+
+    The appended block is re-shaped for the file it lands in: renamed
+    ``lod_<name>`` the way every LOD block is spelled, and re-pointed at the
+    LOD file's own parent node (`gfile.lod_part`).  Running it again changes
+    nothing — the match ignores the ``lod_`` prefix, so a synced unit is not
+    given the part twice.
+    """
+    if not quiet:
+        ui.section("LOD sync")
+    if not os.path.isdir(unit_dir):
+        ui.fail(f"no such folder: {unit_dir}")
+        return 1
+    # `reference` arrives as a one-shot iterable from `_export`; materialise it
+    # here, or the first reader leaves the next one with nothing and the
+    # donor-length tests below silently see a zero-length donor
+    if reference is not None and not isinstance(reference, (list, tuple)):
+        reference = list(reference)
+    stems = [os.path.join(unit_dir, fn[:-2])
+             for fn in sorted(os.listdir(unit_dir))
+             if fn.endswith(".g") and not fn[:-2].endswith("_lod")]
+    if not stems:
+        ui.fail(f"no .g in {unit_dir}")
+        return 1
+    changed = 0
+    for stem in stems:
+        lod_g = stem + "_lod.g"
+        if not os.path.isfile(lod_g):
+            # the LOD may carry another stem than the mesh (Wolfsnow)
+            lop = sorted(fn for fn in os.listdir(unit_dir)
+                         if fn.endswith("_lod.g"))
+            lod_g = (os.path.join(unit_dir, lop[0]) if len(lop) == 1
+                     else lod_g)
+        if not os.path.isfile(lod_g):
+            ui.info(f"{os.path.basename(stem)}: no LOD model, nothing to do")
+            continue
+        main_parts = gfile.parse_geometry_file(open(stem + ".g", "rb").read())
+        lod_bytes = open(lod_g, "rb").read()
+        lod_mesh = gfile.parse_geometry_file(lod_bytes)
+        lod_parts = gfile.iter_parts(lod_mesh)
+        # materialised: `iter_parts` is a generator, and the steps below walk
+        # it several times (missing parts, name lookup, rename pairing)
+        main_all = list(gfile.iter_parts(main_parts))
+        # the LOD mesh is the same unit at lower detail: its parts are the
+        # main mesh's, in the same order (and spelled `lod_<name>`, so a name
+        # is no guide) — whatever trails them was added after the fact
+        names = {p.name for p in lod_parts}
+        names |= {n[4:] if n.startswith("lod_") else n for n in names}
+        if reference is not None:
+            # With the donor in hand "missing from the LOD" means "not in the
+            # donor either": a part the export APPENDED.  The retail LOD model
+            # legitimately holds fewer parts than the main mesh (the Cleric's
+            # LOD drops the hair), so the old trailing-parts rule appended the
+            # main mesh's tail to every such LOD on a plain re-export — the LOD
+            # grew by a few kilobytes and the battlefield drew parts the
+            # artist never added.
+            donor_len = len(list(reference))
+            missing = [p for i, p in enumerate(main_all)
+                       if i >= donor_len and p.name not in names]
+        else:
+            missing = [p for p in main_all[len(lod_parts):] if p.name not in names]
+        appended_names: List[str] = []
+        if missing:
+            parent = ((lod_parts[0].attrs or {}).get("dwParent")
+                      if lod_parts else None)
+            appended = [gfile.lod_part(p, parent) for p in missing]
+            appended_names = [p.name for p in appended]
+            lod_bytes = gfile.append_parts(lod_bytes, appended)
+            lod_parts = list(gfile.iter_parts(
+                gfile.parse_geometry_file(lod_bytes)))
+            target = (os.path.join(out_dir, os.path.basename(lod_g))
+                      if out_dir else lod_g)
+            os.makedirs(os.path.dirname(target) or ".", exist_ok=True)
+            open(target, "wb").write(lod_bytes)
+            ui.ok(f"{os.path.basename(lod_g)}: +{len(appended)} part(s) — "
+                  + ", ".join(p.name for p in appended))
+            changed += 1
+        elif not quiet:
+            ui.info(f"{os.path.basename(lod_g)}: already carries every part")
+        # A part the export REPLACED instead of adding — the unit's mace slot
+        # now holding a sword from another model — is already present by name,
+        # so nothing is appended and the battlefield keeps drawing the old
+        # weapon.  Only rigid single-bone parts are swapped: a skinned part is
+        # lower-poly in the LOD on purpose and must stay as it is.
+        # the root block is a part too: some units keep the body in the LOD's
+        # root and the weapon as a part (the Zombie is the reverse), so a
+        # retextured body has to be findable under either name
+        main_by = {p.name: p for p in main_all}
+        main_by.setdefault(getattr(main_parts, "name", ""), main_parts)
+        main_by.setdefault(getattr(main_parts, "geometry_file", ""), main_parts)
+        # `iter_parts` yields the container's own root block first (a
+        # `SkinnedMesh`, the body) and the compound sub-meshes after it.  The
+        # root is not a part: it has no `part_prefix`/`part_tail` scaffolding,
+        # because its layout is the whole-file one.  Rebuilding it with
+        # `_part_block` raised `'SkinnedMesh' object has no attribute
+        # 'part_prefix'`, the caller swallowed that into "the LOD model was not
+        # synced", and every unit whose LOD root block names another atlas than
+        # its main root (Empire/Angel: `mithrael` in the LOD, `Myzrael_alpha` in
+        # the main file) silently kept drawing the old weapon on the
+        # battlefield.  Index 0 is never a candidate for a swap: the LOD's own
+        # body is decimated on purpose.
+        # ... and with the donor in hand, only a part this export REWROTE can
+        # need swapping: the LOD's own decimated copy of an untouched part is
+        # what the artist shipped.  Decimation moves a small part's bounding
+        # box past the 10% tolerance below often enough that a plain
+        # re-export replaced five units' LOD parts with the full-resolution
+        # mesh (the Dwarf's LOD grew by 5.6 KB, the MasterThug's by 5.9 KB).
+        moved = None
+        main_pos = {id(p): i for i, p in enumerate(main_all)}
+        if reference is not None:
+            donor_parts = list(reference)
+            moved = {i for i, p in enumerate(main_all)
+                     if i >= len(donor_parts)
+                     or scenemod._part_facts(p)
+                     != scenemod._part_facts(donor_parts[i])}
+        swaps = []
+        for i, lp in enumerate(lod_parts):
+            if i == 0:
+                continue
+            base_name = lp.name[4:] if lp.name.startswith("lod_") else lp.name
+            mp = main_by.get(base_name)
+            if mp is None or len(lp.bones or ()) != 1 or len(mp.bones or ()) != 1:
+                continue
+            if moved is not None and main_pos.get(id(mp)) not in moved:
+                continue
+            # The LOD's own copy of a part is the SAME shape at lower detail,
+            # so its bounding box survives decimation.  A part the export
+            # replaced comes from another model and therefore another shape —
+            # and it does not have to bring another *texture*: a sword dropped
+            # into the mace's slot is exported under the mace's material name
+            # (`weapon_empire_inquisitor.tga` comes from the part, not from the
+            # file it was modelled in), so comparing materials missed exactly
+            # the case this branch exists for.
+            lod_dims, main_dims = partsmod.dimensions(lp), partsmod.dimensions(mp)
+            if max(main_dims) > 0 and max(lod_dims) > 0 and all(
+                    abs(lod_dims[k] - main_dims[k]) <= 0.10 * max(
+                        main_dims[k], 1e-6) for k in range(3)):
+                continue
+            swaps.append((i, lp, mp))
+        # A part the export only re-textured (same shape, another atlas) never
+        # reaches `swaps` — the geometry is identical, so the LOD keeps the
+        # mace's material name and the weapon changes texture the moment the
+        # camera pulls back.  A material is a name, not geometry: copy it.
+        retags: List[Tuple[int, object, str]] = []
+        # A block whose atlas the export RENAMED must be renamed in the LOD
+        # too, whichever block it is: retail spells the same body differently
+        # in the two files (`neutral_zombie` in the main `.g`,
+        # `lod_neutrals_zombie` in the LOD), the Zombie's LOD keeps the body as
+        # a part while its root is the weapon, and the Cleric's main root is a
+        # whip.  Matching by name misses all three; matching by ATLAS and
+        # rewriting every LOD block that wore the old one is exact, and leaves
+        # the blocks that wear a different atlas on purpose (the Angel's
+        # `mithrael`) untouched.
+        donor_parts = list(reference) if reference is not None else []
+        renames: List[Tuple[str, str]] = []
+        for i, mp in enumerate(main_all):
+            new_tex = ((mp.attrs or {}).get("material0_diffuse")
+                       or getattr(mp, "material_diffuse", "") or "")
+            old_tex = ""
+            if i < len(donor_parts):
+                dblk = donor_parts[i]
+                old_tex = ((dblk.attrs or {}).get("material0_diffuse")
+                           or getattr(dblk, "material_diffuse", "") or "")
+            if old_tex and new_tex and old_tex.lower() != new_tex.lower():
+                renames.append((old_tex.lower(), new_tex))
+        root_retag = False
+        root_want = ""
+        for i, lp in enumerate(lod_parts):
+            have = ((lp.attrs or {}).get("material0_diffuse") or "")
+            if not have:
+                continue
+            for old_tex, new_tex in renames:
+                if have.lower() != old_tex:
+                    continue
+                if i == 0:
+                    root_retag, root_want = True, new_tex
+                else:
+                    retags.append((i, lp, new_tex))
+                break
+        for i, lp in enumerate(lod_parts):
+            if i == 0:
+                # the root block's atlas is its own by design (see above)
+                continue
+            base_name = lp.name[4:] if lp.name.startswith("lod_") else lp.name
+            mp = main_by.get(base_name)
+            if mp is None:
+                continue
+            if moved is not None and main_pos.get(id(mp)) not in moved:
+                # a *texture* change moves no geometry: the LOD's own copy of
+                # the body must follow the new atlas anyway, when it wore the
+                # atlas the body wore in the donor (the rename pass above has
+                # already handled that case, so this stays conservative)
+                _have = (lp.attrs or {}).get("material0_diffuse") or ""
+                if not any(old_tex == _have.lower()
+                           for old_tex, _new in renames):
+                    continue
+            want = (mp.attrs or {}).get("material0_diffuse")
+            have = (lp.attrs or {}).get("material0_diffuse")
+            if want and have and (os.path.splitext(want)[0].lower()
+                                  != os.path.splitext(have)[0].lower()):
+                retags.append((i, lp, want))
+        if swaps or retags or root_retag:
+            import copy as _copy
+            # the file may end with an epilogue no reader parses as a block
+            # (the Cleric's LOD: 141 bytes).  Rebuilding as "everything before
+            # the blocks" + blocks would leave it in the middle, and the file
+            # came back with a single readable block -- the exact corruption
+            # this rewrite exists to avoid
+            tail = getattr(gfile.parse_geometry_file(lod_bytes),
+                           "trailing", b"") or b""
+            prefix = lod_bytes[:len(lod_bytes) - len(tail)
+                               - sum(len(p.raw) for p in lod_parts)]
+            raws = [p.raw for p in lod_parts]
+            for i, _lp, want in retags:
+                clone = _copy.copy(_lp)
+                items = [(k, want if k == "material0_diffuse" else v)
+                         for k, v in (clone.attr_items or ())]
+                clone.attr_items = items
+                clone.attrs = dict(items)
+                clone.raw = gfile._part_block(clone)
+                raws[i] = clone.raw
+            for i, lp, mp in swaps:
+                clone = _copy.copy(lp)
+                clone.vertices = list(mp.vertices)
+                clone.indices = list(mp.indices)
+                tex = (mp.attrs or {}).get("material0_diffuse")
+                items = [(k, tex if k == "material0_diffuse" else v)
+                         for k, v in (clone.attr_items or ())]
+                clone.attr_items = items
+                clone.attrs = dict(items)
+                clone.raw = gfile._part_block(clone)
+                raws[i] = clone.raw
+            if swaps or retags:
+                lod_bytes = prefix + b"".join(raws) + tail
+            if root_retag:
+                fresh = gfile.parse_geometry_file(lod_bytes)
+                attrs = dict(fresh.attrs or {})
+                attrs["material0_diffuse"] = root_want
+                lod_bytes = gfile.write_geometry_file(fresh, attrs)
+            lod_parts = list(gfile.iter_parts(
+                gfile.parse_geometry_file(lod_bytes)))
+            target = (os.path.join(out_dir, os.path.basename(lod_g))
+                      if out_dir else lod_g)
+            os.makedirs(os.path.dirname(target) or ".", exist_ok=True)
+            open(target, "wb").write(lod_bytes)
+            notes = [f"{lp.name} <- {mp.name}" for _i, lp, mp in swaps]
+            notes += [f"{lp.name}: {want}" for _i, lp, want in retags
+                      if _i not in {i for i, _l, _m in swaps}]
+            ui.ok(f"{os.path.basename(lod_g)}: " + ", ".join(notes)
+                  + (" (the export swapped the part, it was not added)"
+                     if swaps else " (the part's atlas followed the main mesh)")
+                  + (f"; the LOD's own texture followed it too -> {root_want}"
+                     if root_retag else ""))
+            changed += 1
+        lod_scene = stem + "_lod.scene"
+        if not os.path.isfile(lod_scene):
+            lsc = sorted(fn for fn in os.listdir(unit_dir)
+                         if fn.endswith("_lod.scene"))
+            lod_scene = (os.path.join(unit_dir, lsc[0]) if len(lsc) == 1
+                         else lod_scene)
+        if not os.path.isfile(lod_scene):
+            continue
+        # newline="" keeps the file's own terminators: a scene read with
+        # universal newlines loses every \r and the whole payload changes
+        # even though one `gobj` was added
+        with open(lod_scene, encoding="latin-1", newline="") as fh:
+            text = fh.read()
+        retagged_text = _retag_scene_text(text, renames)
+        if retagged_text != text:
+            text = retagged_text
+            _scene_retag = True
+        else:
+            _scene_retag = False
+        # a part this run appended is the one that needs the `gobj`; a part
+        # the shipped LOD never drew (the Goblin's and the Thug's scenes both
+        # leave one out) is left exactly as the artist shipped it
+        new_text, added = scenemod.ensure_part_gobjs(
+            text, lod_parts, only=appended_names or None)
+        restated: List[str] = []
+        try:
+            # a `_lod.scene` repeats the numbers of the MAIN mesh, not of the
+            # LOD `.g` it draws: the retail Inquisitor's LOD gobj says 4664
+            # triangles where `_lod.g` holds 1716, and every shipped unit does
+            # this — restating from the LOD mesh wrote numbers no retail file
+            # has, and left the gobj on the old atlas
+            new_text, restated = scenemod.refresh_part_gobjs(
+                new_text, main_all, reference=reference)
+        except Exception:  # noqa: BLE001 - cosmetic, never fatal
+            restated = []
+        if restated and not added:
+            target = (os.path.join(out_dir, os.path.basename(lod_scene))
+                      if out_dir else lod_scene)
+            open(target, "w", encoding="latin-1", newline="").write(new_text)
+            ui.ok(f"{os.path.basename(lod_scene)}: restated "
+                  + ", ".join(restated))
+            changed += 1
+        elif _scene_retag:
+            target = (os.path.join(out_dir, os.path.basename(lod_scene))
+                      if out_dir else lod_scene)
+            open(target, "w", encoding="latin-1", newline="").write(new_text)
+            ui.ok(f"{os.path.basename(lod_scene)}: atlas names followed the "
+                  "mesh")
+            changed += 1
+        if added:
+            target = (os.path.join(out_dir, os.path.basename(lod_scene))
+                      if out_dir else lod_scene)
+            open(target, "w", encoding="latin-1", newline="").write(new_text)
+            ui.ok(f"{os.path.basename(lod_scene)}: +{len(added)} gobj — "
+                  + ", ".join(added))
+            changed += 1
+    ui.info(f"{changed} file(s) rewritten")
+    return 0
+
+
+def _audit_cmd(args) -> int:
+    """`audit <folder>` — the cross-check the engine performs, spelled out."""
+    facts, findings = auditmod.audit(args.unit_dir)
+    if not facts["parts"] and not facts["gobjs"]:
+        ui.fail(f"nothing to audit in {args.unit_dir}")
+        return 1
+    ui.section(f"audit {args.unit_dir}")
+    for name, parts in facts["parts"]:
+        ui.info(f"{name}")
+        for part in parts:
+            print(f"    #{part.index} {part.summary()}")
+    for name, gobjs in facts["gobjs"]:
+        ui.info(f"{name}")
+        for gobj in gobjs:
+            where = (f"{gobj.g_base} #{gobj.index}" if gobj.g_base
+                     else "no mesh reference")
+            mat = gobj.attrs.get("material0_diffuse", "-")
+            print(f"    {gobj.name} -> {where}, {mat}")
+    if args.against:
+        ui.section(f"against {args.against}")
+        lines = auditmod.compare(args.against, args.unit_dir)
+        if not lines:
+            ui.ok("structurally identical")
+        for line in lines:
+            print("  " + line.replace("\n", "\n  "))
+    if findings:
+        ui.warn(f"{len(findings)} disagreement(s) — these are what the loader "
+                f"reads first:")
+        for finding in findings:
+            ui.warn("  " + finding)
+        return 1
+    ui.ok("the bundle is consistent: every gobj matches its part, every part "
+          "finds its atlas, the LOD carries the main mesh's parts")
     return 0
 
 
@@ -1912,6 +3416,87 @@ def _weights(args) -> int:
     return 0
 
 
+def _unit_resource_prefix(folder: str, names: List[str]) -> str:
+    """The resource path a bundle's files live at, as its own `.scene` spells it.
+
+    ``resources\\characters\\empire\\angel`` for the retail Angel folder: the
+    `.scene` writes an absolute resource path for its mesh, which is the only
+    place a bundle states where the game will look for it (the folder it sits
+    in on disk is no guide — an export lands anywhere).
+    """
+    for name in [n for n in names if n.lower().endswith(".scene")]:
+        try:
+            with open(os.path.join(folder, name), encoding="latin-1") as fh:
+                doc = scenemod.parse_scene(fh.read())
+        except Exception:  # noqa: BLE001 - a scene we cannot read is no guide
+            continue
+        for node in doc.find_all("gobj"):
+            # the `.scene` is the authority here: it may name a `.g` that is
+            # not in this folder (a scene and its mesh can ship apart), and
+            # the folder it names is what the engine will look for
+            ref = auditmod._mesh_ref(node)
+            if not ref or not ref.lower().endswith(".g"):
+                continue
+            for item in node.items:
+                if isinstance(item, str) and item.strip().startswith('"'):
+                    full = item.split('"')[1] if '"' in item else ""
+                    if os.path.basename(full.replace("\\", "/")) != ref:
+                        continue
+                    parts = full.replace("/", "\\").split("\\")
+                    return "\\".join(parts[:-1])
+    return ""
+
+
+def _repair_ac(path: str, out: Optional[str], in_place: bool) -> int:
+    """`repair <file.ac>` — point an `.ac`'s references at its own folder.
+
+    An `.ac` names its animation streams and its mesh by *resource* path, and
+    the engine does not fall back when that path points into a folder the game
+    does not have: the load stops with a missing-file dialog naming the pack —
+    the crash-on-recruit of a pack whose `_lod.ac` said
+    ``resources\\characters\\character_empire_angel_lod`` while every file it
+    names sits in ``resources\\characters\\empire\\angel``.  This rewrites the
+    folder of every reference whose file IS in the bundle and leaves the rest
+    alone, so a unit that legitimately shares another folder's streams is not
+    touched.
+    """
+    folder = os.path.dirname(os.path.abspath(path)) or "."
+    ui.section(f"repair {os.path.basename(path)}")
+    names = sorted(os.listdir(folder))
+    prefix = _unit_resource_prefix(folder, names)
+    if not prefix:
+        ui.fail("no `.scene` in this folder to say where the game looks for "
+                "it — nothing to anchor the paths to")
+        return 1
+    with open(path, encoding="latin-1", newline="") as fh:
+        text = fh.read()
+    fixed = text
+    changed = []
+    for ref in sorted(set(re.findall(r'"([^"]+\\[^"]+)"', text))):
+        base = ref.replace("/", "\\").split("\\")[-1]
+        if not os.path.isfile(os.path.join(folder, base)):
+            continue
+        want = prefix + "\\" + base
+        if ref == want:
+            continue
+        fixed = fixed.replace(f'"{ref}"', f'"{want}"')
+        changed.append((ref, want))
+    for old_ref, new_ref in changed:
+        ui.warn(f"{old_ref}\n      -> {new_ref}")
+    if not changed:
+        ui.ok("every reference already points at this folder")
+        return 0
+    target = out or (path if in_place else "")
+    if not target:
+        ui.info("nothing was written: pass --in-place (or -o FILE) to apply "
+                "the fix")
+        return 0
+    with open(target, "w", encoding="latin-1", newline="") as fh:
+        fh.write(fixed)
+    ui.wrote(target, f"{len(fixed)} bytes, {len(changed)} reference(s) repathed")
+    return 0
+
+
 def _repair(args) -> int:
     """`repair` — recompute the container counts a `.g`'s headers advertise.
 
@@ -1926,6 +3511,8 @@ def _repair(args) -> int:
         ui.section("repair")
         ui.fail(f"no such file: {path}")
         return 1
+    if path.lower().endswith(".ac"):
+        return _repair_ac(path, args.out, args.in_place)
     raw = open(path, "rb").read()
     ui.section(f"repair {os.path.basename(path)}")
     try:

@@ -173,6 +173,40 @@ block: `vertexs_weights_num` (vertex count), `material0_triangles_num`
 (triangle count), `weights_on_vertex` (`w`), `bones_num`.  `dwNode` is the
 first attribute key and makes the attribute block trivial to locate.
 
+### How many mesh blocks the container declares
+The file opens with a chain of `[u32 kind 3][u32 length][payload]` node chunks
+(the 120-byte header, the two name strings and the prelude/scene-node block are
+three of them) and the chain is terminated by `[u32 1][u32 4][u32 count]`.  The
+first mesh block follows immediately, and **`count` is the number of mesh
+blocks in the file** — the first mesh plus every compound part.  Every retail
+`.g` in the corpus satisfies `count == len(iter_parts(mesh))` (247/247), and
+nothing else in the format repeats the number: the attribute blocks carry
+per-part vertex and triangle counts, not how many parts there are.
+
+A tool that appends a part has to bump it.  The reverse export appended the
+Angel's weapon as a fifth block while the donor prelude said four, and the
+engine read exactly four: the mesh was in the file, byte-perfect, and simply
+never parsed — "the add-on exports the mesh but the game does not read the
+sword out of the model".  `gfile.write_geometry_file` now rewrites the field
+from the blocks it emits, `gfile.append_parts` bumps it, and `gfile.mesh_count`
+/ `set_mesh_count` read and write it.
+
+### Node identity: `dwNode` / `dwParent`
+Both keys are part of every attribute block and name the block's node in the
+model's scene graph: `dwParent` is the node the part hangs off, `dwNode` is
+the part's own node.  The corpus is unanimous — all 376 sub-meshes of the 141
+compound `.g` files share one parent id per file (the file's own `Scene Root`
+node) and each carries a distinct node id.  The ids themselves are arbitrary
+integers and are *not* the ids of the `.scene`: a retail file's parts use
+values that never appear in its scene.
+
+A block written by a tool that cannot know the file's ids gets placeholders
+(`d3tool.cli._default_attrs`: `dwNode 375048704`, `dwParent 55867360`) — the
+Angel's exported sword carried exactly that pair, so its parent named no node
+in the file.  `gfile.normalize_part_identity(mesh, parent)` rewrites such a
+block onto the file's own parent (and allocates a node id when one is
+missing), and the reverse export runs it before writing the geometry.
+
 ### Vertex record
 ```
 [0:4]   per-vertex prefix magic (asset specific, e.g. 5ce6ac0b / 28e7ce19)
@@ -187,6 +221,7 @@ Record size `= 40 + 4*(w-1) + w`:
 
 | `w` (weights_on_vertex) | stride |
 |---|---|
+| 1 (`bones_num 1`) | 40 |
 | 2  | 46 |
 | 3  | 51 |
 | 4  | 56 |
@@ -195,6 +230,44 @@ A declared `w = 1` on a mesh that references **several** bones actually stores
 the full two-influence record (46 bytes) — the attribute keeps `1`, readers
 derive the width from `w` + `bones_num` (independently confirmed on the
 Heroes VII port corpus, see `docs/PORT_ANALYSIS_COMPARE_RU.md`).
+
+`w = 1` with a *single* bone is the rigid weapon layout: no weight tail, no
+per-vertex joint bytes, one bone descriptor.  Every retail weapon part is
+written that way (`empire_knight_sword`, `paladin_sword`, ... — 111 parts over
+the corpus), so a weapon that arrives as a two-influence skin is not shaped
+like anything the engine ships.
+
+The corpus is absolute about this: **no part declares more influence slots
+than it has bones**, and a part with `bones_num 1` always declares `w = 1`
+(148 parts).  `(2, 1)` occurs zero times in 376 sub-meshes — the export that
+wrote the Angel's sword that way got a part the engine does not skin, so it
+was drawn at its stored coordinates, hanging in mid-air beside the model
+instead of following the bone.  `gfile.record_width` states the rule and both
+writers apply it (`_part_block`, `write_geometry_file`), and the reverse
+export clamps an added mesh to `min(w, bones)`.
+
+Binding a rigid part to a bone the body block also skins to is ordinary
+retail practice, not a mistake: `empire_defenderoffaith_head` hangs off
+`Head`, `neutrals_dwarf_hair` off `Head`, `weapon_empire_hierophant` off
+`Weapon1` — all `w = 1`, all with their vertices in model space at the bone's
+bind origin and the bone descriptor holding that bone's inverse bind.  That is
+exactly the shape the Angel's sword needs, which is why the record width was
+the whole of its defect.
+
+Because those vertices are stored in **model space**, a weapon added in
+Blender has to be shaped onto the weapon it replaces while the armature is in
+its rest pose: the part is bound 1.0 to one bone and the engine adds that
+bone's motion on top, so a mesh modelled onto an animated frame comes out
+displaced by the animation too.  The add-on's *Place Active Mesh on Reference*
+does that measurement for you — grip onto grip, the mesh's principal axis onto
+the reference weapon's shaft (`d3tool.weapon`, a 3x3 symmetric eigenproblem
+solved with Jacobi rotations) — and `Roll` decides the one thing an axis cannot:
+which way the blade's flat face looks.  The grip is the object's own origin,
+which is where retail weapons carry it (`weapon_empire_inquisitor` spans
+`x -0.066 .. 1.896` measured from its origin); a single selected vertex is used
+instead when there is one.  Asking for a vertex selection *always* was a
+mistake worth recording: a freshly imported mesh has every vertex selected, so
+the operator's "exactly one vertex" check rejected the obvious first click.
 
 The leading 4-byte magic is constant *within* a file but differs between files;
 it must be preserved for round-trips.
@@ -212,6 +285,35 @@ cause of corrupted reverse exports until they were enforced:
 A part exported with tangents enabled additionally carries a tangent stream
 right after its bone table: 8 opaque bytes then `vertex_count * 24` bytes
 (`gfile._parse_compound_parts` keeps it in `part_tail`).
+
+### What a Blender round-trip costs, measured (Inquisitor, 2026-11)
+
+Re-exporting `Empire/Inquisitor` through the add-on and diffing the result
+against the folder it came from leaves exactly three differences, none of them
+a defect of the writer, and all three worth recognising before hunting a
+phantom bug:
+
+* **the body comes back with 6 more vertices and 4 fewer triangles**
+  (`3693 v / 4664 tri` → `3699 / 4660`) although nobody touched the body.
+  The four lost triangles are *degenerate* — every index equal — which retail
+  ships and the glTF form cannot carry back through Blender; the six extra
+  vertices are seam splits.  The surface is the same: 2392 distinct positions
+  on both sides.  `audit --against <original>` prints the counts, so a delta of
+  this shape is the trip, not an edit;
+* **the `.a` differs in the last bits** if the donor stream was not beside the
+  glTF at export time (max measured delta `4.7e-06` on `Left_Pola`).  An export
+  that *does* see the donor keeps its bytes (`cli._anim_bytes` /
+  `anim.same_motion`), so a noisy stream means the donor was missing — the
+  first export of a folder, typically, which then donates to all later ones;
+* **the `.ac` came back with CRLF line endings** on a machine where the `.ac`
+  had to be *generated* (a plain `open(..., "w")` is CRLF on Windows while
+  every retail `.ac` is LF).  Survivable — the parser tokenises whitespace —
+  but it rewrites 96 of 96 lines and hides real edits in a diff, so the writer
+  now passes `newline="\n"`.
+
+Anything *else* that moves between the original folder and the export is a real
+difference: the `.g`'s attribute counts, the two `.scene` attribute blocks and
+the LOD pair must all agree with the mesh, and `audit` says so part by part.
 
 Two more invariants of the block a rebuilt file must honour, both found by
 round-tripping the whole corpus through Blender:
@@ -351,8 +453,113 @@ Reverse rebuild details (byte-parity with the originals, see
   word and magic, the record order/parents/preambles and the trailing
   block (tags + foreign streams), adopted when the rebuilt data
   verifies against it.
+* a **Blender re-save** cannot keep the `.g` bind frame: Blender bakes the
+  scene's rest pose into the joints (its bone axis is the bone's Y, the GM
+  skeleton's is not), merges the per-part skins into one armature-wide skin
+  and re-parents the meshes under the armature, so the channel TRS are local
+  matrices in *Blender's* frame.  Every record therefore goes back through
+  the calibrated per-bone change of basis `L_o = Q_parent · L_b · inv(Q_j)`
+  (`d3tool/frame.py`; `Q` is solved from the donor `.a`'s frame 0 against the
+  glTF's rest TRS, and is constant in time — verified on a real export, where
+  `inv(G_new)·G_retail` drifts by 0.0 over 301 frames for all 27 bones).
+  The animation side used to do this only for a unit whose `.ac` names
+  several streams; every single-stream unit (62 of the 153 corpus `.a`, the
+  Inquisitor among them) shipped Blender-frame rotations — off by up to 180°
+  per bone and 1.47 units of translation, which contorts the skinned body
+  into spikes, throws a rigid weapon across the model, and still parses with
+  every count and size matching.
 
 ---
+
+**Naming a part's texture from Blender.**  The add-on records each part's
+`material0_diffuse` on its mesh object as the custom property
+`d3unit_diffuse` (set on import, editable in the *Disciples III* sidebar panel,
+or *Object Properties > Custom Properties*).  On export it is written into the
+glTF as `meshes[i].extras.d3unit_diffuse`, `d3tool/gltf.py::_extras_diffuse`
+lets it outrank both the primitive's image and the donor part's attribute, and
+the ordinary export path then restates the `gobj` of both `.scene` files from
+the written parts (`d3tool/scene.py::refresh_part_gobjs`) and carries the `.t`
+(`d3tool/cli.py::_carry_material_textures`).  That is the supported way to make
+a grafted part wear another unit's texture, since the name the engine reads
+lives in the `.scene`, not in the material.
+
+**The viewport has to agree with the file.**  Naming a part changes nothing
+on screen: Blender keeps drawing the image the material had, and only the `.g`
+gets the new name, so a correct re-texture looks exactly like a broken export.
+*Show in the Viewport* (`d3unit.apply_texture`, run automatically after the
+name is typed) resolves the name to the file that ships it
+(`d3tool/texture.py::find_texture_file` — `<stem>.t`, `<stem>.dds`, a doubled
+`<stem>.dds.t`, any case), unwraps a `.t` into a temporary `.dds` because
+Blender has no `.t` loader, and puts it on the material's image node.  The
+export then reports what it actually wrote, part by part, read back out of the
+files it just saved (`d3tool/parts.py::texture_report`), and warns about a name
+whose texture is not in the folder — plus about every part that has no
+`d3unit_diffuse` of its own, i.e. one imported before 1.1.27 or hand-assembled.
+
+**Writing a `.t` compresses it.**  The container can hold raw A8R8G8B8
+(format code 4) as well as DXT blocks, and the raw form is eight times the size
+for identical pixels — a 128x1024 blade is 683 KiB raw and 86 KiB as DXT1.
+`png_to_t` (a texture re-saved from Blender) and every carried atlas are now
+block-compressed: DXT1 normally, DXT5 when the image really uses alpha.  The
+mip chain follows the container's own accounting — each level is exactly
+`w * h * rate` bytes with no 4x4 padding, so a re-encoded 128x1024 blade is
+87 439 bytes, the same as the shipped file.
+
+**Same atlas, different weight.**  A `.t` can hold DXT1 blocks (the Knight's
+blade atlas: 128x1024, 86 KiB) or raw A8R8G8B8 pixels (the same picture
+re-saved from Blender: 683 KiB) — an eightfold difference in size for identical
+pixels, which reads like the wrong texture in any report that only prints
+bytes.  `d3tool.texture.describe(path, True)` prints the size *and* the layout,
+and `find_texture_file` prefers a block-compressed copy when a folder holds
+several files with one stem (an exact `<stem>.t` still wins: that is the
+shipped file).
+
+**Materials are numbered per part, in slot order.**  Every shipped part has
+exactly one material (`materials_num: 1`, `material0_diffuse`,
+`material0_triangles_num`); a part that really carries two ranges has
+`material0_*` and `material1_*` and the export rewrites both, each from its own
+primitive's atlas.  In Blender the numbering runs once across the unit in part
+order, so the body is `material0` and the weapon `material1` — without it
+Blender's own uniqueness rule hands out `material0`, `material0.001`,
+`material0.002`, names the engine never sees.  A part that names no texture of
+its own takes the atlas off the material it wears (an image node, or a material
+named after the atlas); a *packed* image never reaches the glTF as a URI, which
+is why reading the name off the material itself is what makes "assign the
+sword's atlas to the sword" work.
+
+**Whose name wins.**  Two rules, and the second one was wrong for a long
+time: a Blender re-save's part takes its texture from the *mesh*, not from the
+donor slot it replaced (`slot.material_diffuse or sub.material_diffuse` pinned
+a swapped sword to the mace's atlas), and the name is written from the block's
+ordered `attr_items` — `attrs` only drives the counts, so setting
+`material_diffuse` alone changes nothing in the file
+(`d3tool.gltf._patch_material`).  A `d3unit_diffuse` that still says what the
+part was imported with yields to the object's material once they disagree
+(`_effective_diffuse`); any other value is the artist's decision and wins.
+
+A part's material name is stored in **three** places that the engine reads
+independently: the `material0_diffuse` attribute of the block in the main
+`.g`, the same attribute in the `_lod.g`, and the `attr "material0_diffuse"`
+of the matching `gobj` in each `.scene`.  Re-texturing a part means rewriting
+all of them (`tools/retexture_part.py`); an export that only changes the
+geometry leaves the scene naming the donor's texture, and the engine keeps
+drawing that one.
+
+### Texture naming: the stem is the material name
+
+The attribute block names the material `material0_diffuse "<stem>.tga"` and
+the folder ships `<stem>.t` — the engine matches the two by **stem**, dropping
+the extension.  Everything that derives a name from an image has to reduce it
+to that stem first: a texture that entered Blender as `x.dds` is re-saved as
+`x.dds.png`, and a plain `splitext` leaves `x.dds` in the stem, producing a
+material `x.dds.tga` and a file `x.dds.t` — a pair nothing can match, so the
+part renders untextured in game and in Blender while every file looks present
+(`d3tool/texture.py::clean_stem`).  The same rule applies in the other
+direction: an export has to **carry** every diffuse its own `.g` names
+(`d3tool/cli.py::_carry_material_textures`), because a unit re-textured from
+another unit's folder otherwise names a texture it does not ship — invisible
+in game, where the retail copy still resolves, and immediately visible the
+moment the export is read back.
 
 ## 4. The `.scene` scene file
 
@@ -379,7 +586,33 @@ them.  `d3tool/scene.py` therefore does two things:
 * if the source unit folder already has a `<base>.scene`, the exporter reuses
   it verbatim (preserving every particle emitter and the camera);
 * otherwise it generates a faithful, particle-free scene (correct
-  `bones`/`gobj` node names, full `globalsettings`, attribute block).
+  `bones`/`gobj` node names, full `globalsettings`, attribute block);
+* in both cases it then calls `ensure_part_gobjs`: **the engine binds the
+  i-th mesh part to the i-th `gobj`, in document order**, and `attr "name"` is
+  decoration — the LOD scenes prove it, since their gobjs are named
+  `empire_angel_wing` while the parts they draw are `lod_empire_angel_wing`.
+  Every shipped scene carries one `gobj` per mesh part (159 of 160 exactly;
+  the Cyclop keeps a spare), where "one part" counts the file's own first
+  block — `iter_parts(mesh)` — not just `mesh.parts`.  A `.g` with more parts
+  than the scene has gobjs leaves the *trailing* parts unbound and invisible,
+  so each one gets a `gobj` cloned from the largest opaque sibling: same
+  `tech`, shaders, flags, `.g` path and `bonesuid`, the next free mesh slot,
+  and the attribute block re-stated for that part (`attr "name"`,
+  `material0_diffuse`, `material0_triangles_num`, `vertexs_weights_num`,
+  `weights_on_vertex`, `bones_num`) with a fresh `uid`/`dwNode`.  The function
+  is idempotent and returns the text unchanged when every part is bound,
+  which is the whole bundled corpus — the reverse-export parity bench stays at
+  84/84 byte-exact with the fix in place.
+* a part added to `<base>.g` must also reach `<base>_lod.g`, because a unit's
+  profile names a second scene for distance: `unit_scene_lod
+  "…\character_empire_angel_lod.scene",10;` — beyond 10 the engine swaps to
+  the LOD mesh, which is a separate, lower-poly `.g` (`lod_empire_angel*`,
+  1869 verts against 4165).  `d3tool lod <unit folder>` appends the parts the
+  LOD lacks (its parts are the main mesh's, in the same order, so the added
+  ones are the trailing tail) with `gfile.append_parts` — a `.g` is a sequence
+  of self-contained part blocks, so the new part is concatenated byte for byte
+  and not one byte of the original file moves — and then binds it in
+  `<base>_lod.scene` the same way.
 
 ### Parsing `.scene`
 
@@ -538,7 +771,8 @@ includes and `characters\…` references like every other unit-local reference.
   paths against the game folder or the donor corpus; `set_id`/`set_value`
   patch a single value without touching the layout.
 * `d3tool/cli.py` — `analyze`, `export` (glTF → original), `export-gl`
-  (original → glTF), `validate`, `import`, `texture`, `vdpack`, `char`.
+  (original → glTF), `validate`, `import`, `texture`, `vdpack`, `char`,
+  `lod`, `gattr`.
 
 ### Reverse-export fidelity
 For the AirElemental unit the exported `.g` matches the original in:
@@ -645,12 +879,564 @@ format are always correct; only this flag may differ from a specific source
 
 ---
 
+## 6b. Why the retail binaries cannot be read on disk
+
+Every question this document still leaves open — the `index` record layout, the
+`.g` invariants the loader actually enforces, where a bad unit kills the
+process — lives in code that ships protected.  Measured on the copies provided
+for this port (`google_drive/`, kept out of git):
+
+**`Toolkit.exe`** (6 225 920 B, the editor).  Twelve sections, names repeated
+(`.text .rdata .rdata .data .data .text .rdata .discard .discard .data .rsrc
+.ps4`); `.text` 4 993 024 B at entropy **8.00**, `.rdata`/`.data` likewise, so
+the code and the string table are both ciphertext.  Not one printable run
+exists anywhere in the file — `resources`, `MZ`-adjacent names, `StarForce`,
+`protect.dll`, `sfdrv01` all absent; the only survivors are `ijaqemox.dll` in
+`.rdata` and a stray `UPX` at 0x6ea81.  `CheckSum` is 0 against a computed
+0x5f6971, there is no TLS directory, no debug directory, no certificate table,
+no version info and no manifest.  The entry point is a three-times repeated
+`jmp dword [0x126af90]` whose target lies outside `SizeOfImage` — a slot the
+loader fills at run time.  A `.data` section declares `VirtualSize` 8 716 288
+with only 98 304 B of raw data: an unbacked multi-megabyte hole where the real
+image is written after decryption.  The imports were rebuilt by the protector
+(the engine is reached as `ijaqemox.dll!ordinal 1`, the one import with no
+name), and the readable remainder is 20 KB of position-independent,
+junk-interleaved stub at VA 0xdab000 that ends in `call $+5 / pop / sub` and
+`xchg [esp], ebp / ret` — a computed return, not a call graph.  `.ps4` is an
+empty section with no raw data.
+
+**`ijaqemox.dll`** (10 642 096 B, the engine module).  UPX-named sections
+(`UPX0` VA 0x1000, 5 861 376 B virtual and 0 raw; `UPX1` VA 0x598000,
+10 633 216 B virtual, 10 632 704 raw), a `UPX!` signature at 0x3e0 and the
+string `3.02` at 0x3dc — and a header that decodes to nonsense: `l_magic`
+0x451f7e68 where a UCL stream carries 0x01308198, an implausible `l_size`, a
+block method byte of 0, and a block table no scan can recover.  `tools/unpack_upx.py`
+is a complete NRV2B / NRV2D / NRV2E and raw-LZMA decoder written from the UPX
+3.96 kernels (`src/stub/src/arch/i386/nrv2*_d32.S`); run at every byte offset
+from 0x3e8 to 0x42c it produces at most 16 bytes before the first match points
+behind the output.  The payload is therefore not a UCL stream: the UPX header
+is a costume over a crypter.
+
+**What that means for this work.**  A protected image exists in clear only
+inside a running process, and the one artefact that carries it without a
+debugger, an unpacker or a modified executable is a **minidump** of that
+process — its own licensed execution.  `tools/dump_extract.py` reads one
+(`MDMP`, streams 3/4/5/6/7/9) and emits, per module, the image exactly as the
+process had it plus a `.rebuilt` copy whose section pointers point at their
+virtual addresses, which is the only fix a memory image needs before a reader
+can walk it.  It also prints the crash: the exception code and address, the
+module that owns it with the offset into it, and every return address found by
+scanning the faulting thread's stack and resolving it to `module+offset`.
+`--strings` writes the printable runs of one module, which is how the loader's
+own names (`index`, `resources\`, `vdpack`) become visible, and `--module`
+limits the work to one image.
+
+**Getting the dump without tools.**  A dump taken by hand only catches the
+process while it is still alive, so the crash itself is missed.  Windows Error
+Reporting already writes one at the moment of the crash if it is told to:
+`tools/windows/enable_localdumps.reg` sets `LocalDumps` for both registry views
+(a 32-bit game on 64-bit Windows reads the `Wow6432Node` one) with
+`DumpType=2` (full, so the module images are actually in the file, not just
+their headers) and `DumpCount=10`, and points the folder at
+`%USERPROFILE%\Desktop\D3dumps`.  Double-click it, accept the elevation
+prompt, reproduce the crash, and send the newest file from that folder;
+`disable_localdumps.reg` removes both keys again.  A `MiniDumpNormal` dump is
+useless here even though it carries the exception record: it does not contain
+the module pages, so the decrypted code is not in it.
+
+So the order of operations for every remaining question is: arm the crash dump
+(or take one by hand from `Task Manager -> right click -> Create dump file`, or
+`procdump -ma <pid>`), reproduce, run `dump_extract.py`, read the module.
+Nothing in this document has to be guessed from statistics as long as that
+artefact exists.
+
+**What statistics cannot do: the `index` entry.**  The one `.vdpack` entry no
+tool decodes was attacked every way that does not need the loader, on the only
+independent sample available (28 entries, 4 738 bytes, 1 674 bytes of names):
+
+* entropy 7.96 with all 256 byte values present, no repeated 4-byte or 8-byte
+  word, length 4 738 ≡ 2 (mod 8) — a cipher or hash construction, not a table
+  with slack;
+* no stride structure: over every record size r in 1…399 the count of equal
+  bytes at distance r stays inside the noise band expected for random data
+  (best |z| ≈ 3.1 at r = 140, against 399 trials), so there is no fixed-size
+  per-entry record anywhere in it;
+* not compressed at any offset 0…95 as zlib (all three window modes), raw or
+  aligned LZMA, or bzip2;
+* not a single-byte XOR, and none of the paths appear in it in ASCII, upper
+  case, or UTF-16LE;
+* none of the obvious four-byte name digests appear either — CRC32, Adler32,
+  FNV-1a, DJB2, or the first four bytes of MD5/SHA-1, in either byte order.
+
+The consequence is worth stating plainly: `index` is not recoverable by
+inspection, because it is almost certainly keyed by a constant inside the
+packer.  That constant is in `Toolkit.exe`, which is encrypted, so the constant
+comes out of a dump like everything else here.  Independent packs would help
+one question only — whether the blob depends on the entry set or on the names
+alone — and packs rebuilt by this toolkit cannot answer it, because they inherit
+the `index` they were given.
+
+## 6c. The game executable is readable, and it names the pack rules
+
+`DisciplesIII.exe` (5 914 624 B, "rebirth exe #68 May 21 2012") is a different
+animal from the editor: six sections, `.text` 4 539 116 B at entropy **6.54**
+and `.rdata` at **5.78**, **24 277 printable strings** — real code and a real
+string table.  The only encrypted-looking region is `.bind` (376 832 B at
+entropy 8.00), which is the Steam stub; `.data` again declares 8.6 MB of
+virtual space against 98 KB of raw data, but that is uninitialised BSS, not a
+protector's hole.  Everything this document was waiting on can therefore be
+read out of the file, and `tools/pe_find.py` is the bench for it: resolve a
+string to its address, an address to the `push`/`mov` sites that use it, and a
+site to an annotated disassembly (the image is PE32 with absolute addressing,
+so a `.rdata` address appears in `.text` as a 4-byte immediate).
+
+**The pack layer mounts a set, not a file.**  `.rdata` holds the names the
+loader asks for, in this order of assembly: `system.vdpack`,
+`resources0.vdpack`, `resources1.vdpack`, `resources2.vdpack`, then the patches
+`system01..03.vdpatch`, `resources01..03.vdpatch`, then a `*.vdpack` scan
+(0x878444–0x8784d4).  Mods are ordered and checked against each other, and the
+messages say what the checks are: `"%s '%s' has wrong type"`,
+`"%s '%s' has wrong index"`, `"%s '%s' has wrong files : %s"`,
+`"%s '%s' intersects other mods"`, `"Error load %s '%s' index"`,
+`"Error open %s '%s' pak file"`, `"Index error : %s : %s"`
+(0x8785b8–0x87863c, referenced from the loader at 0x4149fa and 0x414bac).  A
+mod that fails any of these is not mounted — which is a *stronger* explanation
+for "the unit does not appear at all" than anything a payload check can give.
+
+**The `index` entry is a mod descriptor, not a file table.**  The strings next
+to it name the fields: `MOD_INDEX_FILE`, `MOD_INDEX_TYPE`, `MOD_INDEX_UUID`,
+`MOD_INDEX_NAME` (0x8782f4–0x878334), the field names `Name`, `UUID`, `Hash1`,
+`Hash2` and their serialised forms `Name="`, `UUID="`, `Hash1="`, `Hash2="`
+(0x878510–0x87854c), plus `:index` / `index` (0x878344, 0x87834c) as the VFS
+path the loader opens.  So the entry carries an identity (name, type, uuid) and
+**two hashes of the file list**, and the loader validates the list against them
+before it mounts anything (the same region logs `"Not found indexed file '%s'"`
+and `"Unindexed file '%s'"` at 0x8782a8/0x8782c4 for a file that is present but
+absent from the index, and the reverse).  The 4 738-byte blob a unit pack
+carries is consistent with that list serialised and encrypted: 1 674 bytes of
+names become 4 738 uniform bytes, an unstructured ~2.8× expansion — not a fixed
+record table, which is what the earlier "≈169 B per record" reading assumed and
+why no record stride exists (see §6b).
+
+Two consequences that change how a pack should be built:
+
+* a pack whose file list differs from the one its `index` describes is
+  rejected outright (`has wrong index` / `not found indexed file`), and carrying
+  the original `index` into a modified pack is exactly that mistake;
+* name lookup itself is a hand-inlined **case-insensitive `strcmp`** over the
+  entry list (0x41a540–0x41a56b compares two bytes at a time, `sbb` for the
+  ordering), so paths are not hashed and a path only resolves if an entry
+  spells it.
+
+The engine also checks the executable it is running from — `str_cant_read_exe_file`,
+`str_main_index_is_wrong`, `str_error_load_main_index` (0x878568–0x878598) — so
+patching the binary alive is not the way in; reading it is.
+
+What is left to pin down in this file, in order: the routine at 0x419830 that
+opens `index` through the VFS and hands the payload to the decoder (the call
+chain at 0x419963 continues through 0x41b030, a vector splice, to a virtual
+`[eax+0x10]`), and the hash the two fields hold — the binary carries CRC32
+(0xEDB88320 at 0x11837), MD5 (init 0x67452301 at 0xa56e) and SHA-1
+(0x6A09E667 at 0xe568) implementations, so the field is one of those over some
+canonical rendering of the list.  Once that is named, an index can be
+*recomputed*, and a pack that carries modified payloads becomes mountable.
+
+## 6d. The packer is readable too — and it writes the `index`
+
+Two further builds of the editor were provided: `TOOLKIT_EXTENDED.EXE` and
+`TOOLKIT_CRACKED.EXE`, both 6 070 784 B, differing in 45 163 bytes.  Neither is
+protected: four sections, `.text` 4 993 024 B at entropy **6.57**, `.rdata` at
+5.63, and the strings are there — `vdpack` ×9, `index` ×29, `Hash1` ×2,
+`resources\` ×127, `material0_diffuse`, `weights_on_vertex`.  So the packer side
+of every open question is reachable from a file, and the *cracked* build is not
+needed for it: the extended one is just as readable, and nothing here depends on
+the protection being removed.  (`okidifox.dll`, 8 358 576 B, is a different
+story: `UPX0`/`UPX1` with 7.94 entropy and the same patched header as
+`ijaqemox.dll`, so the game's engine *module* still only exists in clear inside
+a running process — the exe of §6c and these toolkits cover the rest.)
+
+What the packer says about the `index`:
+
+* **`.d_hash.cpp`** is compiled in (string at 0x8c6158, asserted from
+  0x40b2dc, 0x40b351, 0x40f564 and 0x40f60c).  The module carries **MD5**
+  (round table from 0x40aa09, init 0x67452301 at 0x40b280), **SHA-256**
+  (K[0] 0x428a2f98 at 0x40b5ea) and **CRC32** (polynomial 0xEDB88320 at
+  0x12e17).
+* The index is **written as text**: the builder at 0x41eeb0 registers the keys
+  `name`, `UUID`, `Type`, `File` (ids 0x32–0x35) against the resource ids
+  `MOD_INDEX_NAME`, `MOD_INDEX_UUID`, `MOD_INDEX_TYPE`, `MOD_INDEX_FILE`
+  (0x8c6d70–0x8c6db0), and `UUID = "` (0x8c6c08) is the serialised form.
+* The two hashes are written per file by the routine at 0x41d860: `Hash1` at
+  0x41dd0b, `Hash2` at 0x41dbbc, and a **48-byte** digest — twelve dwords —
+  is copied into both fields from a buffer built around the call at 0x41d886.
+  Sixteen plus thirty-two is MD5 plus SHA-256, which is the pairing the text
+  form implies: `Hash1="…32 hex…"`, `Hash2="…64 hex…"`.  The per-file record
+  these live in is **76 bytes** in memory (`add esi, 0x4c` in the vector
+  splice at 0x41af40).
+* `can't calculate file hash for: '%s'` (0x8c6dc0, used at 0x41f571) is the
+  failure path when a file named by the index is not readable.
+* The packer can build the whole thing headless: the `-createindex` switch
+  (0x8c65b8) is read at 0x412515, and `:index` (0x8c6eb4) is opened at
+  0x4207dc — the pack read/write path.  The editor's own packs are
+  `toolkit_system.vdpack` and `toolkit_resources.vdpack` (0x8c6d2c, 0x8c6d50).
+
+So an `index` is not a mystery any more, it is a *derived artefact*: a textual
+table per file — name, uuid, type, `Hash1` = MD5 of the content, `Hash2` =
+SHA-256 of the content — serialised and then stored in the pack, which is why
+the stored bytes are uniform.  §6f closes the last two gaps: the storage
+transform and the grammar, both of which `d3tool` now implements in both
+directions.
+
+## 6e. The engine's own attribute vocabulary and diagnostics
+
+The mesh loader in `DisciplesIII.exe` (`.d_rc_mesh.cpp`, 0x89c488) keeps its
+attribute names and its complaints in one run of `.rdata` (0x89c004–0x89ccf8).
+Read together they are the closest thing to a specification of what a `.g` may
+say, and they confirm the vocabulary this toolkit writes:
+
+* per material — `material%d_diffuse`, `material%d_detail`, `material%d_bump`,
+  `material%d_lightmap`, `material%d_triangles_num` (0x89c990–0x89c9fc);
+* per mesh — `materials_num`, `vertexnum`, `trianglesnum`, `bonesnum` /
+  `bones_num`, `texnum`, `tex%d`, `texname%d`, `uniquename`
+  (0x89ca40–0x89cb8c);
+* vertex data — `normals`, `tangent`, `weights_on_vertex`,
+  `new_vertex_weights_format`, `vertexs_copy`, `rotatez`, `df_lm_nm`,
+  `lmuvdata`, `bumpuvdata`, `detailuvdata`, and the morph family
+  `morph_frames`, `morph_normal`, `morph_cyclic_blend`, `morph_uv%d`
+  (0x89c448–0x89caa8);
+* material binding — `system\materials.s` with `material "%s"` and
+  `invalid name in materials list` (0x89caa28–0x89caad8), plus `vdmtl` and
+  `groupname` (0x89c514–0x89c51c).
+
+The diagnostics separate cleanly into **cosmetic** and **structural**, and one
+of them says so in words:
+
+* `Object '%s' have no material - checker assigned` (0x89ca10) with
+  `CreateCheckerIfNoTexture` (0x89c5f0) — a part with no material still draws,
+  wearing the checker texture.  Cosmetic.
+* `%s has empty texture` (0x89caf8), `0 triangles in object: '%s' with
+  material: %d` (0x89c8fc), `Invalide bones num:%d` (0x89cab0),
+  `*** Error: out of memory: mesh "%s"` (0x89cad0) — the mesh is built from
+  declared counts, so these are the structural ones: a count that disagrees
+  with its data.
+* `error MeshMake, texture "%s" not found in model "%s : %s"`,
+  `error MakeMesh, not found uv set ...`, `not found technique "%s", set in
+  mesh "%s"`, `unknown mesh`, `invalid object: %s` (0x89cc40–0x89ccf8,
+  0x89c980) — the binding failures: a name the model does not carry.
+
+`d3tool audit` already checks the structural half of that list — `materials_num`,
+`material0_triangles_num`, `vertexs_weights_num`, `weights_on_vertex`,
+`bones_num` against the counts actually found, and "no triangles at all" per
+part (see `d3tool/audit.py`), so this run of `.rdata` is a confirmation rather
+than a to-do list.  Two items it does *not* cover yet and that the engine names
+explicitly: a `.t` that exists but is empty (`has empty texture`), and a
+`technique` that is not in `system\materials.s` — the first is cheap to add,
+the second needs the materials file to compare against, which retail ships as
+text.
+
+## 6f. `index` decoded: the mod manifest, and what the loader checks
+
+The storage transform is in the packer at **0x40a290**, and it is thirty
+instructions: compare the first four bytes against `65 43 74 FF`, load the next
+four as a seed, then step a 32-bit LCG and XOR its high byte into every byte
+that follows:
+
+```
+[0:4]   65 43 74 FF                 magic
+[4:8]   u32 little endian           seed
+[8:]    text + NUL                  ^ ((state >> 16) & 0xFF) per byte
+
+state = state * 0x34405 + 0x269EC9  (mod 2**32, stepped before each byte)
+```
+
+`imul ecx, ecx, 0x34405` / `add ecx, 0x269EC9` / `shr edx, 0x10` / `xor dl, bl`
+is MSVC's `rand()`, so this is obfuscation, not encryption — the seed travels
+in the file.  Run over the 4 738-byte `index` of `ruru.vdpack` it yields 4 730
+bytes of text, and re-encoding that text with the same seed reproduces the
+shipped payload **byte for byte**, which is the test that says the transform is
+understood rather than approximated.
+
+The text (`\n` line ends, quotes mandatory, `;` terminator, this order)::
+
+```
+Name = "ruru";
+UUID = "6af75149-9223-4e52-b5cc-ccb9ac990071";
+Type = "Mod";
+File = "resources\\Characters\\Empire\\Inquisitor\\x.g", "<32 hex>", "<64 hex>";
+...
+```
+
+`Name`/`UUID`/`Type` are the mod's identity, and one `File` line follows per
+indexed resource: the path in archive spelling, the **MD5** of the payload,
+then its **SHA-256**, lowercase.  The records are **sorted by path**, not in
+archive order — a shipped pack proves it: its archive runs descending, its
+manifest ascending — which is what lets a rewrite of a correct manifest be
+byte-identical to the one it replaces.  In `ruru.vdpack` all **26** records verify
+against the payloads they name — no exceptions — and the two entries that are
+*not* listed are `index` itself and the root-level `russian.txt`.  So the
+manifest covers the resource tree, not the archive.
+
+Two questions the game answers differently, and both matter when planning a
+pack:
+
+* **A payload whose bytes no longer match its recorded digest is rejected
+  outright.**  This was written as "probably fine" for one release, on the
+  strength of the Angel pack (both `.g` payloads replaced, original `index`,
+  battle loaded).  A crash dump of the shipping build (§6g) settled it the
+  other way: the engine logs `Index error : str_not_valid_hash_for_file :
+  <path>` and does not hand the file's data to the caller.  The digest is
+  compared, not merely recorded.
+* **A path with no `File` record is the failure.**  That is what the port did
+  when it added entries, and the game showed no units — with `Unindexed file
+  '%s'` (0x41a583) as the loader's own wording, and `Not found indexed file
+  '%s'` (0x41a5c7) for the mirror case of a record whose file is gone.
+
+Which means the "replace only, never add" rule that this toolkit enforced was
+a limitation of *our* side, not the engine's: nothing in the archive format
+forbids a new path, it just needs a `File` record.  `d3tool` writes those now, and since §6g it does so **by default**:
+`vdpack pack` and `vdpack pack --like <pack>` build the manifest for the exact
+bytes that land (keeping the mod's `Name`/`UUID`/`Type`), `vdpack index <pack>`
+decodes and verifies one, and `vdpack diff` grades a rebuilt pack against the
+two questions above instead of guessing.  `--no-reindex` carries the old
+manifest over untouched, and `--keep-index <pack>` copies one in verbatim;
+both are the "I know what I am doing" switches, and a pack that carries a
+manifest describing other bytes is exactly the crash in §6g.
+
+Rewriting an already-correct manifest changes nothing: `reindex_pack` on
+`ruru.vdpack` gives back the whole 3.5 MB pack **byte for byte**, so the
+default costs nothing on a pack that was consistent to begin with.
+
+## 6g. The crash dump: the hash check is enforced, and it is why the unit dies
+
+A minidump of the shipping build (`DisciplesIII.dmp`, 639 667 B) closes the
+question §6f left open.  What it says:
+
+| field | value |
+|---|---|
+| process | `D:\Disciples III Rebirth\DisciplesIII12.exe`, base 0x400000, 14 446 592 B — a *Rebirth* repack, not the retail `DisciplesIII.exe` of §6c |
+| exception | `0xC0000005` access violation, **read** at `0xA6000CB3` |
+| faulting | `DisciplesIII12.exe+0x208D44`, thread `0x1ee0` |
+| registers | `eax` = the bad address, `ecx` = 0, `esi` = `0x14A70020`, `ebp` = 0 |
+| modules | 89, and **no `okidifox.dll`, no StarForce** — this build carries no protector, so the dump answers loader questions and nothing about UPX |
+
+The faulting code, from the 256 bytes of code the dump happens to carry:
+
+```
+0x608d1c  mov  ecx,[esp+0x5c]      ; an object the caller passed
+0x608d20  mov  eax,[ecx+4]        ; a count
+0x608d29  imul eax,eax,0x33       ; * 51
+0x608d2c  lea  eax,[eax+esi+0x30] ; + base + 0x30
+0x608d44  movzx ebx,byte ptr [eax+ecx]   ; ecx = 0 on the first pass
+```
+
+`[ecx+4]` holds `0x3F1A…` — a float bit pattern, not a count — so the scaled
+offset wraps and the first byte read lands at `0xA6000CB3`.  The object was
+never the structure this code expected, because the resource it was built from
+had already been rejected.  Two log lines were live in memory at the time:
+
+```
+[EE] resources\characters\empire\inquisitor\character_empire_inquisitor.scene
+   : resources\characters\empire\inquisitor\character_empire_inquisitor.g
+   : Index error : str_not_valid_hash_for_file
+   : resources\characters\empire\inquisitor\character_empire_inquisitor.g
+...a_back_land_empire_02.g : 0 triangles in object: 'trees_02_2' with material: 1
+```
+
+and the mod list on the stack held both `mod:D3_test_faction6_mod` and
+`mod:ruru`.
+
+That message is not a mystery in the executable either.  `Index error : %s : %s`
+is at 0x87835c; the identifier `str_not_valid_hash_for_file` at 0x88555c, pushed
+at **0x49270d**; and the function it is the failure branch of compares the
+48-byte digest of the payload against the manifest's (`0x4129e0` compares
+sixteen bytes at a time and returns non-zero when they *differ*):
+
+```
+0x4926f8  call 0x4129e0     ; digests differ?
+0x4926fd  test al, al
+0x4926ff  jne  0x49270d     ; yes -> Index error, and no data returned
+```
+
+So the chain is: a pack whose `index` describes other bytes → the loader
+computes MD5 + SHA-256, compares, logs `str_not_valid_hash_for_file`, and
+**returns nothing for that file** → whatever asked for the asset builds its
+state from the hole → the access violation.  A unit that "does not appear" and
+a game that "just crashes on this unit" are the same event seen from two
+places, and `vdpack pack --like <pack>` is the fix for both — it writes the
+manifest for the payloads it ships, and that is now the default rather than a
+flag.
+
+`tools/dmp_find.py` reads this back out of any dump the user produces
+(`info`, `modules`, `exception`, `stack`, `strings`, `mem`), so the next
+question — which function, on which asset — starts from evidence rather than
+from a guess.
+
+## 6h. The second dump: the crash is inside the `.g` reader, and *which* pack is guilty
+
+The user's next session (`лог/DisciplesIII.dmp`, 733 330 B) changed the
+symptom from "the unit never appears" to "the game dies entering the battle",
+so it is worth reading on its own:
+
+| field | value |
+|---|---|
+| process | `D:\SteamLibrary\steamapps\common\Disciples III Rebirth\DisciplesIII.exe`, base `0x400000` — a different executable from §6g's `DisciplesIII12.exe` |
+| build | `rebirth exe #68 (May 21 2012 18:25:02)`, sign `d597c3da…`, from the log's first lines |
+| exception | `0xC0000005` access violation, **read** at `0x8A511C3C` |
+| faulting | `DisciplesIII.exe+0x208CB5` (`0x00608CB5`), thread `0x3690` |
+| registers | `eax` = the bad address, `ecx` = 0, `esi` = `0x31E70020`, `ebx` = `edx` = 0 |
+| modules | 100 — again no protector |
+
+The code at `0x608CB5` is **byte-identical to the retail `DisciplesIII.exe`**
+(the 24 bytes of the loop are found at file offset 0x208CB1 in §6c's
+executable), so this dump can be read against the copy that has symbols-free
+but *known* neighbours.  The enclosing function starts at `0x606920`, and the
+strings it references name it outright — it is the `.g` mesh reader:
+
+```
+0x0089cac8  .\vd_rc_mesh_splitter.cpp
+0x0089c8fc  0 triangles in object: '%s' with material: %d
+0x0089c92c  material%d_triangles_num
+0x0089c4dc  bones_num
+0x0089c528  weights_on_vertex
+0x0089c980  unknown mesh
+```
+
+The faulting loop, this time with its operands visible:
+
+```
+0x608c94  lea  ecx,[ebx+ebx*2]     ; ebx: object number
+0x608c97  lea  eax,[eax+ecx*4]     ; + 12-byte record
+0x608c9e  mov  eax,[eax]           ; first field -> a vertex number
+0x608ca2  imul eax,eax,0x33        ; * 51   <- the vertex stride
+0x608ca5  lea  eax,[eax+esi+0x30]  ; + buffer + 0x30 (the influence slots)
+0x608cb5  movzx ebx,byte ptr [eax+ecx]   ; the three bone indices (cmp ecx,3)
+```
+
+`0x33` is not arbitrary: `weights_on_vertex 3` gives a `40 + 4*2 + 3 = 51`-byte
+record (§2, `vertex_stride`), and `+0x30` is exactly its bone-index block, read
+three bytes at a time.  So the reader is walking the vertices of a **`w=3`**
+part — the inquisitor body, which the `.scene` declares as
+`weights_on_vertex 3`, `bones_num 22`, 3 699 vertices / 4 660 triangles.  The
+frame's own scratch space still holds that asset: the string
+`resources\characters\empire\inquisitor\character_empire_inquisitor.t` sits
+`0x110` bytes above `esp`, and `material0_triang`/`les_num` is on the stack as
+the reader builds the attribute name.
+
+Both dumps therefore die in the *same three instructions*, 143 bytes apart
+(`0x608CB5` vs §6g's `0x608D44` — the second of the three influence bytes
+instead of the first), in two different builds, while reading the same asset.
+That is a data defect, not a build defect, and the log of that session names
+it:
+
+```
+[EE] ...character_empire_inquisitor.scene : Index error : str_not_valid_hash_for_file : ...character_empire_inquisitor.scene
+[EE] ...character_empire_inquisitor.scene : Index error : str_not_valid_hash_for_file : ...character_empire_inquisitor_baseanims.a
+[EE] ...character_empire_inquisitor.scene : ...character_empire_inquisitor.g : Index error : str_not_valid_hash_for_file : ...character_empire_inquisitor.g
+[EE] mod 'ruru' not found
+```
+
+Three files of one unit, all rejected by the manifest check of §6g — and the
+mesh reader then walks a buffer that the loader refused to hand over.  Nothing
+in the `.g` itself is broken: the copy in the user's own pack parses cleanly
+and matches its `.scene` to the digit (`(4 660, 3 699)` in the attribute block,
+`material0_triangles_num 4660`, `vertexs_weights_num 3699` in the scene).  The
+*manifest* is what disagrees with it.
+
+### How the game finds a mod (retail strings, `DisciplesIII.exe`)
+
+| string | address | meaning |
+|---|---|---|
+| `$(UserFolder)\Mods\` | `0x878074` | the only directory mods are read from |
+| `*.vdpack` | `0x8784d4` | the find mask it enumerates |
+| `.vdpack` | `0x878680` | the suffix it appends to a name from `sModifications` |
+| `%s '%s' not found` | `0x878628` | what `run.log` shows as `mod 'ruru' not found` |
+| `%s '%s' intersects other mods` | `0x8785d8` | two mods carrying one path: only one mounts |
+| `%s '%s' has wrong index` | `0x8785f8` | the manifest does not decode / does not describe the archive |
+| `%s '%s' has wrong type` | `0x878610` | `Type` is not `Main`/`Map`/`Mod` |
+| `%s '%s' has wrong files : %s` | `0x8785b8` | the index-level file check, with the list that failed |
+| `Error load %s '%s' index` | `0x87863c` | the index could not be read at all |
+
+`user.ini`'s `sModifications` lists mods **the way the file is named**
+(`mod:ruru` → `Mods\ruru.vdpack`), which is why a pack that sits next to the
+game instead answers `mod 'ruru' not found` and is never mounted at all — the
+`run.log` of this session says exactly that, next to a second mod
+(`D3_test_faction6_mod`) that *is* mounted and whose manifest is the stale one.
+
+### `vdpack scan`
+
+Since neither message names the archive, the toolkit answers it directly:
+
+```bash
+d3tool vdpack scan "D:\SteamLibrary\steamapps\common\Disciples III Rebirth"
+d3tool vdpack scan "%USERPROFILE%\Documents\Disciples III Reincarnation\Mods" --strict
+```
+
+Each archive is read, its `index` decoded, and every payload checked against
+the recorded MD5/SHA-256; the report names the pack, the paths the loader will
+answer `str_not_valid_hash_for_file` for, the packs sitting outside `Mods\`,
+a `Name` that does not match the file name, and paths carried by two mods.
+`--strict` exits 1 while anything would be rejected, so it can gate a release.
+`--json` prints the same answer for a script.
+
+`--log run.log` closes the other half of the loop: every
+`Index error : str_not_valid_hash_for_file : <path>`, `Unindexed file` and
+`mod '<name>' not found` in the log is matched against the scanned packs, so
+the answer is "this path, this archive, rebuild it" — or, when no scanned pack
+carries the path, "the game is reading a loose folder or another install and
+rebuilding packs will not help".
+
+```bash
+d3tool vdpack scan "…\Disciples III Rebirth" --log "…\run.log" --strict
+#   ✘ run.log rejects …\character_empire_inquisitor.g: carried by
+#     ruru.vdpack (ok), D3_test_faction6_mod.vdpack (stale) — rebuild
+#     D3_test_faction6_mod.vdpack with `vdpack pack --like … --reindex`
+```
+
+### Why a loose file cannot replace one the packs already carry
+
+The verification of §6g is not a property of a pack — it is a property of the
+*open*: whoever opens a resource by path names it, the resource manager finds a
+source for that path, and the bytes it serves are hashed and compared with the
+digest an index records for it.  From the retail executable:
+
+```
+0x490ca0  <open by path>                       ; ebp+8 = path, ebp+0xc = open flags
+0x490d75    mov byte [ebp-0x11], 0             ; "verify" flag, decided below
+0x490daf    call 0x416710                      ; resolver: which source, which id,
+                                               ;   which expected digest, verify or not
+0x490df7    mov byte [ebp-0x11], 0             ; flags & 2 -> never verify
+0x490ecd / 0x490fa6 / 0x491056   call 0x492600 ; one per source, only if the flag is set
+
+0x492600  <verify id against the expected digest>
+0x492643    call [vtbl+0x70]                   ; size the manager reports
+0x49267b    call [vtbl+0x64]                   ; the bytes the manager serves
+0x4926e0    call 0x40a550                      ; MD5  (IV 67452301 EFCDAB89 98BADCFE 10325476)
+0x4926eb    call 0x40e520                      ; the second digest, MD5+SHA-256 pair
+0x4926f8    call 0x4129e0                      ; compared with the expected one
+0x4926ff    jne  0x49270d                      ; -> Index error : str_not_valid_hash_for_file : <path>
+```
+
+So the digest is taken over **whatever the manager served**, and the expected
+digest comes from the index that lists the path.  A loose file has no index of
+its own, so the byte comparison still runs against the record the retail packs
+carry — an edited `.g` dropped into `resources\characters\empire\inquisitor\`
+can therefore never match, and the loader keeps answering
+`str_not_valid_hash_for_file` and serving nothing.  The only way an edited file
+becomes legal is for an index to state its new hash, and the only container
+whose index the loader reads besides the retail packs is **a mod `.vdpack`**.
+That is the whole reason the format exists, and why `vdpack pack` writes the
+manifest by default.
+
+`flags & 2` on the open is an engine-internal "do not verify" bit (the resolver
+clears the flag when it takes it); nothing in `user.ini` reaches it, so it is
+not a switch a modder can flip.
+
 ## 6. The `.vdpack` mod archive
 
 A retail install keeps a unit as a loose folder; mods ship the whole tree as
 **one file**, a `.vdpack`, which the game mounts by name.  Implemented in
-`d3tool/vdpack.py` (`vdpack list|extract|pack`), layout documented from the
-Heroes-VII → Disciples III porting corpus (see
+`d3tool/vdpack.py` (`vdpack list|extract|pack|diff|manifest|validate`), layout
+documented from the Heroes-VII → Disciples III porting corpus (see
 `docs/PORT_ANALYSIS_COMPARE_RU.md`) — the bundled corpus ships no `.vdpack`,
 so the reader is validated against synthetic archives and the port's own
 writer, not against a retail pack.
@@ -682,16 +1468,37 @@ past the end of the file, and two entries sharing bytes.  On extraction the
 stored name is re-validated, so an archive cannot write outside the target
 folder (`..`, absolute paths and drive letters are refused).
 
-**The opaque `index` entry decides whether a pack is mounted.**  Every pack
-the port examined carries one resource named exactly `index` (20 362 bytes in
-`NewUnit.vdpack`) that nobody has decoded.  What the port established at
-runtime: replacing a payload *inside* such a pack works; adding six entries to
-it (index untouched) did **not** show the new units in game.  So the writer
-here does not claim otherwise — `vdpack pack` prints a warning when the bundle
-has no `index`, and `--keep-index <existing.vdpack>` copies the resource from
-a proven pack into the new one (same paths, new payloads: the shape that is
-confirmed to load).  `vdpack manifest` records `index: {bytes, sha256}` (or
-`null`), so a manifest says which of the two you are looking at.
+**The `index` entry decides whether a pack is mounted**, and since §6f we know
+what it is: the mod's manifest, one MD5 + SHA-256 record per resource.  The
+three observations the port made at runtime map onto the loader's own three
+messages, which is why they looked contradictory:
+
+| the pack | the manifest says | loader | what was seen |
+|---|---|---|---|
+| payloads replaced, manifest untouched | hashes stale | nothing — a digest is not compared against the file list | mounted, rebuilt geometry on screen |
+| six paths added, manifest untouched | path has no record | `Unindexed file '%s'` (0x41a583) | no units in game |
+| a path dropped, manifest untouched | record's file is gone | `Not found indexed file '%s'` (0x41a5c7) | one attempt never appeared in the mods list; another still mounted — those two attempts differed in more than the dropped path, so read this row as the mechanism, not as a verdict |
+
+So the rule was never "replace only" — it was "the entry set and the manifest
+have to agree", and only one of the three ways to disagree was survivable.
+`d3tool` can now write the manifest, so all three are fixable instead of
+avoidable:
+
+* `vdpack pack <folder> --like <pack> --reindex` — same paths and order, a
+  manifest written for the payloads that actually landed (the mod keeps its
+  `Name`/`UUID`/`Type`);
+* `vdpack pack <folder> --reindex` — a fresh archive from a folder, manifest
+  included: the way to ship a *new* unit, which was previously untestable;
+* `vdpack index <pack>` — decode and check, so "does this pack agree with
+  itself" is a command rather than a guess;
+* `--keep-index <existing.vdpack>` copies a proven manifest over (correct only
+  when the payloads are the ones it describes).
+
+`--like` also rebuilds the archive in the proven pack's own entry order and
+spelling, which is worth keeping for one reason: an unchanged bundle that the
+game ignores anyway has to differ from the working one in payload bytes alone.
+Any folder path the source pack does not carry is dropped with a warning;
+`--drop <path>` leaves an entry out entirely.
 
 Confirmed later on one real unit pack (the Empire Angel, 24 entries, the
 original 4100-byte `index`, both `.g` payloads replaced in place): loading is
@@ -703,6 +1510,93 @@ its folder.  What the engine will not fall back for is a reference its own
 `.ac`/`.scene` makes into a folder the pack lacks: the load stops with a
 missing-file dialog naming `<pack>.vdpack:resources\characters\...` — hence
 the wrong-folder warning `vdpack validate` prints.
+
+Repathing that `*_lod.ac` in game changed nothing: the dialog came back with
+the same prefix, so the reference was never the thing the engine was opening.
+What did keep coming back was the pack *containing a payload that differs from
+its source*, and that is where the loop stopped being productive.  It is worth
+recording what the container itself cannot be blamed for: a folder packed back
+`--like` the working archive with every payload left alone reproduces that
+archive **byte for byte** (md5 equal), so the writer, the header, the name
+spelling, the flags and the `index` manifest are all carried exactly; only a
+changed payload can make the engine complain.
+
+The sword that never appeared was a payload problem of a different kind, and
+the `.g` attribute block says so.  The pack ships the Empire Angel with a fifth
+part appended (`empire_knight_sword`, lifted from
+`Empire/Knight/character_empire_knight.g`: 124 triangles, 136 vertices, bound
+1.0 to `Bip01 R Hand`), and the `.scene` already carries its `gobj` — so the
+mesh, the node and the texture are all there, and the battle still shows no
+sword.  The difference is one attribute: the appended block does not declare
+`new_vertex_weights_format`.  Every skinned part in the corpus declares it
+(`test_every_corpus_weapon_part_declares_its_weight_format`), and the engine
+takes the vertex-weight stride from that declaration, not from
+`weights_on_vertex` — so it reads the sword's 136 vertices five bytes short
+apiece, the index block goes out of alignment and the part draws as nothing,
+while every reader that derives the stride from the counts (this package
+included) sees a perfectly good mesh.  The block is length-prefixed, so the
+attribute can simply be inserted:
+
+```bash
+python3 -m d3tool gattr Empire/Angel/character_empire_angel.g \
+    --part 4 --insert new_vertex_weights_format=1     # +36 bytes, nothing else
+python3 -m d3tool lod Empire/Angel                     # the LOD mesh + scene too
+python3 -m d3tool vdpack pack Empire/Angel -o angel.vdpack --like ruru.vdpack
+```
+
+`gattr` reads the block, rewrites the count and appends `(u32 len, "key\0")`
+`(u32 len, "value\0")`; `--set` replaces a value in place (same length keeps
+the payload's size, a different length shifts the rest of the file).  A part
+appended by other tooling usually copied its neighbours' *data* and not their
+*format* declaration — that is the shape to look for before blaming the
+archive.
+
+The exporter's own output was audited block by block on a re-export of that
+unit, and the two models now agree.  Main mesh: 347 266 B, five parts, no count
+disagreement; the sword block `empire_knight_sword` holds 136 vertices / 124
+triangles, declares `new_vertex_weights_format` and `weights_on_vertex 1`,
+carries the single bone `Bip01 R Hand` and the diffuse
+`weapon_empire_knight_sword_diffuse.tga`.  LOD mesh: retail 161 869 B → 173 210
+B, mesh count 4 → 5, the appended block spelled `lod_empire_knight_sword` and
+parented to the LOD file's own `55867360`; its vertices, indices, normals, UVs,
+weights and bone matrix are byte-identical to the main mesh's block, so both
+draw the same sword, and a second `d3tool lod` run is a no-op.  The LOD scene
+gained exactly 39 lines — one `gobj` on mesh slot 4 — with every other line
+untouched, and the near `.ac` stayed byte-identical to retail.  The one item
+`validate` still reports is the generated `*_lod.ac`, which retail never ships
+and which the runtime experiments above say the engine never opens — it is left
+alone rather than repathed.
+
+`vdpack diff <pack-that-loads> <new-pack|folder>` answers the question a
+modder actually ships on: *what did I change, and is it still the shape that
+loads?*  It lists the paths added, the paths removed, the paths whose payload
+differs, and whether the shared paths kept their order, then grades the result
+against the single runtime-confirmed shape (same paths, different payloads):
+`ok` when nothing but payloads moved, `warn` for a removal or a re-order, and
+**added for any new path** — the case the port tried in game and saw no units
+at all.  `--strict` exits 1 on that grade, which is the check worth putting in
+front of the "pack and test" step; `--json` emits the same comparison for a
+script.  A pack and the folder it was built from compare clean, separators
+aside, so the tool doubles as "is this folder what the pack carries".
+
+`vdpack plan <folder> [--like <pack-that-loads>]` turns that grade into an
+instruction, because a folder on disk is shallow (`Empire/Inquisitor`) while the
+path it lands on is not (`resources\\Characters\\Empire\\Inquisitor`), and a
+modder cannot see which of the two shapes a file will take.  The plan lines the
+folder up with an archive path — from the pack itself when one is given (the
+entry carrying one of the folder's own files names the folder), otherwise from
+the unit's own `.scene`, which spells the `resources\\…\\<base>.g` it binds — and
+then, per file, says `replaces` or `new path`.  A `new path` that is a `.t` is
+the interesting case: the pack's own textures in that folder are printed as
+rename targets, because a `.g` attribute holds a bare texture name resolved
+inside the unit's folder, so pointing the part at a name the `index` already
+lists costs nothing and keeps the confirmed shape.  Files the pack carries and
+the folder does not are listed as `stays vanilla` — dropping them from a bundle
+is how the retail tree keeps resolving them.  The last line is the
+`game\\resources\\…\\<file>` layout the engine's own mount reaches, which is the
+only way to ship a path no pack can carry.  With no `--like` the plan prints
+that layout alone and marks every file `loose`; `--strict` exits 1 on a
+`new path`, matching `vdpack diff`.
 
 `vdpack manifest <archive|folder>` writes the sha256 inventory of a bundle —
 one `{path, bytes, sha256}` per file, in archive naming and case-insensitive
@@ -735,8 +1629,14 @@ have an `id` that differs from their file name, so the name is irrelevant.
 `d3tool/char.py` parses the format, `vdpack validate` checks a packed
 profile's includes and `characters\…` references like any other unit-local
 reference, and `d3tool char set-id` performs exactly that one-string patch.
-The port's archive also holds one opaque entry named
-`index` (20 362 bytes) that no tool has decoded — here it is an ordinary file,
-so `extract` → `pack` preserves it verbatim, but a pack assembled from loose
-folder content simply has none (unverified in game).  Keep that in mind before
-promising a runtime-clean mod archive.
+The port's archive also holds one entry named `index` (20 362 bytes) that
+no reader decodes — here it is an ordinary file, so `extract` → `pack`
+preserves it verbatim, but a pack assembled from loose folder content simply
+has none.  §6d identifies it: a mod descriptor plus a **per-file hash
+manifest** (MD5 and SHA-256) that the loader validates before mounting, which
+makes an inherited `index` over changed payloads a defect rather than a
+formality.  `vdpack diff` and `vdpack plan` say so explicitly now — a payload
+count with the original `index` still in place reads as a warning naming the
+loader's own messages (`has wrong index`, `not found indexed file`,
+`unindexed file`), and `plan` prints which payloads differ from the ones the
+pack's index describes.

@@ -21,7 +21,7 @@ The point is to support a future program that, like dis3tool, exports glTF but
 | `geo2011.dle` | the original 3ds Max plugin (binary). Strings reveal it is the `GM (R) File Exporter` / `GM MAX (R) File Format Exporter`. |
 | `Neutrals/*` | bundled units: `character_*.g` (geometry), `*.gltf`/`*.bin` (dis3tool export), `*.scene`, `*.ac`, `Aliases/*`, textures. |
 | `docs/FORMATS.md` | reverse-engineering notes for `.g`, `.gltf`, `.ac`, `.scene`. |
-| `d3tool/vdpack.py` | the `.vdpack` mod archive (one file = a whole unit folder): `vdpack list/extract/validate/manifest/pack`. |
+| `d3tool/vdpack.py` | the `.vdpack` mod archive (one file = a whole unit folder): `vdpack list/extract/validate/manifest/pack/scan`. |
 | `d3tool/char.py` | the `.char` unit profile: `char show/list/find/validate/set-id`. |
 | `d3tool/weights.py` | skin weights of a `.g`: `weights <g> [--against <g>]`. |
 | `Profiles/` | the retail unit profiles (874 `.char`: 214 units + their `desc`/`stats`/`sound` fragments). |
@@ -87,14 +87,33 @@ python3 -m d3tool vdpack extract hierophant.vdpack -o hierophant/
 python3 -m d3tool vdpack validate hierophant.vdpack   # every internal reference inside?
 python3 -m d3tool vdpack validate hierophant.vdpack --strict   # ... and no wrong folder
 python3 -m d3tool vdpack manifest hierophant/ -o manifest.json  # sha256 per file
-# build on the only game-confirmed pack shape: keep the opaque `index`
+# build on the only game-confirmed pack shape: keep the `index` manifest
 python3 -m d3tool vdpack pack hierophant/ -o my.vdpack --keep-index NewUnit.vdpack
+# `index` is the mod's manifest (Name/UUID/Type + per-file MD5 and SHA-256) and
+# the loader compares the archive against it, so `vdpack pack` now writes it for
+# the bytes it ships — no flag needed; `--no-reindex` carries the old one over
+python3 -m d3tool vdpack index ruru.vdpack                       # decode + verify
+python3 -m d3tool vdpack pack hierophant/ --like ruru.vdpack -o my.vdpack
+# which installed pack is the one the game rejects? `run.log` names the file,
+# never the archive — scan the install (or the Mods folder) and it names both
+python3 -m d3tool vdpack scan "/path/to/Disciples III Rebirth" --strict
+# ... and cross a run.log against it: which archive carries the rejected path?
+python3 -m d3tool vdpack scan "/path/to/Mods" --log "/path/to/run.log"
 
 # the .char unit profile: what a unit declares, and which profile is whose
 python3 -m d3tool char show Profiles/empire_angel.char
 python3 -m d3tool char list --root .                 # 214 units, scene? column
 python3 -m d3tool char find Empire/Angel             # folder -> profile
 python3 -m d3tool char validate Profiles --root .    # every reference present?
+# one attribute at a time: a part the engine refuses to draw gets it back
+# (the Angel's appended sword had no `new_vertex_weights_format`, so the game
+# read its weight block with the old stride and drew nothing)
+python3 -m d3tool gattr Empire/Angel/character_empire_angel.g \
+  --part 4 --insert new_vertex_weights_format=1
+
+# give the LOD mesh the parts the main mesh gained (and the scene its gobjs)
+python3 -m d3tool lod Empire/Angel
+
 # rename the browser entry (the port's way of adding a unit; keeps every byte)
 python3 -m d3tool char set-id Profiles/empire_angel.char empire_angel_v2 \
   --scene "resources\characters\empire\angel\character_empire_angel_v2.scene" -o new.char
@@ -103,6 +122,12 @@ python3 -m d3tool char set-id Profiles/empire_angel.char empire_angel_v2 \
 python3 -m d3tool texture convert Neutrals/AirElemental/character_neutrals_airelemental.t \
   -o out/character_neutrals_airelemental.dds
 python3 -m d3tool texture info Neutrals/AirElemental/character_neutrals_airelemental.t
+
+# a texture you painted yourself (png/tga/bmp/dds) -> the <name>.t the engine
+# reads, written straight into the unit's folder; then name the part after it
+# (`--name` to choose the stem) and export: the .g, the _lod.g and both .scene
+# files get that name
+python3 -m d3tool texture add C:/paint/order_helmet.tga -o Empire/Inquisitor
 
 # run the unit tests
 python3 tests/test_d3tool.py
@@ -188,6 +213,37 @@ runs six such scenarios, all battle-ready):
   `extras.d3unit_bone` (else the nearest joint above them).  Bone-parented
   props are re-parented to the armature for the glTF write and re-bound via
   that custom property, because glTF cannot express Blender's bone parenting.
+  A part added that way also has to be *announced*: the container header closes
+  its node chain with the number of mesh blocks, and an export that appends a
+  fifth block while leaving the donor prelude at four leaves the mesh in the
+  file and out of the model — see `docs/FORMATS.md` ("How many mesh blocks the
+  container declares").
+* **A new weapon gets put where the reference weapon is, by one operator.**
+  Pick both meshes in the *Disciples III* sidebar (*Mesh* and *Reference*, two
+  object pickers) and press *Place on Reference*: the mesh is rotated about its
+  own grip until its principal axis (a Jacobi fit in `d3tool.weapon`) matches
+  the reference weapon's shaft, then moved so the two grips coincide.
+  *Flip* turns it half a circle about a perpendicular when the blade ends up
+  pointing the wrong way — the answer to an origin in the middle of a handle,
+  which leaves the axis sign undecided — and *Roll* spins it about the shaft.  The grip is
+  the **object origin** — how retail weapons are modelled, and *Set Origin >
+  Origin to 3D Cursor* moves it in one step; a mesh with exactly one vertex
+  selected uses that vertex instead.  *Roll* spins the blade about that axis, *Same Bone*
+  hangs the mesh from the reference weapon's bone.  This has to happen **in the
+  bind pose** (armature → Pose Position → Rest): the vertices are written in
+  world space and the bone's motion is added on top, so shaping a weapon onto
+  an animated frame doubles the offset and it drifts out of the palm in game.
+  `tools/place_weapon.py` is the same recipe as a stand-alone script.
+* **A new part's own texture is a file of its own.**  The engine reads only
+  `<stem>.t` next to the unit, while an atlas an artist paints comes as a
+  `.png`/`.tga`/`.bmp`/`.dds`.  *Add Texture File…* in the sidebar (or
+  `d3tool texture add <image> -o <unit folder>`) converts it into place and
+  names the part after it; the export then writes that name into the `.g`, the
+  `_lod.g` and both `.scene` files, and decodes an atlas that only exists next
+  to the glTF as well.  A name the unit already ships is refused unless forced
+  with `--force` — the export resolves textures by stem and prefers the
+  shipped `.dds`/`.t`, so silently replacing the body atlas would be undone by
+  the next export.
 * **Every export ends with a battle-readiness check**: each `.ac` state's
   file present, `frame1` within that `.a`'s real frame count, meshfile
   and `.scene` references resolvable, a `.t` behind every
@@ -247,7 +303,24 @@ it, in this order:
    current export keeps the header in step with whatever Blender did to the
    mesh.
 
-3. **Does the game read that file at all?** Make an *obvious* geometry edit
+3. **Does the header count the block you added?** A `.g` closes its node chain
+   with the number of mesh blocks, and the engine reads exactly that many — a
+   weapon appended as block five under a header that still says four is in the
+   file and not in the model, with nothing else wrong with it.  Compare:
+
+   ```bash
+   python3 -c "from d3tool import gfile as g;\
+   d=open('character_empire_angel.g','rb').read();\
+   print(g.mesh_count(d), len(g.iter_parts(g.parse_geometry_file(d))))"
+   ```
+
+   The two numbers must be equal (every retail file in the corpus is).
+   `python3 -m d3tool lod <unit folder>` appends a missing part to the LOD
+   model *and* the gobj that binds it, and both the writer and
+   `gfile.append_parts` keep the count in step now; a file an older export
+   already wrote is fixed by `python3 -m d3tool repair … -i`.
+
+4. **Does the game read that file at all?** Make an *obvious* geometry edit
    (move a whole limb, scale the mesh), export, restart the game and enter a
    battle.  If the silhouette is unchanged, the weights were never the
    question: the game is loading a different file.  Things worth checking:
@@ -257,9 +330,10 @@ it, in this order:
    * a `.vdpack` (or a mod archive) in the game folder can carry the same
      `character_*.g` — list the candidates with
      `python3 -m d3tool vdpack list <archive>`; a unit shipped inside a pack
-     has to be rebuilt into that pack (`vdpack pack … --keep-index`, the only
-     pack shape confirmed to load), a loose file next to it may simply be
-     ignored;
+     has to be rebuilt into that pack (`vdpack pack … --like <that pack>` — the
+     proven pack's own entry order, names, flags and `index`, only the payloads
+     swapped; `--keep-index` is the weaker form of the same idea), a loose file
+     next to it may simply be ignored;
    * a pack whose own `.ac`/`.scene` names the right file in the wrong folder
      is the crash that looks like a missing file: `vdpack validate` prints
      those as warnings (and `--strict` exits 1).  A generated `_lod.ac` used
@@ -352,7 +426,21 @@ For `character_neutrals_airelemental.gltf` the exporter writes:
 * `character_neutrals_airelemental.scene` — scene tree referencing the `.g` and
   `.ac`.  When the source unit folder already has a `.scene`, the exporter
   reuses it verbatim (so its particle emitters and GUI camera are preserved);
-  otherwise a faithful, particle-free scene is generated.
+  otherwise a faithful, particle-free scene is generated.  Either way the
+  engine binds the i-th mesh part to the i-th `gobj` **in document order** — a
+  scene carries one block per part, and a part past the last block is
+  invisible, because nothing draws it.  Adding a mesh in Blender (the Angel's
+  sword is the fifth part) therefore needs a fifth block, which the exporter
+  appends and warns about.
+* the same part has to reach the **LOD model** too: the `.char` profile swaps
+  to `unit_scene_lod` beyond a draw distance (`10` for nearly every unit), and
+  `<base>_lod.g` is a separate, lower-poly mesh.  The reverse export runs the
+  sync itself (`d3tool lod <unit folder>` does the same by hand): it appends
+  the added parts to the LOD mesh, renamed `lod_<name>` and re-pointed at that
+  file's own `dwParent` (`gfile.lod_part` — the node ids are per file, the
+  Angel's main mesh uses 53704704 and its LOD mesh 55867360), and gives
+  `<base>_lod.scene` the matching `gobj`.  Only the container's mesh count
+  moves in the shipped bytes; running it twice changes nothing.
 * `character_neutrals_airelemental.ac` — animation config.  When the source
   unit folder already has an `.ac`, the exporter reuses it verbatim so its
   `event2` entries survive (the attack/damage/death sound aliases and the
@@ -659,6 +747,8 @@ whole unit.
   round-trip exactly.
 * `.t` textures are a 59-byte GM header wrapping the same DXT payload a `.dds`
   stores after its 128-byte header.  `d3tool/texture.py` converts `.t` ↔ `.dds`
-  losslessly (format codes 6/7/8 → DXT1/DXT3/DXT5; code 3 → 16-bit A1R5G5B5).
+  losslessly (format codes 6/7/8 → DXT1/DXT3/DXT5; code 3 → 16-bit A1R5G5B5),
+  and decodes the formats an artist actually paints in (PNG, TGA, BMP) into a
+  block-compressed `.t` — the engine reads no other container.
 
 See `docs/FORMATS.md` for details.

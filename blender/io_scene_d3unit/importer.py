@@ -164,6 +164,46 @@ def _tag(arm, meshes, info):
             pass
 
 
+def _part_materials(path: str):
+    """``[(part name, material0_diffuse), …]`` of a unit's `.g`, in order."""
+    try:
+        gfile = bridge.module("gfile")
+        data = open(path, "rb").read()
+        mesh = gfile.parse_geometry_file(data)
+        return [(part.name, (part.attrs or {}).get("material0_diffuse", ""))
+                for part in gfile.iter_parts(mesh)]
+    except Exception:  # noqa: BLE001 - metadata must never fail an import
+        return []
+
+
+def _stamp_part_materials(meshes, parts) -> int:
+    """Record each part's material name on its object (``d3unit_diffuse``).
+
+    A material name is not just a label: it is what the export writes into the
+    part's block in the `.g`, into the same block of the `_lod.g`, and into the
+    `gobj` of both `.scene` files — and the engine draws the scene's copy.  So
+    the only place an artist can say "this sword wears the Knight's blade
+    texture" is here, and the exporter passes the value through as
+    ``extras.d3unit_diffuse`` (see :func:`d3tool.gltf._extras_diffuse`).
+    """
+    if not parts:
+        return 0
+    by_name = {name: mat for name, mat in parts}
+    used = 0
+    for i, ob in enumerate(meshes):
+        mat = by_name.get(ob.name)
+        if not mat and i < len(parts):
+            mat = parts[i][1]
+        if not mat:
+            continue
+        try:
+            ob[unitprops.DIFFUSE_PROP] = mat
+            used += 1
+        except Exception:  # noqa: BLE001
+            pass
+    return used
+
+
 def _select_only(context, objects):
     for ob in context.scene.objects:
         ob.select_set(False)
@@ -251,6 +291,15 @@ def import_unit(context, path: str, use_anim: bool = True,
 
         packed = _pack_images(context, tmp, pack) if use_textures else 0
         _drop_broken_images(context)
+        _stamp_part_materials(meshes, _part_materials(path))
+        # material0, material1, … across the unit, in part order: Blender would
+        # otherwise hand out material0, material0.001, material0.002 for the
+        # parts of one unit and the artist cannot tell the weapon's material
+        # from the body's (the `.g` numbers them per part, in slot order)
+        try:
+            unitprops.normalise_material_names(meshes)
+        except Exception:  # noqa: BLE001 - naming must never fail an import
+            pass
         frames = 0
         for arm in armatures:
             action = _linear_keys(arm)

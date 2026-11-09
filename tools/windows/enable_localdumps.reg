@@ -1,0 +1,18 @@
+Windows Registry Editor Version 5.00
+
+; Full user-mode dump of every process that crashes on this machine.
+; Double-click, accept the administrator prompt, then reproduce the
+; crash: the dump lands in D3dumps on your desktop and can be sent as is
+; (a full dump carries every loaded module as the process had it, so the
+; protected images come out decrypted).  Meant for a bug hunt on a
+; machine you own: run disable_localdumps.reg when you are done.
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps]
+"DumpFolder"=hex(2):25,00,55,00,53,00,45,00,52,00,50,00,52,00,4f,00,46,00,49,00,4c,00,45,00,25,00,5c,00,44,00,65,00,73,00,6b,00,74,00,6f,00,70,00,5c,00,44,00,33,00,64,00,75,00,6d,00,70,00,73,00,00,00
+"DumpType"=dword:00000002
+"DumpCount"=dword:0000000a
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Microsoft\Windows\Windows Error Reporting\LocalDumps]
+"DumpFolder"=hex(2):25,00,55,00,53,00,45,00,52,00,50,00,52,00,4f,00,46,00,49,00,4c,00,45,00,25,00,5c,00,44,00,65,00,73,00,6b,00,74,00,6f,00,70,00,5c,00,44,00,33,00,64,00,75,00,6d,00,70,00,73,00,00,00
+"DumpType"=dword:00000002
+"DumpCount"=dword:0000000a

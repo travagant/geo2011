@@ -185,6 +185,15 @@ class MeshPart:
     # (baked morph-frame positions).  Both empty for a synthesized part.
     part_prefix: bytes = b""
     part_tail: bytes = b""
+    # bounding box of the vertices as parsed: min.xyz + max.xyz.  The
+    # scene-node block carried in `part_prefix` describes exactly that box,
+    # so while the box is unchanged the block is emitted verbatim and an
+    # untouched part round-trips byte-for-byte.  Recomputed volumes differ
+    # from the file's own in the last bits (measured: 3 bytes of the
+    # Inquisitor's weapon part), and the game-side numbers are not simply
+    # (min+max)/2 — the centre of retail parts cannot be reproduced by
+    # arithmetic on the vertex array at all.
+    donor_box: Optional[Tuple[float, ...]] = None
 
 
 @dataclass
@@ -245,6 +254,12 @@ class SkinnedMesh:
     # verification, appended part bones, slots without a glTF mesh) — the
     # caller prints them as warnings next to the export result
     blender_warnings: List[str] = field(default_factory=list)
+    # how many mesh blocks the container header declares (the ``[1][4][count]``
+    # terminator of the node chain); ``None`` when the file was not readable
+    # that far.  It has to equal ``1 + len(parts)`` or the engine stops
+    # reading one block early -- a weapon appended by a tool then sits in the
+    # file and never reaches the model.
+    declared_mesh_count: Optional[int] = None
 
 
 @dataclass
@@ -274,6 +289,18 @@ class GltfModel:
     # sub-mesh material names (the historical `.tga` spelling) and light-map
     # payload, restored on reverse export
     material_diffuse: str = ""
+    # where `material_diffuse` came from: the `d3unit_diffuse` the object
+    # carries (``material_override``) and the texture its material actually
+    # names (``material_image``).  A reverse export needs both to tell "the
+    # part still wears the atlas it was imported with" from "the artist named
+    # this atlas" — see `d3tool.gltf._effective_diffuse`.
+    material_override: str = ""
+    material_image: str = ""
+    # `{primitive index: atlas name}` for a mesh that carries several
+    # materials: the body and the weapon of one part are `material0` and
+    # `material1` of the same attribute block, and only the first slot's atlas
+    # was read before 1.1.33.
+    material_slots: Dict[int, str] = field(default_factory=dict)
     lightmap: str = ""
     lm_uv: bytes = b""
     # the mesh carries morph targets (a morph-deformer sub-mesh)

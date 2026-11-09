@@ -1,0 +1,72 @@
+function head guess: 0x41eeb0  (from 0x41f571)
+
+0x0041eeb0  push     -1
+0x0041eeb2  push     0x88f667  ; .text+0x48e667
+0x0041eeb7  mov      eax, dword ptr fs:[0]
+0x0041eebd  push     eax
+0x0041eebe  mov      dword ptr fs:[0], esp
+0x0041eec5  sub      esp, 0xce0
+0x0041eecb  push     ebx
+0x0041eecc  push     ebp
+0x0041eecd  push     esi
+0x0041eece  push     edi
+0x0041eecf  mov      ebp, ecx
+0x0041eed1  push     1
+0x0041eed3  lea      ecx, [esp + 0x54]
+0x0041eed7  call     0x795fc0  ; .text+0x394fc0
+0x0041eedc  push     0x8c6db0  ; "MOD_INDEX_NAME"
+0x0041eee1  push     0x8c6da8  ; "name"
+0x0041eee6  xor      edi, edi
+0x0041eee8  push     0x32
+0x0041eeea  lea      ecx, [esp + 0x5c]
+0x0041eeee  mov      dword ptr [esp + 0xd04], edi
+0x0041eef5  call     0x795b10  ; .text+0x394b10
+0x0041eefa  push     0x8c6d98  ; "MOD_INDEX_UUID"
+0x0041eeff  push     0x8c6c50  ; "UUID"
+0x0041ef04  push     0x33
+0x0041ef06  lea      ecx, [esp + 0x5c]
+0x0041ef0a  call     0x795b10  ; .text+0x394b10
+0x0041ef0f  push     0x8c6d88  ; "MOD_INDEX_TYPE"
+0x0041ef14  push     0x8c6d80  ; "Type"
+0x0041ef19  push     0x34
+0x0041ef1b  lea      ecx, [esp + 0x5c]
+0x0041ef1f  call     0x795b10  ; .text+0x394b10
+0x0041ef24  push     0x8c6d70  ; "MOD_INDEX_FILE"
+0x0041ef29  push     0x8c6d68  ; "File"
+0x0041ef2e  push     0x35
+0x0041ef30  lea      ecx, [esp + 0x5c]
+0x0041ef34  call     0x795b10  ; .text+0x394b10
+0x0041ef39  push     edi
+0x0041ef3a  lea      ecx, [esp + 0x54]
+0x0041ef3e  call     0x7935b0  ; .text+0x3925b0
+0x0041ef43  mov      edx, dword ptr [esp + 0xd08]
+0x0041ef4a  cmp      edx, edi
+0x0041ef4c  mov      dword ptr [esp + 0x10], edi
+0x0041ef50  je       0x41ef62  ; .text+0x1df62
+0x0041ef52  mov      eax, edx
+0x0041ef54  lea      esi, [eax + 1]
+0x0041ef57  mov      cl, byte ptr [eax]
+0x0041ef59  inc      eax
+0x0041ef5a  test     cl, cl
+0x0041ef5c  jne      0x41ef57  ; .text+0x1df57
+0x0041ef5e  sub      eax, esi
+0x0041ef60  jmp      0x41ef64  ; .text+0x1df64
+0x0041ef62  xor      eax, eax
+0x0041ef64  push     eax
+0x0041ef65  push     edx
+0x0041ef66  lea      ecx, [esp + 0x18]
+0x0041ef6a  call     0x4019a0  ; .text+0x9a0
+0x0041ef6f  mov      eax, dword ptr [esp + 0xd04]
+0x0041ef76  mov      edx, dword ptr [esp + 0xd00]
+0x0041ef7d  push     eax
+0x0041ef7e  lea      ecx, [esp + 0x14]
+0x0041ef82  push     ecx
+0x0041ef83  push     edx
+0x0041ef84  lea      ecx, [esp + 0x5c]
+0x0041ef88  mov      byte ptr [esp + 0xd04], 1
+0x0041ef90  call     0x794100  ; .text+0x393100
+0x0041ef95  mov      eax, dword ptr [esp + 0x10]
+0x0041ef99  cmp      eax, edi
+0x0041ef9b  mov      byte ptr [esp + 0xcf8], 0
+0x0041efa3  je       0x41efb8  ; .text+0x1dfb8
+0x0041efa5  dec      byte ptr [eax - 1]

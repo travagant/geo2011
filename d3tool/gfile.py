@@ -28,8 +28,9 @@ Layout (little-endian), reverse engineered from the dis3tool exports:
 """
 from __future__ import annotations
 
+import math
 import struct
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from .model import Bone, MeshPart, SkinnedMesh, Vertex
 
@@ -284,6 +285,10 @@ def _parse_geometry_file(data: bytes) -> SkinnedMesh:
     # ("BaseMesh" on the Leader stubs) is the only label it has.
     default_name = (name1.rstrip(b"\x00").decode("latin1")
                     or attrs.get("name", ""))
+    try:
+        declared = mesh_count(data)[1]
+    except ValueError:
+        declared = None
     mesh = SkinnedMesh(
         name=default_name,
         unit_name=attrs.get("name", default_name),
@@ -305,6 +310,7 @@ def _parse_geometry_file(data: bytes) -> SkinnedMesh:
         trailing=data[o:],
         attrs=attrs,
         attr_items=attr_items,
+        declared_mesh_count=declared,
     )
 
     # compound containers (Empire characters etc.) stack further sub-meshes in
@@ -457,6 +463,7 @@ def _parse_compound_parts(buf: bytes) -> Tuple[List[MeshPart], int]:
             attr_items=pitems,
             raw=buf[block_start:o],
             part_prefix=buf[block_start:attr_o],
+            donor_box=position_bounds(vertices),
             part_tail=tail + (buf[baked_off:o] if baked else b""),
         ))
     return parts, o
@@ -500,6 +507,25 @@ def _eff_width(declared: int, bone_count: int) -> int:
     return 2 if declared == 1 and bone_count > 1 else declared
 
 
+def record_width(declared: int, bone_count: int) -> int:
+    """Record width the engine derives from a part's declarations.
+
+    Two corpus rules, both of them absolute (376 sub-meshes, 141 files):
+
+    * a **single-bone part carries no influence data at all** — the record is
+      the plain 40-byte one and the engine attaches the whole mesh to that
+      bone.  Every retail weapon is this shape (``weights_on_vertex 1``,
+      ``bones_num 1``, 148 parts); no corpus part declares more slots than it
+      has bones, and ``(2, 1)`` never occurs.
+    * a part that references **several** bones while declaring one still
+      stores the two-influence record (``lod_empire_golem``: ``w=1`` with 18
+      bones) — see :func:`vertex_stride`.
+    """
+    if bone_count <= 1:
+        return 1 if bone_count == 1 else max(declared, 0)
+    return 2 if declared == 1 else declared
+
+
 def _fit_lm(lm: bytes, n: int) -> bytes:
     """Clamp a light-map UV block to exactly ``n`` bytes (one pair per vertex).
 
@@ -516,7 +542,56 @@ def _scene_matrix() -> bytes:
     return struct.pack("<14f", *_SCENE_MATRIX_FLOATS)
 
 
-def _attr_block(attrs: Dict[str, str], items=None) -> bytes:
+def position_bounds(vertices) -> Optional[Tuple[float, ...]]:
+    """min.xyz + max.xyz of a vertex list, or ``None`` when it has none."""
+    if not vertices:
+        return None
+    xs = [v.position[0] for v in vertices]
+    ys = [v.position[1] for v in vertices]
+    zs = [v.position[2] for v in vertices]
+    return (min(xs), min(ys), min(zs), max(xs), max(ys), max(zs))
+
+
+def scene_node_block(part, donor: bytes = b"") -> bytes:
+    """The 56-byte scene-node record that precedes a part's attributes.
+
+    Fourteen floats, and — measured against all 376 sub-meshes of the
+    corpus — every one of them is derived from the mesh itself::
+
+        [0:3]   bounding-box centre
+        [3:6]   zero
+        [6:9]   bounding-box max
+        [9:12]  bounding-box min
+        [12]    radius: distance from the origin to the far box corner
+        [13]    -1.0
+
+    277 of the 376 reproduce exactly from the vertex array.  The other 99
+    are the morph parts (capes, skirts, sleeves) whose centre is the extent
+    of the animated frames rather than of the stored base pose — for those
+    the donor's centre is kept and only the box and the radius are
+    recomputed, which is what the corpus does too.
+
+    This matters for a part that did not come from the file it lives in: a
+    donated prefix carries the *donor's* box, so a mesh appended from
+    another unit kept a bounding volume from a different model (the axe
+    handle the LODs were built around, 3 m above the character) and the
+    engine had nothing sensible to cull or place it by.
+    """
+    box = position_bounds(getattr(part, "vertices", None) or [])
+    if box is None:
+        return donor or _scene_matrix()
+    mn = box[:3]
+    mx = box[3:]
+    if getattr(part, "morph", False) and len(donor) >= 56:
+        centre = struct.unpack_from("<3f", donor, 0)
+    else:
+        centre = tuple((a + b) / 2.0 for a, b in zip(mn, mx))
+    radius = math.sqrt(sum(max(abs(a), abs(b)) ** 2 for a, b in zip(mn, mx)))
+    return struct.pack("<14f", *centre, 0.0, 0.0, 0.0, *mx, *mn, radius, -1.0)
+
+
+def _attr_block(attrs: Dict[str, str], items=None,
+                patch_textures: bool = False) -> bytes:
     out = bytearray()
     if items is not None:
         # The donated block keeps its order (and duplicate keys) verbatim;
@@ -534,6 +609,16 @@ def _attr_block(attrs: Dict[str, str], items=None) -> bytes:
         # in the header counts), so sync it only in a single-material
         # block where it IS the total.
         patchable = {"vertexs_weights_num", "bones_num", "weights_on_vertex"}
+        # Texture names are the one thing a modder edits by hand or by
+        # re-assigning a material, and a donated block spells the donor's
+        # atlas.  Without them here a retextured armour or body was written
+        # back with the old name -- the new `.t` sat in the folder unused and
+        # the unit looked untouched in the game.
+        if patch_textures:
+            for k in orig:
+                low = k.lower()
+                if low.endswith("_diffuse") or low.endswith("_lightmap"):
+                    patchable.add(k)
         tri_keys = [k for k in orig if k.startswith("material")
                     and k.endswith("_triangles_num")]
         if len(tri_keys) <= 1:
@@ -611,6 +696,54 @@ def _vertex_record(magic: bytes, v: Vertex, w: int, morph: bool) -> bytes:
     return bytes(rec)
 
 
+def _patch_preamble_mesh_count(preamble: bytes, blocks: int) -> bytes:
+    """Set the mesh-count field that closes the prelude's node chain.
+
+    The prelude carries the tail of the container header: the ``[1][4][count]``
+    terminator followed by the 84-byte prefix of the first mesh block, so the
+    count sits 88 bytes before the end of the prelude.  Anything that does not
+    match that shape is left untouched (header-less node stubs).
+    """
+    if len(preamble) < 96:
+        return preamble
+    marker = struct.unpack_from("<II", preamble, len(preamble) - 96)
+    if marker != (1, 4):
+        return preamble
+    out = bytearray(preamble)
+    struct.pack_into("<I", out, len(out) - 88, blocks)
+    return bytes(out)
+
+
+def mesh_count(data: bytes) -> Tuple[int, int]:
+    """``(offset, count)`` of a `.g` container's mesh-count field.
+
+    The container opens with a chain of ``[kind 3][length][payload]`` node
+    chunks and terminates it with ``[kind 1][length 4][count]``; ``count`` is
+    the number of *mesh blocks* that follow (the first mesh plus every
+    compound part).  The engine walks the chain and reads exactly that many
+    blocks, so a file whose count is one short silently loses its last mesh —
+    the defect a weapon appended by a tool leaves behind (the mesh is in the
+    file, byte-perfect, and the game never reads it).
+    """
+    o = 0
+    while o + 12 <= len(data):
+        kind, length = struct.unpack_from("<II", data, o)
+        if kind == 1 and length == 4:
+            return o + 8, struct.unpack_from("<I", data, o + 8)[0]
+        if kind != 3 or length == 0 or o + 8 + length > len(data):
+            break
+        o += 8 + length
+    raise ValueError("no mesh-count field in this .g")
+
+
+def set_mesh_count(data: bytes, count: int) -> bytes:
+    """Return ``data`` with the container's mesh-count field rewritten."""
+    offset, _ = mesh_count(data)
+    out = bytearray(data)
+    struct.pack_into("<I", out, offset, count)
+    return bytes(out)
+
+
 def patch_header_counts(prefix: bytes, vertex_count: int,
                         tri_count: int) -> bytes:
     """Return a part container header with its vertex/triangle counts fixed.
@@ -647,6 +780,12 @@ def count_mismatches(mesh) -> List[str]:
         if (have[3], have[4]) != (vc, tc):
             out.append(f"{block.name}: header says {have[3]} vertices / "
                        f"{have[4]} triangles, the data holds {vc} / {tc}")
+    declared = getattr(mesh, "declared_mesh_count", None)
+    blocks = len([mesh] + list(getattr(mesh, "parts", []) or []))
+    if declared is not None and declared != blocks:
+        out.append(f"container: header says {declared} mesh block(s), the "
+                   f"file carries {blocks} — the engine reads only the "
+                   f"declared number and never parses the rest")
     return out
 
 
@@ -661,6 +800,10 @@ def repair_counts(data: bytes) -> Tuple[bytes, List[str]]:
     fixes = count_mismatches(mesh)
     if not fixes:
         return data, []
+    declared = getattr(mesh, "declared_mesh_count", None)
+    blocks = len([mesh] + list(getattr(mesh, "parts", []) or []))
+    if declared is not None and declared != blocks:
+        data = set_mesh_count(data, blocks)
     out = bytearray(data)
     for block in [mesh] + list(getattr(mesh, "parts", []) or []):
         prefix = getattr(block, "part_prefix", b"") or b""
@@ -710,6 +853,11 @@ def _part_block(part: MeshPart) -> bytes:
     w_rec = part.weights_on_vertex
     if w_rec == 1 and len(part.bones) > 1:
         w_rec = 2
+    if len(part.bones) == 1:
+        # a single bone means a rigid, influence-free record: the engine
+        # attaches the mesh to that bone, and a part that declares slots it
+        # cannot fill is drawn unskinned (the sword hung in mid-air)
+        w_rec = 1
 
     prefix = part.part_prefix
     if prefix and len(prefix) >= 28 and struct.unpack_from("<I", prefix, 0)[0] == 2:
@@ -726,7 +874,29 @@ def _part_block(part: MeshPart) -> bytes:
         # a part rebuilt without a donor: synthesize the standard container
         # block — the 28-byte header [tag 2, id, 0, vc, tc, 0, 6] plus the
         # 56-byte scene-node block — so the parser can recover the part
-        prefix = struct.pack("<7I", 2, 0, 0, vc, tc, 0, 6) + _scene_matrix()
+        prefix = struct.pack("<7I", 2, 0, 0, vc, tc, 0, 6)
+    if prefix and len(prefix) >= 84:
+        # the scene-node record is the mesh's own bounding volume, not the
+        # donor's: a part appended from another `.g` used to keep the box it
+        # was cut out of (an axe handle three metres up) — see
+        # `scene_node_block`.
+        #
+        # But when the vertices still have the box the donor's record was
+        # built from, that record *is* this mesh's own and is emitted
+        # verbatim: recomputing it produced a volume that differs from the
+        # file's in the last bits (3 bytes of the Inquisitor's weapon part),
+        # and retail centres are not derivable from the vertex array by any
+        # rounding of (min+max)/2, so "recompute" can never be exact.
+        box = position_bounds(part.vertices)
+        donor_box = getattr(part, "donor_box", None)
+        same_box = (donor_box is not None and box is not None
+                    and tuple(donor_box) == box)
+        prefix = (prefix[:28]
+                  + (prefix[28:84] if same_box
+                     else scene_node_block(part, prefix[28:84]))
+                  + prefix[84:])
+    elif prefix and len(prefix) >= 28:
+        prefix = prefix + scene_node_block(part)
 
     attrs = dict(part.attrs)
 
@@ -744,14 +914,35 @@ def _part_block(part: MeshPart) -> bytes:
     declared = attrs.get("weights_on_vertex")
     if declared is not None and \
             _eff_width(int(declared), len(part.bones)) != w_rec:
-        set_count("weights_on_vertex", str(part.weights_on_vertex))
+        set_count("weights_on_vertex",
+                  str(w_rec if len(part.bones) == 1
+                      else part.weights_on_vertex))
+
+    items = list(part.attr_items)
+    skinned = bool(part.bones) or "weights_on_vertex" in attrs
+    if items and skinned and not part.morph \
+            and "new_vertex_weights_format" not in attrs:
+        # every skinned sub-mesh of the corpus declares it, and the engine
+        # takes the weight stride from that declaration: a part that omits it
+        # (a mesh appended by a tool that only copied the donor's keys) is
+        # read five bytes short apiece and never drawn.  The block is
+        # ordered the way the corpus writes it -- right before the counts.
+        # A rigid, attr-less sub-block (rod-1's sword: no `bones_num`, no
+        # `weights_on_vertex`, 40-byte records) declares nothing of the sort
+        # and must not be given it: the key is a weight stride, and the engine
+        # would look for weight data that is not in the block.
+        pair = ("new_vertex_weights_format", "1")
+        at = next((i for i, (k, _) in enumerate(items)
+                   if k == "vertexs_weights_num"), len(items))
+        items.insert(at, pair)
+        attrs.setdefault(*pair)
 
     out = bytearray(prefix)
-    if part.attr_items:
+    if items:
         # the donated block verbatim (order and duplicate keys preserved);
         # the counts it carries are the original's and match the rebuilt
         # geometry whenever the donor could be adopted
-        out += _attr_block(attrs, items=part.attr_items)
+        out += _attr_block(attrs, items=items)
     else:
         out += _attr_block(attrs)
     for v in part.vertices:
@@ -769,10 +960,21 @@ def _part_block(part: MeshPart) -> bytes:
     return bytes(out)
 
 
+# Attribute keys whose value lives inside the raw bytes a donated mesh keeps
+# verbatim.  A caller that changes one of these must be rebuilt, not copied:
+# the raw block still spells the donor's texture, so the rename was silently
+# dropped and the unit looked untouched in the game (a retextured armour, a
+# body wearing another atlas, a renamed `.t`).
+_RAW_BOUND_ATTRS = ("material0_diffuse", "material0_lightmap")
+
+
 def write_geometry_file(mesh: SkinnedMesh, attrs: Dict[str, str]) -> bytes:
     """Serialize a :class:`SkinnedMesh` back into the `.g` binary format."""
     if mesh.raw:
-        return mesh.raw
+        donor_attrs = getattr(mesh, "attrs", None) or {}
+        if not any(str(attrs.get(k, "")) != str(donor_attrs.get(k, ""))
+                   for k in _RAW_BOUND_ATTRS):
+            return mesh.raw
     vc, tc = len(mesh.vertices), len(mesh.indices) // 3
     w = mesh.weights_on_vertex
 
@@ -800,11 +1002,12 @@ def write_geometry_file(mesh: SkinnedMesh, attrs: Dict[str, str]) -> bytes:
         # two-influence record), otherwise announce what is really there — a
         # donor may say 3 while the rebuilt mesh only carries one
         declared = attrs.get("weights_on_vertex")
+        single = len(mesh.bones) == 1
+        want = 1 if single else (2 if w == 1 and len(mesh.bones) > 1 else w)
         if declared is None:
-            attrs["weights_on_vertex"] = str(w)
-        elif _eff_width(int(declared), len(mesh.bones)) != \
-                (2 if w == 1 and len(mesh.bones) > 1 else w):
-            attrs["weights_on_vertex"] = str(w)
+            attrs["weights_on_vertex"] = str(want)
+        elif _eff_width(int(declared), len(mesh.bones)) != want:
+            attrs["weights_on_vertex"] = str(want)
     set_attr("material0_triangles_num", str(tc))
     attrs.setdefault("name", mesh.name)
     attrs.setdefault("groupname", "Scene Root")
@@ -832,12 +1035,19 @@ def write_geometry_file(mesh: SkinnedMesh, attrs: Dict[str, str]) -> bytes:
         preamble = mesh.preamble
     else:
         preamble = _prelude_block(vc, tc) + _scene_matrix()
+    preamble = _patch_preamble_mesh_count(preamble, 1 + len(mesh.parts))
 
     chunks = [header, names]
     chunks.append(preamble)
     if mesh.attr_items:
         # the donated block verbatim (order and duplicate keys preserved)
-        chunks.append(_attr_block(attrs, items=mesh.attr_items))
+        # the file's own block may take a renamed atlas from `attrs`: the
+        # donor spells its texture here, and a body/armour retexture that only
+        # reaches the dataclass leaves the old name in the file (the unit then
+        # looks untouched in the game).  Parts are different -- their ordered
+        # item list is authoritative, see `_part_block`.
+        chunks.append(_attr_block(attrs, items=mesh.attr_items,
+                                  patch_textures=True))
     else:
         chunks.append(_attr_block(attrs))
 
@@ -847,6 +1057,8 @@ def write_geometry_file(mesh: SkinnedMesh, attrs: Dict[str, str]) -> bytes:
     # two-influence record (verified on the corpus: lod_empire_golem is w=1
     # with 18 bones) — every reader derives the stride the same way.
     w_rec = 2 if w == 1 and len(mesh.bones) > 1 else w
+    if len(mesh.bones) == 1:
+        w_rec = 1                     # rigid: see `record_width`
     if mesh.morph:
         # a morph base mesh carries no influence slots: 40-byte records of
         # magic + pos + normal + diffuse + uv (the shapes live in the
@@ -882,6 +1094,256 @@ def write_geometry_file(mesh: SkinnedMesh, attrs: Dict[str, str]) -> bytes:
     chunks.append(mesh.trailing)
 
     return b"".join(chunks)
+
+
+def iter_parts(mesh) -> list:
+    """Every mesh part of a parsed `.g`, in file order.
+
+    The first block of a `.g` is itself a mesh part (`empire_angel_hairs` for
+    the Angel) while the rest live in :attr:`SkinnedMesh.parts`, so "how many
+    parts does this file have" is ``len(iter_parts(mesh))`` — the count a
+    `.scene` has to bind one `gobj` per part.
+    """
+    first = mesh if (getattr(mesh, "vertices", None) or
+                     getattr(mesh, "indices", None)) else None
+    return ([first] if first is not None else []) + list(
+        getattr(mesh, "parts", ()) or [])
+
+
+def append_parts(base: bytes, parts) -> bytes:
+    """Concatenate whole part blocks onto an existing `.g`.
+
+    A `.g` is a sequence of self-contained part blocks (each carries its own
+    84-byte prefix, attribute block, vertices, indices and bone descriptors),
+    so a part lifted from another `.g` can be appended byte for byte — this is
+    how a weapon mesh joins a unit's LOD model, which ships without it.  Every
+    part must have been parsed from a `.g` (its ``raw`` bytes are required);
+    nothing else in ``base`` is touched **except the container's mesh count**,
+    which has to grow with the blocks: the engine reads exactly that many
+    blocks, so an unpatched count leaves the appended part in the file and
+    out of the model.
+    """
+    # A `.g` may end with a short epilogue that no reader parses as a block
+    # (the Cleric's LOD carries 141 bytes of it).  Appending after that
+    # epilogue hid the new block from the parser -- and from the engine, which
+    # walks the blocks in order: the mesh landed in the file and never in the
+    # model.  Put the blocks in front of the epilogue instead.
+    tail = b""
+    try:
+        tail = getattr(parse_geometry_file(base), "trailing", b"") or b""
+    except Exception:  # noqa: BLE001 - an unparsable base is appended to as-is
+        tail = b""
+    body = base[:len(base) - len(tail)] if tail else base
+    out = bytearray(body)
+    for part in parts:
+        raw = getattr(part, "raw", b"") or b""
+        if not raw:
+            raise ValueError(
+                f"part {getattr(part, 'name', '?')!r} has no raw bytes; a "
+                "part can only be appended straight from a parsed .g")
+        out += raw
+    out += tail
+    appended = len(out) - len(base)
+    if appended:
+        _, declared = mesh_count(base)
+        out = bytearray(set_mesh_count(bytes(out), declared + len(parts)))
+    return bytes(out)
+
+
+def lod_part(part, parent: str | None = None, prefix: str = "lod_"):
+    """A copy of a main-mesh part, shaped for the unit's LOD mesh.
+
+    The LOD mesh is the same unit at lower detail: its blocks are the main
+    mesh's in the same order, spelled ``lod_<name>`` (the Knight's LOD mesh
+    carries ``lod_empire_knight_sword``), and they hang off *that file's* own
+    parent node — the ids are per file, so a part lifted from the main `.g`
+    would otherwise name a node the LOD file does not have.
+
+    The copy carries freshly serialized ``raw`` bytes, which is what
+    :func:`append_parts` writes.
+    """
+    import copy
+
+    clone = copy.copy(part)
+    name = getattr(part, "name", "") or part.attrs.get("name", "")
+    if prefix and not name.startswith(prefix):
+        name = prefix + name
+    items = [(k, v) for k, v in (getattr(part, "attr_items", ()) or ())]
+    items = [(k, name if k == "name" else v) for k, v in items]
+    if parent:
+        if any(k == "dwParent" for k, _ in items):
+            items = [(k, parent if k == "dwParent" else v) for k, v in items]
+        else:
+            items.append(("dwParent", parent))
+    clone.name = name
+    clone.attr_items = items
+    clone.attrs = dict(items)
+    clone.raw = _part_block(clone)
+    return clone
+
+
+def normalize_part_identity(mesh, parent: str | None = None) -> List[str]:
+    """Give every block of a compound mesh the file's own node identity.
+
+    ``dwNode``/``dwParent`` are the ``.g`` side of the scene graph: a part's
+    node hangs off the parent node named by ``dwParent`` and carries its own
+    ``dwNode``.  All 376 sub-meshes of the retail corpus share one parent id
+    per file — the file's own ``Scene Root`` node — and each holds a distinct
+    node id.
+
+    A block built by a tool that cannot know the file's ids (the reverse
+    export of a mesh the donor file never had — an added weapon) is written
+    with the placeholder pair of :func:`d3tool.cli._default_attrs`, a parent
+    no node in the file answers to.  The part is then not part of the model's
+    node tree and the engine draws it as a loose object at its stored
+    coordinates instead of following the bone it is bound to.
+
+    Returns the changes made, e.g.
+    ``["empire_knight_sword: dwParent 55867360 -> 53704704"]``.
+    """
+    parts = list(getattr(mesh, "parts", ()) or ())
+    if not parts:
+        return []
+    if not parent:
+        for part in parts:
+            parent = parent or (part.attrs or {}).get("dwParent")
+    parent = parent or getattr(mesh, "attrs", {}).get("dwParent")
+    if not parent:
+        return []
+    used = set()
+    for part in [mesh] + parts:
+        node = (getattr(part, "attrs", {}) or {}).get("dwNode")
+        if node and node.isdigit():
+            used.add(int(node))
+    changes: List[str] = []
+    for part in parts:
+        attrs = dict(getattr(part, "attrs", {}) or {})
+        if not attrs:
+            continue
+        items = list(getattr(part, "attr_items", ()) or ())
+        touched = False
+        if attrs.get("dwParent") != parent:
+            changes.append(f"{attrs.get('name', '?')}: dwParent "
+                           f"{attrs.get('dwParent')} -> {parent}")
+            attrs["dwParent"] = parent
+            items = _items_set(items, "dwParent", parent) if items else items
+            touched = True
+        node = attrs.get("dwNode")
+        if not node or not node.isdigit():
+            fresh = (max(used) if used else 375048704) + 8
+            used.add(fresh)
+            node = str(fresh)
+            changes.append(f"{attrs.get('name', '?')}: dwNode -> {node}")
+            attrs["dwNode"] = node
+            items = _items_set(items, "dwNode", node) if items else items
+            touched = True
+        if touched:
+            part.attrs = attrs
+            if items:
+                part.attr_items = items
+            part.raw = b""            # the writer keeps parsed bytes verbatim
+    return changes
+
+
+def _items_set(items, key: str, value: str):
+    """Set ``key`` in a ``(key, value)`` attribute list, appending if absent."""
+    out = list(items)
+    for i, (k, _) in enumerate(out):
+        if k == key:
+            out[i] = (key, value)
+            return out
+    out.append((key, value))
+    return out
+
+
+def attr_block_bounds(data: bytes, part) -> Tuple[int, int, int]:
+    """``(start, end, count)`` of one sub-mesh's attribute block in ``data``.
+
+    The block is a ``u32`` count followed by that many
+    ``(u32 length, "key\\0")`` / ``(u32 length, "value\\0")`` pairs — the
+    lengths *include* the NUL, so a pair can be inserted without touching
+    anything else.  ``start`` points at the count, ``end`` just past the last
+    value (where the vertex block begins).
+
+    The part must carry its own bytes (:func:`parse_geometry_file` keeps them
+    in ``part.raw``) and must occur exactly once in ``data``, otherwise there
+    is no safe place to write.
+    """
+    raw = getattr(part, "raw", b"") or b""
+    if not raw:
+        raise ValueError(
+            f"part {getattr(part, 'name', '?')!r} has no raw bytes; parse it "
+            "from a .g first")
+    at = data.find(raw)
+    if at < 0:
+        raise ValueError("the part's bytes are not in this file")
+    if data.find(raw, at + 1) >= 0:
+        raise ValueError("the part's bytes occur more than once in this file")
+    start = at + len(getattr(part, "part_prefix", b"") or b"")
+    count = struct.unpack_from("<I", data, start)[0]
+    o = start + 4
+    for _ in range(count):
+        key_len = struct.unpack_from("<I", data, o)[0]
+        o += 4 + key_len
+        value_len = struct.unpack_from("<I", data, o)[0]
+        o += 4 + value_len
+    if o > at + len(raw):
+        raise ValueError("the attribute block runs past the part's own bytes")
+    return start, o, count
+
+
+def _attr_pair(key: str, value: str) -> bytes:
+    k = latin1(key) + b"\0"
+    v = latin1(value) + b"\0"
+    return (struct.pack("<I", len(k)) + k
+            + struct.pack("<I", len(v)) + v)
+
+
+def insert_part_attr(data: bytes, part, key: str, value: str) -> bytes:
+    """Add one attribute to a sub-mesh, bumping the block's count.
+
+    This is how a part that lost an attribute gets it back: the engine reads
+    the vertex-weight block by the *format* the block declares, and a skinned
+    part that does not say ``new_vertex_weights_format 1`` is read with the
+    old stride — every vertex lands a few bytes off, so the part parses as
+    garbage and the engine draws nothing.  Retail parts all carry it; a part
+    appended by a tool that dropped the attribute is invisible in game even
+    though every reader that takes the stride from ``weights_on_vertex``
+    (this package included) sees it fine.
+
+    The block is length-prefixed, so this shifts every following byte of the
+    file: the part's own data stays intact, the file just grows.
+    """
+    if key in dict(getattr(part, "attr_items", ()) or ()):
+        raise ValueError(f"part already carries {key!r}; replace it instead")
+    start, end, count = attr_block_bounds(data, part)
+    return (data[:start] + struct.pack("<I", count + 1) + data[start + 4:end]
+            + _attr_pair(key, value) + data[end:])
+
+
+def replace_part_attr(data: bytes, part, key: str, value: str) -> bytes:
+    """Rewrite the value of an attribute a part already carries.
+
+    Values are length-prefixed, so a replacement of a *different* length is
+    accepted and shifts the rest of the file.  Same-length replacements are
+    the way to patch a value without changing the archive payload's size.
+    """
+    start, end, count = attr_block_bounds(data, part)
+    o = start + 4
+    for _ in range(count):
+        key_len = struct.unpack_from("<I", data, o)[0]
+        found = data[o + 4:o + 4 + key_len - 1].decode("latin-1")
+        o += 4 + key_len
+        value_len = struct.unpack_from("<I", data, o)[0]
+        if found == key:
+            # the length prefix counts the NUL too: a value of a different
+            # length has to rewrite it, or every reader after this block reads
+            # the old width and the rest of the container is lost
+            blob = latin1(value) + b"\0"
+            return (data[:o] + struct.pack("<I", len(blob)) + blob
+                    + data[o + 4 + value_len:])
+        o += 4 + value_len
+    raise KeyError(f"part {getattr(part, 'name', '?')!r} has no {key!r}")
 
 
 def parse_attributes(data: bytes) -> Tuple[Dict[str, str], int]:

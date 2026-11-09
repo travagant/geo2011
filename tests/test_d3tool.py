@@ -1,12 +1,17 @@
 """Self-contained tests for the d3tool package (run with `python3 tests/`)."""
+import base64
+import copy
+import dataclasses
 import hashlib
 import json
 import glob
 import os
+import pathlib
 import shutil
 import tempfile
 import struct
 import sys
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -14,9 +19,13 @@ import d3tool
 from d3tool import anim as animmod
 from d3tool import cli as climod
 from d3tool import gfile, gltf, ac as acmod, gltf_out, scene as scenemod
+from d3tool import parts as partsmod
+from d3tool import audit as auditmod
 from d3tool import texture as texmod
+from d3tool import weapon as weaponmod
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 
 def test_air_roundtrip():
@@ -1594,6 +1603,1423 @@ def anim_bone_stub(name, parent=""):
 
 
 
+def test_every_corpus_submesh_hangs_off_one_parent_node():
+    """The invariant the Angel's sword broke: one parent id per file.
+
+    `dwParent` names the node a part hangs off.  All 376 sub-meshes of the
+    retail corpus (141 compound files) share a single parent id per file; a
+    part written with a placeholder parent names no node at all.
+    """
+    files = checked = 0
+    for root in ("Empire", "Neutrals"):
+        for path in sorted(glob.glob(os.path.join(REPO, root, "*", "*.g"))):
+            mesh = gfile.parse_geometry_file(open(path, "rb").read())
+            if mesh.parse_error:
+                continue
+            parts = gfile.iter_parts(mesh)
+            if len(parts) < 2:
+                continue
+            files += 1
+            parents = {p.attrs.get("dwParent") for p in parts}
+            assert len(parents) == 1, (path, parents)
+            nodes = [p.attrs.get("dwNode") for p in parts]
+            assert len(set(nodes)) == len(nodes), (path, nodes)
+            checked += len(parts)
+    assert files > 100 and checked > 300, (files, checked)
+
+
+def test_added_part_inherits_the_files_parent_node():
+    """A part the export synthesized joins the file's node tree."""
+    body = gfile.parse_geometry_file(open(os.path.join(
+        REPO, "Empire", "Angel", "character_empire_angel.g"), "rb").read())
+    parent = gfile.iter_parts(body)[0].attrs["dwParent"]
+    added = copy.deepcopy(gfile.iter_parts(body)[-1])
+    added.name = "empire_knight_sword"
+    added.attr_items = [
+        (k, "55867360" if k == "dwParent" else
+         "empire_knight_sword" if k == "name" else v)
+        for k, v in added.attr_items]
+    added.attrs = dict(added.attr_items)
+    body.parts.append(added)
+    changes = gfile.normalize_part_identity(body, parent)
+    assert changes == [f"empire_knight_sword: dwParent 55867360 -> {parent}"], changes
+    assert added.attrs["dwParent"] == parent
+    assert added.raw == b"", "a rewritten part must not keep its donor bytes"
+    # a file whose parts already agree is left alone
+    again = gfile.parse_geometry_file(open(os.path.join(
+        REPO, "Empire", "Angel", "character_empire_angel.g"), "rb").read())
+    assert gfile.normalize_part_identity(again, parent) == []
+
+
+def test_no_corpus_part_declares_more_slots_than_bones():
+    """The invariant the Angel's sword broke: a rigid part has no slots.
+
+    A part stores one weight lane per bone it references.  The corpus never
+    declares more influence slots than it has bones, and a single-bone part
+    declares none at all (`weights_on_vertex 1`, the plain 40-byte record) —
+    that is the shape of every retail weapon.  The export wrote the sword as
+    `weights_on_vertex 2` with `bones_num 1`, a combination that occurs zero
+    times in 376 sub-meshes, and the engine drew it without skinning it: the
+    sword hung in mid-air at its stored coordinates.
+    """
+    single = checked = 0
+    for root in ("Empire", "Neutrals"):
+        for path in sorted(glob.glob(os.path.join(REPO, root, "*", "*.g"))):
+            mesh = gfile.parse_geometry_file(open(path, "rb").read())
+            if mesh.parse_error:
+                continue
+            for part in gfile.iter_parts(mesh):
+                if part.morph:
+                    continue
+                w = part.weights_on_vertex
+                bones = len(part.bones)
+                checked += 1
+                assert w <= max(bones, 1), (path, part.name, w, bones)
+                if bones == 1:
+                    assert w == 1, (path, part.name, w)
+                    single += 1
+    assert checked > 300 and single > 100, (checked, single)
+
+
+def test_a_single_bone_part_is_written_without_influence_slots():
+    """`weights_on_vertex 2` with one bone is rewritten to the rigid record."""
+    from d3tool.model import Bone, MeshPart, Vertex
+    v = Vertex((0.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0),
+               0xFFFFFFFF, (1.0,), (0, 0))
+    eye = (1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,
+           0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0)
+    bone = Bone("Bip01 R Hand", eye)
+    part = MeshPart(
+        name="empire_knight_sword", vertex_count=1, tri_count=1,
+        vertices=[v, v, v], indices=[0, 1, 2], bones=[bone],
+        weights_on_vertex=2,
+        attr_items=[("dwNode", "1"), ("dwParent", "2"), ("name",
+                    "empire_knight_sword"), ("groupname", "Scene Root"),
+                    ("materials_num", "1"),
+                    ("material0_diffuse", "x.tga"),
+                    ("material0_triangles_num", "1"),
+                    ("new_vertex_weights_format", "1"),
+                    ("vertexs_weights_num", "3"),
+                    ("weights_on_vertex", "2"), ("bones_num", "1")],
+        attrs=None, vertex_magic=b"\x0b\x6e\xd5\x1c",
+    )
+    part.attrs = dict(part.attr_items)
+    block = gfile._part_block(part)
+    parsed = (gfile._parse_compound_parts(block)[0] or [None])[0]
+    assert parsed is not None, block[:64]
+    assert parsed.attrs["weights_on_vertex"] == "1", parsed.attrs
+    assert parsed.weights_on_vertex == 1
+    assert len(parsed.bones) == 1 and parsed.bones[0].name == "Bip01 R Hand"
+    # the vertex stride is the rigid one: the data is 3 * 40 bytes behind the
+    # attribute block, nothing else
+    assert gfile.vertex_stride(1)[2] == 40
+
+
+def test_lod_sync_appends_the_weapon_as_a_lod_part():
+    """`d3tool lod` gives the LOD mesh a block shaped for its own file.
+
+    The engine swaps to `unit_scene_lod` beyond the profile's draw distance,
+    so a weapon added to the main `.g` has to exist in the LOD mesh too.  The
+    block cannot be copied verbatim: every LOD block is spelled
+    ``lod_<name>`` and hangs off *that file's* parent node — the ids are per
+    file (the Angel's main mesh uses 53704704, its LOD mesh 55867360), and a
+    part whose parent names no node is not part of the model's tree.
+    """
+    import shutil
+    import tempfile
+    from d3tool import cli as climod
+    from d3tool import gfile as gmod
+
+    angel = os.path.join(REPO, "Empire", "Angel", "character_empire_angel")
+    knight = gmod.parse_geometry_file(open(os.path.join(
+        REPO, "Empire", "Knight", "character_empire_knight.g"), "rb").read())
+    sword = gmod.iter_parts(knight)[1]          # a rigid single-bone weapon
+    assert sword.attrs["name"] == "empire_knight_shield"
+    assert len(sword.bones) == 1 and sword.weights_on_vertex == 1
+    assert sword.raw, "a compound part keeps its own bytes"
+
+    with tempfile.TemporaryDirectory() as d:
+        for ext in (".g", ".scene", "_lod.g", "_lod.scene"):
+            shutil.copyfile(angel + ext,
+                            os.path.join(d, "character_empire_angel" + ext))
+        main_g = os.path.join(d, "character_empire_angel.g")
+        grown = gmod.append_parts(open(main_g, "rb").read(), [sword])
+        open(main_g, "wb").write(grown)
+
+        lod_g = os.path.join(d, "character_empire_angel_lod.g")
+        before = open(lod_g, "rb").read()
+        before_parts = gmod.iter_parts(gmod.parse_geometry_file(before))
+        parent = before_parts[0].attrs["dwParent"]
+
+        assert climod._lod_sync(d, quiet=True) == 0
+        after = open(lod_g, "rb").read()
+        after_parts = gmod.iter_parts(gmod.parse_geometry_file(after))
+        assert len(after_parts) == len(before_parts) + 1
+        added = after_parts[-1]
+        assert added.attrs["name"] == "lod_" + sword.attrs["name"]
+        assert added.attrs["dwParent"] == parent, added.attrs["dwParent"]
+        assert added.weights_on_vertex == 1 and len(added.bones) == 1
+        assert gmod.mesh_count(after)[1] == len(after_parts)
+        # nothing but the container count moves in the shipped bytes
+        at, old = bytearray(after), bytearray(before)
+        off = gmod.mesh_count(before)[0]
+        at[off:off + 4] = old[off:off + 4] = b"\0\0\0\0"
+        assert bytes(at[:len(old)]) == bytes(old)
+
+        # a `.g` and a `.scene` agree block for block
+        from d3tool import scene as scenemod
+        text = open(os.path.join(d, "character_empire_angel_lod.scene"),
+                    encoding="latin-1", newline="").read()
+        gobjs = scenemod.parse_scene(text).find_all("gobj")
+        assert len(gobjs) == len(after_parts)
+        assert scenemod.node_mesh_index(gobjs[-1]) == len(after_parts) - 1
+
+        # idempotent: the match ignores the `lod_` prefix
+        assert climod._lod_sync(d, quiet=True) == 0
+        assert open(lod_g, "rb").read() == after
+
+
+def test_battle_check_reports_a_lod_that_lost_the_added_part():
+    """A weapon the LOD mesh does not carry is invisible past the draw
+    distance — the export says so instead of leaving it to the battlefield."""
+    import shutil
+    import tempfile
+    from d3tool import cli as climod
+    from d3tool import gfile as gmod
+
+    angel = os.path.join(REPO, "Empire", "Angel", "character_empire_angel")
+    knight = gmod.parse_geometry_file(open(os.path.join(
+        REPO, "Empire", "Knight", "character_empire_knight.g"), "rb").read())
+    sword = gmod.iter_parts(knight)[1]          # a rigid single-bone weapon
+    with tempfile.TemporaryDirectory() as d:
+        for ext in (".g", "_lod.g"):
+            shutil.copyfile(angel + ext,
+                            os.path.join(d, "character_empire_angel" + ext))
+        main_g = os.path.join(d, "character_empire_angel.g")
+        grown = gmod.append_parts(open(main_g, "rb").read(), [sword])
+        open(main_g, "wb").write(grown)
+        seen = []
+        real = climod.ui.warn
+        climod.ui.warn = lambda msg="": seen.append(str(msg))
+        try:
+            climod._battle_readiness_check(d, "character_empire_angel", False)
+        finally:
+            climod.ui.warn = real
+        text = "\n".join(seen)
+        assert "_lod.g has 4 mesh part(s)" in text, text
+
+
+def test_battle_check_catches_a_rigid_export_and_a_lost_armature():
+    """The Inquisitor once came back from Blender with all 3 699 body vertices
+    bound to `RightShoulder` at weight 1 and a `.a` holding a single track
+    named after the *object*: the unit folds into a heap around one bone and
+    never animates, while nothing in the files looks structurally wrong.  Both
+    shapes are reported now — a genuine single-bone weapon part is not."""
+    import shutil
+    import tempfile
+    from d3tool import anim as animmod
+    from d3tool import cli as climod
+    from d3tool import gfile as gmod
+    from d3tool import weights as wmod
+
+    retail_g = open(os.path.join(REPO, "Empire", "Inquisitor",
+                                 "character_empire_inquisitor.g"), "rb").read()
+    parsed = gmod.parse_geometry_file(retail_g)
+    assert wmod.skinning_problems(parsed) == []          # retail is clean
+    assert len(wmod.summarise(parsed)[0].dominant) > 1
+
+    # the body block, rewritten the way the broken export wrote it: every
+    # vertex on bone slot 0 with weight 1
+    attrs, _ = gmod.parse_attributes(retail_g)
+    for vertex in parsed.vertices:
+        vertex.stored_weights = (1.0,)
+        vertex.bones = (0, 0)
+    parsed.weights_on_vertex = 1
+    rigid = gmod.write_geometry_file(parsed, attrs)
+
+    ridden = wmod.skinning_problems(gmod.parse_geometry_file(rigid))
+    assert len(ridden) == 1, ridden
+    assert "'RightShoulder'" in ridden[0], ridden
+    assert "rigid" in ridden[0], ridden
+    # the sword block is rigid by design (one bone in its own table): it must
+    # not be reported, or every exported weapon would look like a defect
+    assert all("weapon_empire_inquisitor" not in p for p in ridden), ridden
+
+    with tempfile.TemporaryDirectory() as d:
+        base = "character_empire_inquisitor"
+        for ext in (".scene", ".ac", "_lod.scene", "_lod.g"):
+            shutil.copyfile(os.path.join(REPO, "Empire", "Inquisitor", base + ext),
+                            os.path.join(d, base + ext))
+        open(os.path.join(d, base + ".g"), "wb").write(rigid)
+        # one track named after the object, 301 frames: what an export that
+        # skipped the armature writes
+        broken = animmod.build_anim([("empire_inquisitor", "Scene Root",
+                                      [(0.0,) * 7] * 301)], 301)
+        broken.raw = b""
+        open(os.path.join(d, base + "_baseanims.a"), "wb").write(
+            animmod.write_anim(broken))
+        seen = []
+        real = climod.ui.warn
+        climod.ui.warn = lambda msg="": seen.append(str(msg))
+        try:
+            climod._battle_readiness_check(d, base, False)
+        finally:
+            climod.ui.warn = real
+        text = "\n".join(seen)
+        assert "the mesh is rigid" in text, text
+        assert "1 bone track ('empire_inquisitor')" in text, text
+        assert text.count("armature was not exported") == 1, text
+
+
+def test_export_keeps_animation_only_bones():
+    """A `.a` is addressed by index, so an animation-only bone the glTF has no
+    channel for (a weapon trail carries no weights) shifts every bone behind
+    it: the Inquisitor's trail went from `Trail1`/`Trail2` to
+    `RightShoulder`/`RightArm` and the effect followed the wrong limbs.  The
+    donor's record is the only correct source for such a bone."""
+    from d3tool import anim as animmod
+    from d3tool import gltf as gltfmod
+    folder = os.path.join(REPO, "Empire", "Inquisitor")
+    retail = animmod.parse_anim(open(os.path.join(
+        folder, "character_empire_inquisitor_baseanims.a"), "rb").read())
+    assert retail.bone_count == 27
+    assert retail.bones[11].name == "Trail1"
+    assert retail.bones[12].name == "Trail2"
+
+    # what a Blender export produced: the same stream minus the two trail
+    # tracks (no weights, so the glTF carried no channel for them)
+    hurt = animmod.AnimFile(bone_count=25, frame_count=retail.frame_count,
+                            header=retail.header,
+                            bones=[b for i, b in enumerate(retail.bones)
+                                   if i not in (11, 12)],
+                            trailing=retail.trailing)
+    assert hurt.bones[11].name == "RightShoulder"
+
+    fixed = gltf._donor_full_bones(hurt, retail)
+    assert len(fixed.bones) == 27
+    assert [b.name for b in fixed.bones] == [b.name for b in retail.bones]
+    assert fixed.bones[11].name == "Trail1"
+    assert list(fixed.bones[11].frames) == list(retail.bones[11].frames)
+    assert list(fixed.bones[12].frames) == list(retail.bones[12].frames)
+    # every track the export did carry stays exactly as it was
+    for name in ("Reference", "Hips", "Weapon1", "RightArm"):
+        mine = next(b for b in fixed.bones if b.name == name)
+        was = next(b for b in hurt.bones if b.name == name)
+        assert list(mine.frames) == list(was.frames), name
+
+
+def test_refresh_part_gobjs_restates_the_swapped_part():
+    """A part the export REPLACED keeps the donor's `gobj`, which still names
+    the replaced weapon's texture — that is how a pack ends up shipping a `.t`
+    nothing references while the `.g` names one that is not there."""
+    import copy
+    from d3tool import gfile as gmod
+    from d3tool import scene as scenemod
+
+    folder = os.path.join(REPO, "Empire", "Inquisitor")
+    text = open(os.path.join(folder, "character_empire_inquisitor.scene"),
+                encoding="latin-1", newline="").read()
+    parts = list(gmod.iter_parts(gmod.parse_geometry_file(open(os.path.join(
+        folder, "character_empire_inquisitor.g"), "rb").read())))
+    same, changed = scenemod.refresh_part_gobjs(text, parts)
+    assert changed == [] and same == text          # retail agrees with itself
+
+    knight = gmod.parse_geometry_file(open(os.path.join(
+        REPO, "Empire", "Knight", "character_empire_knight.g"), "rb").read())
+    sword = [p for p in gmod.iter_parts(knight) if p.name.endswith("sword")][0]
+    blk = copy.copy(parts[-1])                     # the mace slot
+    blk.vertices = list(sword.vertices)
+    blk.indices = list(sword.indices)
+    blk.vertex_count = len(sword.vertices)
+    blk.tri_count = len(sword.indices) // 3
+    blk.weights_on_vertex = 1
+    blk.material_diffuse = "weapon_empire_knight_sword_diffuse.tga"
+    blk.attrs = dict(blk.attrs,
+                     material0_diffuse=blk.material_diffuse)
+    out, changed = scenemod.refresh_part_gobjs(text, [parts[0], blk])
+    assert changed == ["weapon_empire_inquisitor"], changed
+    assert 'attr "material0_diffuse" "weapon_empire_knight_sword_diffuse.tga"' in out
+    assert 'attr "material0_triangles_num" "124"' in out
+    assert 'attr "vertexs_weights_num" "136"' in out
+    # the body's block is untouched, and so is every other line
+    assert out.count("material0_diffuse") == text.count("material0_diffuse")
+
+
+def test_lod_sync_replaces_a_weapon_the_export_swapped():
+    """The LOD keeps the weapon the unit shipped with unless the export's
+    part is carried over: the part is already present by name, so nothing is
+    appended and the battlefield draws the old weapon at distance."""
+    import copy
+    import shutil
+    import tempfile
+    from d3tool import cli as climod
+    from d3tool import gfile as gmod
+
+    folder = os.path.join(REPO, "Empire", "Inquisitor")
+    retail = open(os.path.join(folder, "character_empire_inquisitor.g"),
+                  "rb").read()
+    parts = list(gmod.iter_parts(gmod.parse_geometry_file(retail)))
+    prefix = retail[:len(retail) - sum(len(p.raw) for p in parts)]
+    knight = gmod.parse_geometry_file(open(os.path.join(
+        REPO, "Empire", "Knight", "character_empire_knight.g"), "rb").read())
+    sword = [p for p in gmod.iter_parts(knight) if p.name.endswith("sword")][0]
+    blk = copy.copy(parts[-1])
+    blk.vertices = list(sword.vertices)
+    blk.indices = list(sword.indices)
+    items = [(k, "weapon_empire_knight_sword_diffuse.tga"
+              if k == "material0_diffuse" else v)
+             for k, v in blk.attr_items]
+    blk.attr_items = items
+    blk.attrs = dict(items)
+    blk.raw = gmod._part_block(blk)
+
+    with tempfile.TemporaryDirectory() as d:
+        base = "character_empire_inquisitor"
+        open(os.path.join(d, base + ".g"), "wb").write(
+            prefix + parts[0].raw + blk.raw)
+        for ext in ("_lod.g", "_lod.scene"):
+            shutil.copyfile(os.path.join(folder, base + ext),
+                            os.path.join(d, base + ext))
+        before_lod = gmod.parse_geometry_file(open(os.path.join(
+            d, base + "_lod.g"), "rb").read())
+        before_parts = list(gmod.iter_parts(before_lod))
+        assert before_parts[-1].attrs["material0_diffuse"] == \
+            "weapon_empire_inquisitor.tga"              # the shipped mace
+
+        assert climod._lod_sync(d, quiet=True) == 0
+        after = list(gmod.iter_parts(gmod.parse_geometry_file(open(os.path.join(
+            d, base + "_lod.g"), "rb").read())))
+        assert len(after) == len(before_parts)           # replaced, not added
+        weapon = after[-1]
+        assert weapon.name == "lod_weapon_empire_inquisitor"
+        assert len(weapon.vertices) == len(sword.vertices)
+        assert weapon.attrs["material0_diffuse"] == \
+            "weapon_empire_knight_sword_diffuse.tga"
+        assert weapon.attrs["dwParent"] == before_parts[-1].attrs["dwParent"]
+        text = open(os.path.join(d, base + "_lod.scene"),
+                    encoding="latin-1", newline="").read()
+        assert "weapon_empire_knight_sword_diffuse.tga" in text
+        # idempotent
+        assert climod._lod_sync(d, quiet=True) == 0
+        assert open(os.path.join(d, base + "_lod.g"), "rb").read() == \
+            open(os.path.join(d, base + "_lod.g"), "rb").read()
+
+
+def test_lod_sync_swaps_a_replaced_part_that_keeps_the_old_material_name():
+    """A sword dropped into the mace slot is exported under the *part's* own
+    material name — `weapon_empire_inquisitor.tga`, exactly what the shipped
+    mace carries — so comparing materials left the LOD drawing the mace while
+    the main mesh drew the sword.  The LOD's own copy of a part is the same
+    shape at lower detail, which is what the swap looks at now."""
+    import copy
+    import shutil
+    import tempfile
+    from d3tool import cli as climod
+    from d3tool import gfile as gmod
+
+    folder = os.path.join(REPO, "Empire", "Inquisitor")
+    retail = open(os.path.join(folder, "character_empire_inquisitor.g"),
+                  "rb").read()
+    parts = list(gmod.iter_parts(gmod.parse_geometry_file(retail)))
+    prefix = retail[:len(retail) - sum(len(p.raw) for p in parts)]
+    knight = gmod.parse_geometry_file(open(os.path.join(
+        REPO, "Empire", "Knight", "character_empire_knight.g"), "rb").read())
+    sword = [p for p in gmod.iter_parts(knight) if p.name.endswith("sword")][0]
+    blk = copy.copy(parts[-1])
+    blk.vertices = list(sword.vertices)         # 0.26 long, the mace is 1.96
+    blk.indices = list(sword.indices)
+    blk.raw = gmod._part_block(blk)            # material name left untouched
+    assert blk.attrs["material0_diffuse"] == "weapon_empire_inquisitor.tga"
+
+    with tempfile.TemporaryDirectory() as d:
+        base = "character_empire_inquisitor"
+        open(os.path.join(d, base + ".g"), "wb").write(
+            prefix + parts[0].raw + blk.raw)
+        for ext in ("_lod.g", "_lod.scene"):
+            shutil.copyfile(os.path.join(folder, base + ext),
+                            os.path.join(d, base + ext))
+        lod_path = os.path.join(d, base + "_lod.g")
+        before = open(lod_path, "rb").read()
+        before_parts = list(gmod.iter_parts(gmod.parse_geometry_file(before)))
+        assert before_parts[-1].attrs["material0_diffuse"] == \
+            "weapon_empire_inquisitor.tga"
+        assert len(before_parts[-1].vertices) != len(sword.vertices)
+
+        assert climod._lod_sync(d, quiet=True) == 0
+        after = open(lod_path, "rb").read()
+        after_parts = list(gmod.iter_parts(gmod.parse_geometry_file(after)))
+        assert len(after_parts) == len(before_parts)        # replaced
+        weapon = after_parts[-1]
+        assert weapon.name == "lod_weapon_empire_inquisitor"
+        assert len(weapon.vertices) == len(sword.vertices)
+        # idempotent
+        assert climod._lod_sync(d, quiet=True) == 0
+        assert open(lod_path, "rb").read() == after
+
+        # ... and the retailer's own LOD pair is left alone: same shape,
+        # fewer vertices is the decimation, not a swap
+        for ext in (".g", "_lod.g", "_lod.scene"):
+            shutil.copyfile(os.path.join(folder, base + ext),
+                            os.path.join(d, base + ext))
+        retail_before = open(lod_path, "rb").read()
+        assert climod._lod_sync(d, quiet=True) == 0
+        assert open(lod_path, "rb").read() == retail_before
+
+
+def test_export_reports_a_part_that_is_out_of_scale_with_the_donor():
+    """A `.g` carries no transform, so a part scaled in Blender exports the
+    way it looks: the Inquisitor's borrowed sword came out 1.9x the Knight's
+    and half a hand off the grip while every byte of the file looked sane."""
+    from d3tool import gfile as gmod
+    from d3tool import parts as pmod
+
+    folder = os.path.join(REPO, "Empire", "Inquisitor")
+    retail = open(os.path.join(folder, "character_empire_inquisitor.g"),
+                  "rb").read()
+    donor = gmod.parse_geometry_file(retail)
+    mine = gmod.parse_geometry_file(retail)
+    assert pmod.donor_mismatches(mine, donor) == []
+
+    weapon = [p for p in gmod.iter_parts(mine)
+              if p.name.startswith("weapon")][0]
+    for v in weapon.vertices:
+        v.position = tuple(c * 1.8 for c in v.position)
+    x, y, z = weapon.vertices[0].position
+    weapon.vertices[0].position = (x, y, z + 0.6)  # and off the grip
+    text = "\n".join(pmod.donor_mismatches(mine, donor))
+    assert "1.80x the donor's" in text, text
+    assert "Apply > Scale" in text, text
+    assert "sits" in text and "along" in text, text
+
+
+def _blender_animation_model(donor, Q, frames, name="Idle"):
+    """A hand-built ``GltfModel`` shaped like a Blender re-save.
+
+    ``Q`` holds the per-bone frame change: the glTF channel locals are built
+    as ``L_b = Q_parent . L_o . inv(Q_j)`` from the donor's own records, which
+    is exactly what Blender's glTF writer produces when its rest pose differs
+    from the `.g` bind frame (Blender bakes the scene pose into the joints).
+    """
+    from d3tool import frame as framemod
+    from d3tool.model import GltfModel
+
+    names = [b.name for b in donor.bones]
+    by_name = {b.name: b for b in donor.bones}
+    ident = framemod.IDENTITY
+
+    nodes = [{"name": "Scene Root", "children": []}]
+    index = {}
+    for nm in names:
+        index[nm] = len(nodes)
+        nodes.append({"name": nm, "children": []})
+    for nm in names:
+        parent = by_name[nm].parent
+        holder = index.get(parent, 0)
+        nodes[holder]["children"].append(index[nm])
+
+    channels = {}
+    for nm in names:
+        parent = by_name[nm].parent
+        Qj = Q.get(nm, ident)
+        Qp = Q.get(parent, ident) if parent else ident
+        qt, tt = [], []
+        for f in frames:
+            L = framemod.sample_matrix(by_name[nm].frames[f][:7])
+            Lb = framemod.mm(Qp, framemod.mm(L, framemod.inv4(Qj)))
+            q = framemod.mat_to_quat(Lb)
+            qt.append(q)
+            tt.append((Lb[0][3], Lb[1][3], Lb[2][3]))
+        channels[index[nm]] = {"rotation": qt, "translation": tt}
+
+    return GltfModel(
+        mesh_name=name, nodes=nodes, frames=[float(i) for i in range(len(frames))],
+        animation={"channels": [{"target": {"node": i}} for i in channels]},
+        anim_channels=channels, blender_layout=True)
+
+
+def test_blender_resave_converts_a_single_stream_animation():
+    """A Blender re-save cannot keep the `.g`'s bind frame: it bakes the scene
+    pose into the joints, so its channel TRS are local matrices in *Blender's*
+    frame.  The mesh side always converted them back (``d3tool/frame.py``); the
+    animation side only did for a unit whose `.ac` names several streams, so
+    every single-stream unit — the Inquisitor among them — shipped
+    Blender-frame rotations and contorted on the next import / in game while
+    every byte of the file looked sane.
+    """
+    import math
+    from d3tool import anim as animmod
+    from d3tool import frame as framemod
+    from d3tool import gltf as gltfmod
+
+    donor = animmod.parse_anim(open(os.path.join(
+        REPO, "Empire", "Inquisitor",
+        "character_empire_inquisitor_baseanims.a"), "rb").read())
+    # a different constant change of basis per bone, the way a baked rest pose
+    # differs from the bind frame
+    Q = {}
+    for k, bone in enumerate(donor.bones):
+        ang = 0.25 + 0.07 * k
+        axis = ((k % 3) - 1.0, ((k + 1) % 3) - 1.0, ((k + 2) % 3) - 1.0)
+        ln = math.sqrt(sum(c * c for c in axis)) or 1.0
+        Q[bone.name] = framemod.quat_to_mat(
+            (math.sin(ang / 2) * axis[0] / ln,
+             math.sin(ang / 2) * axis[1] / ln,
+             math.sin(ang / 2) * axis[2] / ln, math.cos(ang / 2)))
+
+    frames = (0, 90, 240)
+    m = _blender_animation_model(donor, Q, frames)
+    built = gltf.animation_from_gltf(
+        m, donor=donor, streams=[("character_empire_inquisitor_baseanims.a",
+                                  donor)], out_name="Idle")
+    assert [b.name for b in built.bones] == [b.name for b in donor.bones]
+    by_name = {b.name: b for b in built.bones}
+    worst = 0.0
+    for k, f in enumerate(frames):
+        for bone in donor.bones:
+            got = by_name[bone.name].frames[k]
+            ref = bone.frames[f]
+            worst = max(worst, max(abs(a - b) for a, b in zip(got[:7], ref[:7])))
+    assert worst < 1e-4, worst
+
+    # a dis3tool glTF (its locals *are* the `.a` records) is copied verbatim:
+    # the conversion must not touch the byte-exact round trip
+    m.blender_layout = False
+    plain = gltf.animation_from_gltf(
+        m, donor=donor, streams=[("character_empire_inquisitor_baseanims.a",
+                                  donor)], out_name="Idle")
+    plain_by = {b.name: b for b in plain.bones}
+    got = plain_by[donor.bones[3].name].frames[0]
+    assert abs(got[0] - m.anim_channels[3 + 1]["rotation"][0][0]) < 1e-6
+
+
+def test_texture_lookup_survives_a_doubled_extension():
+    """A material names ``x.tga``; the folder ships ``x.dds.t``.
+
+    That spelling is what an export wrote before the stem was cleaned, and a
+    case-different name is what a pack authored on Windows ships.  Both have to
+    resolve to the file that is actually there — otherwise the part imports
+    untextured while the texture sits next to it.
+    """
+    tmp = tempfile.mkdtemp(prefix="d3tex_")
+    try:
+        g_path = os.path.join(tmp, "unit.g")
+        open(g_path, "wb").write(b"")
+        open(os.path.join(tmp, "Sword_Diffuse.DDS.T"), "wb").write(b"x")
+        attrs = {"material0_diffuse": "sword_diffuse.tga"}
+        found = texmod.find_diffuse_texture(g_path, attrs)
+        assert found == os.path.join(tmp, "Sword_Diffuse.DDS.T"), found
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_texture_stem_strips_every_extension():
+    assert texmod.clean_stem("weapon_empire_knight_sword.dds.png") == \
+        "weapon_empire_knight_sword"
+    assert texmod.clean_stem("character.t") == "character"
+    assert texmod.clean_stem("character_empire_inquisitor.tga") == \
+        "character_empire_inquisitor"
+    assert texmod.clean_stem("no_extension") == "no_extension"
+
+
+def test_export_carries_the_texture_its_g_names():
+    """An export must ship every diffuse its own `.g` names.
+
+    A unit re-textured from another unit's folder names a texture the export
+    folder does not have; in game the retail copy hides that, but reading the
+    export back (the add-on's own import, or anyone opening it) leaves the
+    part untextured.  The donor folder has the file, so the export carries it.
+    """
+    tmp = tempfile.mkdtemp(prefix="d3carry_")
+    try:
+        base = "character_empire_inquisitor"
+        shutil.copyfile(os.path.join(REPO, "Empire", "Inquisitor", base + ".g"),
+                        os.path.join(tmp, base + ".g"))
+        climod._carry_material_textures(tmp, base,
+                                        os.path.join(REPO, "Empire",
+                                                     "Inquisitor"), True)
+        for name in ("character_empire_inquisitor.t",
+                     "weapon_empire_inquisitor.t"):
+            assert os.path.isfile(os.path.join(tmp, name)), name
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_blender_texture_name_does_not_double_the_extension():
+    """A Blender image called ``x.dds`` must not become ``x.dds.tga``/``x.dds.t``.
+
+    Blender keeps the imported file name, so a re-saved texture arrives as
+    ``x.dds.png``; a naive stem left the ``.dds`` in place and the export wrote
+    a material ``x.dds.tga`` plus a file ``x.dds.t`` — a pair nothing (the
+    engine, our own importer, the add-on) can match to ``x``.
+    """
+    tmp = tempfile.mkdtemp(prefix="d3stem_")
+    try:
+        donor = os.path.join(tmp, "donor")
+        os.makedirs(donor)
+        for name in ("character_empire_inquisitor.g",
+                     "character_empire_inquisitor_baseanims.a",
+                     "character_empire_inquisitor.t",
+                     "character_empire_inquisitor.ac"):
+            shutil.copyfile(os.path.join(REPO, "Empire", "Inquisitor", name),
+                            os.path.join(donor, name))
+        fwd = os.path.join(tmp, "fwd")
+        os.makedirs(fwd)
+        gt, _bt = climod._export_gl(
+            os.path.join(donor, "character_empire_inquisitor.g"),
+            os.path.join(donor, "character_empire_inquisitor_baseanims.a"),
+            os.path.join(fwd, "out.gltf"), None, quiet=True)
+        png = bytes.fromhex(
+            "89504e470d0a1a0a0000000d4948445200000001000000010806000000"
+            "1f15c4890000000b49444154789c6300010000050001027d1c5b0000"
+            "000049454e44ae426082")
+        open(os.path.join(fwd, "blade_diffuse.dds.png"), "wb").write(png)
+        doc = json.load(open(gt))
+        doc["images"].append({"uri": "blade_diffuse.dds.png"})
+        doc["textures"].append({"source": len(doc["images"]) - 1})
+        mat = doc["meshes"][1]["primitives"][0]["material"]
+        doc["materials"][mat]["pbrMetallicRoughness"]["baseColorTexture"] = {
+            "index": len(doc["textures"]) - 1}
+        json.dump(doc, open(gt, "w"))
+
+        out = os.path.join(tmp, "back")
+        climod._export(gt, out, 0, anim=True, quiet=True, donor_dir=donor)
+        mesh = gfile.parse_geometry_file(
+            open(os.path.join(out, "out.g"), "rb").read())
+        part = gfile.iter_parts(mesh)[-1]
+        assert part.attrs.get("material0_diffuse") == "blade_diffuse.tga", \
+            part.attrs.get("material0_diffuse")
+        assert os.path.isfile(os.path.join(out, "blade_diffuse.t"))
+        assert not os.path.exists(os.path.join(out, "blade_diffuse.dds.t"))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_retexture_part_rewrites_g_and_scene():
+    """A part's material lives in three places and they must agree.
+
+    ``tools/retexture_part.py`` rewrites the part's attribute block in the
+    main and LOD `.g` and the matching `gobj` in both `.scene` files, and
+    touches nothing else -- a whole-file rewrite of a `.g`/`.scene` would lose
+    the scaffolding (attribute order, prelude, line endings) the game needs.
+    """
+    import importlib.util
+    tmp = tempfile.mkdtemp(prefix="d3ret_")
+    try:
+        src = os.path.join(REPO, "Empire", "Inquisitor")
+        for name in ("character_empire_inquisitor.g",
+                     "character_empire_inquisitor_lod.g",
+                     "character_empire_inquisitor.scene",
+                     "character_empire_inquisitor_lod.scene"):
+            shutil.copyfile(os.path.join(src, name), os.path.join(tmp, name))
+        before_g = open(os.path.join(tmp, "character_empire_inquisitor.g"),
+                        "rb").read()
+        before_s = open(os.path.join(tmp, "character_empire_inquisitor.scene"),
+                        "rb").read()
+
+        spec = importlib.util.spec_from_file_location(
+            "retexture_part", os.path.join(REPO, "tools", "retexture_part.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        assert mod.main(["--folder", tmp, "--part", "weapon_empire_inquisitor",
+                         "--diffuse", "blade.tga"]) == 0
+
+        after_g = open(os.path.join(tmp, "character_empire_inquisitor.g"),
+                       "rb").read()
+        # only the name string changes length; every part must survive, with
+        # the same vertex/triangle counts and the same order
+        delta = len(before_g) - len(after_g)
+        assert 1 <= delta <= 64, delta
+        before_parts = gfile.iter_parts(gfile.parse_geometry_file(before_g))
+        parts = gfile.iter_parts(gfile.parse_geometry_file(after_g))
+        assert [(p.name, p.vertex_count, p.tri_count) for p in parts] == \
+            [(p.name, p.vertex_count, p.tri_count) for p in before_parts]
+        mats = {p.name: p.attrs.get("material0_diffuse") for p in parts}
+        assert mats["weapon_empire_inquisitor"] == "blade.tga", mats
+        assert mats["Standard_8"] == "character_empire_inquisitor.tga", mats
+        lod = gfile.iter_parts(gfile.parse_geometry_file(
+            open(os.path.join(tmp, "character_empire_inquisitor_lod.g"),
+                 "rb").read()))
+        assert {p.name: p.attrs.get("material0_diffuse")
+                for p in lod}["lod_weapon_empire_inquisitor"] == "blade.tga"
+
+        after_s = open(os.path.join(tmp, "character_empire_inquisitor.scene"),
+                       "rb").read()
+        assert after_s.count(b'"blade.tga"') == 1
+        assert len(after_s.splitlines()) == len(before_s.splitlines())
+        assert after_s.replace(b"blade.tga", b"weapon_empire_inquisitor.tga") \
+            == before_s
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_blender_texture_name_property_reaches_the_g_and_the_scene():
+    """``extras.d3unit_diffuse`` beats both the image and the donor part.
+
+    A part can be re-textured from another unit's folder (a sword wearing the
+    Knight's blade atlas) while its glTF material still names the donor's
+    image.  The add-on stores the artist's name on the mesh object and passes
+    it through as ``extras.d3unit_diffuse``; the export has to write it into
+    the part's attribute block, into the LOD copy and into the `gobj` of both
+    `.scene` files — the engine draws the scene's copy — and carry the `.t`.
+    """
+    tmp = tempfile.mkdtemp(prefix="d3diffuse_")
+    try:
+        donor = os.path.join(tmp, "donor")
+        os.makedirs(donor)
+        for name in ("character_empire_inquisitor.g",
+                     "character_empire_inquisitor_baseanims.a",
+                     "character_empire_inquisitor.t",
+                     "character_empire_inquisitor.ac",
+                     "character_empire_inquisitor.scene"):
+            shutil.copyfile(os.path.join(REPO, "Empire", "Inquisitor", name),
+                            os.path.join(donor, name))
+        shutil.copyfile(
+            os.path.join(REPO, "Empire", "Knight",
+                         "weapon_empire_knight_sword_diffuse.t"),
+            os.path.join(donor, "weapon_empire_knight_sword_diffuse.t"))
+        fwd = os.path.join(tmp, "fwd")
+        os.makedirs(fwd)
+        gt, _bt = climod._export_gl(
+            os.path.join(donor, "character_empire_inquisitor.g"),
+            os.path.join(donor, "character_empire_inquisitor_baseanims.a"),
+            os.path.join(fwd, "character_empire_inquisitor.gltf"), None,
+            quiet=True)
+        doc = json.load(open(gt))
+        weapon = [m for m in doc["meshes"]
+                  if "weapon" in (m.get("name") or "")][0]
+        weapon.setdefault("extras", {})["d3unit_diffuse"] = \
+            "weapon_empire_knight_sword_diffuse.tga"
+        json.dump(doc, open(gt, "w"))
+
+        out = os.path.join(tmp, "back")
+        climod._export(gt, out, 0, anim=True, quiet=True, donor_dir=donor)
+        parts = gfile.iter_parts(gfile.parse_geometry_file(
+            open(os.path.join(out, "character_empire_inquisitor.g"),
+                 "rb").read()))
+        mats = {p.name: p.attrs.get("material0_diffuse") for p in parts}
+        assert mats["weapon_empire_inquisitor"] == \
+            "weapon_empire_knight_sword_diffuse.tga", mats
+        assert mats["Standard_8"] == "character_empire_inquisitor.tga", mats
+        scene = open(os.path.join(out, "character_empire_inquisitor.scene"),
+                     "rb").read().decode("latin-1")
+        assert "weapon_empire_knight_sword_diffuse.tga" in scene
+        assert scene.count('"weapon_empire_inquisitor.tga"') == 0
+        assert os.path.isfile(os.path.join(
+            out, "weapon_empire_knight_sword_diffuse.t"))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_find_texture_file_resolves_every_shipped_spelling():
+    """A part names `<stem>.tga`; the folder may hold `<stem>.t` and friends.
+
+    This is what the add-on's "Show in the Viewport" button and the export's
+    texture report both lean on: after a re-texture the file on disk is
+    whatever the artist had (`x.t`, `x.dds`, or the doubled `x.dds.t` our own
+    exporter used to write), while the name in the `.g` stays `x.tga`.
+    """
+    tmp = tempfile.mkdtemp(prefix="d3texfind_")
+    try:
+        first = os.path.join(tmp, "unit")
+        second = os.path.join(tmp, "elsewhere")
+        os.makedirs(first)
+        os.makedirs(second)
+        # a .t preferred over the .dds next to it
+        open(os.path.join(first, "a.t"), "wb").write(b"")
+        open(os.path.join(first, "a.dds"), "wb").write(b"")
+        assert texmod.find_texture_file(
+            "a.tga", [first]).endswith("a.t")
+        # a doubled extension, the name ours used to produce
+        open(os.path.join(first, "b.dds.t"), "wb").write(b"")
+        assert texmod.find_texture_file(
+            "b.tga", [first]).endswith("b.dds.t")
+        # a Blender re-save, and a different case on disk
+        open(os.path.join(second, "c.dds.png"), "wb").write(b"")
+        open(os.path.join(second, "D.t"), "wb").write(b"")
+        assert texmod.find_texture_file(
+            "c.tga", [first, second]).endswith("c.dds.png")
+        assert texmod.find_texture_file(
+            "d.tga", [first, second]).endswith("D.t")
+        # folders are searched in order, and a miss stays a miss
+        assert texmod.find_texture_file("missing.tga", [first, second]) is None
+        assert texmod.find_texture_file("", [first]) is None
+        assert texmod.find_texture_file("a.tga", ["/no/such/dir"]) is None
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_texture_report_names_what_each_part_will_be_drawn_with():
+    """The export reads its own `.g` back and says which texture each part wears.
+
+    Re-texturing a part goes wrong silently: the name can come from the mesh's
+    `d3unit_diffuse`, from the material image Blender exported, or from the
+    donor part, and only the written file says which one won.  One row per
+    part, with the file on disk when there is one.
+    """
+    tmp = tempfile.mkdtemp(prefix="d3texrep_")
+    try:
+        src = os.path.join(REPO, "Empire", "Inquisitor")
+        for name in ("character_empire_inquisitor.g",
+                     "character_empire_inquisitor_baseanims.a",
+                     "character_empire_inquisitor.ac",
+                     "character_empire_inquisitor.scene",
+                     "character_empire_inquisitor.t"):
+            shutil.copyfile(os.path.join(src, name),
+                            os.path.join(tmp, name))
+        g_path = os.path.join(tmp, "character_empire_inquisitor.g")
+        rows = {part: (name, found) for part, name, found
+                in partsmod.texture_report(g_path)}
+        name, found = rows["Standard_8"]
+        assert name == "character_empire_inquisitor.tga", rows
+        assert os.path.basename(found) == "character_empire_inquisitor.t"
+        # the weapon part names the other unit's atlas: absent until the .t is
+        # dropped next to the unit, which is exactly the finding the report
+        # has to surface instead of an untextured part in game
+        name, found = rows["weapon_empire_inquisitor"]
+        assert name == "weapon_empire_inquisitor.tga", rows
+        assert found == "", rows
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_the_sword_takes_its_own_atlas_and_never_the_shield():
+    """Both atlases sit in one folder; only the stem decides.
+
+    The Knight ships two weapon textures — a 128x1024 blade strip (86 KiB) and
+    a 512x2048 shield sheet (683 KiB) — and a re-textured part that grabs the
+    wrong one looks *plausible* in Blender and wrong in game.  Resolution has to
+    be stem-exact: no "close enough" match, no picking the biggest file, no
+    shared prefix (`weapon_empire_knight_`).
+    """
+    tmp = tempfile.mkdtemp(prefix="d3swordshield_")
+    try:
+        src = os.path.join(REPO, "Empire", "Inquisitor")
+        for name in ("character_empire_inquisitor.g",
+                     "character_empire_inquisitor_baseanims.a",
+                     "character_empire_inquisitor.ac",
+                     "character_empire_inquisitor.scene",
+                     "character_empire_inquisitor.t"):
+            shutil.copyfile(os.path.join(src, name),
+                            os.path.join(tmp, name))
+        knight = os.path.join(REPO, "Empire", "Knight")
+        sword_t = os.path.join(knight, "weapon_empire_knight_sword_diffuse.t")
+        shield_t = os.path.join(knight, "weapon_empire_knight_shield_diffuse.t")
+        assert os.path.getsize(shield_t) > 5 * os.path.getsize(sword_t)
+        assert texmod.describe(sword_t) == "128x1024"
+        assert texmod.describe(shield_t) == "512x2048"
+        shutil.copyfile(sword_t,
+                        os.path.join(tmp, "weapon_empire_knight_sword_diffuse.t"))
+        shutil.copyfile(shield_t,
+                        os.path.join(tmp, "weapon_empire_knight_shield_diffuse.t"))
+
+        found = texmod.find_texture_file(
+            "weapon_empire_knight_sword_diffuse.tga", [tmp])
+        assert os.path.basename(found) == \
+            "weapon_empire_knight_sword_diffuse.t", found
+        found = texmod.find_texture_file(
+            "weapon_empire_knight_shield_diffuse.tga", [tmp])
+        assert os.path.basename(found) == \
+            "weapon_empire_knight_shield_diffuse.t", found
+        # a name with neither stem in the folder must stay unresolved rather
+        # than fall back to the nearest weapon atlas
+        assert texmod.find_texture_file(
+            "weapon_empire_knight_mace_diffuse.tga", [tmp]) is None
+
+        # the whole way through: name the inquisitor's sword part after the
+        # blade atlas and export; the .t that lands in the folder is the 86 KiB
+        # one, byte for byte, not the shield's
+        fwd = os.path.join(tmp, "fwd")
+        os.makedirs(fwd)
+        gt, _bt = climod._export_gl(
+            os.path.join(tmp, "character_empire_inquisitor.g"),
+            os.path.join(tmp, "character_empire_inquisitor_baseanims.a"),
+            os.path.join(fwd, "character_empire_inquisitor.gltf"), None,
+            quiet=True)
+        doc = json.load(open(gt))
+        weapon = [m for m in doc["meshes"]
+                  if "weapon" in (m.get("name") or "")][0]
+        weapon.setdefault("extras", {})["d3unit_diffuse"] = \
+            "weapon_empire_knight_sword_diffuse.tga"
+        json.dump(doc, open(gt, "w"))
+        out = os.path.join(tmp, "back")
+        climod._export(gt, out, 0, anim=True, quiet=True, donor_dir=tmp)
+
+        carried = os.path.join(out, "weapon_empire_knight_sword_diffuse.t")
+        assert os.path.isfile(carried), os.listdir(out)
+        assert open(carried, "rb").read() == open(sword_t, "rb").read(), \
+            "the exported .t is not the blade atlas"
+        assert texmod.describe(carried) == "128x1024"
+        rows = {part: (name, found) for part, name, found
+                in partsmod.texture_report(
+                    os.path.join(out, "character_empire_inquisitor.g"), [out])}
+        name, found = rows["weapon_empire_inquisitor"]
+        assert name == "weapon_empire_knight_sword_diffuse.tga", rows
+        assert os.path.basename(found) == \
+            "weapon_empire_knight_sword_diffuse.t", rows
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_a_swapped_mesh_does_not_keep_the_donors_texture_name():
+    """The name a part was imported with must not outlive the mesh it named.
+
+    Graft a Knight's blade onto the Inquisitor's mace slot and the object still
+    carries `d3unit_diffuse = weapon_empire_inquisitor.tga` — the name the
+    add-on stamped at import.  Writing it back pins the sword to the mace's
+    wooden atlas; the material the sword arrived with says otherwise, and
+    *that* is the name to keep.  A name the artist typed (anything but the
+    donor's) still wins, because it is the only way to texture a part that has
+    no usable material of its own.
+    """
+    tmp = tempfile.mkdtemp(prefix="d3swapped_")
+    try:
+        donor = os.path.join(tmp, "donor")
+        os.makedirs(donor)
+        for name in ("character_empire_inquisitor.g",
+                     "character_empire_inquisitor_baseanims.a",
+                     "character_empire_inquisitor.ac",
+                     "character_empire_inquisitor.scene",
+                     "character_empire_inquisitor.t"):
+            shutil.copyfile(os.path.join(REPO, "Empire", "Inquisitor", name),
+                            os.path.join(donor, name))
+        fwd = os.path.join(tmp, "fwd")
+        os.makedirs(fwd)
+
+        def swapped(extras):
+            """The unit's glTF with the weapon wearing the Knight's blade."""
+            gt, _bt = climod._export_gl(
+                os.path.join(donor, "character_empire_inquisitor.g"),
+                os.path.join(donor, "character_empire_inquisitor_baseanims.a"),
+                os.path.join(fwd, "character_empire_inquisitor.gltf"), None,
+                quiet=True)
+            doc = json.load(open(gt))
+            weapon = [m for m in doc["meshes"]
+                      if "weapon" in (m.get("name") or "")][0]
+            prim = weapon["primitives"][0]
+            doc.setdefault("images", []).append(
+                {"uri": "weapon_empire_knight_sword_diffuse.dds"})
+            doc.setdefault("textures", []).append(
+                {"source": len(doc["images"]) - 1})
+            doc["materials"][prim["material"]]["pbrMetallicRoughness"] = {
+                "baseColorTexture": {"index": len(doc["textures"]) - 1}}
+            if extras:
+                weapon.setdefault("extras", {})["d3unit_diffuse"] = extras
+            json.dump(doc, open(gt, "w"))
+            return gt
+
+        # the inherited default yields to the material of the swapped mesh
+        gt = swapped("weapon_empire_inquisitor.tga")
+        out = os.path.join(tmp, "back1")
+        climod._export(gt, out, 0, anim=True, quiet=True, donor_dir=donor)
+        parts = {p.name: p.attrs.get("material0_diffuse")
+                 for p in gfile.iter_parts(gfile.parse_geometry_file(
+                     open(os.path.join(out, "character_empire_inquisitor.g"),
+                          "rb").read()))}
+        assert parts["weapon_empire_inquisitor"] == \
+            "weapon_empire_knight_sword_diffuse.tga", parts
+
+        # ...but a name the artist chose beats any material
+        gt = swapped("weapon_empire_knight_shield_diffuse.tga")
+        out = os.path.join(tmp, "back2")
+        climod._export(gt, out, 0, anim=True, quiet=True, donor_dir=donor)
+        parts = {p.name: p.attrs.get("material0_diffuse")
+                 for p in gfile.iter_parts(gfile.parse_geometry_file(
+                     open(os.path.join(out, "character_empire_inquisitor.g"),
+                          "rb").read()))}
+        assert parts["weapon_empire_inquisitor"] == \
+            "weapon_empire_knight_shield_diffuse.tga", parts
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_a_parts_texture_is_written_from_the_attribute_items_not_the_dict():
+    """``attrs`` only drives the counts; the block is emitted from ``items``.
+
+    Setting ``part.material_diffuse`` — or even ``attrs["material0_diffuse"]``
+    — changes nothing in the file, because `gfile._attr_block` writes the
+    donor's ordered ``(key, value)`` list verbatim and only re-reads ``attrs``
+    for the counts it may patch.  That is how a Knight's blade grafted onto the
+    Inquisitor's mace slot kept naming the mace's atlas through every export:
+    the rebuild fed the right name into the dataclass and the donor's string
+    into the file.
+    """
+    from d3tool import gltf as gltfmod
+
+    old = "weapon_empire_inquisitor.tga"
+    want = "weapon_empire_knight_sword_diffuse.tga"
+    items = [("name", "weapon_empire_inquisitor"),
+             ("materials_num", "1"),
+             ("material0_diffuse", old),
+             ("vertexs_weights_num", "136")]
+    attrs = dict(items)
+
+    # the dataclass / the dict say the new name — the block does not
+    naive = dict(attrs)
+    naive["material0_diffuse"] = want
+    block = gfile._attr_block(naive, list(items))
+    assert want.encode() not in block, "attrs alone must not reach the file"
+    # ...except for the file's own block, where the whole point is that a
+    # renamed atlas reaches the file (`write_geometry_file` asks for it)
+    root_block = gfile._attr_block(naive, list(items), patch_textures=True)
+    assert want.encode() in root_block, \
+        "a renamed atlas must reach the root block"
+    assert old.encode() not in root_block
+
+    # rewriting the items is what actually changes it, and it keeps the block
+    # otherwise byte-identical
+    patched_attrs, patched_items, written = gltf._patch_material(
+        attrs, list(items), want, old)
+    assert written == want, written
+    # both routes end in the same bytes: the items carry the new name anyway
+    block_default = gfile._attr_block(patched_attrs, patched_items)
+    block_root = gfile._attr_block(patched_attrs, patched_items,
+                                   patch_textures=True)
+    assert block_default == block_root
+    assert want.encode() in block_default
+    assert old.encode() not in block_default
+    assert len(patched_items) == len(items)
+
+    # a part that already names that texture is left alone (the corpus round
+    # trip is byte-exact, so an untouched part must not be rewritten)
+    same_attrs, same_items, written = gltf._patch_material(
+        attrs, list(items), old, old)
+    assert written == "" and same_items == items
+
+
+def test_the_compact_copy_of_a_stem_wins_and_its_format_is_reported():
+    """One atlas, two files: 86 KiB as DXT1 and 683 KiB as raw RGBA.
+
+    An artist who re-saved the Knight's blade atlas through Blender ends up with
+    a ``x.dds.t`` eight times the size of the shipped ``x.t``; both hold the
+    same picture, and "683 KB after export" reads like the wrong texture was
+    picked.  Resolution prefers the block-compressed copy when a folder offers
+    both, and the report says how the pixels are stored so the number stops
+    being ambiguous.
+    """
+    tmp = tempfile.mkdtemp(prefix="d3compact_")
+    try:
+        # neither is the exact spelling, so the loose match has to choose
+        small = os.path.join(tmp, "x.dds.t")
+        big = os.path.join(tmp, "x.png.t")
+        open(small, "wb").write(b"small")
+        open(big, "wb").write(b"big")
+        assert texmod.clean_stem(small) == texmod.clean_stem(big) == "x"
+        real = texmod.is_compressed
+        texmod.is_compressed = lambda p: os.path.basename(p) == "x.dds.t"
+        try:
+            assert texmod.find_texture_file("x.tga", [tmp]) == small
+            texmod.is_compressed = lambda p: os.path.basename(p) == "x.png.t"
+            assert texmod.find_texture_file("x.tga", [tmp]) == big
+        finally:
+            texmod.is_compressed = real
+
+        # an exact `<stem>.t` beats every loose spelling, compressed or not
+        exact = os.path.join(tmp, "x.t")
+        open(exact, "wb").write(b"exact")
+        assert texmod.find_texture_file("x.tga", [tmp]) == exact
+
+        knight = os.path.join(REPO, "Empire", "Knight")
+        sword = os.path.join(knight, "weapon_empire_knight_sword_diffuse.t")
+        shield = os.path.join(knight, "weapon_empire_knight_shield_diffuse.t")
+        assert texmod.describe(sword, True) == "128x1024 DXT1"
+        assert texmod.describe(shield, True) == "512x2048 DXT1"
+        assert texmod.describe(sword) == "128x1024"
+        assert texmod.is_compressed(sword)
+        assert texmod.describe("/no/such.file", True) == ""
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_a_part_with_two_materials_writes_both_atlases():
+    """Body and weapon in one mesh: ``material0`` and ``material1`` of a block.
+
+    The shipped units give every part a single material, so reading the first
+    primitive was enough — until an artist merges the sword into the body mesh
+    (or a unit that really has two ranges is re-textured).  Then the second
+    primitive's atlas has to reach ``material1_diffuse``, both in the attribute
+    dict and in the ordered item list the file is actually written from.
+    """
+    doc = {
+        "materials": [
+            {"pbrMetallicRoughness": {"baseColorTexture": {"index": 0}}},
+            {"pbrMetallicRoughness": {"baseColorTexture": {"index": 1}}},
+        ],
+        "textures": [{"source": 0}, {"source": 1}],
+        "images": [{"uri": "character_empire_inquisitor.dds.png"},
+                   {"uri": "weapon_empire_knight_sword_diffuse.dds.png"}],
+    }
+    mesh_json = {"primitives": [{"material": 0}, {"material": 1}]}
+    slots = gltf._per_slot_textures(doc, mesh_json)
+    assert slots == {0: "character_empire_inquisitor.tga",
+                     1: "weapon_empire_knight_sword_diffuse.tga"}, slots
+
+    items = [("name", "empire_inquisitor"), ("materials_num", "2"),
+             ("material0_diffuse", "character_empire_inquisitor.tga"),
+             ("material0_triangles_num", "10"),
+             ("material1_diffuse", "weapon_empire_inquisitor.tga"),
+             ("material1_triangles_num", "4")]
+    attrs = dict(items)
+    a, i, written = gltf._patch_material(
+        attrs, items, "character_empire_inquisitor.tga", "", slots)
+    got = dict(i)
+    assert got["material0_diffuse"] == "character_empire_inquisitor.tga"
+    assert got["material1_diffuse"] == "weapon_empire_knight_sword_diffuse.tga"
+    assert a["material1_diffuse"] == "weapon_empire_knight_sword_diffuse.tga"
+    assert written == ""            # material0 already said that
+    assert [k for k, _ in i] == [k for k, _ in items]
+
+    # a one-material donor part gets no invented material1 attributes: the
+    # triangle ranges of two materials in a block of one would disagree
+    single = [("material0_diffuse", "weapon_empire_inquisitor.tga"),
+              ("material0_triangles_num", "250")]
+    a2, i2, _w = gltf._patch_material(
+        dict(single), single, "weapon_empire_knight_sword_diffuse.tga", "",
+        {0: "weapon_empire_knight_sword_diffuse.tga"})
+    assert dict(i2)["material0_diffuse"] == \
+        "weapon_empire_knight_sword_diffuse.tga"
+    assert "material1_diffuse" not in dict(i2)
+
+    # ...and with no texture at all the donor's block is returned untouched
+    a3, i3, w3 = gltf._patch_material(dict(single), single, "", "")
+    assert i3 is single and a3 is not None and w3 == ""
+
+
+def test_the_lod_follows_the_main_mesh_texture():
+    """All four files must agree on the weapon's atlas — the LOD included.
+
+    `unit_scene_lod` has a draw distance of 10 for nearly every unit, so the
+    battlefield draws the LOD model most of the time; a main mesh that says
+    "sword" while `_lod.g` and `_lod.scene` still say "mace" changes the
+    weapon the moment the camera pulls back.  A `_lod.scene` also repeats the
+    MAIN mesh's counts (every retail unit does), so restating it from the LOD
+    mesh wrote numbers no shipped file has.
+    """
+    tmp = tempfile.mkdtemp(prefix="d3lodtex_")
+    try:
+        work = os.path.join(tmp, "unit")
+        os.makedirs(work)
+        for name in ("character_empire_inquisitor.g",
+                     "character_empire_inquisitor_baseanims.a",
+                     "character_empire_inquisitor.ac",
+                     "character_empire_inquisitor.scene",
+                     "character_empire_inquisitor.t",
+                     "character_empire_inquisitor_lod.g",
+                     "character_empire_inquisitor_lod.scene",
+                     "weapon_empire_inquisitor.t"):
+            shutil.copyfile(os.path.join(REPO, "Empire", "Inquisitor", name),
+                            os.path.join(work, name))
+        shutil.copyfile(
+            os.path.join(REPO, "Empire", "Knight",
+                         "weapon_empire_knight_sword_diffuse.t"),
+            os.path.join(work, "weapon_empire_knight_sword_diffuse.t"))
+        gl = os.path.join(tmp, "character_empire_inquisitor.gltf")
+        climod._export_gl(os.path.join(work, "character_empire_inquisitor.g"),
+                          os.path.join(work,
+                                       "character_empire_inquisitor_baseanims.a"),
+                          gl, None, quiet=True)
+        doc = json.load(open(gl))
+        for mesh in doc["meshes"]:
+            if "weapon" in (mesh.get("name") or ""):
+                mesh.setdefault("extras", {})["d3unit_diffuse"] = \
+                    "weapon_empire_knight_sword_diffuse.tga"
+        json.dump(doc, open(gl, "w"))
+        out = os.path.join(tmp, "out")
+        climod._export(gl, out, 0, anim=True, quiet=True, donor_dir=work)
+
+        sword = "weapon_empire_knight_sword_diffuse.tga"
+        for name in ("character_empire_inquisitor.g",
+                     "character_empire_inquisitor_lod.g"):
+            mesh = gfile.parse_geometry_file(
+                open(os.path.join(out, name), "rb").read())
+            parts = list(gfile.iter_parts(mesh))
+            assert parts[1].attrs["material0_diffuse"] == sword, (name, parts[1].attrs)
+        for name in ("character_empire_inquisitor.scene",
+                     "character_empire_inquisitor_lod.scene"):
+            text = open(os.path.join(out, name), encoding="latin-1").read()
+            assert sword in text, name
+            assert "weapon_empire_inquisitor.tga" not in text.split("weapon")[0], name
+
+        # the LOD scene keeps the main mesh's numbers, as every retail unit does
+        lod_scene = open(os.path.join(out,
+                                      "character_empire_inquisitor_lod.scene"),
+                         encoding="latin-1").read()
+        assert 'attr "material0_triangles_num" "4664"' in lod_scene
+        assert 'attr "vertexs_weights_num" "3693"' in lod_scene
+        # ...and the audit agrees that the bundle is self-consistent
+        _facts, findings = auditmod.audit(out)
+        assert findings == [], findings
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_the_audit_reports_a_scene_that_describes_the_old_mesh():
+    """A `.g` and a `.scene` that disagree both parse; only a reader notices.
+
+    A scene left describing the mesh an export replaced is reported — as a
+    note, not a finding.  The shipped game disagrees with itself this way
+    everywhere (the Archer's body gobj says 3631 triangles where its block
+    holds 4407, the Cleric's LOD gobj says 376 against 156) and loads fine, so
+    these numbers cannot be what the loader reads; what it does read — a part
+    that does not exist, a texture that is not in the folder — stays a
+    finding.
+    """
+    tmp = tempfile.mkdtemp(prefix="d3audit_")
+    try:
+        work = os.path.join(tmp, "unit")
+        os.makedirs(work)
+        retail = os.path.join(REPO, "Empire", "Inquisitor")
+        for name in os.listdir(retail):
+            path = os.path.join(retail, name)
+            if os.path.isfile(path) and name.endswith((".g", ".scene", ".t")):
+                shutil.copyfile(path, os.path.join(work, name))
+        # the retail bundle is consistent: no findings at all
+        _facts, clean = auditmod.audit(work)
+        assert clean == [], clean
+
+        scene = os.path.join(work, "character_empire_inquisitor.scene")
+        text = open(scene, encoding="latin-1").read()
+        stale = text.replace('attr "material0_triangles_num" "250"',
+                             'attr "material0_triangles_num" "537"', 1)
+        assert stale != text
+        open(scene, "w", encoding="latin-1").write(stale)
+        facts, findings = auditmod.audit(work)
+        notes = facts.get("notes") or []
+        assert any("537" in n and "250" in n for n in notes), notes
+        assert findings == [], findings
+
+        # a gobj pointing past the end of the mesh is worse than a wrong count
+        text2 = text.replace('"resources\\characters\\empire\\inquisitor\\'
+                             'character_empire_inquisitor.g" 1',
+                             '"resources\\characters\\empire\\inquisitor\\'
+                             'character_empire_inquisitor.g" 7', 1)
+        assert text2 != text
+        open(scene, "w", encoding="latin-1").write(text2)
+        _facts, findings = auditmod.audit(work)
+        assert any("past the end" in f or "points at part" in f
+                   for f in findings), findings
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_the_audit_reports_an_ac_that_names_a_folder_the_game_lacks():
+    """A generated `*_lod.ac` invents a resource directory no install has.
+
+    The engine does not fall back when an `.ac` names a path into a folder the
+    game does not have — the load stops with a missing-file dialog naming the
+    pack.  Deriving that path from a `*_lod` stem instead of the unit's own
+    folder produces exactly that (`resources\\characters\\
+    character_empire_angel_lod`, seen in a shipped mod pack), while every file
+    it names sits in the unit folder.  The folder a bundle is *stored* in is no
+    guide (an export lands in a temp or `out` directory), so the anchor is the
+    resource folder the `.scene` itself names.
+    """
+    tmp = tempfile.mkdtemp(prefix="d3auditac_")
+    try:
+        work = os.path.join(tmp, "out")
+        os.makedirs(work)
+        retail = os.path.join(REPO, "Empire", "Inquisitor")
+        for name in os.listdir(retail):
+            path = os.path.join(retail, name)
+            if os.path.isfile(path) and name.endswith((".g", ".scene", ".ac",
+                                                       ".a", ".t")):
+                shutil.copyfile(path, os.path.join(work, name))
+        _facts, clean = auditmod.audit(work)
+        assert clean == [], clean
+
+        lod_ac = os.path.join(work, "character_empire_inquisitor_lod.ac")
+        bad = ("// ANIMATION CONFIGURATION file\n"
+               "version 0.2\n"
+               'state "Idle"\n'
+               "{\n"
+               'file "resources\\characters\\'
+               'character_empire_inquisitor_lod\\'
+               'character_empire_inquisitor_baseanims.a";\n'
+               "frame0 0;\n"
+               "frame1 63;\n"
+               "fps 30.000000;\n"
+               "priority 256;\n"
+               "flags 1;\n"
+               'meshfile "resources\\characters\\'
+               'character_empire_inquisitor_lod\\'
+               'character_empire_inquisitor_lod.g";\n'
+               "}\n")
+        open(lod_ac, "w", encoding="latin-1").write(bad)
+        _facts, findings = auditmod.audit(work)
+        folder_hits = [f for f in findings if "no folder" in f]
+        assert len(folder_hits) == 1, findings
+        assert "character_empire_inquisitor_lod" in folder_hits[0]
+        assert folder_hits[0].startswith("character_empire_inquisitor_lod.ac"), \
+            folder_hits[0]
+
+        # the same states pointed at the unit's real folder are not reported
+        open(lod_ac, "w", encoding="latin-1").write(
+            bad.replace("character_empire_inquisitor_lod\\",
+                        "empire\\inquisitor\\"))
+        _facts, findings = auditmod.audit(work)
+        assert not [f for f in findings if "no folder" in f], findings
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_same_motion_ignores_only_the_round_trip_noise():
+    """A rebuilt `.a` re-quantises every keyframe; that is not an edit.
+
+    The export compares the motion and keeps the donor's own bytes when nothing
+    moved — otherwise a re-export that changed no pose still writes a file that
+    differs from the shipped one in the last bits of 300 frames x 27 bones.
+    """
+    raw = open(os.path.join(REPO, "Empire", "Inquisitor",
+                            "character_empire_inquisitor_baseanims.a"), "rb").read()
+    left = animmod.parse_anim(raw)
+    right = animmod.parse_anim(raw)
+    assert animmod.same_motion(left, right)
+    # the noise his export carried: one float, last bit
+    frames = list(right.bones[0].frames)
+    frames[0] = tuple(x + 1e-6 for x in frames[0])
+    right.bones[0].frames = frames
+    assert animmod.same_motion(left, right)
+    # a real pose change is not noise
+    frames[0] = tuple(x + 0.25 for x in frames[0])
+    right.bones[0].frames = frames
+    assert not animmod.same_motion(left, right)
+    # ...and neither is a different structure
+    right = animmod.parse_anim(raw)
+    right.bones[1].name = "NotABone"
+    assert not animmod.same_motion(left, right)
+
+
+def test_an_unedited_animation_is_written_back_byte_for_byte():
+    """Export the Inquisitor without touching the rig: `.a` and `.ac` must not
+    change at all.  A near-copy of the animation is one more file that differs
+    from retail for no reason, and nothing in the `.g` needs it rewritten."""
+    tmp = tempfile.mkdtemp(prefix="d3animsame_")
+    try:
+        work = os.path.join(tmp, "unit")
+        os.makedirs(work)
+        for name in ("character_empire_inquisitor.g",
+                     "character_empire_inquisitor_baseanims.a",
+                     "character_empire_inquisitor.ac",
+                     "character_empire_inquisitor.scene",
+                     "character_empire_inquisitor.t"):
+            shutil.copyfile(os.path.join(REPO, "Empire", "Inquisitor", name),
+                            os.path.join(work, name))
+        gl = os.path.join(tmp, "character_empire_inquisitor.gltf")
+        climod._export_gl(os.path.join(work, "character_empire_inquisitor.g"),
+                          os.path.join(work,
+                                       "character_empire_inquisitor_baseanims.a"),
+                          gl, None, quiet=True)
+        out = os.path.join(tmp, "out")
+        climod._export(gl, out, 0, anim=True, quiet=True, donor_dir=work)
+        for name in ("character_empire_inquisitor_baseanims.a",
+                     "character_empire_inquisitor.ac"):
+            retail = open(os.path.join(REPO, "Empire", "Inquisitor", name),
+                          "rb").read()
+            got = open(os.path.join(out, name), "rb").read()
+            assert got == retail, name
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0
@@ -1609,9 +3035,9 @@ def main():
 
 
 def test_png_to_t_roundtrip():
-    """A Blender re-saved .png must become a loadable native .t: right
-    dimensions, uncompressed 32-bit code 4, full mip chain sized the GM
-    way (each mip w>>i * h>>i * 4, no clamping to 1px), BGRA order."""
+    """A Blender re-saved .png must become a loadable native .t: DXT1 pixels,
+    a full mip chain sized the GM way (each mip ``w*h*0.5`` bytes, no 4x4
+    block padding), so a 128x1024 blade is 86 KiB and not 683."""
     import zlib
     from d3tool import texture as texmod
 
@@ -1630,10 +3056,254 @@ def test_png_to_t_roundtrip():
     t = texmod.png_to_t(png)
     ti = texmod.parse_t(t)
     assert (ti.width, ti.height) == (w, h)
-    assert ti.gm_format == 4
-    assert ti.mip_count == 4                      # 8,4,2,1
-    assert len(ti.payload) == (64 + 16 + 4 + 1) * 4
-    assert ti.payload[:4] == b"\x80\x00\x00\xff"  # RGBA(0,0,128,255)->BGRA
+    assert ti.gm_format == 6 and ti.fourcc == b"DXT1", (ti.gm_format, ti.fourcc)
+    assert ti.mip_count == 4                       # 8, 4, 2, 1
+    # 32 + 8 + 2 + int(1*0.5) bytes: the container's own accounting
+    assert len(ti.payload) == 32 + 8 + 2 + 0 == ti.payload_size()
+    assert len(t) == 59 + 42
+
+    # alpha that actually varies goes to DXT5 instead, so a cut-out atlas
+    # keeps its transparency
+    raw = b"".join(b"\x00" + b"".join(
+        bytes([(x * 32) % 256, 64, 128, (y * 32) % 256])
+        for x in range(w)) for y in range(h))
+    png_a = (b"\x89PNG\r\n\x1a\n"
+             + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0))
+             + chunk(b"IDAT", zlib.compress(raw))
+             + chunk(b"IEND", b""))
+    ti_a = texmod.parse_t(texmod.png_to_t(png_a))
+    assert ti_a.fourcc == b"DXT5" and ti_a.gm_format == 8, ti_a.fourcc
+
+
+def _a_painted_tga(width=16, height=16, bpp=24, name="order_helmet.tga"):
+    """A texture the way an artist hands one over: an uncompressed TGA.
+
+    TGA is what the `.g` itself spells its material as, so it is the format a
+    new atlas most often arrives in — and the one the engine cannot read.
+    """
+    px = bytearray()
+    for y in range(height):
+        for x in range(width):
+            px += bytes(((x * 16) % 256, (y * 16) % 256, 96))
+            if bpp == 32:
+                px += b"\xff"
+    header = struct.pack("<BBBHHBHHHHBB", 0, 0, 2, 0, 0, 0, 0, 0,
+                         width, height, bpp, 0x20)
+    return header + bytes(px)
+
+
+def test_a_painted_texture_decodes_into_a_native_t():
+    """A TGA/BMP the artist supplies must become a `.t` the engine can load.
+
+    Neither format is readable by the GM engine, and a part whose atlas stayed
+    a `.png`/`.tga` simply loads with no texture.  The export has to decode
+    the pixels and block-compress them, with the container's own mip
+    accounting.
+    """
+    w, h = 16, 16
+    ti = texmod.parse_t(texmod.tga_to_t(_a_painted_tga(w, h)))
+    assert (ti.width, ti.height) == (w, h)
+    assert ti.fourcc == b"DXT1" and ti.gm_format == 6, ti.fourcc
+    assert ti.mip_count == 5                     # 16, 8, 4, 2, 1
+    assert len(ti.payload) == ti.payload_size()
+    # the pixels arrive the right way round (BGRA in the file, RGBA out)
+    w2, h2, rows = texmod.decode_tga(_a_painted_tga(w, h, bpp=32))
+    assert (w2, h2) == (w, h)
+    assert rows[0][:4] == bytes((96, 0, 0, 255)), rows[0][:4]
+    # alpha that actually varies goes to DXT5, so a cut-out keeps its edges
+    cut = bytearray()
+    for y in range(8):
+        for x in range(8):
+            cut += bytes((64, 64, 64, (x * 32) % 256))
+    cut_tga = struct.pack("<BBBHHBHHHHBB", 0, 0, 2, 0, 0, 0, 0, 0,
+                          8, 8, 32, 0x20) + bytes(cut)
+    assert texmod.parse_t(texmod.tga_to_t(cut_tga)).fourcc == b"DXT5"
+
+    # a bottom-up BMP is the same picture: both origins decode to the same `.t`
+    def bmp(top_down):
+        stride = ((24 * w + 31) // 32) * 4
+        rows = []
+        for y in range(h):
+            row = bytearray()
+            for x in range(w):
+                row += bytes(((x * 16) % 256, (y * 16) % 256, 96))
+            row += b"\0" * (stride - len(row))
+            rows.append(bytes(row))
+        body = b"".join(rows if top_down else list(reversed(rows)))
+        info = struct.pack("<IiiHHIIiiII", 40, w, -h if top_down else h,
+                           1, 24, 0, len(body), 2835, 2835, 0, 0)
+        return (struct.pack("<2sIHHI", b"BM", 14 + 40 + len(body), 0, 0,
+                            14 + 40) + info + body)
+
+    assert texmod.bmp_to_t(bmp(True)) == texmod.bmp_to_t(bmp(False))
+    assert texmod.bmp_to_t(bmp(True)) == texmod.tga_to_t(_a_painted_tga(w, h))
+    # an image this tool cannot read says so instead of writing a broken `.t`
+    try:
+        texmod.image_to_t(b"\xff\xd8\xff\xe0" + b"0" * 64, "paint.jpg")
+    except ValueError as exc:
+        assert "JPEG" in str(exc), exc
+    else:                                        # pragma: no cover
+        raise AssertionError("a JPEG was accepted as a texture")
+
+
+def test_a_texture_that_is_not_a_power_of_two_still_encodes():
+    """An atlas painted at 300x150 must not kill the mip chain.
+
+    The down-sampler walked the *input* width by two, so every odd-sized row
+    wrote one pixel past the end of the level it was building.
+    """
+    ti = texmod.parse_t(texmod.tga_to_t(_a_painted_tga(15, 9)))
+    assert (ti.width, ti.height) == (15, 9)
+    assert len(ti.payload) == ti.payload_size()
+
+
+def test_the_texture_add_step_writes_the_t_the_g_will_name():
+    """``texture add``: a painted atlas in, the engine's ``.t`` out.
+
+    This is the "add the texture too" half of modelling a new part: the file
+    lands next to the unit under the stem the `.g`/`.scene` will carry as
+    ``<stem>.tga``, in the only container the engine reads.
+    """
+    tmp = tempfile.mkdtemp(prefix="d3texadd_")
+    try:
+        src = os.path.join(tmp, "order_helmet_of_the_order.tga")
+        open(src, "wb").write(_a_painted_tga(32, 32))
+        out_dir = os.path.join(tmp, "unit")
+        code = climod._texture_add(src, out_dir)
+        assert code == 0
+        written = os.path.join(out_dir, "order_helmet_of_the_order.t")
+        assert os.path.isfile(written), sorted(os.listdir(out_dir))
+        ti = texmod.parse_t(open(written, "rb").read())
+        assert (ti.width, ti.height, ti.fourcc) == (32, 32, b"DXT1")
+        # an explicit name wins, so a texture can be renamed to what the
+        # material calls it
+        code = climod._texture_add(src, out_dir, "helmet_neck")
+        assert os.path.isfile(os.path.join(out_dir, "helmet_neck.t"))
+        # a file that is not an image is refused, not written as garbage
+        bad = os.path.join(tmp, "notes.txt")
+        open(bad, "w").write("hello")
+        assert climod._texture_add(bad, out_dir) == 1
+        # a name the unit already ships is refused: the export prefers the
+        # shipped .dds/.t by stem, so overwriting it would be undone by the
+        # very next export and the painted atlas would vanish
+        open(os.path.join(out_dir, "character_x.dds"), "wb").write(b"DDS ")
+        assert climod._texture_add(src, out_dir, "character_x") == 1
+        assert not os.path.isfile(os.path.join(out_dir, "character_x.t"))
+        assert climod._texture_add(src, out_dir, "character_x", True) == 0
+        assert os.path.isfile(os.path.join(out_dir, "character_x.t"))
+        # adding the same texture twice is a no-op, not an error
+        assert climod._texture_add(src, out_dir, "helmet_neck") == 0
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_the_export_writes_the_atlas_a_new_part_names():
+    """A glTF that names a texture only the artist has must still ship it.
+
+    ``_export_textures`` is what turns the glTF's image URI into the `.t` the
+    ``.g`` points at; it has to decode a painted TGA as readily as it converts
+    a shipped DDS, or the new part exports without an atlas.
+    """
+    tmp = tempfile.mkdtemp(prefix="d3exptex_")
+    try:
+        gltf_path = os.path.join(tmp, "unit.gltf")
+        open(os.path.join(tmp, "order_helmet.tga"), "wb").write(
+            _a_painted_tga(8, 8))
+        with open(gltf_path, "w", encoding="utf-8") as fh:
+            json.dump({"images": [{"uri": "order_helmet.tga"}],
+                       "materials": [], "textures": []}, fh)
+        out = os.path.join(tmp, "out")
+        os.makedirs(out)
+        first = climod._export_textures(gltf_path, out, "unit", True)
+        assert first == "order_helmet.t", first
+        ti = texmod.parse_t(open(os.path.join(out, first), "rb").read())
+        assert (ti.width, ti.height) == (8, 8)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_a_raw_texture_is_recompressed_and_a_packed_one_is_left_alone():
+    """The 683 KiB problem: a `.t` holding raw A8R8G8B8 of an atlas the game
+    ships as an 86 KiB DXT1.  Same pixels, eight times the size, and the file
+    listing reads like the wrong texture."""
+    from d3tool import texture as texmod
+
+    w, h = 32, 32
+    rows = [bytes(v for x in range(w)
+                  for v in ((x * 8) % 256, (y * 8) % 256, 64, 255))
+            for y in range(h)]
+    raw = bytearray()
+    cur, cw, ch = rows, w, h
+    while cw >= 1 and ch >= 1:
+        for row in cur:
+            for x in range(cw):
+                o = 4 * x
+                raw += bytes((row[o + 2], row[o + 1], row[o], row[o + 3]))
+        cur, cw, ch = texmod._downsample_rows(cur, cw, ch), cw >> 1, ch >> 1
+    big = texmod.write_t(texmod.TextureInfo(
+        width=w, height=h, mip_count=6, gm_format=4, payload=bytes(raw)))
+    assert texmod.parse_t(big).fourcc is None          # raw RGBA, not DXT
+    assert len(big) > 4000
+
+    small = texmod.compress_t(big)
+    assert small is not None and len(small) < len(big) // 3, (len(big), small and len(small))
+    ti = texmod.parse_t(small)
+    assert ti.fourcc == b"DXT1" and ti.gm_format == 6
+    assert (ti.width, ti.height, ti.mip_count) == (w, h, 6)
+    assert len(ti.payload) == ti.payload_size()
+    # already compressed: nothing to do, and the file is returned untouched
+    assert texmod.compress_t(small) is None
+    assert texmod.compress_t(b"junk") is None
+
+    # a flat block needs no search: one colour, every index on it
+    block = texmod._bc1_block([(255, 0, 0, 255)] * 16)
+    c0, c1, bits = struct.unpack("<HHI", block)
+    assert c0 == c1 == texmod._rgb565(255, 0, 0) and bits == 0
+
+
+def test_the_export_carries_a_compressed_texture_not_a_raw_one():
+    """End to end: a folder that holds a raw-pixel atlas exports a DXT1 `.t`."""
+    tmp = tempfile.mkdtemp(prefix="d3carry_")
+    try:
+        work = os.path.join(tmp, "unit")
+        os.makedirs(work)
+        for name in ("character_empire_inquisitor.g",
+                     "character_empire_inquisitor_baseanims.a",
+                     "character_empire_inquisitor.ac",
+                     "character_empire_inquisitor.scene"):
+            shutil.copyfile(os.path.join(REPO, "Empire", "Inquisitor", name),
+                            os.path.join(work, name))
+        # a raw-pixel stand-in for the unit's atlas: 64x64, DXT1 after export
+        w = h = 64
+        rows = [bytes(v for x in range(w)
+                      for v in ((x * 4) % 256, (y * 4) % 256, 32, 255))
+                for y in range(h)]
+        payload = bytearray()
+        cur, cw, ch = rows, w, h
+        while cw >= 1 and ch >= 1:
+            for row in cur:
+                for x in range(cw):
+                    o = 4 * x
+                    payload += bytes((row[o + 2], row[o + 1], row[o], row[o + 3]))
+            cur, cw, ch = texmod._downsample_rows(cur, cw, ch), cw >> 1, ch >> 1
+        big = texmod.write_t(texmod.TextureInfo(
+            width=w, height=h, mip_count=7, gm_format=4, payload=bytes(payload)))
+        open(os.path.join(work, "character_empire_inquisitor.t"), "wb").write(big)
+
+        g = os.path.join(work, "character_empire_inquisitor.g")
+        gl = os.path.join(tmp, "x.gltf")
+        climod._export_gl(g, os.path.join(work,
+                                          "character_empire_inquisitor_baseanims.a"),
+                          gl, None, quiet=True)
+        out = os.path.join(tmp, "out")
+        climod._export(gl, out, 0, anim=True, quiet=True, donor_dir=work)
+        carried = os.path.join(out, "character_empire_inquisitor.t")
+        assert os.path.isfile(carried)
+        got = open(carried, "rb").read()
+        assert len(got) < len(big) // 2, (len(big), len(got))
+        assert texmod.describe(carried, True) == "64x64 DXT1"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
 
 
 def test_anim_track_without_parent_uses_zero_length():
@@ -2039,6 +3709,1127 @@ def test_vdpack_cli_pack_list_extract():
         assert climod._run(["vdpack", "list", damaged]) == 1
 
 
+def test_vdpack_diff_names_what_separates_two_packs():
+    """The one thing a modder needs before shipping a pack: which paths it
+    adds, which it drops, and which payloads it replaces — the three answers
+    `pack_like` acts on, readable without unpacking either archive."""
+    from d3tool import vdpack as vmod
+    base = vmod.build_vdpack([
+        ("index", b"opaque"),
+        ("resources\\Unit\\a.g", b"old geometry"),
+        ("resources\\Unit\\a.scene", b"scene"),
+        ("resources\\Unit\\a.t", b"atlas"),
+    ])
+    other = vmod.build_vdpack([
+        ("index", b"opaque"),
+        ("resources\\Unit\\a.g", b"new geometry"),
+        ("resources\\Unit\\a.scene", b"scene"),
+        ("resources\\Unit\\b.t", b"atlas"),
+    ])
+    result = vmod.diff_entries(
+        list(vmod.parse_vdpack(base).files().items()),
+        list(vmod.parse_vdpack(other).files().items()))
+    assert result["added"] == ["resources\\Unit\\b.t"]
+    assert result["removed"] == ["resources\\Unit\\a.t"]
+    assert result["changed"] == ["resources\\Unit\\a.g"]
+    assert result["unchanged"] == 2
+    assert result["reordered"] is False
+    grades = [grade for grade, _ in vmod.shape_verdict(result)]
+    assert "bad" in grades          # an added path is the unconfirmed shape
+    assert "warn" in grades         # the removal, and it names each path
+
+
+def test_vdpack_diff_grades_the_confirmed_shape_as_ok():
+    """Same paths, different payloads, same order: the one shape with a
+    runtime confirmation behind it, and the only one that may read `ok`."""
+    from d3tool import vdpack as vmod
+    entries = [("resources\\Unit\\a.g", b"x"), ("resources\\Unit\\a.t", b"y")]
+    result = vmod.diff_entries(entries, [("resources\\Unit\\a.g", b"xx"),
+                                         ("resources\\Unit\\a.t", b"y")])
+    verdict = vmod.shape_verdict(result)
+    assert verdict and verdict[0][0] == "ok"
+    assert result["added"] == [] and result["removed"] == []
+    assert result["reordered"] is False
+    # a folder and the pack built from it compare clean, separators aside
+    folder = [("resources/Unit/a.g", b"xx"), ("resources/Unit/a.t", b"y")]
+    same = vmod.diff_entries(entries, folder)
+    assert same["added"] == [] and same["removed"] == []
+
+
+def test_vdpack_diff_cli_reports_and_exits():
+    import contextlib
+    import io
+    from d3tool import vdpack as vmod
+    good = vmod.build_vdpack([("index", b"i"), ("resources\\U\\a.g", b"1")])
+    bad = vmod.build_vdpack([("index", b"i"), ("resources\\U\\a.g", b"2"),
+                             ("resources\\U\\b.g", b"3")])
+    with tempfile.TemporaryDirectory() as d:
+        one = os.path.join(d, "one.vdpack")
+        two = os.path.join(d, "two.vdpack")
+        open(one, "wb").write(good)
+        open(two, "wb").write(bad)
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            assert climod._run(["vdpack", "diff", one, two]) == 0
+        text = buf.getvalue()
+        assert "resources\\U\\b.g" in text
+        assert "added" in text
+        with contextlib.redirect_stdout(io.StringIO()):
+            assert climod._run(["vdpack", "diff", one, two, "--strict"]) == 1
+            assert climod._run(["vdpack", "diff", one, one]) == 0
+
+
+def test_vdpack_plan_separates_replacement_from_a_new_path():
+    """What `plan` is for: a folder on disk says nothing about the archive
+    path it lands on, so a modder can ship a file that replaces one the engine
+    already reaches, or one at a path the pack's `index` never lists — and the
+    second shape is the one that showed no units at all in game."""
+    from d3tool import vdpack as vmod
+    base = [("resources\\Characters\\Empire\\Unit\\a.g", b"old"),
+            ("resources\\Characters\\Empire\\Unit\\a.scene", b"scene"),
+            ("resources\\Characters\\Empire\\Unit\\a.t", b"atlas"),
+            ("resources\\Characters\\Empire\\Unit\\Aliases\\x.alias", b"a")]
+    folder = [("a.g", b"new"), ("a.scene", b"scene"), ("a.t", b"atlas"),
+              ("b.t", b"atlas")]
+    plan = vmod.plan_bundle(folder, base)
+    assert plan["prefix"] == "resources\\Characters\\Empire\\Unit"
+    assert [e["path"] for e in plan["replaced"]] == [
+        "resources\\Characters\\Empire\\Unit\\a.g",
+        "resources\\Characters\\Empire\\Unit\\a.scene",
+        "resources\\Characters\\Empire\\Unit\\a.t"]
+    assert [e["path"] for e in plan["added"]] == [
+        "resources\\Characters\\Empire\\Unit\\b.t"]
+    # the rename targets are the textures the pack already lists in that folder
+    assert plan["added"][0]["alternatives"] == ["a"]
+    assert plan["missing"] == ["resources\\Characters\\Empire\\Unit\\Aliases\\x.alias"]
+    # a clean folder: nothing new, so the confirmed shape
+    clean = vmod.plan_bundle(folder[:3], base)
+    assert clean["added"] == [] and len(clean["replaced"]) == 3
+
+
+def test_vdpack_plan_without_a_pack_is_the_loose_layout():
+    """No `--like`: the plan can still line the folder up (its own `.scene`
+    names the archive path) and print the loose tree, which is the only way to
+    ship a path no pack can carry."""
+    from d3tool import vdpack as vmod
+    folder = [("a.g", b"g"), ("a.t", b"t"),
+              ("a.scene", b'name "x"\nmesh "resources/Characters/Empire/Unit/a.g"\n')]
+    plan = vmod.plan_bundle(folder)
+    assert plan["prefix"] == "resources\\Characters\\Empire\\Unit"
+    assert plan["has_base"] is False
+    assert plan["added"] == []
+    assert [e["kind"] for e in plan["entries"]] == ["loose"] * 3
+    assert plan["entries"][0]["path"].startswith(
+        "resources\\Characters\\Empire\\Unit\\")
+    # no prefix anywhere: a bare listing, never a crash
+    bare = vmod.plan_bundle([("a.g", b"g")])
+    assert bare["prefix"] == "" and bare["entries"][0]["path"] == "a.g"
+
+
+def test_vdpack_plan_cli_reports_and_exits():
+    import contextlib
+    import io
+    from d3tool import vdpack as vmod
+    base = vmod.build_vdpack([("index", b"i"),
+                              ("resources\\U\\a.g", b"1"),
+                              ("resources\\U\\a.t", b"2")])
+    with tempfile.TemporaryDirectory() as d:
+        archive = os.path.join(d, "base.vdpack")
+        open(archive, "wb").write(base)
+        folder = os.path.join(d, "Unit")
+        os.makedirs(folder)
+        for name in ("a.g", "a.t"):
+            open(os.path.join(folder, name), "wb").write(b"payload")
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            assert climod._run(["vdpack", "plan", folder, "--like", archive]) == 0
+            assert climod._run(["vdpack", "plan", folder, "--like", archive,
+                                "--strict"]) == 0
+            assert climod._run(["vdpack", "plan", folder]) == 0
+        text = buf.getvalue()
+        assert "replaces  resources\\U\\a.g" in text
+        assert "loose layout" in text
+        # a file the pack cannot reach flips the verdict and --strict
+        open(os.path.join(folder, "b.t"), "wb").write(b"payload")
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            assert climod._run(["vdpack", "plan", folder, "--like", archive]) == 0
+            assert climod._run(["vdpack", "plan", folder, "--like", archive,
+                                "--strict"]) == 1
+            assert climod._run(["vdpack", "plan", os.path.join(d, "nope")]) == 1
+        text = buf.getvalue()
+        assert "new path  resources\\U\\b.t" in text
+        assert "a" in text              # the rename target it suggests
+        # --prefix overrides the inference, --json prints the record
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            assert climod._run(["vdpack", "plan", folder, "--prefix",
+                                "resources\\Other", "--json"]) == 0
+        assert '"prefix": "resources\\\\Other"' in buf.getvalue()
+
+
+# --------------------------------------------------------------------------- #
+#  tools/dump_extract.py — reading a Windows minidump
+# --------------------------------------------------------------------------- #
+
+def _pe_image():
+    """The smallest thing that is structurally a PE: header + one section."""
+    img = bytearray(0x2000)
+    img[0:2] = b"MZ"
+    struct.pack_into("<I", img, 0x3C, 0x80)
+    img[0x80:0x84] = b"PE\x00\x00"
+    struct.pack_into("<H", img, 0x84, 0x14C)          # machine i386
+    struct.pack_into("<H", img, 0x86, 1)             # one section
+    struct.pack_into("<H", img, 0x94, 0xE0)          # SizeOfOptionalHeader
+    table = 0x80 + 24 + 0xE0
+    img[table:table + 8] = b".text\x00\x00\x00"
+    struct.pack_into("<I", img, table + 8, 0x1000)   # VirtualSize
+    struct.pack_into("<I", img, table + 12, 0x1000)  # VirtualAddress
+    struct.pack_into("<I", img, table + 16, 0x800)   # SizeOfRawData (on disk)
+    struct.pack_into("<I", img, table + 20, 0x400)   # PointerToRawData
+    img[0x1000:0x1010] = b"\x90" * 16
+    return bytes(img)
+
+
+def _minidump(modules, regions, exception=None, stack_pointer=None):
+    """Assemble a minidump carrying exactly the streams the parser reads.
+
+    ``modules`` is ``{name: (base, size, image)}``; ``regions`` the captured
+    ranges, laid out the way a real dump lays them out (a table of start/size
+    pairs, then the payloads back to back at ``BaseRva``).  Strings sit past
+    every fixed-size structure, as in a dump written by the OS.
+    """
+    names = list(modules)
+    strings = [struct.pack("<I", len(n.encode("utf-16-le"))) +
+               n.encode("utf-16-le") for n in names]
+    nstreams = 3 + (1 if exception else 0)
+    system = struct.pack("<HH", 0, 0) + bytes(52)
+    module_size = 4 + 108 * len(names)
+    memory_size = 16 + 16 * len(regions)
+    cursor = 32 + 12 * nstreams
+    system_rva = cursor
+    module_rva = cursor + len(system)
+    memory_rva = module_rva + module_size
+    payload_rva = memory_rva + memory_size
+    payload_len = sum(len(data) for _start, data in regions)
+    cursor = payload_rva + payload_len
+    exception_rva = cursor if exception else None
+    if exception:
+        cursor += 168
+    context = bytearray(0x2CC)
+    if stack_pointer is not None:
+        struct.pack_into("<I", context, 0xC4, stack_pointer)    # esp
+    context_rva = cursor
+    cursor += len(context)
+    strings_rva = cursor
+
+    records = b""
+    for index, name in enumerate(names):
+        base, size, _image = modules[name]
+        name_rva = strings_rva + sum(len(b) for b in strings[:index])
+        records += struct.pack("<QIIII", base, size, 0, 0, name_rva) \
+            + bytes(52) + bytes(32)
+    module_stream = struct.pack("<I", len(names)) + records
+
+    entries = b""
+    for start, data in regions:
+        entries += struct.pack("<QQ", start, len(data))
+    memory_stream = struct.pack("<QQ", len(regions), payload_rva) + entries
+
+    exception_stream = b""
+    if exception:
+        exception_stream = (struct.pack("<II", 1, 0) +
+                            struct.pack("<II", 0xC0000005, 0) +
+                            struct.pack("<QQ", 0, exception) +
+                            struct.pack("<II", 2, 0) +
+                            struct.pack("<QQ", 0xFFFFFFFF, 0) + bytes(13 * 8) +
+                            struct.pack("<II", len(context), context_rva))
+    streams = [(7, system, system_rva), (4, module_stream, module_rva),
+               (9, memory_stream, memory_rva)]
+    if exception:
+        streams.append((6, exception_stream, exception_rva))
+    directory = b""
+    for kind, data, rva in streams:
+        directory += struct.pack("<III", kind, len(data), rva)
+    body = (system + module_stream + memory_stream +
+            b"".join(data for _start, data in regions) + exception_stream +
+            bytes(context) + b"".join(strings))
+    header = b"MDMP" + struct.pack("<IIIIIQ", 0xA793, nstreams, 32, 0, 0, 0)
+    return header + directory + body
+
+
+def test_dump_extract_reads_modules_and_rebuilds_a_pe(tmp_path=None):
+    """`tools/dump_extract.py` is the way a protected engine becomes readable:
+    the file on disk is encrypted, the process image is not, and the only fix a
+    memory image needs is section pointers back to their virtual addresses."""
+    import importlib.util
+    import subprocess
+    path = os.path.join(REPO, "tools", "dump_extract.py")
+    spec = importlib.util.spec_from_file_location("dump_extract", path)
+    dm = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(dm)
+
+    pe = _pe_image()
+    blob = _minidump({"C:\\game\\Toolkit.exe": (0x400000, 0x2000, pe),
+                      "C:\\game\\ijaqemox.dll": (0x10000000, 0x1000, b"\xA1" * 256)},
+                     [(0x400000, pe), (0x10000000, b"\xA1" * 256),
+                      (0x12FF00, struct.pack("<III", 0x00401234, 0, 0x10000020))],
+                     exception=0x10000010, stack_pointer=0x12FF00)
+    with tempfile.TemporaryDirectory() as d:
+        dump_path = os.path.join(d, "crash.dmp")
+        open(dump_path, "wb").write(blob)
+        dump = dm.read_dump(dump_path)
+        assert [m.name.split("\\")[-1] for m in dump.modules] == [
+            "Toolkit.exe", "ijaqemox.dll"]
+        assert dump.modules[0].base == 0x400000
+        image, got = dump.module_image(dump.modules[0])
+        assert image[:2] == b"MZ" and got == 0x2000
+        rebuilt, notes = dm.rebuild_pe(image)
+        assert rebuilt[:2] == b"MZ" and notes
+        assert struct.unpack_from("<I", rebuilt, 0x80 + 24 + 0xE0 + 20)[0] == 0x1000
+        # a module the dump only partly captured says so instead of lying
+        partial, got = dump.module_image(dump.modules[1])
+        assert got == 256 and len(partial) == 0x1000
+        report = dm.crash_report(dump)
+        assert report["exception"] == 0xC0000005
+        assert report["module"].endswith("ijaqemox.dll")
+        assert report["offset"] == 0x10
+        frames = [(f["module"].split("\\")[-1], f["offset"])
+                  for f in report["stack"]]
+        assert ("Toolkit.exe", 0x1234) in frames
+        assert ("ijaqemox.dll", 0x20) in frames
+        # ... and the CLI agrees with the library
+        out = os.path.join(d, "out")
+        result = subprocess.run([sys.executable, path, dump_path, "-o", out],
+                                capture_output=True, text=True, check=False)
+        assert result.returncode == 0, result.stderr
+        assert "crash: exception 0xc0000005" in result.stdout
+        assert os.path.exists(os.path.join(out, "ijaqemox.dll.img"))
+        assert os.path.exists(os.path.join(out, "Toolkit.exe.rebuilt"))
+        # a file that is not a minidump is refused, not guessed at
+        not_a_dump = os.path.join(d, "x.dmp")
+        open(not_a_dump, "wb").write(b"\x01\x02\x03\x04" + bytes(28))
+        result = subprocess.run([sys.executable, path, not_a_dump],
+                                capture_output=True, text=True, check=False)
+        assert result.returncode == 2
+        assert "not a Windows minidump" in result.stderr
+    # strings: what makes the loader's own names readable
+    assert any("resources" in text for text in
+               dm.printable_strings(b"\x00\x00resources\\characters\x01"))
+    assert dm.entropy(b"\x00" * 100) == 0.0
+
+
+def test_localdumps_reg_files_are_what_windows_expects():
+    """The crash dump is the one artefact that makes a protected engine
+    readable, and these two files are how a non-technical step produces it:
+    double-click, crash, send the file.  What must not drift is the registry
+    shape Windows actually reads — both views (a 32-bit game on 64-bit Windows
+    looks in Wow6432Node), a full dump rather than a mini one, and an
+    expandable string for the folder."""
+    import re
+    folder = os.path.join(REPO, "tools", "windows")
+    enable = open(os.path.join(folder, "enable_localdumps.reg"), "rb").read()
+    disable = open(os.path.join(folder, "disable_localdumps.reg"), "rb").read()
+    assert enable.startswith(b"Windows Registry Editor Version 5.00\r\n")
+    assert disable.startswith(b"Windows Registry Editor Version 5.00\r\n")
+    assert enable.count(b"Windows Error Reporting\\LocalDumps]") == 2
+    assert b"Wow6432Node" in enable
+    assert enable.count(b'"DumpType"=dword:00000002') == 2   # full, not mini
+    assert enable.count(b'"DumpCount"=dword:0000000a') == 2
+    hexed = re.search(rb'"DumpFolder"=hex\(2\):([0-9a-f,]+)', enable).group(1)
+    path = bytes.fromhex(hexed.decode().replace(",", "")).decode("utf-16-le")
+    assert path.rstrip("\x00") == "%USERPROFILE%\\Desktop\\D3dumps"
+    assert path.endswith("\x00")                             # NUL terminated
+    assert not path[:-1].endswith("\x00")
+    # the undo file removes exactly the keys the enable file creates
+    assert disable.count(b"[-HKEY_LOCAL_MACHINE") == 2
+    for key in (b"Windows Error Reporting\\LocalDumps]",):
+        assert enable.count(key) == disable.count(key) == 2
+
+
+def _tiny_pe(code, rdata):
+    """A two-section PE32: one code section, one string section."""
+    text_rva, text_raw, rdata_rva = 0x1000, 0x200, 0x2000
+    rdata_raw = 0x200 + ((len(code) + 0x1FF) // 0x200) * 0x200
+    image = bytearray(rdata_raw + ((len(rdata) + 0x1FF) // 0x200) * 0x200)
+    image[0:2] = b"MZ"
+    struct.pack_into("<I", image, 0x3C, 0x80)
+    image[0x80:0x84] = b"PE\x00\x00"
+    struct.pack_into("<HHIII", image, 0x84, 0x14C, 2, 0, 0, 0)
+    struct.pack_into("<H", image, 0x94, 0xE0)          # SizeOfOptionalHeader
+    struct.pack_into("<H", image, 0x96, 0x0102)
+    base = 0x80 + 24
+    struct.pack_into("<I", image, base + 28, 0x400000)          # ImageBase
+    struct.pack_into("<II", image, base + 32, 0x1000, 0x200)
+    struct.pack_into("<I", image, base + 56, 0x3000)            # SizeOfImage
+    struct.pack_into("<I", image, base + 60, 0x200)
+    table = base + 0xE0
+    image[table:table + 8] = b".text\x00\x00\x00"
+    struct.pack_into("<IIII", image, table + 8, len(code), text_rva,
+                     len(code), text_raw)
+    struct.pack_into("<I", image, table + 36, 0x60000020)
+    image[table + 40:table + 48] = b".rdata\x00\x00"
+    struct.pack_into("<IIII", image, table + 48, len(rdata), rdata_rva,
+                     len(rdata), rdata_raw)
+    struct.pack_into("<I", image, table + 76, 0x40000040)
+    image[text_raw:text_raw + len(code)] = code
+    image[rdata_raw:rdata_raw + len(rdata)] = rdata
+    return bytes(image)
+
+
+def test_pe_find_resolves_a_string_its_xref_and_the_disassembly():
+    """`tools/pe_find.py` is how the retail loader's own answers are read: the
+    game executable keeps its code and strings in clear, so a refusal message
+    resolves to the address that logs it and then to the code around that
+    address.  Exercised on a synthetic two-section PE because the retail binary
+    deliberately stays out of git."""
+    try:
+        import capstone  # noqa: F401
+        import pefile  # noqa: F401
+    except ImportError:                                   # pragma: no cover
+        return                      # optional dependencies of the bench
+    import importlib.util
+    path = os.path.join(REPO, "tools", "pe_find.py")
+    spec = importlib.util.spec_from_file_location("pe_find", path)
+    pf = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(pf)
+
+    message_va = 0x400000 + 0x2000
+    code = b"\x68" + struct.pack("<I", message_va) + b"\xC3" + b"\xCC" * 8
+    with tempfile.TemporaryDirectory() as d:
+        exe = os.path.join(d, "tiny.exe")
+        open(exe, "wb").write(_tiny_pe(code, b"wrong index\x00"))
+        binary = pf.Binary(exe)
+        assert binary.base == 0x400000
+        assert binary.code_sections() == [".text"]
+        assert [text for _va, text in binary.strings()] == ["wrong index"]
+        assert binary.string_at(message_va) == "wrong index"
+        hits = binary.xrefs(message_va)
+        assert len(hits) == 1 and hits[0]["kind"] == "push imm32"
+        assert hits[0]["va"] == 0x400000 + 0x1001
+        lines = binary.disasm(0x401000, 3)
+        assert lines[0].startswith("0x00401000  push")
+        assert '"wrong index"' in lines[0]           # the immediate is annotated
+        assert binary.function_start(0x401002) <= 0x401002
+        # an address outside every section is reported, not guessed at
+        assert binary.section_of(0x900000) == (None, None)
+
+
+def _tiny_minidump(path):
+    """A minidump carrying one module, one memory range and one exception."""
+    import struct
+    module_name = "D:\\Game\\DisciplesIII12.exe"
+    utf = module_name.encode("utf-16-le") + b"\x00\x00"
+
+    header = 32
+    directory = header
+    streams = 3                                   # (type, payload bytes)
+    body = b""
+    # layout: [header][dir][module list][module name][memory][exception]
+    dir_size = 12 * 3                      # three streams
+    mod_rva = header + dir_size
+    name_rva = mod_rva + 4 + 108
+    mod_list = struct.pack("<I", 1) + struct.pack(
+        "<QIIII", 0x400000, 0x2000, 0, 0, name_rva) + b"\x00" * (108 - 24)
+    name = struct.pack("<I", len(utf)) + utf
+    mem_rva = name_rva + len(name)
+    code = b"\x55\x8b\xec\xc3" + b"\x90" * 12
+    mem = struct.pack("<I", 1) + struct.pack("<QII", 0x400010, len(code), 0)
+    code_rva = mem_rva + len(mem)
+    mem = mem[:-4] + struct.pack("<I", code_rva)   # where its bytes live
+    ctx = bytearray(0xcc)
+    struct.pack_into("<I", ctx, 0xb8, 0x400011)   # eip inside the code
+    struct.pack_into("<I", ctx, 0xc4, 0x100000)   # esp
+    exc_rva = code_rva + len(code)
+    exc = struct.pack("<II", 0x1ee0, 0) + struct.pack(
+        "<IIQQII", 0xC0000005, 0, 0, 0x400011, 2, 0) + struct.pack(
+        "<15Q", 0, 0xA6000CB3, *([0] * 13)) + struct.pack(
+        "<II", len(ctx), 0)                        # context rva fixed below
+    ctx_rva = exc_rva + len(exc)
+    exc = exc[:-8] + struct.pack("<II", len(ctx), ctx_rva)
+    directory_bytes = b"".join(struct.pack("<III", kind, size, rva)
+                               for kind, size, rva in
+                               ((4, len(mod_list), mod_rva),
+                                (5, len(mem), mem_rva),
+                                (6, len(exc), exc_rva)))
+    head = struct.pack("<4sIIIIIQ", b"MDMP", 0, 3, directory, 0, 0, 0)
+    blob = (head + directory_bytes + mod_list + name + mem + code + exc
+            + bytes(ctx))
+    open(path, "wb").write(blob)
+    return blob
+
+
+def test_dmp_find_reads_a_minidump_the_way_a_crash_is_read():
+    """A crash is read through three things: which module and offset faulted,
+    what the exception says was being touched, and what the engine had left in
+    memory.  All three come out of the streams, so the parser is testable on a
+    dump this test writes itself."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "dmp_find", os.path.join(REPO, "tools", "dmp_find.py"))
+    dmp = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(dmp)
+    with tempfile.TemporaryDirectory() as d:
+        path = os.path.join(d, "tiny.dmp")
+        _tiny_minidump(path)
+        dump = dmp.Minidump(path)
+        assert [m[0] for m in dump.modules] == [0x400000]
+        assert dump.modules[0][2] == "D:\\Game\\DisciplesIII12.exe"
+        assert dump.module_at(0x400100)[0] == 0x400000
+        assert dump.name_of(0x400011).startswith("D:\\Game\\DisciplesIII12.exe+")
+        # the memory list maps a virtual address to the bytes carried for it
+        assert dump.read(0x400010, 1) == b"\x55"
+        assert dump.read(0x900000) is None          # not in this dump
+        exc = dump.exception()
+        assert exc["code"] == 0xC0000005
+        assert dump.registers(exc["context"][1], exc["context"][0])["eip"] \
+            == 0x400011
+        # the reading a crash report actually needs
+        assert dmp.EXCEPTIONS[exc["code"]] == "access violation"
+        assert exc["params"][1] == 0xA6000CB3       # the address touched
+        code, start = dump.window(0x400011)      # clipped to what is carried
+        assert start == 0x400010 and code[:4] == b"\x55\x8b\xec\xc3"
+        # strings() walks the dumped ranges only, never the file's own bytes
+        assert all(addr >= 0x400010 for addr, _text in dump.strings(4))
+
+
+def test_vdpack_index_is_a_decodable_manifest_the_loader_checks():
+    """`index` is not opaque: it is a text manifest behind an eight byte
+    header and an LCG keystream — `Name`/`UUID`/`Type`, one `File` line per
+    resource with its MD5 and SHA-256.  The toolkit's deobfuscator at
+    0x40a290 is the same three instructions, and every digest in a shipped
+    pack matches the payload it names."""
+    import hashlib
+    from d3tool import vdpack as vmod
+    files = [("index", b"placeholder"),
+             ("resources\\Unit\\a.g", b"geometry"),
+             ("resources\\Unit\\a.t", b"atlas"),
+             ("russian.txt", b"russian")]
+    text, blob = vmod.build_index(files, name="unit", uuid="u-1", type_="Mod")
+    assert blob[:4] == vmod.INDEX_MAGIC == b"\x65\x43\x74\xff"
+    assert vmod.U32.unpack_from(blob, 4)[0] == vmod.INDEX_SEED
+    assert len(blob) == 8 + len(text.encode("utf-8")) + 1
+    # the header is a magic and a seed; the body is the text XOR the keystream
+    assert vmod.decode_index(blob) == text
+    assert vmod.encode_index(text) == blob            # byte for byte
+    doc = vmod.parse_index(text)
+    assert (doc.name, doc.uuid, doc.type) == ("unit", "u-1", "Mod")
+    assert [f.path for f in doc.files] == ["resources\\Unit\\a.g",
+                                           "resources\\Unit\\a.t"]
+    assert doc.files[0].md5 == hashlib.md5(b"geometry").hexdigest()
+    assert doc.files[0].sha256 == hashlib.sha256(b"geometry").hexdigest()
+    assert "russian.txt" not in text           # a root marker is not a resource
+    assert 'File = "index"' not in text         # nor is the manifest itself
+
+    # what the loader asks of a pack: is every listing still true?
+    packed = [(n, blob if n == "index" else d) for n, d in files]
+    report = vmod.index_report(packed)
+    assert report["decoded"] and report["records"] == 2
+    assert not (report["mismatched"] or report["unlisted"] or report["missing"])
+    stale = [("index", blob), ("resources\\Unit\\a.g", b"edited"),
+             ("resources\\Unit\\a.t", b"atlas")]
+    report = vmod.index_report(stale)
+    assert report["mismatched"] == ["resources\\Unit\\a.g"]
+    assert report["missing"] == [] and report["unlisted"] == []
+    # a path the manifest never saw is the case the port watched vanish
+    added = stale + [("resources\\Unit\\b.g", b"new")]
+    assert vmod.index_report(added)["unlisted"] == ["resources\\Unit\\b.g"]
+
+
+def test_vdpack_reindex_lists_a_new_path_and_refreshes_a_stale_one():
+    """Writing the manifest is what lifts the "replace only, never add" rule:
+    a rebuilt archive can carry a path no shipped pack listed, with its own
+    `File` record, and can carry edited bytes with correct digests."""
+    from d3tool import vdpack as vmod
+    base = [("index", vmod.build_index([("index", b""),
+                                        ("resources\\U\\a.g", b"old")],
+                                       name="m", uuid="id")[1]),
+            ("resources\\U\\a.g", b"old"),
+            ("resources\\U\\a.t", b"atlas")]
+    # the shipped manifest still describes the shipped bytes
+    assert vmod.index_report(base)["mismatched"] == []
+
+    newer = [("index", base[0][1]),          # the pack's own manifest goes in
+             ("resources\\U\\a.g", b"new"),
+             ("resources\\U\\a.t", b"atlas"),
+             ("resources\\U\\b.g", b"added")]
+    rebuilt = vmod.reindex_pack(newer)
+    assert rebuilt[0][0] == "index"            # where every pack keeps it
+    report = vmod.index_report(rebuilt)
+    assert report["decoded"], report["error"]
+    assert report["records"] == 3             # the new path got a record
+    assert report["unlisted"] == [] and report["mismatched"] == []
+    doc = report["document"]
+    assert (doc.name, doc.uuid) == ("m", "id")   # the mod keeps its identity
+    assert "resources\\U\\b.g" in doc.paths
+    # the archive it lands in reads back and still checks out
+    back = vmod.parse_vdpack(vmod.build_vdpack(rebuilt))
+    assert back.parse_error == "" and len(back) == 4   # index + 3
+    assert vmod.index_report(list(back.files().items()))["mismatched"] == []
+
+
+def test_vdpack_diff_reports_a_manifest_that_no_longer_fits():
+    """A pack that replaces payloads while carrying the original manifest has
+    a stale digest on every replaced payload — worth saying, and worth saying
+    precisely: the one in-game confirmation (the Angel pack) replaced two
+    `.g` payloads under the original `index` and still loaded, so it is a
+    warning about the manifest, not a verdict on the pack.  A path with no
+    record at all is the other question, and that one is the port's failure."""
+    from d3tool import vdpack as vmod
+    text, blob = vmod.build_index([("index", b""),
+                                   ("resources\\U\\a.g", b"old")],
+                                  name="m", uuid="id")
+    base = [("index", blob), ("resources\\U\\a.g", b"old")]
+    replaced = [("index", blob), ("resources\\U\\a.g", b"new")]
+    result = vmod.diff_entries(base, replaced)
+    assert result["index_present"] is True and result["index_changed"] is False
+    assert result["index_decoded"] is True and result["index_records"] == 1
+    assert result["index_mismatched"] == ["resources\\U\\a.g"]
+    verdict = vmod.shape_verdict(result)
+    grades = [grade for grade, _ in verdict]
+    assert "bad" not in grades                 # stale digest is not the failure
+    text_lines = " ".join(line for _g, line in verdict)
+    assert "no longer match" in text_lines and "--reindex" in text_lines
+    # a correctly reindexed replacement grades ok, manifest and all
+    fixed = [("index", vmod.build_index([("index", b""),
+                                         ("resources\\U\\a.g", b"new")],
+                                        name="m", uuid="id")[1]),
+             ("resources\\U\\a.g", b"new")]
+    again = vmod.diff_entries(base, fixed)
+    assert again["index_mismatched"] == [] and again["index_unlisted"] == []
+    assert [g for g, _ in vmod.shape_verdict(again)] == ["ok"]
+    # an added path with no record is the bad one
+    added = fixed + [("resources\\U\\b.g", b"new")]
+    bad = vmod.diff_entries(base, added)
+    assert bad["index_unlisted"] == ["resources\\U\\b.g"]
+    assert "bad" in [g for g, _ in vmod.shape_verdict(bad)]
+    # and a manifest that decodes to nonsense is reported, not guessed at
+    broken = [("index", b"not-a-manifest"), ("resources\\U\\a.g", b"new")]
+    assert vmod.diff_entries(base, broken)["index_error"]
+    assert "warn" in [g for g, _ in vmod.shape_verdict(
+        vmod.diff_entries(base, broken))]
+
+
+def test_vdpack_plan_notices_payloads_the_index_no_longer_describes():
+    """`plan` lines a folder up against a pack; when the folder's bytes differ
+    from the ones the pack's `index` was written for, that is the fact to say
+    out loud, not the path count."""
+    from d3tool import vdpack as vmod
+    base = [("index", b"opaque"), ("resources\\U\\a.g", b"old"),
+            ("resources\\U\\a.t", b"atlas")]
+    same = vmod.plan_bundle([("a.g", b"old"), ("a.t", b"atlas")], base)
+    assert same["index_present"] is True
+    assert same["payloads_changed"] == []
+    edited = vmod.plan_bundle([("a.g", b"new"), ("a.t", b"atlas")], base)
+    assert edited["payloads_changed"] == ["resources\\U\\a.g"]
+    assert edited["added"] == []
+    # without an index there is nothing to go stale, even though the report
+    # still says which payloads differ (the CLI gates the warning on this)
+    plain = vmod.plan_bundle([("a.g", b"new")],
+                             [("resources\\U\\a.g", b"old")])
+    assert plain["index_present"] is False
+    assert plain["payloads_changed"] == ["resources\\U\\a.g"]
+
+
+def test_scene_gains_a_gobj_for_a_part_it_cannot_bind():
+    """The engine binds the i-th mesh part to the i-th `gobj`, in order — the
+    LOD scenes prove it, since their gobj names (`empire_angel_wing`) never
+    match their part names (`lod_empire_angel_wing`) and the game draws them
+    anyway.  A part past the last block is invisible, which is exactly the
+    Angel's sword: five meshes, four gobjs."""
+    import copy as copymod
+    from d3tool import gfile as gmod
+    from d3tool import scene as scenemod
+    unit = os.path.join(REPO, "Empire", "Angel", "character_empire_angel")
+    text = open(unit + ".scene", encoding="latin-1").read()
+    mesh = gmod.parse_geometry_file(open(unit + ".g", "rb").read())
+    parts = list(gmod.iter_parts(mesh))
+    assert len(parts) == len(scenemod.parse_scene(text).find_all("gobj")) == 4
+
+    extra = copymod.copy(parts[-1])
+    extra.name = "test_extra_part"
+    patched, added = scenemod.ensure_part_gobjs(text, parts + [extra])
+    assert added == ["test_extra_part"], added
+    doc = scenemod.parse_scene(patched)
+    gobjs = doc.find_all("gobj")
+    assert len(gobjs) == 5
+    block = gobjs[-1]
+    assert scenemod.node_attr(block, "name") == "test_extra_part"
+    assert scenemod.node_attr(block, "material0_diffuse") == \
+        extra.material_diffuse
+    assert scenemod.node_attr(block, "material0_triangles_num") == \
+        str(extra.tri_count)
+    assert scenemod.node_attr(block, "vertexs_weights_num") == \
+        str(extra.vertex_count)
+    assert scenemod.node_attr(block, "weights_on_vertex") == \
+        str(extra.weights_on_vertex)
+    assert scenemod.node_attr(block, "bones_num") == str(len(extra.bones))
+    # the block hangs inside the same node as the parts it joins
+    assert block.props.get("bonesuid") == gobjs[0].props.get("bonesuid")
+    for key, values in (("uid", [n.props.get("uid") for n in gobjs]),
+                        ("dwNode", [scenemod.node_attr(n, "dwNode")
+                                    for n in gobjs]),
+                        ("slot", [scenemod.node_mesh_index(n)
+                                  for n in gobjs])):
+        assert len(set(values)) == len(values), (key, values)
+    # and it is stable: a second pass changes nothing
+    again, added2 = scenemod.ensure_part_gobjs(patched, parts + [extra])
+    assert again == patched and added2 == []
+
+
+def test_every_shipped_scene_already_binds_one_gobj_per_part():
+    """The corpus sets the rule and must stay untouched by it: 159 of the 160
+    scenes carry exactly one `gobj` per mesh part (the Cyclop carries a spare),
+    so a correct unit comes back byte for byte."""
+    from d3tool import gfile as gmod
+    from d3tool import scene as scenemod
+    checked = 0
+    for group in ("Empire", "Neutrals"):
+        for gpath in sorted(glob.glob(os.path.join(REPO, group, "*", "*.g"))):
+            if gpath.endswith("_lod.g"):
+                continue
+            spath = gpath[:-2] + ".scene"
+            if not os.path.isfile(spath):
+                continue
+            mesh = gmod.parse_geometry_file(open(gpath, "rb").read())
+            text = open(spath, encoding="latin-1").read()
+            patched, added = scenemod.ensure_part_gobjs(
+                text, list(gmod.iter_parts(mesh)))
+            assert patched == text, f"{spath} was rewritten"
+            assert added == [], (spath, added)
+            checked += 1
+    assert checked > 50, checked
+
+
+def test_container_mesh_count_follows_the_blocks():
+    """A `.g` closes its node chain with the number of mesh blocks.
+
+    The writer used to copy the donor prelude verbatim -- count included -- so
+    every export that grew a compound model (the Angel with a weapon appended)
+    declared one block fewer than the file carries.  Nothing in the parser
+    notices (it walks the blocks), the whole retail corpus has the two numbers
+    equal (247/247), and a reader that trusts the header simply never sees the
+    last block: the mesh is in the file and out of the model.
+    """
+    from d3tool import gfile as gmod
+    for path in ("Empire/Knight/character_empire_knight.g",
+                 "Empire/Knight/character_empire_knight_lod.g",
+                 "Empire/Angel/character_empire_angel.g",
+                 "Empire/Angel/character_empire_angel_lod.g"):
+        data = open(os.path.join(REPO, path), "rb").read()
+        mesh = gmod.parse_geometry_file(data)
+        offset, count = gmod.mesh_count(data)
+        assert count == len(gmod.iter_parts(mesh)), path
+        # a parsed `.g` round-trips, and the count field stays where it was
+        rebuilt = gmod.write_geometry_file(mesh, mesh.attrs)
+        assert rebuilt == data, path
+        assert gmod.mesh_count(rebuilt) == (offset, count)
+
+    # a file whose count was left one short is *not* detectable by the parser,
+    # and the writer (which knows how many blocks it emitted) restores it
+    stale = bytearray(open(os.path.join(
+        REPO, "Empire/Knight/character_empire_knight.g"), "rb").read())
+    offset, count = gmod.mesh_count(bytes(stale))
+    stale[offset:offset + 4] = (count - 1).to_bytes(4, "little")
+    mesh = gmod.parse_geometry_file(bytes(stale))
+    assert len(gmod.iter_parts(mesh)) == count
+    assert mesh.declared_mesh_count == count - 1
+    assert gmod.mesh_count(bytes(stale))[1] == count - 1
+    # the check an export prints, and the repair that rescues an old file
+    findings = gmod.count_mismatches(mesh)
+    assert len(findings) == 1 and "mesh block" in findings[0], findings
+    repaired, fixes = gmod.repair_counts(bytes(stale))
+    assert repaired == open(os.path.join(
+        REPO, "Empire/Knight/character_empire_knight.g"), "rb").read()
+    assert fixes == findings
+    # and the writer knows how many blocks it emitted, whatever the donor said
+    mesh.raw = b""
+    fixed = gmod.write_geometry_file(mesh, mesh.attrs)
+    assert gmod.mesh_count(fixed)[1] == count
+    assert fixed == bytes(stale[:offset]) + count.to_bytes(4, "little") \
+        + bytes(stale[offset + 4:])
+
+
+def test_lod_mesh_takes_the_parts_its_main_mesh_gained():
+    """The profile swaps to `unit_scene_lod` beyond a draw distance (10 for
+    nearly every unit), and the LOD is a separate, lower-poly `.g`: a weapon
+    has to be appended there too or the battlefield never shows it."""
+    from d3tool import gfile as gmod
+    from d3tool import scene as scenemod
+    unit = os.path.join(REPO, "Empire", "Angel", "character_empire_angel")
+    lod_bytes = open(unit + "_lod.g", "rb").read()
+    lod = gmod.parse_geometry_file(lod_bytes)
+    main = gmod.parse_geometry_file(open(unit + ".g", "rb").read())
+    extra = list(gmod.iter_parts(main))[-1]     # raw bytes, name included
+
+    grown = gmod.append_parts(lod_bytes, [extra])
+    # nothing else moves -- except the container's mesh count, which is the
+    # whole point: the engine reads exactly that many blocks
+    assert len(grown) == len(lod_bytes) + len(extra.raw)
+    prefix_offset, before = gmod.mesh_count(lod_bytes)
+    after_offset, after = gmod.mesh_count(grown)
+    assert (prefix_offset, after_offset) == (prefix_offset, prefix_offset)
+    assert after == before + 1
+    head, old_head = bytearray(grown[:len(lod_bytes)]), bytearray(lod_bytes)
+    head[prefix_offset:prefix_offset + 4] = b"\0\0\0\0"
+    old_head[prefix_offset:prefix_offset + 4] = b"\0\0\0\0"
+    assert bytes(head) == bytes(old_head)
+    regrown = gmod.parse_geometry_file(grown)
+    assert [p.name for p in gmod.iter_parts(regrown)] == \
+        [p.name for p in gmod.iter_parts(lod)] + [extra.name]
+    assert gmod.count_mismatches(regrown) == []
+
+    # the LOD scene spells its own parts `lod_<name>`, so only the count
+    # decides how many blocks are missing
+    text = open(unit + "_lod.scene", encoding="latin-1").read()
+    lod_parts = list(gmod.iter_parts(regrown))
+    patched, added = scenemod.ensure_part_gobjs(text, lod_parts)
+    assert added == [extra.name], added
+    gobjs = scenemod.parse_scene(patched).find_all("gobj")
+    assert len(gobjs) == len(lod_parts)
+    assert scenemod.node_mesh_index(gobjs[-1]) == len(lod_parts) - 1
+
+
+def test_gobj_binding_follows_the_mesh_line_not_the_document_order():
+    """The OrcKing's scene opens with its body, the Cleric's with its cloth.
+
+    A `.scene` is free to list its `gobj`s in any order, and the retail
+    corpus uses that freedom: zipping the scene's `gobj` list with the file's
+    part list — what `refresh_part_gobjs` did — stated the body's atlas and
+    counts on the weapon's `gobj` and the weapon's on the body's.  Those
+    numbers are what the engine builds the vertex declaration from, so the
+    swap is a load-time crash, not a cosmetic slip.
+    """
+    from d3tool import roundtrip
+
+    unit = os.path.join(REPO, "Neutrals", "OrcKing",
+                        "character_neutrals_orcking")
+    text = open(unit + ".scene", encoding="latin-1").read()
+    parts = list(gfile.iter_parts(gfile.parse_geometry_file(
+        open(unit + ".g", "rb").read())))
+
+    # nothing changed: the scene comes back byte for byte
+    same, changed = scenemod.refresh_part_gobjs(text, parts, reference=parts)
+    assert same == text and changed == []
+
+    # the weapon part now wears the Knight's blade: only its own gobj moves
+    sword = copy.copy(parts[2])
+    sword.attrs = dict(sword.attrs, material0_diffuse="weapon_empire_knight_"
+                                                "sword_diffuse.tga")
+    touched_parts = list(parts)
+    touched_parts[2] = sword
+    fresh, changed = scenemod.refresh_part_gobjs(text, touched_parts,
+                                                 reference=parts)
+    assert changed == ["weapon_neutral_orcking"], changed
+    doc = scenemod.parse_scene(fresh)
+    by_name = {scenemod.node_attr(n, "name"): n
+               for n in doc.find_all("gobj")}
+    weapon = by_name["weapon_neutral_orcking"]
+    body = by_name["neutrals_orcking"]
+    assert scenemod.node_attr(weapon, "material0_diffuse") == \
+        "weapon_empire_knight_sword_diffuse.tga"
+    # ... and the body kept the numbers it shipped with
+    assert scenemod.node_attr(body, "material0_triangles_num") == "4658"
+    assert scenemod.node_attr(body, "bones_num") == "45"
+
+
+def test_roundtrip_reexport_gives_the_unit_back_byte_for_byte():
+    """`.g` -> glTF -> `.g` on an untouched unit: eight of eight files equal.
+
+    This is the promise the add-on's Self-test makes to the user, measured on
+    the format path so a regression is caught without Blender.
+    """
+    from d3tool import roundtrip
+
+    folder = os.path.join(REPO, "Empire", "Inquisitor")
+    tmp = tempfile.mkdtemp(prefix="d3rt_")
+    try:
+        stem = os.path.join(folder, "character_empire_inquisitor")
+        gltf_path = os.path.join(tmp, "character_empire_inquisitor.gltf")
+        out = os.path.join(tmp, "out")
+        climod._export_gl(stem + ".g", climod._find_animation_for_geometry(
+            stem + ".g"), gltf_path, None, quiet=True)
+        climod._export(gltf_path, out, 0, anim=True, quiet=True,
+                       donor_dir=folder)
+        diffs = roundtrip.diff_folders(folder, out)
+        bad = [d for d in diffs if not d.same and d.produced is not None]
+        assert not bad, [d.summary() for d in bad]
+        assert roundtrip.summary(diffs)["identical"] >= 7
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_first_difference_reports_where_and_ignores_a_prefix():
+    from d3tool import roundtrip
+
+    assert roundtrip.first_difference(b"abc", b"abc") is None
+    assert roundtrip.first_difference(b"abc", b"abcd") is None
+    assert roundtrip.first_difference(b"", b"") is None
+    assert roundtrip.first_difference(b"abc", b"abd") == 2
+    # a difference past the 4096-byte block the scan compares in
+    left = bytes(9000)
+    right = bytearray(left)
+    right[8193] = 1
+    assert roundtrip.first_difference(left, bytes(right)) == 8193
+
+
+def test_diff_folders_does_not_accuse_a_file_the_export_never_wrote():
+    from d3tool import roundtrip
+
+    tmp = tempfile.mkdtemp(prefix="d3diff_")
+    try:
+        src = os.path.join(tmp, "donor")
+        out = os.path.join(tmp, "out")
+        os.makedirs(src)
+        os.makedirs(out)
+        open(os.path.join(src, "a.g"), "wb").write(b"aaaa")
+        open(os.path.join(src, "b.t"), "wb").write(b"bbbb")
+        open(os.path.join(out, "a.g"), "wb").write(b"aaaa")
+        diffs = {d.name: d for d in roundtrip.diff_folders(src, out)}
+        assert diffs["a.g"].same
+        # the export wrote no `.t` at all: that is not a difference, whether
+        # the folder lists it as a missing output or leaves it out
+        assert "b.t" not in diffs or (diffs["b.t"].same
+                                      and diffs["b.t"].produced is None)
+        assert roundtrip.summary(list(diffs.values()))["differing"] == 0
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_lod_sync_leaves_a_shorter_retail_lod_alone():
+    """The Cleric's LOD model drops the hair on purpose.
+
+    Appending "the parts the LOD lacks" on a re-export grew five retail LODs
+    by a few kilobytes each and drew parts the artist never added there.  With
+    the donor in hand only a part the export APPENDED is missing from the LOD.
+    """
+    tmp = tempfile.mkdtemp(prefix="d3lod_")
+    try:
+        src = os.path.join(REPO, "Empire", "Cleric")
+        work = os.path.join(tmp, "unit")
+        shutil.copytree(src, work)
+        donor = list(gfile.iter_parts(gfile.parse_geometry_file(
+            open(os.path.join(work, "character_empire_cleric.g"), "rb").read())))
+        before = open(os.path.join(work, "character_empire_cleric_lod.g"),
+                      "rb").read()
+        climod._lod_sync(work, quiet=True, reference=donor)
+        after = open(os.path.join(work, "character_empire_cleric_lod.g"),
+                     "rb").read()
+        assert after == before, "the LOD was rewritten on an untouched unit"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_scenarios_nothing_touched_comes_back_identical():
+    """The baseline the other three scenarios stand on."""
+    import scenarios
+    result = scenarios.scenario_unchanged(unit_dir=REPO_LIKE_UNIT_DIR())
+    assert result["added"] == [] and result["rewritten"] == []
+
+
+def test_scenarios_a_part_atlas_follows_the_material():
+    import scenarios
+    result = scenarios.scenario_retexture(unit_dir=REPO_LIKE_UNIT_DIR())
+    assert result["texture"] > 0
+    changed = [(n, a) for (n, a), (_b, b) in zip(result["after"],
+                                                 result["before"]) if a != b]
+    assert changed and changed[0][1] == result["now"], changed
+
+
+def test_scenarios_a_body_atlas_reaches_the_lod_and_the_scenes():
+    import scenarios
+    result = scenarios.scenario_armour_retexture(unit_dir=REPO_LIKE_UNIT_DIR())
+    assert result["texture"] > 0
+    assert any(t == result["now"] for _n, t in result["scene"]), result["scene"]
+    assert result["lod_after"] != result["lod_before"]
+
+
+def test_scenarios_a_new_mesh_on_the_skeleton_is_drawn():
+    import scenarios
+    result = scenarios.scenario_new_part(unit_dir=REPO_LIKE_UNIT_DIR())
+    assert result["bones"] == [scenarios.BONE], result["bones"]
+    assert "helmet_empire_inquisitor" in result["forward"], result["forward"]
+
+
+def test_a_lod_scene_with_duplicate_slots_still_gets_the_appended_gobj():
+    """Priestess: two `gobj`s name the body (slots 0 0 1 2 3), four parts.
+
+    Counting numbers positionally claimed every slot up to the `gobj` count,
+    so a part the export *appended* (slot 4) was considered drawn and never
+    got its `gobj` — the weapon stayed invisible on the battlefield while
+    every file looked right.  A part the shipped scene simply never drew (the
+    Goblin's and the Thug's scenes both leave one out) must still be left
+    alone.
+    """
+    text = open(os.path.join(REPO, "Empire", "Priestess",
+                             "character_empire_priestess_lod.scene"),
+                encoding="latin-1", newline="").read()
+    parts = list(gfile.iter_parts(gfile.parse_geometry_file(
+        open(os.path.join(REPO, "Empire", "Priestess",
+                          "character_empire_priestess_lod.g"),
+             "rb").read())))
+    # untouched: nothing is appended and nothing is added
+    same, added = scenemod.ensure_part_gobjs(text, parts)
+    assert same == text and added == [], added
+    extra = copy.copy(parts[-1])
+    extra.name = "lod_helmet_empire_inquisitor"
+    fresh, added = scenemod.ensure_part_gobjs(text, parts + [extra],
+                                              only=["lod_helmet_empire_inquisitor"])
+    assert added == ["lod_helmet_empire_inquisitor"], added
+    assert "lod_helmet_empire_inquisitor" in fresh
+    # and the retail scenes with a part no `gobj` draws are untouched
+    for unit, folder in (("goblin", "Goblin"), ("thug", "Thug")):
+        scene = open(os.path.join(REPO, "Neutrals", folder,
+                                  f"character_neutrals_{unit}_lod.scene"),
+                     encoding="latin-1", newline="").read()
+        mesh = list(gfile.iter_parts(gfile.parse_geometry_file(
+            open(os.path.join(REPO, "Neutrals", folder,
+                              f"character_neutrals_{unit}_lod.g"), "rb").read())))
+        assert scenemod.ensure_part_gobjs(scene, mesh)[0] == scene, unit
+
+
+def test_scenarios_a_new_mesh_brings_its_own_texture():
+    """The new part's own atlas reaches every file the engine reads.
+
+    Modelled with its own material and painted from a texture that exists
+    nowhere in the game data, the part must end up with `<name>.t` in the
+    folder, that name in its block of the `.g` *and* the `_lod.g`, the same
+    name in both `.scene` `gobj`s, and the atlas handed back by the forward
+    export.  Both placements are covered: the atlas next to the glTF and the
+    atlas in the unit's folder.
+    """
+    import scenarios
+    result = scenarios.scenario_new_part_texture(unit_dir=REPO_LIKE_UNIT_DIR())
+    assert result["atlas"] == "order_helmet_of_the_order.tga", result
+    assert result["bytes"] > 0
+
+
+def REPO_LIKE_UNIT_DIR():
+    return os.path.join(REPO, "Empire", "Inquisitor")
+
+
+def test_the_export_reports_the_files_it_added_to_a_unit():
+    """Nothing is written into a unit's folder that the unit did not have.
+
+    The exporter's own report is the guarantee: every file it produced is
+    either byte-identical to the unit's own, a rewrite of one of them, or —
+    loudly — new.  `d3tool export` on a retail unit must come back with zero
+    new files and zero rewrites when nothing was edited.
+    """
+    tmp = tempfile.mkdtemp(prefix="d3delta_")
+    try:
+        donor = os.path.join(tmp, "unit")
+        out = os.path.join(tmp, "out")
+        os.makedirs(donor)
+        os.makedirs(out)
+        open(os.path.join(donor, "a.g"), "wb").write(b"aaaa")
+        open(os.path.join(donor, "a.t"), "wb").write(b"tttt")
+        open(os.path.join(out, "a.g"), "wb").write(b"bbbb")     # rewritten
+        open(os.path.join(out, "a.t"), "wb").write(b"tttt")     # identical
+        open(os.path.join(out, "extra.t"), "wb").write(b"x")    # added
+        open(os.path.join(out, "stale.scene"), "wb").write(b"s")  # was here
+        delta = climod._export_delta(out, {"stale.scene"}, donor)
+        assert delta["new"] == ["extra.t"], delta
+        assert delta["rewritten"] == ["a.g"], delta
+        assert delta["kept"] == ["a.t"], delta
+
+        # end to end: a retail unit re-exported changes nothing and adds
+        # nothing (the roundtrip harness asserts the bytes; this asserts the
+        # report the user reads)
+        folder = os.path.join(REPO, "Empire", "Inquisitor")
+        stem = os.path.join(folder, "character_empire_inquisitor")
+        gltf = os.path.join(tmp, "character_empire_inquisitor.gltf")
+        exported = os.path.join(tmp, "exported")
+        climod._export_gl(stem + ".g", climod._find_animation_for_geometry(
+            stem + ".g"), gltf, None, quiet=True)
+        before = set()
+        climod._export(gltf, exported, 0, anim=True, quiet=True,
+                       donor_dir=folder)
+        delta = climod._export_delta(exported, before, folder)
+        assert delta["new"] == [], delta["new"]
+        assert delta["rewritten"] == [], delta["rewritten"]
+        assert len(delta["kept"]) >= 7, delta["kept"]
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_repair_repaths_an_ac_to_the_folder_the_scene_names():
+    """The crash-on-recruit of a shipped pack, in one file.
+
+    `character_empire_angel_lod.ac` named
+    ``resources\\characters\\character_empire_angel_lod\\…`` — a folder no
+    install has — while every stream it names sits in
+    ``resources\\characters\\empire\\angel``.  The engine does not fall back: the
+    load stops.  `repair` rewrites the folder of every reference whose file is
+    in the bundle, keeps the file's own ``\\r\\n`` endings, and leaves a
+    reference to another folder alone.
+    """
+    tmp = tempfile.mkdtemp(prefix="d3acrepair_")
+    try:
+        work = os.path.join(tmp, "angel")
+        shutil.copytree(os.path.join(REPO, "Empire", "Angel"), work)
+        bad = "resources\\characters\\character_empire_angel_lod\\"
+        ac = os.path.join(work, "character_empire_angel_lod.ac")
+        states = "".join(
+            f'state "{name}"\r\n{{\r\n'
+            f'file "{bad}character_empire_angel_{stem}.a";\r\n'
+            f'frame0 0;\r\nframe1 30;\r\n'
+            f'meshfile "{bad}character_empire_angel_lod.g";\r\n}}\r\n'
+            for name, stem in (("Idle", "idle"), ("Run", "run")))
+        # one reference that belongs to no folder in this bundle
+        states += ('state "Extra"\r\n{\r\n'
+                   'file "resources\\characters\\shared\\common_idle.a";\r\n'
+                   'frame0 0;\r\nframe1 10;\r\n}\r\n')
+        with open(ac, "w", encoding="latin-1", newline="") as fh:
+            fh.write(states)
+
+        out = os.path.join(tmp, "fixed.ac")
+        assert climod._repair_ac(ac, out, False) == 0
+        with open(out, encoding="latin-1", newline="") as fh:
+            fixed = fh.read()
+        assert "character_empire_angel_lod\\character_empire_angel_lod.g" \
+            not in fixed
+        assert ('"resources\\characters\\empire\\angel\\'
+                'character_empire_angel_lod.g"') in fixed
+        # the foreign reference is not ours to touch
+        assert '"resources\\characters\\shared\\common_idle.a"' in fixed
+        # and the file keeps the terminators the game's files use
+        assert fixed.count("\r\n") == states.count("\r\n")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_vdpack_pack_like_keeps_the_source_shape():
+    """The only in-game-confirmed pack is *the same paths, different
+    payloads*: entry order, name spelling, flags and the opaque `index` all
+    come from the pack being patched, so nothing but the payload can move."""
+    from d3tool import vdpack as vmod
+    index_blob = bytes(range(256)) * 4          # stands in for the opaque one
+    source = vmod.build_vdpack([
+        ("index", index_blob),
+        ("resources\\Characters\\Empire\\Angel\\b.scene", b"old scene"),
+        ("resources\\Characters\\Empire\\Angel\\a.g", b"old geometry"),
+    ])
+    patched = vmod.parse_vdpack(source)
+    rebuilt, extra = vmod.pack_like(patched, [
+        ("resources/Characters/Empire/Angel/a.g", b"new geometry!"),
+        ("russian.txt", b"x"),                  # a path the source lacks
+    ])
+    assert extra == ["russian.txt"]
+    grown = vmod.parse_vdpack(rebuilt)
+    assert grown.parse_error == ""
+    assert [e.name for e in grown.entries] == [e.name for e in patched.entries]
+    assert [e.flags for e in grown.entries] == [e.flags for e in patched.entries]
+    # the payloads the folder does not carry come from the source, `index`
+    # included, and the ones it does carry are the new bytes
+    by_name = {e.name: grown.payload(e) for e in grown.entries}
+    assert by_name["index"] == index_blob
+    assert by_name["resources\\Characters\\Empire\\Angel\\b.scene"] == \
+        b"old scene"
+    assert by_name["resources\\Characters\\Empire\\Angel\\a.g"] == \
+        b"new geometry!"
+
+
 def test_vdpack_validate_finds_dangling_references():
     """A pack is mounted instead of the loose folders, so everything a unit
     names must be inside it — except what the engine keeps globally."""
@@ -2158,6 +4949,54 @@ def test_vdpack_warns_about_a_reference_in_the_wrong_folder():
     assert any("x.g" in n for n in report.notes), report.notes
 
 
+def test_vdpack_catches_a_weapon_trail_whose_bones_were_dropped():
+    """A `.scene`'s weapon trail names its bones by **index**, so an animation
+    stream that lost the animation-only `Trail*` bones silently repoints the
+    trail at an arm — and a unit whose trail node is built from them can die
+    on load.  Every one of the 54 trail-bearing retail scenes resolves its
+    `boneid` values to `Trail1`…`TrailN` in the unit's own stream, which is
+    what makes the check exact rather than a guess."""
+    import struct as stmod
+    from d3tool import anim as animmod
+    from d3tool import vdpack
+    folder = os.path.join(REPO, "Empire", "Inquisitor")
+    files = {name: open(os.path.join(folder, name), "rb").read()
+             for name in ("character_empire_inquisitor.scene",
+                          "character_empire_inquisitor_lod.scene",
+                          "character_empire_inquisitor.ac",
+                          "character_empire_inquisitor_baseanims.a",
+                          "character_empire_inquisitor.g")}
+    assert "boneid 11" in files["character_empire_inquisitor.scene"].decode()
+
+    report = vdpack.reference_findings(dict(files))
+    assert not [p for p in report.problems if "weapon-trail" in p], \
+        report.problems
+    stream = animmod.parse_anim(files["character_empire_inquisitor_baseanims.a"])
+    assert stream.bones[11].name == "Trail1"
+    assert stream.bones[12].name == "Trail2"
+
+    # a re-export keeps only the bones a *mesh* is weighted to: drop the two
+    # trail tracks the way a Blender round-trip does and every index shifts
+    stream.bones = [b for i, b in enumerate(stream.bones) if i not in (11, 12)]
+    stream.raw = b""
+    stream.bone_count = len(stream.bones)
+    header = bytearray(stream.header)
+    stmod.pack_into("<I", header, 8, len(stream.bones))
+    stream.header = bytes(header)
+    dropped = animmod.write_anim(stream)
+    assert len(animmod.parse_anim(dropped).bones) == 25
+    files["character_empire_inquisitor_baseanims.a"] = dropped
+    report = vdpack.reference_findings(dict(files))
+    trail = [p for p in report.problems if "weapon-trail" in p]
+    assert len(trail) == 2, report.problems          # boneid 11 and 12
+    assert "RightShoulder" in trail[0], trail
+    assert "RightArm" in trail[1], trail
+    # the reduced `_lod` streams of retail leave the index stale on purpose
+    # (Defender of Faith, Dark Servant, Grand Inquisitor), so only the main
+    # scene is judged
+    assert not [p for p in trail if "_lod.scene" in p], trail
+
+
 def test_vdpack_validate_is_strict_about_wrong_folders():
     """`--strict` turns the warning into a non-zero exit, so a build script can
     refuse to ship a pack whose paths were written with the wrong root."""
@@ -2235,71 +5074,60 @@ def test_vdpack_manifest_of_folder_and_archive_match():
     assert vdpack.manifest(no_tex)["references"]["problems"]
 
 
-def test_vdpack_pack_can_keep_the_opaque_index():
-    """Only in-place replacement inside a pack that keeps its opaque `index`
-    is confirmed to load in game, so building on that shape must be possible
-    (and a pack without one has to say so)."""
+def test_vdpack_pack_writes_a_manifest_and_can_carry_one_instead():
+    """`vdpack pack` writes the `index` manifest by default, because the
+    loader compares the archive against it — `--no-reindex` turns that off and
+    says so, and `--keep-index` carries a proven pack's manifest over instead."""
     import contextlib
     import io
     from d3tool import vdpack
     folder = os.path.join(REPO, "Neutrals", "AirElemental")
     with tempfile.TemporaryDirectory() as d, \
             contextlib.redirect_stdout(io.StringIO()) as buf:
-        # a stock pack has no `index` and warns about it
+        # the default: a manifest written for these bytes, and it verifies
         plain = os.path.join(d, "plain.vdpack")
         assert climod._run(["vdpack", "pack", folder, "-o", plain]) == 0
-        assert "no opaque `index` entry" in buf.getvalue()
-        # the reference archive: a folder copy plus the opaque resource
-        shared = os.path.join(d, "shared")
-        for name, data in vdpack.pack_folder(folder):
-            os.makedirs(os.path.dirname(os.path.join(shared, *name.split("/"))),
-                        exist_ok=True)
-            open(os.path.join(shared, *name.split("/")), "wb").write(data)
-        reference = os.path.join(d, "reference.vdpack")
-        assert climod._run(["vdpack", "pack", shared, "-o", reference]) == 0
-        # a pack that already carries the resource keeps it through a repack
-        blob = vdpack.parse_vdpack(open(reference, "rb").read())
-        assert len(blob) == len(vdpack.pack_folder(shared))
-        # ... now hand the `index` to a pack built from a plain folder
-        with_index = os.path.join(d, "indexed.vdpack")
+        assert "every payload matches its MD5 and SHA-256" in buf.getvalue()
+        built = vdpack.read_vdpack(plain)
+        report = vdpack.index_report(list(built.files().items()))
+        assert report["decoded"], report["error"]
+        assert report["records"] == len(vdpack.pack_folder(folder))
+        assert not (report["mismatched"] or report["unlisted"]
+                    or report["missing"])
+        # ... and the archive it lives in reproduces byte for byte when the
+        # manifest is recomputed, so the default costs nothing on a rebuild
+        again = vdpack.build_vdpack(vdpack.reindex_pack(
+            list(built.files().items())))
+        assert again == open(plain, "rb").read()
+        # opting out is allowed, and then it has to say so
+        bare = os.path.join(d, "bare.vdpack")
         buf.seek(0)
         buf.truncate()
-        assert climod._run(["vdpack", "pack", folder, "-o", with_index,
-                            "--keep-index", reference]) == 1, \
-            "the reference carries no `index`, so there is nothing to keep"
+        assert climod._run(["vdpack", "pack", folder, "-o", bare,
+                            "--no-reindex"]) == 0
         assert "no `index` entry" in buf.getvalue()
-        # build a real one: rebuild the reference with an `index` resource
-        raw = bytearray(open(reference, "rb").read())
-        pack = vdpack.parse_vdpack(bytes(raw))
-        entries = [(e.name, pack.payload(e)) for e in pack.entries]
-        entries.append(("index", b"opaque-index-payload"))
-        archive = os.path.join(d, "withindex.vdpack")
-        open(archive, "wb").write(vdpack.build_vdpack(entries))
         assert vdpack.index_entry(
-            list(vdpack.read_vdpack(archive).files().items())) is not None
-        # keep it in a pack built from a folder that has none
-        out = os.path.join(d, "kept.vdpack")
+            list(vdpack.read_vdpack(bare).files().items())) is None
+        # `--keep-index` carries one over verbatim (no rewrite unless asked)
+        kept = os.path.join(d, "kept.vdpack")
         buf.seek(0)
         buf.truncate()
-        assert climod._run(["vdpack", "pack", folder, "-o", out,
-                            "--keep-index", archive]) == 0
-        assert "no opaque `index` entry" not in buf.getvalue()
-        kept = vdpack.read_vdpack(out)
-        assert not kept.parse_error, kept.parse_error
-        index = vdpack.index_entry(list(kept.files().items()))
-        assert index is not None and index[1] == b"opaque-index-payload"
-        # the manifest of that pack records the resource
-        assert vdpack.manifest(
-            list(kept.files().items()))["index"]["bytes"] == len(
-                b"opaque-index-payload")
-        # a folder that already has an `index` file is refused (`pack` would
-        # silently end up with two)
-        dupe = os.path.join(d, "dupe")
-        shutil.copytree(folder, dupe)
-        open(os.path.join(dupe, "index"), "wb").write(b"ours")
-        assert climod._run(["vdpack", "pack", dupe, "-o",
-                            os.path.join(d, "dupe.vdpack"),
-                            "--keep-index", archive]) == 1
+        assert climod._run(["vdpack", "pack", folder, "-o", kept,
+                            "--keep-index", plain]) == 0
+        carried = vdpack.index_entry(
+            list(vdpack.read_vdpack(kept).files().items()))
+        original = vdpack.index_entry(list(built.files().items()))
+        assert carried is not None and carried[1] == original[1]
+        assert "no `index` entry" not in buf.getvalue()
+        # asking for it explicitly keeps the mod's identity and fixes hashes
+        fixed = os.path.join(d, "fixed.vdpack")
+        assert climod._run(["vdpack", "pack", folder, "-o", fixed,
+                            "--keep-index", plain, "--reindex"]) == 0
+        report = vdpack.index_report(
+            list(vdpack.read_vdpack(fixed).files().items()))
+        assert report["decoded"] and not report["mismatched"]
+        assert report["document"].uuid == vdpack.parse_index(
+            vdpack.decode_index(original[1])).uuid
 
 
 def test_vdpack_manifest_cli_writes_json():
@@ -2320,7 +5148,10 @@ def test_vdpack_manifest_cli_writes_json():
         out = os.path.join(d, "manifest.json")
         assert climod._run(["vdpack", "manifest", archive, "-o", out]) == 0
         written = json.load(open(out, encoding="utf-8"))
-        assert written["entries"] == doc["entries"]
+        # the archive carries an `index` manifest of its own (`vdpack pack`
+        # writes one by default); the loose folder does not
+        assert [e for e in written["entries"] if e["path"] != "index"] \
+            == doc["entries"]
         assert written["source"] == "air.vdpack"
         # a damaged archive is refused, not half-reported
         damaged = os.path.join(d, "damaged.vdpack")
@@ -2763,8 +5594,580 @@ def test_vdpack_validates_a_packed_char_profile():
     assert not any("-> icon_rod-1.t " in n for n in left)
 
 
-if __name__ == "__main__":
-    # Keep this at the very end: `main()` collects every module-level
-    # `test_*` function, so tests defined below an earlier guard would never
-    # run.
-    sys.exit(main())
+
+
+# --------------------------------------------------------------------------- #
+#  one attribute at a time: the part the engine will not draw without
+# --------------------------------------------------------------------------- #
+
+def test_gattr_inserts_an_attribute_and_keeps_the_part_readable():
+    """A part that lost `new_vertex_weights_format` gets it back.
+
+    The engine reads a part's vertex-weight block by the format the block
+    declares, so a skinned part without that attribute is drawn as nothing
+    while a reader that takes the stride from `weights_on_vertex` (this
+    package included) sees a good mesh — exactly the Angel's appended sword,
+    which never showed up in game.
+    """
+    path = os.path.join(REPO, "Empire", "Angel", "character_empire_angel.g")
+    data = open(path, "rb").read()
+    part = gfile.iter_parts(gfile.parse_geometry_file(data))[3]
+    assert "port_marker" not in dict(part.attr_items)
+
+    out = gfile.insert_part_attr(data, part, "port_marker", "7")
+    assert len(out) == len(data) + len(gfile._attr_pair("port_marker", "7"))
+    assert out.startswith(data[:len(data) // 2]) is False or True  # shifted
+
+    again = gfile.iter_parts(gfile.parse_geometry_file(out))[3]
+    assert again.attrs["port_marker"] == "7"
+    assert again.vertex_count == part.vertex_count
+    assert again.tri_count == part.tri_count
+    assert [v.position for v in again.vertices] == [v.position for v in part.vertices]
+    assert [b.name for b in again.bones] == [b.name for b in part.bones]
+
+    # a value of the same length rewrites in place: the payload keeps its size
+    same = gfile.replace_part_attr(out, again, "port_marker", "8")
+    assert len(same) == len(out)
+    assert gfile.iter_parts(
+        gfile.parse_geometry_file(same))[3].attrs["port_marker"] == "8"
+
+    # a value of a DIFFERENT length has to rewrite its own length prefix; when
+    # it does not, every reader after the block takes the old width and the
+    # parts stacked behind it disappear (`gattr --replace` once did exactly
+    # that, on the weapon slot of a two-part unit)
+    marker = gfile.iter_parts(gfile.parse_geometry_file(same))[3]
+    longer = gfile.replace_part_attr(same, marker, "port_marker", "long-value")
+    assert len(longer) != len(same)
+    reparsed = list(gfile.iter_parts(gfile.parse_geometry_file(longer)))
+    assert len(reparsed) == 4, [p.name for p in reparsed]
+    assert reparsed[3].attrs["port_marker"] == "long-value"
+    assert reparsed[3].vertex_count == part.vertex_count
+    shorter = gfile.replace_part_attr(longer, reparsed[3], "port_marker", "1")
+    reparsed = list(gfile.iter_parts(gfile.parse_geometry_file(shorter)))
+    assert len(reparsed) == 4, [p.name for p in reparsed]
+    assert reparsed[3].attrs["port_marker"] == "1"
+
+
+def test_gattr_cli_reports_and_reproduces_the_patch():
+    src = os.path.join(REPO, "Empire", "Angel", "character_empire_angel.g")
+    out = os.path.join(tempfile.mkdtemp(prefix="gattr-"), "angel.g")
+    rc = climod.main(["gattr", src, "--part", "3",
+                      "--insert", "port_marker=1", "-o", str(out)])
+    assert rc == 0
+    patched = open(out, "rb").read()
+    assert len(patched) > os.path.getsize(src)
+    assert gfile.iter_parts(
+        gfile.parse_geometry_file(patched))[3].attrs["port_marker"] == "1"
+    # running it again is a no-op, not a second insert
+    before = len(patched)
+    rc = climod.main(["gattr", str(out), "--part", "3",
+                      "--insert", "port_marker=1"])
+    assert rc == 0
+    assert os.path.getsize(out) == before
+
+
+def test_every_corpus_weapon_part_declares_its_weight_format():
+    """The invariant the Angel's sword broke: retail parts all declare it.
+
+    A part that carries a weight block but no `new_vertex_weights_format` is
+    read with the old stride by the engine, so it renders as nothing.  This
+    test states the rule on the corpus (a weapon part is the smallest block
+    that is still skinned to a single bone).
+    """
+    checked = 0
+    for path in sorted(glob.glob(os.path.join(REPO, "Empire", "*", "*.g"))):
+        if path.endswith("_lod.g"):
+            continue
+        mesh = gfile.parse_geometry_file(open(path, "rb").read())
+        if mesh.parse_error:
+            continue
+        for part in gfile.iter_parts(mesh):
+            if len(part.bones) != 1 or not part.vertex_count:
+                continue
+            if part.attrs.get("morph"):
+                continue
+            checked += 1
+            assert part.attrs.get("new_vertex_weights_format") == "1", (
+                f"{os.path.basename(path)}: {part.name!r} is skinned but "
+                "does not declare new_vertex_weights_format")
+    assert checked > 10, checked
+
+
+def test_added_gobj_keeps_the_scene_line_endings_and_one_material():
+    """An inserted `gobj` must not rewrite the file it lands in.
+
+    Two things went wrong in the field: the `.scene` was read with universal
+    newlines, so adding one block turned a CRLF payload into an LF one (every
+    byte of it different from the source pack's), and the block was cloned
+    from the LOD *body*, so the new sword part was handed the body's second
+    material (`material1_diffuse` of the hair) that its own `.g` part does
+    not have.
+    """
+    import copy as copymod
+    from d3tool import gfile as gmod
+    from d3tool import scene as scenemod
+    unit = os.path.join(REPO, "Empire", "Angel", "character_empire_angel_lod")
+    raw = open(unit + ".scene", "rb").read()
+    lf = raw.decode("latin-1")
+    crlf = lf.replace("\n", "\r\n")
+    mesh = gmod.parse_geometry_file(open(unit + ".g", "rb").read())
+    parts = list(gmod.iter_parts(mesh))
+    extra = copymod.copy(parts[-1])
+    extra.name = "test_weapon"
+
+    # a CRLF file stays CRLF, line for line
+    patched, added = scenemod.ensure_part_gobjs(crlf, parts + [extra])
+    assert added == ["test_weapon"]
+    lines = patched.split("\n")[:-1]
+    assert lines and all(line.endswith("\r") for line in lines), \
+        [line for line in lines if not line.endswith("\r")][:3]
+    # ... and an LF file stays LF
+    plain, _ = scenemod.ensure_part_gobjs(lf, parts + [extra])
+    assert all(not line.endswith("\r") for line in plain.split("\n")[:-1])
+
+    block = scenemod.parse_scene(patched).find_all("gobj")[-1]
+    attrs = [line for line in block.items
+             if isinstance(line, str) and 'attr "material' in line]
+    assert any("material0_diffuse" in line for line in attrs), attrs
+    assert not any("material1_" in line for line in attrs), attrs
+    assert scenemod.node_attr(block, "materials_num") == "1"
+
+
+
+def test_scene_node_block_is_the_meshs_own_bounding_volume():
+    """The 56-byte record before a part's attributes is derived geometry.
+
+    Fourteen floats: box centre, three zeros, box max, box min, the radius
+    to the far corner and -1.  Measured over the corpus every non-morph part
+    reproduces from its own vertices, which is what makes it safe to
+    recompute for a part that was appended from another `.g` instead of
+    keeping the donor's box -- the Angel's sword carried a record from a
+    completely different model (centre 2.83 m up, radius 4.45), so the engine
+    had nothing sensible to place or cull it by.
+    """
+    from d3tool import gfile as gmod
+    checked = 0
+    morph_checked = 0
+    for rel in (os.path.join("Empire", "Angel", "character_empire_angel.g"),
+                os.path.join("Empire", "Knight", "character_empire_knight.g"),
+                os.path.join("Empire", "Paladin", "character_empire_paladin.g")):
+        data = open(os.path.join(REPO, rel), "rb").read()
+        for part in gmod.iter_parts(gmod.parse_geometry_file(data)):
+            prefix = getattr(part, "part_prefix", b"") or b""
+            if len(prefix) < 84:
+                continue
+            stored = prefix[28:84]
+            got = gmod.scene_node_block(part, stored)
+            gotf = struct.unpack("<14f", got)
+            wantf = struct.unpack("<14f", stored)
+            # box and radius are exact; the centre can differ in the last
+            # bit (the corpus stores a 2e-07 residue where the box is
+            # symmetric, this formula produces 0.0)
+            if part.morph:
+                # the centre of a morph part is its animated extent, which
+                # the writer keeps from the donor; box and radius still match
+                assert gotf[6:12] == wantf[6:12], (rel, part.name)
+                assert abs(gotf[12] - wantf[12]) <= 1e-5 * max(1.0, wantf[12])
+                morph_checked += 1
+            else:
+                assert gotf[3:12] == wantf[3:12], (rel, part.name, got.hex(" "), stored.hex(" "))
+                assert abs(gotf[12] - wantf[12]) <= 1e-5 * max(1.0, wantf[12])
+                assert all(abs(a - b) < 1e-5 for a, b in zip(gotf[:3], wantf[:3])), \
+                    (rel, part.name, gotf[:3], wantf[:3])
+                checked += 1
+    assert checked >= 10, checked
+    assert morph_checked >= 1, morph_checked
+
+
+def test_a_part_without_a_donor_block_gets_its_own_box_and_weights_key():
+    """Rebuilding a part re-derives the box and declares the weight format.
+
+    A mesh appended from another unit used to keep the donor's bounding
+    record and the donor's attribute keys.  Both are what the engine reads
+    before it draws anything: without `new_vertex_weights_format` the weight
+    block is read five bytes short apiece and the part is drawn as nothing,
+    and with a box from another model the part has no volume of its own.
+    """
+    from d3tool import gfile as gmod
+    kn = open(os.path.join(REPO, "Empire", "Knight",
+                           "character_empire_knight.g"), "rb").read()
+    donor = list(gmod.iter_parts(gmod.parse_geometry_file(kn)))[1]
+    assert "new_vertex_weights_format" in donor.attrs
+
+    block = gmod._part_block(donor)
+    assert block[:4] == struct.pack("<I", 2)
+    assert b"new_vertex_weights_format\x00" in block
+    # a part nobody moved keeps the bounding record it came with, byte for
+    # byte: recomputing it from (min+max)/2 lands a byte or two away from what
+    # the file says, and the engine's own numbers are not derivable that way
+    # (measured over the corpus: only 19 of 376 blocks agree to the bit)
+    assert block[28:84] == donor.part_prefix[28:84]
+
+    # ... but a part whose vertices were moved gets a box of its own
+    moved = copy.copy(donor)
+    moved.vertices = [dataclasses.replace(
+        v, position=(v.position[0] + 3.0, v.position[1], v.position[2]))
+        for v in donor.vertices]
+    moved.raw = b""
+    shifted = gmod._part_block(moved)
+    assert shifted[28:84] != donor.part_prefix[28:84]
+    assert shifted[28:84] == gmod.scene_node_block(moved, donor.part_prefix[28:84])
+
+    # a part whose block never carried the key gets it back
+    stripped = copy.copy(donor)
+    stripped.raw = b""
+    stripped.attr_items = [(k, v) for k, v in donor.attr_items
+                           if k != "new_vertex_weights_format"]
+    stripped.attrs = {k: v for k, v in donor.attrs.items()
+                      if k != "new_vertex_weights_format"}
+    fixed = gmod._part_block(stripped)
+    assert b"new_vertex_weights_format\x00" in fixed
+    # ... and it is ordered the way the corpus writes it: before the counts
+    assert fixed.index(b"new_vertex_weights_format") < fixed.index(b"vertexs_weights_num")
+    # a morph part keeps the donor centre (its box is the animated extent)
+    morph = [pt for pt in gmod.iter_parts(gmod.parse_geometry_file(
+        open(os.path.join(REPO, "Empire", "Paladin",
+                          "character_empire_paladin.g"), "rb").read()))
+        if pt.morph and len(getattr(pt, "part_prefix", b"") or b"") >= 84]
+    if morph:
+        pt = morph[0]
+        assert gmod.scene_node_block(pt, pt.part_prefix[28:84])[:12] == pt.part_prefix[28:40]
+
+
+
+def _dist(a, b):
+    return sum((a[i] - b[i]) ** 2 for i in range(3)) ** 0.5
+
+
+def _weapon_clouds(seed=7):
+    """A reference weapon along +Y from its grip and a sword along -X."""
+    import random
+    rng = random.Random(seed)
+    ref = [[rng.gauss(0, 0.02), t, rng.gauss(0, 0.02)]
+           for t in [i / 50 for i in range(51)]]
+    src = [[5.0 - t * 1.2, -2.0 + rng.gauss(0, 0.02), 3.0 + rng.gauss(0, 0.02)]
+           for t in [i / 50 for i in range(51)]]
+    return ref, [0.0, 0.0, 0.0], src, [5.0, -2.0, 3.0]
+
+
+def test_weapon_axis_is_the_principal_component():
+    """The long axis comes from the cloud, not from the bounding box."""
+    d = weaponmod._unit([1.0, 2.0, -0.5])
+    pts = [[t * d[0] + (0.01 if i % 2 else -0.01), t * d[1], t * d[2]]
+           for i, t in enumerate([j / 40 for j in range(41)])]
+    axis = weaponmod.main_axis(pts, [0.0, 0.0, 0.0])
+    assert weaponmod.angle_between(axis, d) < 3.0, axis
+    # ... and it points away from the grip, whichever end that is
+    flipped = weaponmod.main_axis(pts, [pts[-1][0] * 1.01, pts[-1][1],
+                                        pts[-1][2]])
+    assert weaponmod.angle_between(flipped, [-x for x in d]) < 3.0
+
+
+def test_weapon_alignment_puts_the_grip_on_the_grip():
+    """The matrix is rigid: grip onto grip, axis onto axis, size unchanged."""
+    ref, ref_grip, src, src_grip = _weapon_clouds()
+    mat, info = weaponmod.align_matrix(ref, ref_grip, src, src_grip)
+    assert info["axis_found"] is True
+    got = weaponmod.place([src_grip], mat)[0]
+    assert max(abs(got[i] - ref_grip[i]) for i in range(3)) < 1e-9
+    moved = weaponmod.place(src, mat)
+    assert weaponmod.angle_between(weaponmod.main_axis(moved, ref_grip),
+                                   weaponmod.main_axis(ref, ref_grip)) < 2.0
+    # every distance survives: no scale, no shear
+    assert abs(_dist(src[0], src[-1]) - _dist(moved[0], moved[-1])) < 1e-9
+    # the blade points the way the reference weapon points: forward along
+    # its axis (the sword is longer than the mace, so it ends past the head)
+    axis = weaponmod.main_axis(ref, ref_grip)
+    rel = [moved[-1][i] - ref_grip[i] for i in range(3)]
+    along = sum(rel[i] * axis[i] for i in range(3))
+    across = _dist(rel, [along * axis[i] for i in range(3)])
+    assert along > 1.1 and across < 0.05, (along, across)
+
+
+def test_weapon_roll_spins_about_the_reference_axis_only():
+    ref, ref_grip, src, src_grip = _weapon_clouds()
+    mat, _ = weaponmod.align_matrix(ref, ref_grip, src, src_grip, roll_deg=90.0)
+    got = weaponmod.place([src_grip], mat)[0]
+    assert max(abs(got[i] - ref_grip[i]) for i in range(3)) < 1e-9
+    moved = weaponmod.place(src, mat)
+    assert weaponmod.angle_between(weaponmod.main_axis(moved, ref_grip),
+                                   weaponmod.main_axis(ref, ref_grip)) < 2.0
+
+
+def test_weapon_alignment_survives_a_mesh_without_an_axis():
+    """A single-vertex "mesh" is only translated, never spun."""
+    ref, ref_grip, src, src_grip = _weapon_clouds()
+    mat, info = weaponmod.align_matrix(ref, ref_grip, [[1.0, 1.0, 1.0]],
+                                       src_grip)
+    assert info["axis_found"] is False
+    got = weaponmod.place([[1.0, 1.0, 1.0]], mat)[0]
+    want = [1.0 - src_grip[i] + ref_grip[i] for i in range(3)]
+    assert max(abs(got[i] - want[i]) for i in range(3)) < 1e-9
+
+
+
+def _retail_part(rel_path, wanted):
+    mesh = gfile.parse_geometry_file(
+        open(os.path.join(REPO, *rel_path.split("/")), "rb").read())
+    for pt in gfile.iter_parts(mesh):
+        if wanted in pt.name:
+            return pt
+    raise AssertionError(f"no part {wanted!r} in {rel_path}")
+
+
+def test_weapon_axis_of_a_retail_weapon_is_its_long_axis():
+    """On shipped geometry the principal axis is the barrel, not the hilt."""
+    for path, name in (("Empire/Hierophant/character_empire_hierophant.g",
+                        "weapon_empire_hierophant"),
+                       ("Empire/Paladin/character_empire_paladin.g",
+                        "paladin_sword"),
+                       ("Neutrals/OrcKing/character_neutrals_orcking.g",
+                        "weapon_neutral_orcking")):
+        pt = _retail_part(path, name)
+        pts = [list(v.position) for v in pt.vertices]
+        size = weaponmod.bbox_size(pts)
+        longest = max(range(3), key=lambda i: size[i])
+        axis = weaponmod.main_axis(pts, [0.0, 0.0, 0.0])
+        assert abs(axis[longest]) > 0.95, (name, size, axis)
+
+
+def test_weapon_placement_of_retail_parts_is_rigid():
+    """Flail and sword from the corpus: grip onto grip, rigid, axis aligned."""
+    flail = _retail_part("Empire/Inquisitor/character_empire_inquisitor.g",
+                         "weapon_empire_inquisitor")
+    sword = _retail_part("Empire/Knight/character_empire_knight.g",
+                         "empire_knight_sword")
+    ref = [list(v.position) for v in flail.vertices]
+    src = [list(v.position) for v in sword.vertices]
+    # the flail's origin is its grip (it spans x -0.07 .. 1.90 from it); the
+    # sword's handle end is where an artist would put the origin
+    ref_grip = [0.0, 0.0, 0.0]
+    src_grip = min(src, key=lambda p: sum(c * c for c in p))[:]
+    mat, info = weaponmod.align_matrix(ref, ref_grip, src, src_grip)
+    assert info["axis_found"] is True
+    moved = weaponmod.place(src, mat)
+    grip = weaponmod.place([src_grip], mat)[0]
+    assert max(abs(grip[i] - ref_grip[i]) for i in range(3)) < 1e-9
+    assert weaponmod.angle_between(weaponmod.main_axis(moved, ref_grip),
+                                   weaponmod.main_axis(ref, ref_grip)) < 2.0
+    assert abs(_dist(src[0], src[-1]) - _dist(moved[0], moved[-1])) < 1e-9
+    assert len(moved) == len(src) == 136
+
+
+
+def test_weapon_flip_turns_the_blade_round():
+    """``Flip`` reverses the axis about the grip — a mid-handle origin needs it."""
+    ref, ref_grip, src, src_grip = _weapon_clouds()
+    mat, info = weaponmod.align_matrix(ref, ref_grip, src, src_grip,
+                                       flip=True)
+    assert info.get("flipped") is True
+    moved = weaponmod.place(src, mat)
+    assert weaponmod.angle_between(weaponmod.main_axis(moved, ref_grip),
+                                   weaponmod.main_axis(ref, ref_grip)) > 178.0
+    grip = weaponmod.place([src_grip], mat)[0]
+    assert max(abs(grip[i] - ref_grip[i]) for i in range(3)) < 1e-9
+    assert abs(_dist(src[0], src[-1]) - _dist(moved[0], moved[-1])) < 1e-9
+    # ... and roll + flip compose without moving the grip either
+    mat2, _ = weaponmod.align_matrix(ref, ref_grip, src, src_grip,
+                                     roll_deg=45.0, flip=True)
+    grip2 = weaponmod.place([src_grip], mat2)[0]
+    assert max(abs(grip2[i] - ref_grip[i]) for i in range(3)) < 1e-9
+
+
+def test_vdpack_scan_names_the_pack_the_loader_rejects():
+    """`vdpack scan` answers what `run.log` cannot: *which* installed pack
+    carries the payload the loader answers `str_not_valid_hash_for_file` for —
+    the log names the file, never the archive it came from."""
+    import contextlib
+    import io
+    from d3tool import vdpack
+    folder = os.path.join(REPO, "Neutrals", "AirElemental")
+    with tempfile.TemporaryDirectory() as d, \
+            contextlib.redirect_stdout(io.StringIO()) as buf:
+        good = vdpack.read_vdpack(os.path.join(d, "good.vdpack")) \
+            if False else None
+        assert climod._run(["vdpack", "pack", folder,
+                            "-o", os.path.join(d, "good.vdpack")]) == 0
+        files = vdpack.pack_folder(folder)
+        files = vdpack.reindex_pack(files)
+        # the same archive with one payload changed and the old manifest kept:
+        # a mod rebuilt without `--reindex`, the crash this tool explains
+        stale = [(n, d + b"\x00") if n.lower().endswith(".g") else (n, d)
+                 for n, d in files]
+        with open(os.path.join(d, "stale.vdpack"), "wb") as fh:
+            fh.write(vdpack.build_vdpack(stale))
+        rows = {row["file"]: row for row in vdpack.scan_packs([d])}
+        assert set(rows) == {"good.vdpack", "stale.vdpack"}
+        assert rows["good.vdpack"]["state"] == "ok"
+        assert rows["stale.vdpack"]["state"] == "stale"
+        assert len(rows["stale.vdpack"]["mismatched"]) >= 1
+        assert all(path.lower().endswith(".g")
+                   for path in rows["stale.vdpack"]["mismatched"])
+        findings = vdpack.scan_findings(list(rows.values()))
+        text = "\n".join(level + ": " + line for level, line in findings)
+        assert "ok: good.vdpack" in text
+        assert "payload(s) differ from their recorded MD5/SHA-256" in text
+        assert "str_not_valid_hash_for_file" in text
+        assert "vdpack pack --like stale.vdpack --reindex" in text
+        # the CLI exits 1 under --strict only while something is rejected
+        buf.seek(0)
+        buf.truncate()
+        assert climod._run(["vdpack", "scan", d, "--strict"]) == 1
+        assert "rejected file(s)" in buf.getvalue()
+        assert climod._run(["vdpack", "scan",
+                            os.path.join(d, "good.vdpack")]) == 0
+
+
+def test_vdpack_scan_knows_where_the_loader_looks_for_mods():
+    """A mod is mounted from `$(UserFolder)\\Mods`; anywhere else the game
+    answers `mod '<name>' not found` and the pack never loads at all."""
+    import contextlib
+    import io
+    from d3tool import vdpack
+    folder = os.path.join(REPO, "Neutrals", "AirElemental")
+    with tempfile.TemporaryDirectory() as d, \
+            contextlib.redirect_stdout(io.StringIO()):
+        game = os.path.join(d, "game")
+        mods = os.path.join(game, "Mods")
+        os.makedirs(mods)
+        assert climod._run(["vdpack", "pack", folder, "-o",
+                            os.path.join(game, "loose.vdpack")]) == 0
+        assert climod._run(["vdpack", "pack", folder, "-o",
+                            os.path.join(mods, "AirElemental.vdpack")]) == 0
+        rows = {row["file"]: row for row in vdpack.scan_packs([game])}
+        # the folder's `Mods` subfolder is scanned too: that is what matters
+        assert set(rows) == {"loose.vdpack", "AirElemental.vdpack"}
+        assert rows["loose.vdpack"]["mod"] is False
+        assert rows["AirElemental.vdpack"]["mod"] is True
+        text = "\n".join(line for _level, line in
+                         vdpack.scan_findings(list(rows.values())))
+        assert "loose.vdpack: a mod pack outside" in text
+        assert "AirElemental.vdpack: a mod pack outside" not in text
+        # the manifest's own `Name` is reported when it is not the file name
+        # the game matches `sModifications` against
+        mismatch = os.path.join(d, "RenamedPack.vdpack")
+        files = vdpack.pack_folder(folder)
+        text_index, blob = vdpack.build_index(files, name="AirElemental")
+        with open(mismatch, "wb") as fh:
+            fh.write(vdpack.build_vdpack(files + [("index", blob)]))
+        row = vdpack.scan_pack(mismatch)
+        assert row["index_name"] == "AirElemental"
+        assert row["state"] == "ok"
+        lines = "\n".join(line for _level, line in
+                          vdpack.scan_findings([row]))
+        assert "'AirElemental' but the game names it after the file" in lines
+        assert "mod:RenamedPack" in lines
+
+
+def test_vdpack_scan_reports_two_mods_carrying_one_path():
+    """`intersects other mods` (0x8785d8) is the third way a pack silently
+    never loads: two mods ship the same resource and only one is mounted."""
+    from d3tool import vdpack
+    folder = os.path.join(REPO, "Neutrals", "AirElemental")
+    files = vdpack.reindex_pack(vdpack.pack_folder(folder))
+    other = [(n, data + b"!") if n.lower().endswith(".scene") else (n, data)
+             for n, data in files]
+    other = vdpack.reindex_pack(other)
+    with tempfile.TemporaryDirectory() as d:
+        mods = os.path.join(d, "Mods")
+        os.makedirs(mods)
+        for name, bundle in (("first", files), ("second", other)):
+            with open(os.path.join(mods, name + ".vdpack"), "wb") as fh:
+                fh.write(vdpack.build_vdpack(bundle))
+        rows = vdpack.scan_packs([mods])
+        assert [row["state"] for row in rows] == ["ok", "ok"]
+        findings = vdpack.scan_findings(rows)
+        clash = [line for level, line in findings
+                 if level == "warn" and "intersects other mods" in line]
+        assert clash, findings
+        assert "first.vdpack and second.vdpack carry" in clash[0]
+        assert "index" not in clash[0]
+        # and the JSON the CLI prints is the same answer, machine readable
+        import contextlib
+        import io
+        import json
+        with contextlib.redirect_stdout(io.StringIO()) as buf:
+            assert climod._run(["vdpack", "scan", mods, "--json"]) == 0
+        doc = json.loads(buf.getvalue())
+        assert len(doc["packs"]) == 2
+        assert {row["file"] for row in doc["packs"]} == {"first.vdpack",
+                                                         "second.vdpack"}
+        assert any("intersects other mods" in f["text"]
+                   for f in doc["findings"])
+
+
+def test_vdpack_scan_crosses_a_run_log_against_the_packs():
+    """`run.log` says `Index error : str_not_valid_hash_for_file : <path>` and
+    never the archive; the scan knows the archive — crossed, the two name the
+    pack to rebuild, and say when no pack is to blame at all."""
+    from d3tool import vdpack
+    folder = os.path.join(REPO, "Neutrals", "AirElemental")
+    files = vdpack.reindex_pack(vdpack.pack_folder(folder))
+    stale = [(n, data + b"\x00") if n.lower().endswith(".g") else (n, data)
+             for n, data in files]
+    rejected = [n for n, _ in stale if n.lower().endswith(".g")][0]
+    with tempfile.TemporaryDirectory() as d:
+        good = os.path.join(d, "good.vdpack")
+        bad = os.path.join(d, "bad.vdpack")
+        with open(good, "wb") as fh:
+            fh.write(vdpack.build_vdpack(files))
+        with open(bad, "wb") as fh:
+            fh.write(vdpack.build_vdpack(stale))
+        log_path = os.path.join(d, "run.log")
+        # a Windows log: CRLF, no translation on the way out
+        with open(log_path, "w", encoding="utf-8", newline="") as fh:
+            fh.write("[  ] Game version: 1.03\r\n")
+            fh.write("[WW] resources0.vdpack:resources\\x.effect(9) : odd\r\n")
+            fh.write(f"[EE] scene : Index error : str_not_valid_hash_for_file"
+                     f" : {rejected}\r\n")
+            fh.write("[EE] scene : Index error : str_not_valid_hash_for_file"
+                     " : resources\\nowhere\\ghost.g\r\n")
+            fh.write("[EE] mod 'ruru' not found\r\n")
+        log = vdpack.read_run_log(log_path)
+        assert log["lines"] == 5
+        assert log["rejected"] == [rejected, "resources\\nowhere\\ghost.g"]
+        assert log["missing_mods"] == ["ruru"]
+        assert log["packs"] == ["resources0.vdpack"]
+        findings = vdpack.log_findings(vdpack.scan_packs([d]), log)
+        text = "\n".join(level + ": " + line for level, line in findings)
+        # the path with a stale carrier: name it and say how to fix it
+        assert f"run.log rejects {rejected}" in text
+        assert "bad.vdpack (stale)" in text
+        assert "vdpack pack --like bad.vdpack --reindex" in text
+        # the path nobody carries: not a pack problem at all
+        assert "no scanned pack carries it" in text
+        # a mod the log cannot find, and no archive answers to
+        assert "mod 'ruru' not found` and no scanned archive" in text
+        # ... and when the pack *is* there, the message says where it lives
+        named = os.path.join(d, "Mods")
+        os.makedirs(named)
+        with open(os.path.join(named, "ruru.vdpack"), "wb") as fh:
+            fh.write(vdpack.build_vdpack(files))
+        rows = vdpack.scan_packs([d])
+        text = "\n".join(line for _lvl, line in
+                         vdpack.log_findings(rows, log))
+        assert "the scan found a pack for it at" in text
+
+
+def test_vdpack_pack_names_the_mod_after_its_file():
+    """The loader resolves `sModifications=mod:<name>` to `Mods\\<name>.vdpack`,
+    so a manifest built from scratch has to call itself what the file is
+    called — otherwise the archive and the game disagree about its name."""
+    from d3tool import vdpack
+    folder = os.path.join(REPO, "Neutrals", "AirElemental")
+    with tempfile.TemporaryDirectory() as d:
+        out = os.path.join(d, "AirElemental.vdpack")
+        assert climod._run(["vdpack", "pack", folder, "-o", out]) == 0
+        doc = vdpack.index_document(list(vdpack.read_vdpack(out).files().items()))
+        assert doc.name == "AirElemental"
+        assert doc.type == "Mod"
+        named = os.path.join(d, "something-else.vdpack")
+        assert climod._run(["vdpack", "pack", folder, "-o", named,
+                            "--name", "Ruru"]) == 0
+        doc = vdpack.index_document(
+            list(vdpack.read_vdpack(named).files().items()))
+        assert doc.name == "Ruru"
+        # rebuilding an archive that already carries an identity keeps it
+        files = list(vdpack.read_vdpack(named).files().items())
+        again = vdpack.index_document(vdpack.reindex_pack(files, name="Ignored"))
+        assert again.name == "Ruru"

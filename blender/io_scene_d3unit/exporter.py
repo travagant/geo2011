@@ -32,6 +32,9 @@ from .preferences import get_prefs
 
 FPS = 30
 
+#: text block every export writes, under a name that never changes
+D3UNIT_EXPORT_LOG = "d3unit export"
+
 
 # --------------------------------------------------------------------------- #
 #  scene inspection
@@ -141,6 +144,17 @@ def validate_unit(arm, meshes, context=None):
                          f"slots; a .g part carries one material — only the "
                          f"first ({ob.material_slots[0].name or 'empty'}) is "
                          f"exported")
+        # `.g` carries no transform: whatever the object's scale is, the
+        # engine draws the part that many times bigger.  Borrowed geometry
+        # keeps its own scale (a Knight sword sits at 1.802 in an Inquisitor
+        # scene), so say it here instead of on the battlefield.
+        sc = tuple(ob.scale)
+        if any(abs(c - 1.0) > 1e-3 for c in sc):
+            warns.append(
+                f"'{ob.name}' has a scale of "
+                f"{sc[0]:.3f}, {sc[1]:.3f}, {sc[2]:.3f} — a .g stores raw "
+                f"mesh data, so the part is exported that many times bigger. "
+                f"Apply it (Object > Apply > Scale) before exporting")
         elif not ob.material_slots or ob.material_slots[0].material is None:
             warns.append(f"'{ob.name}' has no material — its part will reuse "
                          f"the unit's main texture")
@@ -325,6 +339,91 @@ def _export_gltf(context, path, objects, use_anim, base):
 # --------------------------------------------------------------------------- #
 #  core (also driven directly by the tests, without operators)
 # --------------------------------------------------------------------------- #
+def _stamp_diffuse_names(target: str, meshes, derived=None) -> tuple:
+    """Write every mesh object's ``d3unit_diffuse`` into the glTF as extras.
+
+    ``derived`` holds ``{object name: atlas}`` for the parts that name none
+    themselves but whose material does (``unitprops.material_texture_name``):
+    a packed image leaves the glTF without a URI, so without this the part
+    would fall back to the donor's atlas even though its material is right.
+
+    Returns ``(stamped, missing)`` — the object names whose texture name could
+    not be attached to any node.  ``d3tool`` reads the value on the way back
+    (``d3tool.gltf._extras_diffuse``) and it outranks both the primitive's own
+    image and the donor part's attribute, which is how a part whose texture
+    lives in *another* unit's folder keeps a name the engine can resolve.
+    """
+    import json
+    derived = derived or {}
+    wanted = {}
+    for ob in meshes:
+        try:
+            value = ob.get(unitprops.DIFFUSE_PROP)
+        except Exception:  # noqa: BLE001
+            value = None
+        if not value:
+            value = derived.get(ob.name)
+        if not value:
+            continue
+        wanted[ob.name] = str(value)
+        try:
+            wanted.setdefault(ob.data.name, str(value))
+        except Exception:  # noqa: BLE001
+            pass
+    if not wanted:
+        return 0, []
+    try:
+        with open(target, "r", encoding="utf-8") as fh:
+            doc = json.load(fh)
+    except (OSError, ValueError):
+        return 0, sorted(wanted)
+    nodes = doc.get("nodes") or []
+    meshes_json = doc.get("meshes") or []
+    stamped, seen = 0, set()
+    for node in nodes:
+        for key in ("name", ""):
+            value = wanted.get(node.get(key) or "")
+            if not value:
+                continue
+            mi = node.get("mesh")
+            if mi is None or mi >= len(meshes_json):
+                continue
+            mesh = meshes_json[mi]
+            mesh.setdefault("extras", {})["d3unit_diffuse"] = value
+            stamped += 1
+            seen.add(node.get(key))
+            break
+    # A node is normally named after its object, but an exporter that folds
+    # an object's name away (`.001` suffixes, a renamed node, a mesh shared by
+    # two objects) would drop the name without a word.  Match the *mesh data*
+    # name as a second chance before reporting the part as unattached.
+    if len(seen) < len(wanted):
+        by_mesh = {m.get("name"): i for i, m in enumerate(meshes_json)}
+        for ob in meshes:
+            if ob.name in seen:
+                continue
+            value = wanted.get(ob.name)
+            if not value:
+                continue
+            try:
+                data_name = ob.data.name
+            except Exception:  # noqa: BLE001
+                continue
+            mi = by_mesh.get(data_name)
+            if mi is None:
+                mi = by_mesh.get(ob.name)
+            if mi is None or mi >= len(meshes_json):
+                continue
+            meshes_json[mi].setdefault("extras", {})[
+                "d3unit_diffuse"] = value
+            stamped += 1
+            seen.add(ob.name)
+    with open(target, "w", encoding="utf-8") as fh:
+        json.dump(doc, fh)
+    missing = sorted(set(wanted) - seen)
+    return stamped, [n for n in missing if n in {ob.name for ob in meshes}]
+
+
 def export_unit(context, path: str, use_anim: bool = True, weights: int = 0,
                 donor_dir: str = "", quiet: bool = False,
                 keep_temp: bool = False) -> dict:
@@ -358,8 +457,36 @@ def export_unit(context, path: str, use_anim: bool = True, weights: int = 0,
     objects = ([arm] if arm is not None else []) + [
         o for o in unit_objects if o.type != "MESH" or o in meshes]
     warns = validate_unit(arm, meshes, context)
+    notes = []
     if hidden:
         warns.insert(0, "hidden mesh(es) skipped: " + ", ".join(hidden))
+    # A mesh imported before 1.1.27 carries no `d3unit_diffuse`; its part then
+    # keeps whatever texture the material or the donor .g names, which is how
+    # a grafted sword came out wearing the donor's atlas without a word.
+    # A part with no name of its own is not necessarily nameless: the material
+    # on it usually knows the atlas, and a packed image never reaches the glTF
+    # as a URI — see `unitprops.material_texture_name`.
+    derived = {}
+    for ob in meshes:
+        if str(ob.get(unitprops.DIFFUSE_PROP) or "").strip():
+            continue
+        try:
+            guess = unitprops.material_texture_name(
+                ob, unitprops.texture_folders(context, ob))
+        except Exception:  # noqa: BLE001 - a probe must never fail an export
+            guess = ""
+        if guess:
+            derived[ob.name] = guess
+    unnamed = [o.name for o in meshes
+               if not str(o.get(unitprops.DIFFUSE_PROP) or "").strip()
+               and o.name not in derived]
+    if unnamed:
+        more = "" if len(unnamed) <= 6 else f" (+{len(unnamed) - 6} more)"
+        warns.append(
+            "part(s) with no texture name of their own — the export keeps "
+            "whatever the material/donor .g names: "
+            + ", ".join(unnamed[:6]) + more
+            + " (set it in the sidebar: Texture of <part>)")
 
     scene = context.scene
     saved = (scene.render.fps, scene.render.fps_base, scene.frame_current,
@@ -378,21 +505,65 @@ def export_unit(context, path: str, use_anim: bool = True, weights: int = 0,
             raise RuntimeError(f"the glTF exporter returned {res!r}")
         if not os.path.isfile(target):
             raise RuntimeError("the glTF exporter wrote no file")
+        stamped, missing = _stamp_diffuse_names(target, meshes, derived)
+        if stamped:
+            print(f"[d3unit] named the texture of {stamped} part(s) in the "
+                  f"glTF (d3unit_diffuse)")
+        for ob_name, atlas in sorted(derived.items()):
+            notes.append(f"texture from the material: {ob_name} -> {atlas}")
+            print(f"[d3unit] {notes[-1]}")
+        if missing:
+            warns.append(
+                "texture name not attached to any node: "
+                + ", ".join(missing))
 
+        before = (set(os.listdir(out_dir)) if os.path.isdir(out_dir)
+                  else set())
         with contextlib.redirect_stdout(log), \
                 contextlib.redirect_stderr(log):
             cli._export(target, out_dir, weights, anim=use_anim,
                         quiet=quiet, donor_dir=donor_dir or None)
 
+        # what the export put in the folder that the unit did not have: the
+        # sidebar is where a user can still do something about it
+        try:
+            delta = cli._export_delta(out_dir, before, donor_dir or None)
+        except Exception:  # noqa: BLE001 - a report must never break an export
+            delta = {}
+        for name in delta.get("new", []):
+            warns.append(
+                f"'{name}' was written but the unit did not have it — new "
+                f"data in the folder; delete it unless the model needs it")
+        for name in delta.get("rewritten", []):
+            notes.append(f"rewritten: {name}")
+
         result = _verify(out_dir, base)
         if result["warnings"]:
             warns.extend(result["warnings"])
-        text = log.getvalue()
+        tex_lines = _texture_lines(out_dir, base, donor_dir, warns)
+        for line in tex_lines:
+            print("[d3unit] texture" + line)
+        for ob_name, slots in _material_rows(meshes):
+            notes.append(f"materials of {ob_name}: " + ", ".join(slots))
+            print(f"[d3unit] {notes[-1]}")
+        text = log.getvalue() + "".join(
+            "\n" + line for line in tex_lines)
+        # a warning that only reaches the system console is a warning nobody
+        # reads; the sidebar shows these next to the Export button
+        try:
+            if warns:
+                context.scene["d3unit_last_export"] = "\n".join(warns[:12])
+            elif "d3unit_last_export" in context.scene:
+                del context.scene["d3unit_last_export"]
+        except Exception:  # noqa: BLE001
+            pass
         _log_to_text(f"{base} export", text + "\n" + "\n".join(warns))
+        # ...and under a stable name the sidebar's "Open the Log" can find
+        _log_to_text(D3UNIT_EXPORT_LOG, text + "\n" + "\n".join(warns))
         return {"g": os.path.join(out_dir, base + ".g"),
                 "base": base, "out_dir": out_dir, "armature": arm,
                 "rigid": arm is None,
-                "meshes": meshes, "warnings": warns,
+                "meshes": meshes, "warnings": warns, "notes": notes,
                 "log": text, "stats": result["stats"]}
     finally:
         scene.render.fps, scene.render.fps_base = saved[0], saved[1]
@@ -407,9 +578,81 @@ def export_unit(context, path: str, use_anim: bool = True, weights: int = 0,
             shutil.rmtree(tmp, ignore_errors=True)
 
 
+def _material_rows(meshes) -> list:
+    """``[(object, [material name per slot])]``, for the export report.
+
+    The `.g` numbers a part's materials ``material0``, ``material1``, … in slot
+    order, and the body of a unit is slot 0 of its first part.  Printing the
+    mapping is the only way the artist can see that the weapon really took
+    ``material1`` and not a ``material0.002`` Blender invented.
+    """
+    rows = []
+    for ob in meshes or ():
+        names = []
+        for slot in (getattr(ob, "material_slots", ()) or ()):
+            mat = getattr(slot, "material", None)
+            names.append(getattr(mat, "name", "") if mat is not None else "")
+        if names:
+            rows.append((getattr(ob, "name", ""), names))
+    return rows
+
+
 def _pref_path(context):
     prefs = get_prefs(context)
     return getattr(prefs, "d3tool_path", "") if prefs else ""
+
+
+def _texture_lines(out_dir, base, donor_dir, warns):
+    """Read the written ``.g``/``_lod.g`` back: what texture each part wears.
+
+    The name can come from three places (the mesh's own ``d3unit_diffuse``, the
+    image Blender exported, the donor part) and nothing on the Blender side
+    tells them apart — so the export reports what actually landed in the file,
+    and says so when the file that name points at is not next to the unit.
+    """
+    try:
+        parts = bridge.module("parts")
+        tex = bridge.module("texture")
+    except Exception:  # noqa: BLE001 - a report must never break an export
+        return []
+    lines, said = [], set()
+    for suffix in ("", "_lod"):
+        g_path = os.path.join(out_dir, base + suffix + ".g")
+        if not os.path.isfile(g_path):
+            continue
+        try:
+            rows = parts.texture_report(g_path, [donor_dir])
+        except Exception as exc:  # noqa: BLE001
+            lines.append(f"{base}{suffix}.g: could not read the part "
+                         f"textures back ({exc})")
+            continue
+        for part, diffuse, found in rows:
+            if not diffuse:
+                if part not in said:
+                    said.add(part)
+                    warns.append(
+                        f"part '{part}' has no material0_diffuse in "
+                        f"{base}{suffix}.g — the game draws it untextured")
+                continue
+            if found:
+                # size AND pixel layout: one atlas is 86 KiB as DXT1 and 683 KiB
+                # as raw RGBA, so a byte count alone reads like another picture
+                size = tex.describe(found, True)
+                kb = max(1, os.path.getsize(found) // 1024)
+                status = os.path.basename(found) + \
+                    (f" ({size}, {kb} KB)" if size else "")
+            else:
+                status = "NOT FOUND"
+            lines.append(f"  {base}{suffix}.g: {part} -> {diffuse} ({status})")
+            key = diffuse.lower()
+            if not found and key not in said:
+                said.add(key)
+                warns.append(
+                    f"part '{part}' wears {diffuse}, but no such texture is "
+                    f"next to the unit — put {os.path.splitext(diffuse)[0]}"
+                    f".t in the folder, or set another name in the panel "
+                    f"(Texture of {part})")
+    return lines
 
 
 def _verify(out_dir, base):
@@ -443,6 +686,21 @@ def _verify(out_dir, base):
                     f"{base}.g: {line} — the game will crash loading it")
     except Exception as exc:  # noqa: BLE001
         out["warnings"].append(f"could not re-read {base}.g: {exc}")
+    # The four files of a unit describe each other, and every one of them
+    # parses on its own however stale it is: only a reader that cross-checks
+    # them (`d3tool audit`) sees a `gobj` still quoting the mesh it replaced, or
+    # an `.ac` naming a folder the game does not have.  The engine finds out at
+    # load time and stops, so say it here, where the export report is read.
+    try:
+        auditmod = bridge.module("audit")
+        _facts, findings = auditmod.audit(out_dir)
+        for line in findings[:8]:
+            out["warnings"].append(f"audit: {line}")
+        if len(findings) > 8:
+            out["warnings"].append(
+                f"audit: … and {len(findings) - 8} more (see the log)")
+    except Exception:  # noqa: BLE001 - the audit must never fail an export
+        pass
     return out
 
 
