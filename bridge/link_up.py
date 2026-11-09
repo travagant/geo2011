@@ -131,6 +131,30 @@ def publish(message: str, topic: str = "", timeout: float = 10.0) -> tuple:
     return False, ", ".join(problems)
 
 
+def note(message: str, timeout: float = 10.0) -> None:
+    """One line of what is happening, announced as it happens.
+
+    Silence is the worst thing a report can say: from outside, "the tunnel is
+    still probing transport 3" and "the window was closed" look exactly the
+    same, and the only way to tell them apart was to ask the user to read his
+    own screen. So every step goes to the topic in the background — the same
+    channel the address travels on — and the window keeps working while it does.
+    """
+    topic = rendezvous_topic()
+    if not topic:
+        return
+
+    def send():
+        payload = (f"state: log\nbuild: {studio_link.build_marker()}\n"
+                   f"at: {time.strftime('%H:%M:%S')}\nmsg: {message}\n")
+        publish(payload, topic, timeout=timeout)
+
+    try:
+        threading.Thread(target=send, daemon=True).start()
+    except RuntimeError:      # noqa: BLE001 - shutting down; the report still has it
+        pass
+
+
 def _announce_topic(line: str, say=print) -> None:
     """Announce now, then every minute while the window stays open."""
     topic = rendezvous_topic()
@@ -497,6 +521,7 @@ def run(args) -> int:
 
     def finish(code, verdict):
         report.append(f"verdict: {verdict}")
+        note(f"итог: {verdict}")
         try:
             attempt.write_text("\n".join(report) + "\n", encoding="utf-8")
         except OSError:
@@ -550,6 +575,7 @@ def run(args) -> int:
         print(f"сервер не отвечает сам себе: {local}")
         return finish(1, "local-fail")
     print("сервер отвечает локально: OK")
+    note(f"сервер поднят на 127.0.0.1:{port}, студия {cfg['studio']}")
 
     try:
         exe = args.cloudflared or find_cloudflared(cfg["studio"])
@@ -569,6 +595,8 @@ def run(args) -> int:
         last = len(choices) - 1
         for index, (name, starter) in enumerate(choices):
             print(f"\n--- {name}")
+            report.append(f"try: {name}")
+            note(f"пробую {name} ({index + 1} из {len(choices)})")
             proc, url, log_path = None, "", LINK_DIR / "tunnel.log"
             try:
                 proc, url, log_path = starter()
@@ -580,6 +608,7 @@ def run(args) -> int:
                           f"exit={proc.poll()} log={log_path}")
             if not url:
                 print("    адреса нет — смотрю лог")
+                note(f"{name}: адреса не дал")
                 tail = _tail(log_path)
                 for line in tail[-8:]:
                     print("      " + line)
@@ -596,6 +625,8 @@ def run(args) -> int:
             outcome = probe_detail(url, link.token, tries=args.probe_tries)
             print(f"    проверка снаружи: {outcome['tries']} попыток, "
                   f"ответ {outcome['detail']}")
+            note(f"{name}: снаружи {outcome['detail']} "
+                 f"({outcome['tries']} попыток)")
             report.append(f"{name}: probe status={outcome['status']} "
                           f"detail={outcome['detail']} tries={outcome['tries']}")
             if outcome["body"]:
@@ -747,7 +778,7 @@ def main(argv=None) -> int:
                         help="ports to try, comma separated")
     parser.add_argument("--cloudflared", default="",
                         help="use this cloudflared.exe instead of looking for one")
-    parser.add_argument("--probe-tries", type=int, default=20,
+    parser.add_argument("--probe-tries", type=int, default=8,
                         help="how many times to ask the public address (default 20)")
     parser.add_argument("--no-download", action="store_true",
                         help="never download cloudflared (ssh transport only)")

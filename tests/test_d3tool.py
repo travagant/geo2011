@@ -7304,3 +7304,53 @@ def test_the_bridge_announces_its_own_address_to_the_session():
     path, body = seen[0]
     assert path == "/astraforge-probe-42"
     assert "token: SECRET-0123456789" in body and "url: https://x.lhr.life" in body
+
+
+def test_every_step_is_announced_while_it_happens():
+    """Silence from the far end is not information.
+
+    From outside, "still probing transport 3" and "the window was closed" looked
+    identical, and the only way to tell them apart was to ask the user to read
+    his own screen. Each step now goes to the topic in the background, so the
+    session can follow a run without asking anything — and a failing publish is
+    swallowed, because the address itself may still get through.
+    """
+    import importlib
+
+    sys.path.insert(0, os.path.join(REPO, "bridge"))
+    link_up = importlib.import_module("link_up")
+
+    sent = []
+    real_publish, real_file = link_up.publish, link_up.RENDEZVOUS_FILE
+    with tempfile.TemporaryDirectory() as d:
+        rendezvous = pathlib.Path(d, "rendezvous.txt")
+        rendezvous.write_text("topic: astraforge-probe-77\n", encoding="utf-8")
+        link_up.RENDEZVOUS_FILE = rendezvous
+
+        def fake_publish(message, topic="", timeout=10.0):
+            sent.append((topic, message))
+            return True, "ok"
+
+        try:
+            link_up.publish = fake_publish
+            link_up.note("пробую ssh → localhost.run (2 из 4)")
+            for _ in range(100):            # the send is on a thread: wait a moment
+                if sent:
+                    break
+                time.sleep(0.05)
+
+            def broken(message, topic="", timeout=10.0):
+                raise OSError("network down")
+
+            link_up.publish = broken
+            link_up.note("это не должно уронить мост")   # no exception escapes
+        finally:
+            link_up.publish, link_up.RENDEZVOUS_FILE = real_publish, real_file
+
+        assert sent, "nothing was announced"
+        topic, message = sent[0]
+        assert topic == "astraforge-probe-77"
+        assert "state: log" in message
+        assert "пробую ssh → localhost.run (2 из 4)" in message
+        assert "build: " + link_up.studio_link.build_marker() in message
+        assert "at: " in message
