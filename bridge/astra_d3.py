@@ -51,6 +51,11 @@ DEFAULT_STUDIO = r"D:\AstraForge"
 STUDIO_CANDIDATES = (r"C:\AstraForge", r"D:\AstraForge", r"E:\AstraForge",
                      r"C:\Program Files\AstraForge", r"D:\Program Files\AstraForge")
 STUDIO_MARKERS = ("data", "runtime")
+# A folder with the studio's name and a stray `data` left by an older bridge is
+# still not the studio. These only the real thing has.
+STUDIO_STRONG = ("runtime/ComfyUI", "runtime/comfy", "runtime/uv",
+                 "runtime/node", "runtime/blender", "server/index.mjs",
+                 "data/models", "data/library", "package.json", "Start.cmd")
 USER_MOD_FOLDER = r"Documents\Disciples III Reincarnation\Mods"
 
 DEFAULTS = {
@@ -130,9 +135,19 @@ class Config(dict):
 
 
 def looks_like_studio(path) -> bool:
-    """A studio folder holds ``data`` or ``runtime``; a same-named decoy does not."""
+    """Is this folder the studio, or a decoy wearing its name?
+
+    One of ``STUDIO_STRONG`` decides by itself. Failing that, ``data`` and
+    ``runtime`` must **both** be there: an older build of this bridge ran with a
+    wrong studio path and created ``D:\\AstraForge\\data`` on its own, which made
+    the decoy look real from then on — one empty folder must not be enough.
+    """
     path = Path(path)
-    return path.is_dir() and any((path / marker).is_dir() for marker in STUDIO_MARKERS)
+    if not path.is_dir():
+        return False
+    if any((path / marker).exists() for marker in STUDIO_STRONG):
+        return True
+    return all((path / marker).is_dir() for marker in STUDIO_MARKERS)
 
 
 def guess_studio(candidates=None) -> str:

@@ -62,6 +62,7 @@ is how a POST reaches the studio — the link performs it locally.
 
 | op | what it does |
 | --- | --- |
+| `ping` | the cheapest answer: build number, folder, port. Touches no config, no studio — this is what the probes use |
 | `hello` | paths, versions, whether the studio answers, newest GLB |
 | `doctor` | the health report below (torch arch, Blender, donor, Mods) |
 | `list` | GLBs the studio produced, newest first |
@@ -72,6 +73,36 @@ is how a POST reaches the studio — the link performs it locally.
 | `d3tool&args=vdpack scan …` | the toolkit, JSON back |
 | `build`, `pack`, `run` | Blender export / pack / both — return a job id |
 | `job&id=`, `jobs_local` | what a background job has done so far |
+
+Transport order — one is not a plan, trycloudflare answers 530 often enough:
+cloudflared QUIC, cloudflared HTTP/2, `ssh -p 443 -R0:…` to pinggy,
+`ssh -R 80:…` to localhost.run. `ssh` is taken from PATH or from
+`C:\Windows\System32\OpenSSH\ssh.exe`, which is where Windows keeps it when it
+is not on PATH.
+
+Four failure modes this link was bitten by, and what kills them:
+
+* **`local: not reachable (HTTP 403)`.** `HTTPServer` binds with `SO_REUSEADDR`,
+  which on Windows *succeeds* on a port another process is listening on — the
+  older listener keeps the traffic. A fresh run then talked to the stale server of
+  another unzipped copy (another `.link/token.txt`), got 403, and stopped before
+  any tunnel. Ports are now checked by **connecting**, a busy one is skipped, and
+  the bind is always verified with `op=ping`; on Windows `allow_reuse_address` is
+  off, so a hijack cannot happen in the first place.
+* **The address came from a previous run.** `url_from_log` reads the newest URL in
+  the tunnel log, and that log survives between runs: until the fresh cloudflared
+  printed its own address, the probe was knocking on a dead hostname — Cloudflare
+  answers `1033` (`tunnel not found`) or `530`, and every transport looked broken
+  while it was fine. The log is truncated before the client starts.
+* **The probe used `hello`.** It reads the config and the asset folder; a missing
+  key answered 400, and a probe that treated "not our JSON" as "dead tunnel"
+  threw away a working one. Probes now use `ping`; `ours` in the probe result says
+  whether the token was accepted, so 403 (another copy) and 400 (our server, this
+  op failed) are no longer the same thing. `hello` itself tolerates a thin config.
+* **"I did not see the fix."** Two unzipped copies, one double-clicked. `BUILD.txt`
+  is printed in the banner, written to `last-attempt.txt` (`сборка:` / `папка:`),
+  and returned by `op=ping`, so the number and the folder travel with every run;
+  a copy sitting *inside* the studio folder is called out as a warning.
 
 Safety: the server binds `127.0.0.1`, needs the token for every request (403
 otherwise), refuses any path outside the repository, the studio folder, the

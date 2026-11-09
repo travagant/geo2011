@@ -6710,3 +6710,261 @@ def test_cuda_fix_tries_cu126_then_the_pinned_set_and_stops_when_a_kernel_runs()
         assert "torch==2.8.0" in calls[-1]          # fallen back to the known-good set
         text = open(report, encoding="utf-8").read()
         assert "fixed: " + venv in text and "failed: none" in text
+
+
+def test_link_survives_a_leftover_instance_on_the_same_port():
+    """`local: not reachable (HTTP 403)` is what a second copy of the bridge sees.
+
+    On Windows `HTTPServer` binds with `SO_REUSEADDR`, which *succeeds* on a port
+    another process is already listening on (the older listener keeps the
+    traffic). So a fresh run talks to the stale server of another unzipped copy,
+    whose `.link/token.txt` holds a different token: 403, verdict `local-fail`,
+    and nothing ever gets a tunnel. The fix has to detect the owner and move on.
+    """
+    import importlib
+
+    sys.path.insert(0, os.path.join(REPO, "bridge"))
+    import threading
+
+    link_up = importlib.import_module("link_up")
+    studio_link = importlib.import_module("studio_link")
+
+    stale = studio_link.Link({"studio": "."}, 0, "http://127.0.0.1:3210")
+    stale.token = "A-TOKEN-FROM-AN-OLDER-UNZIPPED-COPY"
+
+    class StaleHandler(studio_link.Handler):   # its own token, like the other copy
+        link = stale
+
+    old = studio_link.StudioLinkServer(("127.0.0.1", 0), StaleHandler)
+    port = old.server_address[1]
+    threading.Thread(target=old.serve_forever, daemon=True).start()
+    try:
+        assert link_up.port_busy(port) is True
+        # a connect test sees it; a single busy candidate is refused, not hijacked
+        try:
+            link_up.free_port((port,))
+        except link_up.Abort as exc:
+            assert "занят" in str(exc)
+        else:                                     # pragma: no cover - must not pass
+            raise AssertionError("free_port handed out a busy port")
+
+        mine = studio_link.Link({"studio": "."}, 0, "http://127.0.0.1:3210")
+        studio_link.Handler.link = mine
+        httpd, chosen, tried = link_up.bind_link_server((port, port + 1, port + 2),
+                                                       mine.token)
+        try:
+            assert chosen != port, tried
+            assert any(str(port) in line and "занят" in line for line in tried), tried
+
+            # and the wrong-token answer is now recognisably "someone else's server"
+            outcome = link_up.probe_detail(f"http://127.0.0.1:{port}", mine.token,
+                                           tries=1, gap=0.05)
+            assert outcome["ok"] is False and outcome["status"] == 403
+            assert outcome["ours"] is False
+        finally:
+            httpd.shutdown()
+            httpd.server_close()
+    finally:
+        old.shutdown()
+        old.server_close()
+
+
+def test_link_probe_uses_ping_so_a_thin_config_cannot_throw_the_tunnel_away():
+    """The probe must not depend on the studio, the config or the asset folders.
+
+    `hello` reads the config; when a key is missing it answers 400, and a probe
+    that treated 400 as "not our server" discarded a perfectly working tunnel.
+    `ping` answers without touching anything, and `ours` still distinguishes our
+    server from Cloudflare and from another copy.
+    """
+    import importlib
+
+    sys.path.insert(0, os.path.join(REPO, "bridge"))
+    import threading
+
+    link_up = importlib.import_module("link_up")
+    studio_link = importlib.import_module("studio_link")
+
+    thin = studio_link.Link({"studio": "."}, 0, "http://127.0.0.1:9")
+    studio_link.Handler.link = thin
+    httpd = studio_link.StudioLinkServer(("127.0.0.1", 0), studio_link.Handler)
+    port = httpd.server_address[1]
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{port}"
+    try:
+        ping = link_up.probe_detail(base, thin.token, tries=1, gap=0.05)
+        assert ping["ok"] is True and ping["op"] == "ping" and ping["ours"] is True
+        assert link_up.probe(base, thin.token, tries=1, gap=0.05) == "ok"
+
+        # an op that fails on the server side: our server (token matched), and
+        # that must not be mistaken for a dead tunnel
+        broken = link_up.probe_detail(base, thin.token, tries=1, gap=0.05, op="read")
+        assert broken["ours"] is True
+        assert broken["ok"] is False and "наш сервер" in broken["detail"]
+        # `hello` itself survives a config without keys — a thin config is not 400
+        hello = link_up.probe_detail(base, thin.token, tries=1, gap=0.05, op="hello")
+        assert hello["ok"] is True and hello["ours"] is True
+
+        wrong = link_up.probe_detail(base, "nope", tries=1, gap=0.05)
+        assert wrong["ours"] is False and wrong["status"] == 403
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+
+
+def test_link_says_which_build_it_is_and_where_it_runs():
+    """"I did not see where the fix is" is almost always an old copy on disk.
+
+    Two unzipped bridges, one double-clicked, and the build number is the only
+    way to tell them apart — so it is printed in the banner, stored in the
+    report, and answered by `op=ping` / `op=hello` before anything else.
+    """
+    import importlib
+
+    sys.path.insert(0, os.path.join(REPO, "bridge"))
+    studio_link = importlib.import_module("studio_link")
+    link_up = importlib.import_module("link_up")
+
+    marker = pathlib.Path(REPO, "bridge", "BUILD.txt").read_text(encoding="utf-8").strip()
+    assert marker.isdigit(), marker
+    assert studio_link.build_marker() == marker
+
+    ping = studio_link.op_ping(studio_link.Link({"studio": "."}, 0, "http://127.0.0.1:9"), {})
+    assert ping["build"] == marker
+    assert ping["bridge"].replace("\\", "/").endswith("bridge")
+
+    # the banner in run() prints the marker, and a bridge living inside the
+    # studio folder is called out instead of being used silently
+    source = pathlib.Path(REPO, "bridge", "link_up.py").read_text(encoding="utf-8")
+    assert "сборк" in source and "build_marker()" in source
+    assert "ЭТА КОПИЯ ЛЕЖИТ ВНУТРИ ПАПКИ СТУДИИ" in source
+    assert "BUILD.txt" in pathlib.Path(REPO, "bridge", "studio_link.py").read_text(
+        encoding="utf-8")
+
+
+def test_link_has_more_than_one_way_out():
+    """trycloudflare answers 530 often enough that one transport is not a plan.
+
+    ssh ships with Windows but is not always on PATH; pinggy answers on 443,
+    which survives networks that drop ssh's port 22; localhost.run is the plain
+    fallback. cloudflared is tried over QUIC and then HTTP/2.
+    """
+    import importlib
+
+    sys.path.insert(0, os.path.join(REPO, "bridge"))
+    link_up = importlib.import_module("link_up")
+
+    names = [name for name, _ in link_up.transports("cloudflared.exe", 3211)]
+    assert "cloudflared QUIC" in names and "cloudflared HTTP/2" in names
+    assert any("pinggy" in name for name in names), names
+    assert any("localhost.run" in name for name in names), names
+
+    # Windows' own ssh, even when PATH has none
+    for candidate in link_up.SSH_CANDIDATES:
+        assert candidate.lower().endswith("openssh\\ssh.exe")
+
+    # pinggy is asked for an assigned port (0) over 443; localhost.run for 80
+    seen = []
+
+    def fake_spawn(cmd, log_path):
+        seen.append((cmd, log_path.name))
+        raise OSError("stop before launching")
+
+    real = link_up._spawn
+    try:
+        link_up._spawn = fake_spawn
+        for name, starter in link_up.transports("", 3211):
+            try:
+                starter()
+            except OSError:
+                pass
+    finally:
+        link_up._spawn = real
+    logs = dict((name, cmd) for cmd, name in seen)
+    assert "tunnel-pinggy.log" in logs
+    assert "0:127.0.0.1:3211" in logs["tunnel-pinggy.log"]
+    assert "443" in logs["tunnel-pinggy.log"]
+    assert "80:127.0.0.1:3211" in logs["tunnel-ssh.log"]
+
+
+def test_a_folder_with_one_stray_data_is_not_the_studio():
+    """An older build of this bridge ran with a wrong studio path and created
+    `D:\\AstraForge\\data` by itself — after that the decoy looked real, and every
+    derived path (assets, Blender, the ComfyUI interpreter) pointed at the wrong
+    disk. One empty marker folder must not be enough."""
+    import importlib
+
+    sys.path.insert(0, os.path.join(REPO, "bridge"))
+    astra_d3 = importlib.import_module("astra_d3")
+
+    with tempfile.TemporaryDirectory() as d:
+        decoy = pathlib.Path(d, "AstraForge")
+        (decoy / "data").mkdir(parents=True)          # what an old run leaves behind
+        (decoy / "bridge").mkdir()
+        assert astra_d3.looks_like_studio(decoy) is False
+
+        real = pathlib.Path(d, "C", "AstraForge")
+        (real / "runtime" / "ComfyUI").mkdir(parents=True)
+        astra_d3.STUDIO_CANDIDATES = (str(decoy), str(real))
+        try:
+            # the decoy is skipped even though it owns a `data` folder
+            assert astra_d3.guess_studio() == str(real)
+            # and a second empty marker does not change that order either
+            (decoy / "runtime").mkdir()
+            assert astra_d3.looks_like_studio(decoy) is True
+        finally:
+            astra_d3.STUDIO_CANDIDATES = astra_d3.STUDIO_CANDIDATES
+
+
+def test_tunnel_address_never_comes_from_a_previous_run():
+    """`url_from_log` reads the newest URL in the log — which is the *old* one
+    until the new cloudflared prints its own.
+
+    A log left by a previous attempt therefore made the probe knock on a dead
+    hostname: Cloudflare answers 1033 ("tunnel not found") or 530, every
+    transport looks broken, and the real tunnel was fine all along. The log is
+    truncated before the client starts.
+    """
+    import importlib
+    import io
+
+    sys.path.insert(0, os.path.join(REPO, "bridge"))
+    link_up = importlib.import_module("link_up")
+
+    seen = {}
+
+    class FakeProc:
+        stdout = io.BytesIO(b"")
+
+        def poll(self):
+            return None
+
+    def fake_popen(cmd, **kwargs):
+        log = link_up.LINK_DIR / "tunnel-quic.log"
+        seen["empty_before_spawn"] = log.read_text(encoding="utf-8") == ""
+        seen["cmd"] = cmd
+        return FakeProc()
+
+    def fake_wait(proc, log_path, seconds=45):
+        with open(log_path, "a", encoding="utf-8") as fh:
+            fh.write("INF |  https://fresh-name-here.trycloudflare.com  |\n")
+        return link_up.url_from_log(log_path)
+
+    link_up.LINK_DIR.mkdir(parents=True, exist_ok=True)
+    log = link_up.LINK_DIR / "tunnel-quic.log"
+    log.write_text("INF |  https://stale-from-yesterday.trycloudflare.com  |\n",
+                   encoding="utf-8")
+
+    real_popen, real_wait = link_up.subprocess.Popen, link_up._wait_for_url
+    try:
+        link_up.subprocess.Popen = fake_popen
+        link_up._wait_for_url = fake_wait
+        proc, url, log_path = link_up.start_cloudflared("cloudflared.exe", 3211, "quic")
+    finally:
+        link_up.subprocess.Popen, link_up._wait_for_url = real_popen, real_wait
+
+    assert seen["empty_before_spawn"] is True
+    assert url.endswith("fresh-name-here.trycloudflare.com"), url
+    assert "stale-from-yesterday" not in url
+    assert "--protocol" in seen["cmd"] and "quic" in seen["cmd"]
+    log.write_text("", encoding="utf-8")

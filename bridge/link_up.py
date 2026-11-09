@@ -28,6 +28,7 @@ own log: ``tunnel-quic.log``, ``tunnel-http2.log``, ``tunnel-ssh.log``.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import shutil
@@ -40,7 +41,6 @@ import time
 import traceback
 import urllib.error
 import urllib.request
-from http.server import ThreadingHTTPServer
 from pathlib import Path
 
 BRIDGE_DIR = Path(__file__).resolve().parent
@@ -50,8 +50,11 @@ CLOUDFLARED_URL = ("https://github.com/cloudflare/cloudflared/releases/latest/"
                    "download/cloudflared-windows-amd64.exe")
 # quick tunnels from Cloudflare, and the ssh-based ones from localhost.run
 URL_RE = re.compile(
-    rb"https://[a-z0-9][a-z0-9.-]*\.(?:trycloudflare\.com|lhr\.life|localhost\.run|"
-    rb"lhr\.rocks|eu\.lhr\.life)")
+    rb"https?://[a-z0-9][a-z0-9.-]*\.(?:trycloudflare\.com|lhr\.life|localhost\.run|"
+    rb"lhr\.rocks|eu\.lhr\.life|pinggy\.link|pinggy\.io|serveo\.net|"
+    rb"loca\.lt)")
+# ssh is not on PATH on every Windows box, but it is installed
+SSH_CANDIDATES = (r"C:\Windows\System32\OpenSSH\ssh.exe",)
 PORTS = (3211, 3212, 3213, 3220, 3230)
 
 sys.path.insert(0, str(BRIDGE_DIR))
@@ -76,17 +79,59 @@ def url_from_log(path: Path) -> str:
     return hits[-1].decode() if hits else ""
 
 
+def port_busy(port: int, host="127.0.0.1", timeout=0.4) -> bool:
+    """Is anything already answering on this port?
+
+    Asked by *connecting*, not by binding: on Windows a bind with SO_REUSEADDR
+    succeeds even when another process is listening (``HTTPServer`` sets that
+    option by default), which is how a second copy of the bridge ends up talking
+    to the first one and reporting ``403 bad token``.
+    """
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+
 def free_port(candidates=PORTS):
     """The first candidate port nothing is listening on."""
     for port in candidates:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
-            probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            try:
-                probe.bind(("127.0.0.1", port))
-            except OSError:
-                continue
+        if not port_busy(port):
             return port
     raise Abort(f"заняты все порты из списка {list(candidates)} — закрой старое окно")
+
+
+def bind_link_server(candidates, token, say=print):
+    """``(httpd, port)`` — a port where *this* process answers, not a leftover one.
+
+    A bind that succeeds proves nothing (see ``port_busy``), so every candidate is
+    verified by asking it ``op=hello`` and checking the answer is ours. A stale
+    instance answers 403 there, and the next port is tried instead of giving up.
+    """
+    tried = []
+    for port in candidates:
+        if port_busy(port):
+            tried.append(f"{port}: занят (кто-то слушает)")
+            say(f"    порт {port} занят — беру следующий")
+            continue
+        try:
+            httpd = studio_link.StudioLinkServer(("127.0.0.1", port),
+                                                 studio_link.Handler)
+        except OSError as exc:
+            tried.append(f"{port}: не открылся ({exc})")
+            say(f"    порт {port} не открылся ({type(exc).__name__}) — беру следующий")
+            continue
+        threading.Thread(target=httpd.serve_forever, daemon=True).start()
+        answer = probe_local(port, token)
+        if answer == "ok":
+            return httpd, port, tried
+        httpd.shutdown()
+        httpd.server_close()
+        tried.append(f"{port}: ответил не наш сервер ({answer})")
+        say(f"    на порту {port} ответил кто-то другой ({answer}) — беру следующий")
+    raise Abort("ни один порт не подошёл: " + "; ".join(tried) +
+                "\n  закрой старые окна моста (в них прошлые запуски) и попробуй снова")
 
 
 def find_cloudflared(studio: str) -> str:
@@ -173,6 +218,11 @@ def _wait_for_url(proc, log_path: Path, seconds=45) -> str:
 def start_cloudflared(exe: str, port: int, protocol: str = "") -> tuple:
     """``(process, url, log)`` for one cloudflared attempt."""
     log_path = LINK_DIR / (f"tunnel-{protocol or 'auto'}.log")
+    # The address must come from THIS run: a log left by a previous attempt holds
+    # an address whose tunnel is long dead, and probing it answers 1033/530 no
+    # matter what we do next — which reads as "the tunnel does not work".
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_text("", encoding="utf-8")
     cmd = [exe, "tunnel", "--url", f"http://127.0.0.1:{port}", "--no-autoupdate",
            "--logfile", str(log_path), "--loglevel", "info"]
     if protocol:
@@ -187,47 +237,102 @@ def start_cloudflared(exe: str, port: int, protocol: str = "") -> tuple:
     return proc, url, log_path
 
 
-def start_ssh(port: int, host: str = "nokey@localhost.run") -> tuple:
-    """``(process, url, log)`` for the ssh fallback: needs no download at all."""
-    log_path = LINK_DIR / "tunnel-ssh.log"
-    cmd = ["ssh", "-o", "StrictHostKeyChecking=no",
+def find_ssh() -> str:
+    """``ssh.exe`` from PATH, or the copy Windows ships but does not always add."""
+    found = shutil.which("ssh")
+    if found:
+        return found
+    for candidate in SSH_CANDIDATES:
+        if Path(candidate).is_file():
+            return candidate
+    return ""
+
+
+def start_ssh(port: int, host: str = "nokey@localhost.run", ssh: str = "",
+              extra=(), log_name: str = "tunnel-ssh.log", remote="80") -> tuple:
+    """``(process, url, log)`` for an ssh tunnel: needs no download at all.
+
+    ``remote`` is the remote port to ask for: ``80`` for localhost.run, ``0`` for
+    pinggy (it assigns one and hands back an https address).
+    """
+    log_path = LINK_DIR / log_name
+    cmd = [ssh or "ssh", "-o", "StrictHostKeyChecking=no",
            "-o", f"UserKnownHostsFile={os.devnull}",
            "-o", "ServerAliveInterval=20", "-o", "ExitOnForwardFailure=yes",
-           "-R", f"80:127.0.0.1:{port}", host]
+           *extra, "-R", f"{remote}:127.0.0.1:{port}", host]
     proc = _spawn(cmd, log_path)
     url = _wait_for_url(proc, log_path, seconds=45)
     return proc, url, log_path
 
 
-def probe_detail(address: str, token: str, tries=20, gap=3.0, timeout=15) -> dict:
-    """Ask ``address`` for ``op=hello``; keep what it answered, verbatim.
+def _json_body(raw: bytes, status: int = 200) -> tuple:
+    """``(is_ours, ok, error)`` for an answer from our own ``/cmd``.
 
-    A bare "not reachable" is useless when the answer is Cloudflare's 530 page,
-    a 1033 "tunnel not connected", or a challenge: they mean three different
-    things. So the body is kept.
+    ``403`` is never ours: the token was refused, so the server on that port is
+    another copy of the bridge (a leftover window), not this one.
+
+    Parsed, not grepped: Cloudflare's error pages are HTML, and ``"ok"`` inside a
+    530 page must never be mistaken for our answer.
     """
-    result = {"ok": False, "url": address, "detail": "no attempt", "status": 0,
-              "tries": 0, "body": ""}
+    try:
+        data = json.loads(raw.decode("utf-8", "replace"))
+    except ValueError:
+        return False, False, ""
+    if not isinstance(data, dict):
+        return False, False, ""
+    if status == 403:
+        return False, False, str(data.get("error") or "bad token")
+    if "error" in data and "ok" not in data:
+        return False, False, str(data["error"])
+    return True, data.get("ok") is True, str(data.get("error") or "")
+
+
+def probe_detail(address: str, token: str, tries=20, gap=3.0, timeout=15,
+                 op="ping") -> dict:
+    """Ask ``address`` for one cheap op; keep what it answered, verbatim.
+
+    ``op=ping`` on purpose: it touches no config and no studio, so a 400 from a
+    half-configured bridge cannot be mistaken for "the tunnel is dead" — which
+    used to throw away a working tunnel.
+
+    A bare "not reachable" is useless when the answer is Cloudflare's 530 page, a
+    1033 "tunnel not connected", or our own "bad token": they mean three
+    different things. So the body is kept, and ``ours`` says whether the token
+    was accepted.
+    """
+    result = {"ok": False, "ours": False, "url": address, "op": op,
+              "detail": "no attempt", "status": 0, "tries": 0, "body": ""}
     for index in range(tries):
         result["tries"] = index + 1
-        url = f"{address}/cmd?token={token}&op=hello&_=probe{index}"
+        url = f"{address}/cmd?token={token}&op={op}&_=probe{index}"
         try:
             with urllib.request.urlopen(url, timeout=timeout) as resp:
-                body = resp.read(8192).decode("utf-8", "replace")
-                result.update(status=resp.status, body=body[:800])
-                if '"ok"' in body and "true" in body:
+                raw = resp.read(8192)
+                ours, ok, error = _json_body(raw, resp.status)
+                result.update(status=resp.status, ours=ours,
+                              body=raw.decode("utf-8", "replace")[:800])
+                if ok:
                     result.update(ok=True, detail="ok")
                     return result
+                if ours:
+                    # the token matched: this is our server, the op itself failed
+                    result["detail"] = f"наш сервер, {op} ответил ошибкой: {error[:120]}"
+                    break
                 result["detail"] = f"ответил {resp.status}, но это не наш JSON"
                 break
         except urllib.error.HTTPError as exc:
-            body = ""
+            raw = b""
             try:
-                body = exc.read(8192).decode("utf-8", "replace")
+                raw = exc.read(8192)
             except Exception:  # noqa: BLE001
                 pass
-            result.update(status=exc.code, body=body[:800],
+            ours, ok, error = _json_body(raw, exc.code)
+            result.update(status=exc.code, ours=ours,
+                          body=raw.decode("utf-8", "replace")[:800],
                           detail=f"HTTP {exc.code}")
+            if ours and exc.code == 400:
+                result["detail"] = f"наш сервер, {op} ответил ошибкой: {error[:120]}"
+                break
             if exc.code in (502, 503, 504, 530, 1033):
                 time.sleep(gap)          # tunnel still attaching: keep asking
                 continue
@@ -238,9 +343,9 @@ def probe_detail(address: str, token: str, tries=20, gap=3.0, timeout=15) -> dic
     return result
 
 
-def probe(address: str, token: str, tries=20, gap=3.0, timeout=15) -> str:
+def probe(address: str, token: str, tries=20, gap=3.0, timeout=15, op="ping") -> str:
     """``ok`` or a short reason — the older, string-shaped interface."""
-    outcome = probe_detail(address, token, tries=tries, gap=gap, timeout=timeout)
+    outcome = probe_detail(address, token, tries=tries, gap=gap, timeout=timeout, op=op)
     return "ok" if outcome["ok"] else f"not reachable ({outcome['detail']})"
 
 
@@ -274,15 +379,22 @@ def transports(exe: str, port: int) -> list:
         out.append(("cloudflared QUIC", lambda: start_cloudflared(exe, port, "quic")))
         out.append(("cloudflared HTTP/2",
                     lambda: start_cloudflared(exe, port, "http2")))
-    if shutil.which("ssh"):
-        out.append(("ssh → localhost.run", lambda: start_ssh(port)))
+    ssh = find_ssh()
+    if ssh:
+        # pinggy answers on port 443, which survives networks that drop 22;
+        # localhost.run is the plain fallback (port 22)
+        out.append(("ssh → pinggy (443)",
+                    lambda: start_ssh(port, host="a.pinggy.io", ssh=ssh,
+                                      extra=("-p", "443"), remote="0",
+                                      log_name="tunnel-pinggy.log")))
+        out.append(("ssh → localhost.run", lambda: start_ssh(port, ssh=ssh)))
     return out
 
 
 def run(args) -> int:
     LINK_DIR.mkdir(parents=True, exist_ok=True)
     attempt = LINK_DIR / "last-attempt.txt"
-    report = [f"when:    {time.strftime('%Y-%m-%d %H:%M:%S')}"]
+    report = []
     live = None          # the tunnel we are keeping alive
     httpd = None
 
@@ -296,24 +408,39 @@ def run(args) -> int:
             print(f"\nотчёт: {attempt}")
         return code
 
+    build = studio_link.build_marker()
     print("=== AstraForge <-> Arena: studio link ===")
+    print(f"сборка  : {build}")
     print(f"python  : {sys.executable}")
     print(f"папка   : {REPO_DIR}")
+    report.append(f"when:    {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    report.append(f"build:   {build}")
+    report.append(f"bridge:  {REPO_DIR}")
 
     cfg = astra_d3.Config.load(args.config)
     if args.studio:
         cfg["studio"] = args.studio
         cfg.resolve()
+    print(f"студия  : {cfg['studio']}")
     report.append(f"studio:  {cfg['studio']}  (exists: {Path(cfg['studio']).is_dir()})")
+    # the most common way a fix "does not arrive": an older copy, unzipped inside
+    # the studio folder, is what actually gets double-clicked
+    studio_path = Path(cfg["studio"]).resolve()
+    if studio_path in REPO_DIR.resolve().parents:
+        print("\n[!] ЭТА КОПИЯ ЛЕЖИТ ВНУТРИ ПАПКИ СТУДИИ: " + str(REPO_DIR))
+        print("    Это, скорее всего, старая распаковка. Свежий архив надо")
+        print("    распаковать отдельно (например D:\\geo2011) и запускать оттуда.")
+        print(f"    Здесь сборка {build} — сравни номер в окне с тем, что обещал чат.")
+        report.append(f"warning: bridge inside studio: {REPO_DIR}")
 
-    port = free_port(args.ports)
-    link = studio_link.Link(cfg, port, args.studio_url)
+    link = studio_link.Link(cfg, args.ports[0], args.studio_url)
     studio_link.Handler.link = link
-    httpd = ThreadingHTTPServer(("127.0.0.1", port), studio_link.Handler)
-    httpd.daemon_threads = True
-    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    httpd, port, tried = bind_link_server(args.ports, link.token)
+    link.port = port
     print(f"сервер  : http://127.0.0.1:{port}  (только этот ПК)")
     report.append(f"port:    {port}")
+    for line in tried:
+        report.append(f"port try: {line}")
 
     local = probe_local(port, link.token)
     report.append(f"local:   {local}")
@@ -367,6 +494,13 @@ def run(args) -> int:
                 report.append(f"    body: {outcome['body'][:400]}")
             if outcome["ok"]:
                 winner = (name, proc, url, log_path)
+                # the tunnel is up; now say whether the studio itself answers
+                through = probe_detail(url, link.token, tries=2, gap=1.0,
+                                       timeout=20, op="hello")
+                report.append(f"hello through the tunnel: status={through['status']} "
+                              f"ok={through['ok']} detail={through['detail']}")
+                print("    туннель проверен; студия через него: "
+                      + ("отвечает" if through["ok"] else through["detail"]))
                 break
             if index == last:
                 # the last transport is kept running: a 530 seen from this
@@ -423,10 +557,13 @@ def _announce(url, token, transport, report, finish, httpd, unverified=False):
     else:
         print(f" Канал проверен ({transport}): адрес отвечает снаружи."
               + ("  Строка в буфере." if copied else ""))
+    print(f" Сборка: {studio_link.build_marker()}  (папка {REPO_DIR})")
     print(" Строка для чата:")
     print("   " + line)
     print("")
     print(" Окно не закрывай: пока оно открыто — канал жив. Enter = закрыть.")
+    print(" Если в чате скажут «канал не отвечает» — проверь номер сборки выше:") 
+    print(" старая распаковка моста запускается так же, но лечит старые ошибки.")
     print("=" * 64)
     report.append(f"url:     {url}")
     finish(0 if not unverified else 1, "ok" if not unverified else "unverified")

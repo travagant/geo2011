@@ -70,6 +70,7 @@ REPO_DIR = BRIDGE_DIR.parent
 LINK_DIR = BRIDGE_DIR / ".link"
 JOBS_DIR = LINK_DIR / "jobs"
 TOKEN_FILE = LINK_DIR / "token.txt"
+BUILD_FILE = BRIDGE_DIR / "BUILD.txt"
 DEFAULT_PORT = 3211
 STUDIO_DEFAULT = r"D:\AstraForge"
 MAX_TEXT = 400_000          # bytes returned by `read`
@@ -77,6 +78,34 @@ MAX_WRITE = 256_000         # bytes accepted by `write`
 
 sys.path.insert(0, str(BRIDGE_DIR))
 import astra_d3  # noqa: E402  - the bridge itself, reused for build/pack
+
+
+def build_marker() -> str:
+    """Which build of the bridge this is — the first thing to check on a bad run.
+
+    Two unzipped copies on one machine are the normal way a fix "does not
+    arrive": the user double-clicks the old one. Whoever reads the output (or
+    ``op=hello``) sees the number and the folder next to it.
+    """
+    try:
+        return BUILD_FILE.read_text(encoding="utf-8").strip() or "?"
+    except OSError:
+        return "?"
+
+
+class StudioLinkServer(ThreadingHTTPServer):
+    """A server that cannot be fooled by a leftover instance.
+
+    On Windows ``SO_REUSEADDR`` — which ``HTTPServer`` sets by default — lets a
+    *second* process bind a port that is already listened on, while the first one
+    keeps receiving the requests. A fresh run then talks to the stale server of
+    another copy (another ``.link\\token.txt``) and gets ``403 bad token``,
+    which looks exactly like "the bridge is broken". Refusing the bind instead
+    makes the caller move to the next port.
+    """
+
+    daemon_threads = True
+    allow_reuse_address = os.name != "nt"
 
 
 # --------------------------------------------------------------------------- #
@@ -198,21 +227,28 @@ def _maybe_json(raw):
 #  operations
 # --------------------------------------------------------------------------- #
 def op_hello(link, params):
+    """Who and where — never fails because one config key is missing.
+
+    It reports, it does not validate: a thin ``config.json`` must not turn a
+    working link into a 400.
+    """
     studio = studio_call(link.studio_url, "/api/health", timeout=5)
-    assets = astra_d3.discover_glbs(link.cfg["assets"])
+    assets = astra_d3.discover_glbs(link.cfg.get("assets") or "")
     return {
+        "build": build_marker(),
+        "bridge": str(BRIDGE_DIR),
         "where": socket.gethostname(),
         "python": sys.executable,
         "python_version": sys.version.split()[0],
-        "studio_path": link.cfg["studio"],
+        "studio_path": link.cfg.get("studio") or "",
         "studio_api": studio,
-        "blender": link.cfg["blender"],
-        "assets": link.cfg["assets"],
+        "blender": link.cfg.get("blender") or "",
+        "assets": link.cfg.get("assets") or "",
         "glb_count": len(assets),
         "newest_glb": assets[0]["path"] if assets else "",
-        "donor": link.cfg["donor"],
-        "mods": link.cfg["mods"],
-        "reference_pack": link.cfg["reference_pack"],
+        "donor": link.cfg.get("donor") or "",
+        "mods": link.cfg.get("mods") or "",
+        "reference_pack": link.cfg.get("reference_pack") or "",
         "repo": str(REPO_DIR),
         "port": link.port,
     }
@@ -398,7 +434,13 @@ def op_run(link, params):
     return link.start("run", both, {"glb": glb})
 
 
+def op_ping(link, params):
+    """Cheapest possible answer: no studio call, no file reads (used by probes)."""
+    return {"build": build_marker(), "bridge": str(BRIDGE_DIR), "port": link.port}
+
+
 OPS = {
+    "ping": op_ping,
     "hello": op_hello,
     "doctor": op_doctor,
     "list": op_list,
@@ -449,7 +491,10 @@ class Handler(BaseHTTPRequestHandler):
         started = time.time()
         if parsed.path in ("/", "/cmd", "/ping"):
             if not hmac.compare_digest(params.get("token", ""), self.link.token):
-                self._send({"ok": False, "error": "bad token"}, 403)
+                self._send({"ok": False, "error": "bad token", "port": self.link.port,
+                            "build": build_marker(), "bridge": str(BRIDGE_DIR),
+                            "hint": "another copy of the bridge is answering on this "
+                                    "port (a leftover window from an older build)"}, 403)
                 self._audit(params, "403 bad token", started)
                 return
             op = params.get("op") or "hello"
@@ -509,9 +554,8 @@ def build_link(args) -> Link:
 def serve(args) -> int:
     link = build_link(args)
     Handler.link = link
-    httpd = ThreadingHTTPServer((args.bind, args.port), Handler)
-    httpd.daemon_threads = True
-    print(f"studio link listening on http://{args.bind}:{args.port}")
+    httpd = StudioLinkServer((args.bind, args.port), Handler)
+    print(f"studio link (build {build_marker()}) listening on http://{args.bind}:{args.port}")
     print(f"studio API assumed at {link.studio_url}")
     print(f"token {link.token}")
     print(f"allowed roots: " + ", ".join(str(r) for r in link.roots()))
