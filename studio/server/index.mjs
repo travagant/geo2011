@@ -14,6 +14,7 @@ import { init,root,data,readJson,writeJson,isId,assetInfo,saveAsset } from './st
 import { configSchema,generationSchema,chatSchema,defaults } from './schema.mjs';
 import { keyStatus,setKey } from './vault.mjs';
 import { llmChat } from './llm.mjs';
+import { llmGpuReport, unloadLlm, gpuVerdict, pickLoaded } from './llm-gpu.mjs';
 import { loadJobs,allJobs,getJob,createJob,cancelJob,validateJobMesh } from './jobs.mjs';
 import { startRuntime,stopOwnedRuntime } from './runtime.mjs';
 import { resolveEngine,pixal3dStatus,startPixal3dRuntime } from './pixal3d.mjs';
@@ -42,10 +43,15 @@ const viewSets=registerViews(app,asyncRoute,{getConfig:()=>config});
 registerVfxTools(app,asyncRoute);
 app.get('/api/status',asyncRoute(async(req,res)=>{
  const probe=async(url)=>{try{const r=await fetch(url,{signal:AbortSignal.timeout(3500)});if(!r.ok)return null;return await r.json();}catch{return null;}};
- const [ollama,stats,nodes,pixal3d]=await Promise.all([probe(config.ollamaUrl+'/api/tags'),probe(config.comfyUrl+'/system_stats'),probe(config.comfyUrl+'/object_info/ImageOnlyCheckpointLoader'),pixal3dStatus().catch(e=>({installed:false,running:false,missing:[],message:e.message}))]);
+ const [ollama,ps,stats,nodes,pixal3d]=await Promise.all([probe(config.ollamaUrl+'/api/tags'),probe(config.ollamaUrl+'/api/ps'),probe(config.comfyUrl+'/system_stats'),probe(config.comfyUrl+'/object_info/ImageOnlyCheckpointLoader'),pixal3dStatus().catch(e=>({installed:false,running:false,missing:[],message:e.message}))]);
  const checkpoints=nodes?.ImageOnlyCheckpointLoader?.input?.required?.ckpt_name?.[0]||[];
- res.json({pixal3d,ollama:{online:!!ollama,models:ollama?.models?.map(x=>x.name)||[]},comfy:{online:!!stats,ready:checkpoints.includes(config.shapeCheckpoint),checkpoints},gpu:stats?.devices?.[0]||null,ram:stats?.system?.ram_total||null,modelDownload:existsSync(path.join(data,'models','checkpoints',config.shapeCheckpoint+'.part'))});
+ const loaded=ps?.models?pickLoaded(ps.models,config.ollamaModel):null;
+ res.json({pixal3d,ollama:{online:!!ollama,models:ollama?.models?.map(x=>x.name)||[],gpu:ollama?{...gpuVerdict(loaded),model:config.ollamaModel,loaded:loaded?.name||null}:null},comfy:{online:!!stats,ready:checkpoints.includes(config.shapeCheckpoint),checkpoints},gpu:stats?.devices?.[0]||null,ram:stats?.system?.ram_total||null,modelDownload:existsSync(path.join(data,'models','checkpoints',config.shapeCheckpoint+'.part'))});
 }));
+// Where the local assistant runs: GPU, partly, or CPU only (server/llm-gpu.mjs, docs/studio/LLM-GPU.md).
+app.get('/api/llm/gpu',asyncRoute(async(req,res)=>res.json(await llmGpuReport({url:config.ollamaUrl,model:config.ollamaModel}))));
+// Free the assistant's VRAM without waiting for keep_alive (used before 3D generation and by the UI).
+app.post('/api/llm/unload',asyncRoute(async(req,res)=>res.json(await unloadLlm({url:config.ollamaUrl,model:config.ollamaModel}))));
 app.post('/api/runtime/start',asyncRoute(async(req,res)=>res.json(await startRuntime())));
 app.post('/api/runtime/pixal3d/start',asyncRoute(async(req,res)=>res.json(await startPixal3dRuntime())));
 app.post('/api/assets',upload.single('file'),asyncRoute(async(req,res)=>{
@@ -65,7 +71,7 @@ app.get('/api/godot/formats',(req,res)=>res.json({models:UNITY_MODEL_EXTENSIONS,
 app.get('/api/unity/formats',(req,res)=>res.json({models:UNITY_MODEL_EXTENSIONS,min_version:'2022.3',importer:'com.unity.cloud.gltfast'}));
 app.get('/api/exports/:id',asyncRoute(async(req,res)=>{if(!isId(req.params.id))return res.status(400).end();const info=await readJson(path.join(data,'exports',req.params.id+'.meta.json'),null);if(!info)return res.status(404).end();res.download(path.join(data,'exports',req.params.id+info.extension),info.name);}));
 app.get('/api/jobs',(req,res)=>res.json(allJobs()));
-app.post('/api/jobs',asyncRoute(async(req,res)=>{if(llmBusy)throw new Error('Wait for the AI reply.');if(allJobs().filter(j=>['running','queued'].includes(j.status)).length>=4)throw new Error('The queue is full. Wait for a job to finish.');const input=generationSchema.parse(req.body);input.engine=resolveEngine(input.engine);if(input.viewSetId){const set=await viewSets.getSet(input.viewSetId);if(!set.canBuild)throw new Error('The views are not ready yet: wait for view generation to finish or add a front view.');if(!input.imageId&&set.frontAssetId)input.imageId=set.frontAssetId;}if(input.imageId){const info=await assetInfo(input.imageId);if(!['.png','.jpg','.jpeg','.webp'].includes(info.extension))throw new Error('Generation needs a concept in image form.');}res.status(202).json(await createJob(input,config));}));
+app.post('/api/jobs',asyncRoute(async(req,res)=>{if(llmBusy)throw new Error('Wait for the AI reply.');if(allJobs().filter(j=>['running','queued'].includes(j.status)).length>=4)throw new Error('The queue is full. Wait for a job to finish.');const input=generationSchema.parse(req.body);input.engine=resolveEngine(input.engine);if(input.viewSetId){const set=await viewSets.getSet(input.viewSetId);if(!set.canBuild)throw new Error('The views are not ready yet: wait for view generation to finish or add a front view.');if(!input.imageId&&set.frontAssetId)input.imageId=set.frontAssetId;}if(input.imageId){const info=await assetInfo(input.imageId);if(!['.png','.jpg','.jpeg','.webp'].includes(info.extension))throw new Error('Generation needs a concept in image form.');}if(config.provider==='ollama')await unloadLlm({url:config.ollamaUrl,model:config.ollamaModel});res.status(202).json(await createJob(input,config));}));
 app.post('/api/jobs/:id/cancel',asyncRoute(async(req,res)=>{if(!getJob(req.params.id))return res.status(404).json({error:'Job not found.'});await cancelJob(req.params.id,config);res.json({ok:true});}));
 app.post('/api/jobs/:id/validate',asyncRoute(async(req,res)=>res.json(await validateJobMesh(req.params.id))));
 app.post('/api/jobs/:id/reextract',asyncRoute(async(req,res)=>{const source=getJob(req.params.id);if(source?.engine==='pixal3d')throw new Error('Surface re-extraction is available for Hunyuan3D only: Pixal3D returns a finished mesh. Create the model again with a different seed.');if(!source||!['completed','failed'].includes(source.status)||!source.preparedConcept||!source.promptId)throw new Error('There is no completed geometry input to re-extract from.');if(allJobs().some(j=>['queued','running'].includes(j.status))||llmBusy)throw new Error('Wait for the current operation to finish.');const {meshLevel}=z.object({meshLevel:z.number().finite().min(-1).max(1).default(0)}).strict().parse(req.body);res.status(202).json(await createJob({imageId:source.imageId,prompt:source.prompt,quality:source.quality,shapeModel:source.shapeModel||'default',viewSetId:source.viewSetId,seed:source.seed,backgroundMode:source.backgroundMode||'auto',meshLevel,reextractSourceId:source.id},config));}));

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { getKey } from './vault.mjs';
+import { keepAliveValue, numGpuOption } from './llm-gpu.mjs';
 export const actionSchema=z.discriminatedUnion('type',[
  z.object({type:z.literal('material'),color:z.string().regex(/^#[0-9a-f]{6}$/i).optional(),metalness:z.number().min(0).max(1).optional(),roughness:z.number().min(0).max(1).optional()}),
  z.object({type:z.literal('transform'),position:z.tuple([z.number().min(-100).max(100),z.number().min(-100).max(100),z.number().min(-100).max(100)]).optional(),rotation:z.tuple([z.number().min(-360).max(360),z.number().min(-360).max(360),z.number().min(-360).max(360)]).optional(),scale:z.number().min(0.05).max(20).optional()}),
@@ -13,7 +14,7 @@ export async function llmChat(config,input){
  const messages=[{role:'system',content:system+'\nScene: '+input.context},...input.history,{role:'user',content:input.message}];let output;
  const signal=AbortSignal.timeout(300000);
  if(config.provider==='ollama'){
-  const res=await fetch(config.ollamaUrl+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:config.ollamaModel,messages,stream:false,format:'json',think:false,keep_alive:0,options:{num_ctx:8192,num_predict:1500}}),signal});const v=await checked(res);output=v.message?.content;
+  const res=await fetch(config.ollamaUrl+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:config.ollamaModel,messages,stream:false,format:'json',think:false,keep_alive:keepAliveValue(),options:{num_ctx:8192,num_predict:1500,...numGpuOption()}}),signal});const v=await checked(res);output=v.message?.content;
  }else{
   const key=await getKey(config.provider);if(!key)throw new Error('Add an API key in the connections section first.');
   if(config.provider==='openai'){
