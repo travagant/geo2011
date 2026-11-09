@@ -352,8 +352,20 @@ RAM-check.cmd --json           → the same for a script
 It prints RAM, the commit limit and how much of it is the page file, free space on
 C:/D:, every model Ollama is holding (`ollama stop <name>` next to it), and the
 shortfall. Exit code 1 means the task does not fit; the menu then offers to unload
-Ollama, or to change the page file for you (automatic sizing, or a fixed size on the
-disk with most room) — that needs one UAC confirmation and a reboot.
+Ollama, to change the page file for you (automatic sizing, the size the arithmetic
+asks for, or a flat 32 GB when the disk has room) — one UAC confirmation and a
+reboot — and to switch off the two habits that quietly keep memory occupied:
+
+```
+ASTRA_ENGINE_KEEP_RAM=0   the engine keeps weights in RAM between jobs by default
+                          from 32 GB of RAM up (engine.py keep_ram()), which is why
+                          a 32 GB machine can still be short: 10 GB of SDXL and the
+                          MV-Adapter stay put while Ollama adds 7 GB
+OLLAMA_KEEP_ALIVE=0       Ollama holds a model for five minutes after the last answer
+```
+
+With a 32 GB machine and 200 GB free on the disk, a fixed 32 GB page file is the
+straight answer: the commit limit becomes 64 GB, and no local task can exhaust it.
 
 The advice it gives is arithmetic, not folklore: the page file has to grow by exactly
 the shortfall, rounded up to a whole gigabyte, and the disk has to have room for it —

@@ -276,3 +276,31 @@ def test_reserve_matches_the_engine():
 def test_gib_formats_like_task_manager():
     assert ram_check.gib(ram_check.NEED_MB['views'] * MB) == '9.9 ГБ'
     assert ram_check.gib(GB) == '1.0 ГБ'
+
+
+def test_explicit_pagefile_size_is_used_as_is():
+    """200 GB free on the disk: 32 GB of page file is a choice, not a calculation."""
+    drives = [{'path': 'D:\\', 'free': 200 * GB}]
+    script = ram_check.pagefile_script('fixed', status(), 10500, drives, size_mb=32768)
+    assert 'InitialSize = 32768' in script and 'MaximumSize = 32768' in script
+
+
+def test_pagefile_fixed_takes_the_size_on_the_command_line(monkeypatch, capsys):
+    monkeypatch.setattr(ram_check, 'memory_status', lambda: status())
+    monkeypatch.setattr(ram_check, 'ollama_loaded', lambda *a, **k: [])
+    monkeypatch.setattr(ram_check, 'disks', lambda *a, **k: [{'path': 'D:\\', 'free': 200 * GB}])
+    assert ram_check.main(['--pagefile-fixed', '32768']) == 0
+    script = base64.b64decode(capsys.readouterr().out.strip()).decode('utf-16-le')
+    assert 'MaximumSize = 32768' in script
+
+
+def test_32gb_machine_is_told_about_keep_ram():
+    """engine.py keep_ram(): RAM >= 32 GB keeps the weights in RAM after a job."""
+    text, _ = ram_check.report(status(total_gb=32, free_gb=10, pagefile_gb=8, commit_free_gb=6),
+                               10500, 'Ракурсы', [], [])
+    assert 'ASTRA_ENGINE_KEEP_RAM' in text
+
+
+def test_16gb_machine_is_not_told_about_keep_ram():
+    text, _ = ram_check.report(status(total_gb=16, free_gb=4), 10500, 'Ракурсы', [], [])
+    assert 'ASTRA_ENGINE_KEEP_RAM' not in text

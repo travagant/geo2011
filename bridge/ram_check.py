@@ -184,6 +184,11 @@ def report(status, need_mb, need_label, loaded, drives, pagefile_hint=True):
         for m in loaded:
             size = gib(m['size_mb'] * MB) if m['size_mb'] else '?'
             lines.append('  %-24s %s   ->  ollama stop %s' % (m['name'], size, m['name']))
+    if total >= 31 * GB:
+        lines.append('')
+        lines.append('Движок с 32 ГБ RAM держит веса в RAM между задачами (keep_ram),')
+        lines.append('то есть 10 ГБ остаются занятыми и после ракурсов. На время тяжёлых')
+        lines.append('сессий: setx ASTRA_ENGINE_KEEP_RAM 0  — и перезапустить студию.')
     lines.append('')
     lines.append('%s: %s в RAM, плюс %s системе.' % (need_label, gib(need_mb * MB), gib(RESERVE_MB * MB)))
     lines.append('  нужно свободного commit: %s, есть %s%s'
@@ -226,7 +231,7 @@ def free_ollama(runner=None, loaded=None):
     return stopped
 
 
-def pagefile_script(mode, status, need_mb, drives):
+def pagefile_script(mode, status, need_mb, drives, size_mb=None):
     """PowerShell that changes the page file, as one -EncodedCommand line.
 
     Encoded (UTF-16LE base64) so the command survives cmd -> powershell -> elevated
@@ -236,7 +241,7 @@ def pagefile_script(mode, status, need_mb, drives):
     """
     if mode == 'fixed':
         drive = max(drives, key=lambda d: d['free'])['path'] if drives else 'C:\\'
-        target = max(8192, verdict(status, need_mb)['pagefile_after'])
+        target = int(size_mb) if size_mb else max(8192, verdict(status, need_mb)['pagefile_after'])
         target = int((target + 1023) // 1024 * 1024)
         plan = ('$cs = Get-CimInstance Win32_ComputerSystem\n'
                 "if ($cs.AutomaticManagedPagefile) { Set-CimInstance -InputObject $cs -Property @{AutomaticManagedPagefile = $false} }\n"
@@ -265,7 +270,7 @@ def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     need_label, need_mb = 'Ракурсы (MV-Adapter)', NEED_MB['views']
     as_json, ask_ollama = False, True
-    action = None
+    action, size_mb = None, None
     while argv:
         a = argv.pop(0)
         if a == '--need' and argv:
@@ -285,6 +290,8 @@ def main(argv=None):
             action = 'free'
         elif a in ('--pagefile-auto', '--pagefile-fixed'):
             action = a.split('-')[-1]
+            if action == 'fixed' and argv and argv[0].lstrip('-').isdigit():
+                action, size_mb = 'fixed', int(argv.pop(0))
         elif a in ('-h', '--help'):
             print(__doc__)
             return 0
@@ -312,10 +319,10 @@ def main(argv=None):
         if not drives:
             print('Не вижу ни одного диска — нечего настраивать.')
             return 2
-        script = pagefile_script(action, status, need_mb, drives)
+        script = pagefile_script(action, status, need_mb, drives, size_mb)
         if action == 'fixed':
             drive = max(drives, key=lambda d: d['free'])
-            target = max(8192, verdict(status, need_mb)['pagefile_after'])
+            target = int(size_mb) if size_mb else max(8192, verdict(status, need_mb)['pagefile_after'])
             if drive['free'] < (target + 2048) * MB:
                 print('На %s свободно %s, а файл подкачки возьмёт %s — влезет в притык.'
                       % (drive['path'], gib(drive['free']), gib(target * MB)), file=sys.stderr)
