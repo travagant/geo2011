@@ -5971,6 +5971,128 @@ def test_weapon_flip_turns_the_blade_round():
     assert max(abs(grip2[i] - ref_grip[i]) for i in range(3)) < 1e-9
 
 
+def test_vdpack_scan_names_the_pack_the_loader_rejects():
+    """`vdpack scan` answers what `run.log` cannot: *which* installed pack
+    carries the payload the loader answers `str_not_valid_hash_for_file` for —
+    the log names the file, never the archive it came from."""
+    import contextlib
+    import io
+    from d3tool import vdpack
+    folder = os.path.join(REPO, "Neutrals", "AirElemental")
+    with tempfile.TemporaryDirectory() as d, \
+            contextlib.redirect_stdout(io.StringIO()) as buf:
+        good = vdpack.read_vdpack(os.path.join(d, "good.vdpack")) \
+            if False else None
+        assert climod._run(["vdpack", "pack", folder,
+                            "-o", os.path.join(d, "good.vdpack")]) == 0
+        files = vdpack.pack_folder(folder)
+        files = vdpack.reindex_pack(files)
+        # the same archive with one payload changed and the old manifest kept:
+        # a mod rebuilt without `--reindex`, the crash this tool explains
+        stale = [(n, d + b"\x00") if n.lower().endswith(".g") else (n, d)
+                 for n, d in files]
+        with open(os.path.join(d, "stale.vdpack"), "wb") as fh:
+            fh.write(vdpack.build_vdpack(stale))
+        rows = {row["file"]: row for row in vdpack.scan_packs([d])}
+        assert set(rows) == {"good.vdpack", "stale.vdpack"}
+        assert rows["good.vdpack"]["state"] == "ok"
+        assert rows["stale.vdpack"]["state"] == "stale"
+        assert len(rows["stale.vdpack"]["mismatched"]) >= 1
+        assert all(path.lower().endswith(".g")
+                   for path in rows["stale.vdpack"]["mismatched"])
+        findings = vdpack.scan_findings(list(rows.values()))
+        text = "\n".join(level + ": " + line for level, line in findings)
+        assert "ok: good.vdpack" in text
+        assert "payload(s) differ from their recorded MD5/SHA-256" in text
+        assert "str_not_valid_hash_for_file" in text
+        assert "vdpack pack --like stale.vdpack --reindex" in text
+        # the CLI exits 1 under --strict only while something is rejected
+        buf.seek(0)
+        buf.truncate()
+        assert climod._run(["vdpack", "scan", d, "--strict"]) == 1
+        assert "rejected file(s)" in buf.getvalue()
+        assert climod._run(["vdpack", "scan",
+                            os.path.join(d, "good.vdpack")]) == 0
+
+
+def test_vdpack_scan_knows_where_the_loader_looks_for_mods():
+    """A mod is mounted from `$(UserFolder)\\Mods`; anywhere else the game
+    answers `mod '<name>' not found` and the pack never loads at all."""
+    import contextlib
+    import io
+    from d3tool import vdpack
+    folder = os.path.join(REPO, "Neutrals", "AirElemental")
+    with tempfile.TemporaryDirectory() as d, \
+            contextlib.redirect_stdout(io.StringIO()):
+        game = os.path.join(d, "game")
+        mods = os.path.join(game, "Mods")
+        os.makedirs(mods)
+        assert climod._run(["vdpack", "pack", folder, "-o",
+                            os.path.join(game, "loose.vdpack")]) == 0
+        assert climod._run(["vdpack", "pack", folder, "-o",
+                            os.path.join(mods, "AirElemental.vdpack")]) == 0
+        rows = {row["file"]: row for row in vdpack.scan_packs([game])}
+        # the folder's `Mods` subfolder is scanned too: that is what matters
+        assert set(rows) == {"loose.vdpack", "AirElemental.vdpack"}
+        assert rows["loose.vdpack"]["mod"] is False
+        assert rows["AirElemental.vdpack"]["mod"] is True
+        text = "\n".join(line for _level, line in
+                         vdpack.scan_findings(list(rows.values())))
+        assert "loose.vdpack: a mod pack outside" in text
+        assert "AirElemental.vdpack: a mod pack outside" not in text
+        # the manifest's own `Name` is reported when it is not the file name
+        # the game matches `sModifications` against
+        mismatch = os.path.join(d, "RenamedPack.vdpack")
+        files = vdpack.pack_folder(folder)
+        text_index, blob = vdpack.build_index(files, name="AirElemental")
+        with open(mismatch, "wb") as fh:
+            fh.write(vdpack.build_vdpack(files + [("index", blob)]))
+        row = vdpack.scan_pack(mismatch)
+        assert row["index_name"] == "AirElemental"
+        assert row["state"] == "ok"
+        lines = "\n".join(line for _level, line in
+                          vdpack.scan_findings([row]))
+        assert "'AirElemental' but the game names it after the file" in lines
+        assert "mod:RenamedPack" in lines
+
+
+def test_vdpack_scan_reports_two_mods_carrying_one_path():
+    """`intersects other mods` (0x8785d8) is the third way a pack silently
+    never loads: two mods ship the same resource and only one is mounted."""
+    from d3tool import vdpack
+    folder = os.path.join(REPO, "Neutrals", "AirElemental")
+    files = vdpack.reindex_pack(vdpack.pack_folder(folder))
+    other = [(n, data + b"!") if n.lower().endswith(".scene") else (n, data)
+             for n, data in files]
+    other = vdpack.reindex_pack(other)
+    with tempfile.TemporaryDirectory() as d:
+        mods = os.path.join(d, "Mods")
+        os.makedirs(mods)
+        for name, bundle in (("first", files), ("second", other)):
+            with open(os.path.join(mods, name + ".vdpack"), "wb") as fh:
+                fh.write(vdpack.build_vdpack(bundle))
+        rows = vdpack.scan_packs([mods])
+        assert [row["state"] for row in rows] == ["ok", "ok"]
+        findings = vdpack.scan_findings(rows)
+        clash = [line for level, line in findings
+                 if level == "warn" and "intersects other mods" in line]
+        assert clash, findings
+        assert "first.vdpack and second.vdpack carry" in clash[0]
+        assert "index" not in clash[0]
+        # and the JSON the CLI prints is the same answer, machine readable
+        import contextlib
+        import io
+        import json
+        with contextlib.redirect_stdout(io.StringIO()) as buf:
+            assert climod._run(["vdpack", "scan", mods, "--json"]) == 0
+        doc = json.loads(buf.getvalue())
+        assert len(doc["packs"]) == 2
+        assert {row["file"] for row in doc["packs"]} == {"first.vdpack",
+                                                         "second.vdpack"}
+        assert any("intersects other mods" in f["text"]
+                   for f in doc["findings"])
+
+
 if __name__ == "__main__":
     # Keep this at the very end: `main()` collects every module-level
     # `test_*` function, so tests defined below an earlier guard would never

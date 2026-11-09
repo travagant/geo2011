@@ -1350,3 +1350,227 @@ def reference_findings(files: Dict[str, bytes]) -> ReferenceReport:
     report.notes = list(dict.fromkeys(report.notes))
     report.warnings = list(dict.fromkeys(report.warnings))
     return report
+
+
+MOD_FOLDER = "Mods"
+r"""Where the loader enumerates mods: ``$(UserFolder)\Mods\*.vdpack``.
+
+Both paths are strings in the retail executable (`$(UserFolder)\Mods\` at
+``0x878074``, the find mask ``*.vdpack`` at ``0x8784d4``, the suffix
+``.vdpack`` at ``0x878680``), and ``user.ini``'s ``sModifications`` names a
+mod the way the file is named — ``mod:ruru`` for ``Mods\\ruru.vdpack``.
+A pack that sits next to the game instead answers ``mod 'ruru' not found`` in
+``run.log`` and is never mounted, which is why :func:`scan_findings` says so
+out loud.
+"""
+
+_MOD_DIAGNOSTICS = {
+    "not_found": "mod '%s' not found",
+    "wrong_files": "%s '%s' has wrong files : %s",
+    "wrong_index": "%s '%s' has wrong index",
+    "wrong_type": "%s '%s' has wrong type",
+    "intersects": "%s '%s' intersects other mods",
+    "error": "Error load %s '%s' index",
+}
+"""The loader's own words, as :func:`scan_findings` quotes them back.
+
+All six are format strings in the retail executable (``0x8785b8``…
+``0x87863c``), the same table the static ``.vdpack`` name strings live in.
+Quoting the message the game would print beats inventing one: a modder can
+grep ``run.log`` for it and land on the same line this tool reported.
+"""
+
+
+def scan_targets(targets, recursive: bool = False) -> List[str]:
+    """Expand files and folders into the packs a scan should look at.
+
+    A folder contributes its own ``*.vdpack`` files; when it holds a ``Mods``
+    subfolder (or is one), that folder is scanned too — that is the directory
+    the loader reads, so scanning the game folder alone would miss exactly the
+    packs that matter.
+    """
+    found: List[str] = []
+
+    def add(path: str) -> None:
+        if path not in found:
+            found.append(path)
+
+    def scan_dir(root: str, deep: bool) -> None:
+        if deep:
+            for base, _dirs, names in os.walk(root):
+                for name in sorted(names):
+                    if name.lower().endswith(".vdpack"):
+                        add(os.path.join(base, name))
+            return
+        for name in sorted(os.listdir(root)):
+            if name.lower().endswith(".vdpack"):
+                path = os.path.join(root, name)
+                if os.path.isfile(path):
+                    add(path)
+        for name in sorted(os.listdir(root)):
+            if name.lower() == MOD_FOLDER.lower():
+                sub = os.path.join(root, name)
+                if os.path.isdir(sub):
+                    scan_dir(sub, deep)
+
+    for target in targets:
+        if os.path.isdir(target):
+            scan_dir(target, recursive)
+        elif os.path.isfile(target):
+            add(target)
+    return found
+
+
+def scan_pack(path: str) -> Dict[str, object]:
+    """One row of :func:`scan_packs`: what this pack is, and will it load."""
+    row: Dict[str, object] = {
+        "path": path,
+        "file": os.path.basename(path),
+        "stem": os.path.splitext(os.path.basename(path))[0],
+        "bytes": os.path.getsize(path) if os.path.exists(path) else 0,
+        "mod": any(part.lower() == MOD_FOLDER.lower()
+                   for part in os.path.normpath(path).split(os.sep)[:-1]),
+        "entries": 0, "manifest": False, "decoded": False, "state": "",
+        "type": "", "index_name": "", "uuid": "", "records": 0,
+        "mismatched": [], "unlisted": [], "missing": [], "error": "",
+        "paths": [],
+    }
+    try:
+        pack = read_vdpack(path) if isinstance(path, str) else path
+    except OSError as exc:
+        row["state"] = "broken"
+        row["error"] = f"{type(exc).__name__}: {exc}"
+        return row
+    if pack.parse_error:
+        row["state"] = "broken"
+        row["error"] = pack.parse_error
+        return row
+    files = list(pack.files().items())
+    row["entries"] = len(files)
+    row["paths"] = [_norm_name(name) for name, _ in files]
+    report = index_report(files)
+    row["manifest"] = bool(report["present"])
+    row["decoded"] = bool(report["decoded"])
+    row["records"] = int(report["records"])
+    row["mismatched"] = list(report["mismatched"])
+    row["unlisted"] = list(report["unlisted"])
+    row["missing"] = list(report["missing"])
+    row["error"] = str(report["error"])
+    doc = report["document"]
+    if doc is not None:
+        row["type"] = doc.type
+        row["index_name"] = doc.name
+        row["uuid"] = doc.uuid
+    if not row["manifest"]:
+        row["state"] = "no-manifest"
+    elif not row["decoded"]:
+        row["state"] = "opaque-manifest"
+    elif row["mismatched"] or row["unlisted"] or row["missing"]:
+        row["state"] = "stale"
+    else:
+        row["state"] = "ok"
+    return row
+
+
+def scan_packs(targets, recursive: bool = False) -> List[Dict[str, object]]:
+    """Every pack under ``targets``, with the loader's verdict for each.
+
+    The single question this answers is the one a ``run.log`` raises and does
+    not answer itself: *which* pack the game is rejecting, and for which
+    paths.  ``Index error : str_not_valid_hash_for_file : <path>`` names a
+    file, never the archive it came from, and a modder with two packs
+    installed cannot tell them apart — see ``docs/FORMATS.md`` §6h.
+    """
+    return [scan_pack(path) for path in scan_targets(targets, recursive)]
+
+
+def scan_findings(rows) -> List[Tuple[str, str]]:
+    """Turn :func:`scan_packs` rows into the sentences worth acting on.
+
+    Each entry is ``(level, text)`` with ``level`` one of ``ok``, ``warn`` or
+    ``bad`` — ``bad`` meaning the loader will refuse the content, which is
+    what ``vdpack scan --strict`` exits non-zero on.
+    """
+    findings: List[Tuple[str, str]] = []
+    mods = [r for r in rows if r["type"].lower() == "mod" or r["mod"]]
+    for row in rows:
+        name = row["file"]
+        state = row["state"]
+        if state == "broken":
+            findings.append(("bad", f"{name}: not a readable archive "
+                                    f"({row['error']}) — the loader answers "
+                                    f"`Error open mod '{row['stem']}' pak "
+                                    f"file`"))
+            continue
+        if state == "no-manifest":
+            findings.append(("bad", f"{name}: no `index` entry — the loader "
+                                    f"has only `Unindexed file` / "
+                                    f"`has wrong index` for such an archive; "
+                                    f"rebuild it with `vdpack pack --like`"))
+            continue
+        if state == "opaque-manifest":
+            findings.append(("bad", f"{name}: the `index` entry does not "
+                                    f"decode ({row['error']}) — its hashes "
+                                    f"cannot be checked, so the loader "
+                                    f"answers `has wrong index`"))
+            continue
+        if state == "stale":
+            bits = []
+            if row["mismatched"]:
+                bits.append(f"{len(row['mismatched'])} payload(s) differ "
+                            f"from their recorded MD5/SHA-256")
+            if row["unlisted"]:
+                bits.append(f"{len(row['unlisted'])} path(s) the manifest "
+                            f"never lists")
+            if row["missing"]:
+                bits.append(f"{len(row['missing'])} listed path(s) the "
+                            f"archive no longer carries")
+            example = (row["mismatched"] or row["unlisted"]
+                       or row["missing"])[0]
+            findings.append(("bad", f"{name}: " + ", ".join(bits) +
+                                    f" — the loader answers `Index error : "
+                                    f"str_not_valid_hash_for_file : {example}` "
+                                    f"and serves no data for them; rebuild "
+                                    f"with `vdpack pack --like {name} "
+                                    f"--reindex`"))
+            detail = row["mismatched"] or row["unlisted"] or row["missing"]
+            for path in detail[1:9]:
+                findings.append(("bad", f"  {path}"))
+            continue
+        findings.append(("ok", f"{name}: {row['entries']} file(s), "
+                               f"`index` describes every payload"))
+    for row in rows:
+        name = row["file"]
+        name_in_index = row["index_name"]
+        if name_in_index and name_in_index != row["stem"]:
+            findings.append(("warn", f"{name}: the manifest calls this mod "
+                                     f"'{name_in_index}' but the game names "
+                                     f"it after the file — `sModifications` "
+                                     f"has to say `mod:{row['stem']}`"))
+        if (row["type"].lower() == "mod" or row["mod"]) and not row["mod"]:
+            findings.append(("bad", f"{name}: a mod pack outside "
+                                    f"`$(UserFolder)\\{MOD_FOLDER}\\` is "
+                                    f"never mounted — the log says "
+                                    f"`mod '{name_in_index or row['stem']}' "
+                                    f"not found`"))
+    # two mods carrying one path: the loader keeps the first and answers
+    # `intersects other mods` for the other (0x8785d8).  The manifest itself
+    # is not a resource, so it never counts as a clash.
+    owners: Dict[str, List[str]] = {}
+    for row in mods:
+        for path in row["paths"]:
+            if _norm_name(path).lower() == INDEX_ENTRY:
+                continue
+            owners.setdefault(path.lower(), []).append(row["file"])
+    clashes: Dict[Tuple[str, ...], List[str]] = {}
+    for path, who in owners.items():
+        if len(who) > 1:
+            clashes.setdefault(tuple(sorted(who)), []).append(path)
+    for who, paths in sorted(clashes.items()):
+        sample = ", ".join(sorted(paths)[:3])
+        more = f" and {len(paths) - 3} more" if len(paths) > 3 else ""
+        findings.append(("warn", f"{' and '.join(who)} carry "
+                                 f"{len(paths)} path(s) in common "
+                                 f"({sample}{more}) — only one of them can "
+                                 f"load (`intersects other mods`)"))
+    return findings

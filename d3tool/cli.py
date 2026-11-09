@@ -13,8 +13,9 @@ writers:
 * ``import <g>``        — dump the parsed `.g` as JSON.
 * ``texture convert|info|add`` — native `.t` <-> `.dds`, and bringing a
   texture the artist painted into a unit folder.
-* ``vdpack list|extract|validate|manifest|plan|pack`` — the one-file form of a unit bundle
-  (what a mod ships; see ``d3tool/vdpack.py``).
+* ``vdpack list|extract|validate|manifest|plan|pack|scan`` — the one-file
+  form of a unit bundle (what a mod ships) and the pass that says which
+  installed pack the game is rejecting (see ``d3tool/vdpack.py``).
 * ``char show|list|find|validate|set-id`` — the ``.char`` unit profile that
   names a unit's scene, icons and sounds (see ``d3tool/char.py``).
 * ``weights <g> [--against <g>]`` — what a `.g` carries weight-wise, and
@@ -2118,6 +2119,45 @@ def _vdpack(args) -> int:
             ui.warn("  " + line)
         return 1
 
+    if args.vd_cmd == "scan":
+        rows = vdmod.scan_packs(args.targets, recursive=args.recursive)
+        findings = vdmod.scan_findings(rows)
+        if not rows:
+            ui.section("vdpack scan")
+            ui.info("no .vdpack found under " +
+                    ", ".join(args.targets) +
+                    " — pass the game folder, or the folder user.ini's "
+                    "`sModifications` names mods in")
+            return 1
+        bad = any(level == "bad" for level, _ in findings)
+        if args.json:
+            print(json.dumps({"packs": rows,
+                              "findings": [{"level": level, "text": text}
+                                           for level, text in findings]},
+                             ensure_ascii=False, indent=2) + "\n")
+            return 1 if (bad and args.strict) else 0
+        ui.section(f"vdpack scan  {len(rows)} archive(s)")
+        verdict = {"ok": "loads", "stale": "rejected file(s)",
+                   "no-manifest": "no `index`",
+                   "opaque-manifest": "`index` unreadable",
+                   "broken": "unreadable archive"}
+        ui.table([(row["file"],
+                   row["type"] or "-",
+                   f"{row['entries']}",
+                   verdict.get(row["state"], row["state"]))
+                  for row in rows],
+                 headers=("pack", "type", "files", "verdict"))
+        for level, text in findings:
+            if level == "ok":
+                ui.ok(text)
+            elif level == "warn":
+                ui.warn(text)
+            else:
+                ui.fail(text)
+        if bad:
+            ui.info("`--strict` exits 1 while any pack above is rejected")
+        return 1 if (bad and args.strict) else 0
+
     # pack
     if not os.path.isdir(args.folder):
         ui.fail(f"not a folder: {args.folder}")
@@ -2185,10 +2225,10 @@ def _vdpack(args) -> int:
             ui.warn(f"the carried-over `index` no longer describes this "
                     f"archive: {len(audit['mismatched'])} payload(s) differ "
                     f"from their recorded hash, {len(audit['unlisted'])} "
-                    f"path(s) are unlisted. The loader validates the archive "
-                    f"against the manifest before mounting and answers `has "
-                    f"wrong index` / `Unindexed file` — rebuild with "
-                    f"`--reindex`.")
+                    f"path(s) are unlisted. The loader compares each payload "
+                    f"with the manifest as it is read and answers `Index "
+                    f"error : str_not_valid_hash_for_file : <path>`, which is "
+                    f"the crash `run.log` shows — rebuild with `--reindex`.")
         ui.wrote(out, f"{len(blob)} bytes")
         return 0
     if args.keep_index:
@@ -2607,6 +2647,30 @@ def _build_parser() -> argparse.ArgumentParser:
                       help="print the manifest text itself")
     p_vi.add_argument("--strict", action="store_true",
                       help="exit 1 when there is no `index` entry")
+    p_vs = p_vd_sub.add_parser(
+        "scan",
+        help="check every pack under a folder the way the loader will",
+        description="Point this at the game folder, at `$(UserFolder)\\Mods`, "
+                    "or at a few .vdpack files: each archive is read, its "
+                    "`index` manifest decoded, and every payload checked "
+                    "against the MD5/SHA-256 the manifest records. A pack "
+                    "that disagrees is the one `run.log` blames with `Index "
+                    "error : str_not_valid_hash_for_file : <path>` — the log "
+                    "names the file, never the archive, so with two mods "
+                    "installed this is the only way to tell them apart. The "
+                    "same pass reports the mistakes that stop a mod from "
+                    "loading at all: a pack outside `$(UserFolder)\\Mods` "
+                    "(`mod '<name>' not found`), a `Name` the game does not "
+                    "use, and two mods carrying one path (`intersects other "
+                    "mods`). See docs/FORMATS.md §6h.")
+    p_vs.add_argument("targets", nargs="+",
+                      help="a game folder, a Mods folder, or .vdpack files")
+    p_vs.add_argument("--json", action="store_true")
+    p_vs.add_argument("--recursive", action="store_true",
+                      help="descend into subfolders (a folder's `Mods` "
+                           "subfolder is always scanned)")
+    p_vs.add_argument("--strict", action="store_true",
+                      help="exit 1 when any pack would be rejected")
     p_vp = p_vd_sub.add_parser("pack", help="pack a folder into an archive")
     p_vp.add_argument("folder")
     p_vp.add_argument("-o", "--out",

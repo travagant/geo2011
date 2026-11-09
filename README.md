@@ -21,7 +21,7 @@ The point is to support a future program that, like dis3tool, exports glTF but
 | `geo2011.dle` | the original 3ds Max plugin (binary). Strings reveal it is the `GM (R) File Exporter` / `GM MAX (R) File Format Exporter`. |
 | `Neutrals/*` | bundled units: `character_*.g` (geometry), `*.gltf`/`*.bin` (dis3tool export), `*.scene`, `*.ac`, `Aliases/*`, textures. |
 | `docs/FORMATS.md` | reverse-engineering notes for `.g`, `.gltf`, `.ac`, `.scene`. |
-| `d3tool/vdpack.py` | the `.vdpack` mod archive (one file = a whole unit folder): `vdpack list/extract/validate/manifest/pack`. |
+| `d3tool/vdpack.py` | the `.vdpack` mod archive (one file = a whole unit folder): `vdpack list/extract/validate/manifest/pack/scan`. |
 | `d3tool/char.py` | the `.char` unit profile: `char show/list/find/validate/set-id`. |
 | `d3tool/weights.py` | skin weights of a `.g`: `weights <g> [--against <g>]`. |
 | `Profiles/` | the retail unit profiles (874 `.char`: 214 units + their `desc`/`stats`/`sound` fragments). |
@@ -94,6 +94,9 @@ python3 -m d3tool vdpack pack hierophant/ -o my.vdpack --keep-index NewUnit.vdpa
 # the bytes it ships — no flag needed; `--no-reindex` carries the old one over
 python3 -m d3tool vdpack index ruru.vdpack                       # decode + verify
 python3 -m d3tool vdpack pack hierophant/ --like ruru.vdpack -o my.vdpack
+# which installed pack is the one the game rejects? `run.log` names the file,
+# never the archive — scan the install (or the Mods folder) and it names both
+python3 -m d3tool vdpack scan "/path/to/Disciples III Rebirth" --strict
 
 # the .char unit profile: what a unit declares, and which profile is whose
 python3 -m d3tool char show Profiles/empire_angel.char

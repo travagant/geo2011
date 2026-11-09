@@ -1271,6 +1271,113 @@ flag.
 question — which function, on which asset — starts from evidence rather than
 from a guess.
 
+## 6h. The second dump: the crash is inside the `.g` reader, and *which* pack is guilty
+
+The user's next session (`лог/DisciplesIII.dmp`, 733 330 B) changed the
+symptom from "the unit never appears" to "the game dies entering the battle",
+so it is worth reading on its own:
+
+| field | value |
+|---|---|
+| process | `D:\SteamLibrary\steamapps\common\Disciples III Rebirth\DisciplesIII.exe`, base `0x400000` — a different executable from §6g's `DisciplesIII12.exe` |
+| build | `rebirth exe #68 (May 21 2012 18:25:02)`, sign `d597c3da…`, from the log's first lines |
+| exception | `0xC0000005` access violation, **read** at `0x8A511C3C` |
+| faulting | `DisciplesIII.exe+0x208CB5` (`0x00608CB5`), thread `0x3690` |
+| registers | `eax` = the bad address, `ecx` = 0, `esi` = `0x31E70020`, `ebx` = `edx` = 0 |
+| modules | 100 — again no protector |
+
+The code at `0x608CB5` is **byte-identical to the retail `DisciplesIII.exe`**
+(the 24 bytes of the loop are found at file offset 0x208CB1 in §6c's
+executable), so this dump can be read against the copy that has symbols-free
+but *known* neighbours.  The enclosing function starts at `0x606920`, and the
+strings it references name it outright — it is the `.g` mesh reader:
+
+```
+0x0089cac8  .\vd_rc_mesh_splitter.cpp
+0x0089c8fc  0 triangles in object: '%s' with material: %d
+0x0089c92c  material%d_triangles_num
+0x0089c4dc  bones_num
+0x0089c528  weights_on_vertex
+0x0089c980  unknown mesh
+```
+
+The faulting loop, this time with its operands visible:
+
+```
+0x608c94  lea  ecx,[ebx+ebx*2]     ; ebx: object number
+0x608c97  lea  eax,[eax+ecx*4]     ; + 12-byte record
+0x608c9e  mov  eax,[eax]           ; first field -> a vertex number
+0x608ca2  imul eax,eax,0x33        ; * 51   <- the vertex stride
+0x608ca5  lea  eax,[eax+esi+0x30]  ; + buffer + 0x30 (the influence slots)
+0x608cb5  movzx ebx,byte ptr [eax+ecx]   ; the three bone indices (cmp ecx,3)
+```
+
+`0x33` is not arbitrary: `weights_on_vertex 3` gives a `40 + 4*2 + 3 = 51`-byte
+record (§2, `vertex_stride`), and `+0x30` is exactly its bone-index block, read
+three bytes at a time.  So the reader is walking the vertices of a **`w=3`**
+part — the inquisitor body, which the `.scene` declares as
+`weights_on_vertex 3`, `bones_num 22`, 3 699 vertices / 4 660 triangles.  The
+frame's own scratch space still holds that asset: the string
+`resources\characters\empire\inquisitor\character_empire_inquisitor.t` sits
+`0x110` bytes above `esp`, and `material0_triang`/`les_num` is on the stack as
+the reader builds the attribute name.
+
+Both dumps therefore die in the *same three instructions*, 143 bytes apart
+(`0x608CB5` vs §6g's `0x608D44` — the second of the three influence bytes
+instead of the first), in two different builds, while reading the same asset.
+That is a data defect, not a build defect, and the log of that session names
+it:
+
+```
+[EE] ...character_empire_inquisitor.scene : Index error : str_not_valid_hash_for_file : ...character_empire_inquisitor.scene
+[EE] ...character_empire_inquisitor.scene : Index error : str_not_valid_hash_for_file : ...character_empire_inquisitor_baseanims.a
+[EE] ...character_empire_inquisitor.scene : ...character_empire_inquisitor.g : Index error : str_not_valid_hash_for_file : ...character_empire_inquisitor.g
+[EE] mod 'ruru' not found
+```
+
+Three files of one unit, all rejected by the manifest check of §6g — and the
+mesh reader then walks a buffer that the loader refused to hand over.  Nothing
+in the `.g` itself is broken: the copy in the user's own pack parses cleanly
+and matches its `.scene` to the digit (`(4 660, 3 699)` in the attribute block,
+`material0_triangles_num 4660`, `vertexs_weights_num 3699` in the scene).  The
+*manifest* is what disagrees with it.
+
+### How the game finds a mod (retail strings, `DisciplesIII.exe`)
+
+| string | address | meaning |
+|---|---|---|
+| `$(UserFolder)\Mods\` | `0x878074` | the only directory mods are read from |
+| `*.vdpack` | `0x8784d4` | the find mask it enumerates |
+| `.vdpack` | `0x878680` | the suffix it appends to a name from `sModifications` |
+| `%s '%s' not found` | `0x878628` | what `run.log` shows as `mod 'ruru' not found` |
+| `%s '%s' intersects other mods` | `0x8785d8` | two mods carrying one path: only one mounts |
+| `%s '%s' has wrong index` | `0x8785f8` | the manifest does not decode / does not describe the archive |
+| `%s '%s' has wrong type` | `0x878610` | `Type` is not `Main`/`Map`/`Mod` |
+| `%s '%s' has wrong files : %s` | `0x8785b8` | the index-level file check, with the list that failed |
+| `Error load %s '%s' index` | `0x87863c` | the index could not be read at all |
+
+`user.ini`'s `sModifications` lists mods **the way the file is named**
+(`mod:ruru` → `Mods\ruru.vdpack`), which is why a pack that sits next to the
+game instead answers `mod 'ruru' not found` and is never mounted at all — the
+`run.log` of this session says exactly that, next to a second mod
+(`D3_test_faction6_mod`) that *is* mounted and whose manifest is the stale one.
+
+### `vdpack scan`
+
+Since neither message names the archive, the toolkit answers it directly:
+
+```bash
+d3tool vdpack scan "D:\SteamLibrary\steamapps\common\Disciples III Rebirth"
+d3tool vdpack scan "%USERPROFILE%\Documents\Disciples III Reincarnation\Mods" --strict
+```
+
+Each archive is read, its `index` decoded, and every payload checked against
+the recorded MD5/SHA-256; the report names the pack, the paths the loader will
+answer `str_not_valid_hash_for_file` for, the packs sitting outside `Mods\`,
+a `Name` that does not match the file name, and paths carried by two mods.
+`--strict` exits 1 while anything would be rejected, so it can gate a release.
+`--json` prints the same answer for a script.
+
 ## 6. The `.vdpack` mod archive
 
 A retail install keeps a unit as a loose folder; mods ship the whole tree as
