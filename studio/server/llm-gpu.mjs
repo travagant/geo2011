@@ -110,3 +110,56 @@ export async function unloadLlm({ url = 'http://127.0.0.1:11434', model = '', fe
     return { unloaded: true, model };
   } catch (error) { return { unloaded: false, reason: error?.message || 'request-failed' }; }
 }
+
+const ms = (ns) => (Number.isFinite(Number(ns)) ? Math.round(Number(ns) / 1e6) : null);
+
+/** The verdict plus the two numbers that separate "slow card" from "no card": speed and load time. */
+export function probeAdvice(report, { loadMs = null, tokensPerSec = null } = {}) {
+  const parts = [describeVerdict(report)];
+  if (Number.isFinite(tokensPerSec)) parts.push('Generation speed: ' + (Math.round(tokensPerSec * 10) / 10) + ' tokens/s.');
+  if (Number.isFinite(loadMs)) parts.push('The model was read from disk in ' + (loadMs / 1000).toFixed(1) + ' s.');
+  if (report?.state === 'gpu' && Number.isFinite(loadMs) && loadMs > 3000) parts.push('The weights were read from disk on this request (' + (loadMs / 1000).toFixed(1) + ' s). If every message starts with that delay, keep_alive is 0 somewhere (our studio, OLLAMA_KEEP_ALIVE or another client).');
+  if (report?.state === 'cpu' && Number.isFinite(tokensPerSec) && tokensPerSec < 15) parts.push('Speed below 15 tokens/s on a CPU fallback is expected for 8-9B models.');
+  return parts.join(' ');
+}
+
+/**
+ * Ask the model one short question, then look at where it ended up. This is the only check that works
+ * when nothing is loaded: /api/ps is empty until the first request.
+ * @returns {Promise<{ok:true,model:string,verdict:string,state:string,loaded:object|null,models:Array,
+ *   keepAlive:number|string,loadMs:number|null,totalMs:number|null,promptTokens:number,evalTokens:number,
+ *   tokensPerSec:number|null,advice:string}>}
+ */
+export async function probeLlm({ url = 'http://127.0.0.1:11434', model = '', fetchFn = fetch, env = process.env, tokens = 32, timeoutMs = 180000 } = {}) {
+  if (!model) throw new Error('No local model is configured: pick one in Connections first.');
+  const keepAlive = keepAliveValue(env);
+  let data;
+  try {
+    const res = await fetchFn(url + '/api/chat', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model, messages: [{ role: 'user', content: 'Answer with one short word.' }], stream: false, think: false, keep_alive: keepAlive, options: { num_predict: tokens, num_ctx: 2048 } }),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!res.ok) {
+      let message = 'Ollama refused the request (' + res.status + ').';
+      try { const v = await res.json(); if (v?.error) message = typeof v.error === 'string' ? v.error : v.error.message || message; } catch { /* keep the default */ }
+      throw new Error(message);
+    }
+    data = await res.json();
+  } catch (error) {
+    if (error?.name === 'TimeoutError' || error?.name === 'AbortError') throw new Error('Ollama did not answer in ' + Math.round(timeoutMs / 1000) + ' s: the model is loading from disk far too slowly.');
+    throw error;
+  }
+  const evalCount = Number(data?.eval_count) || 0;
+  const evalNs = Number(data?.eval_duration) || 0;
+  const tokensPerSec = evalNs > 0 ? evalCount / (evalNs / 1e9) : null;
+  const report = await llmGpuReport({ url, model, fetchFn, env });
+  const loadMs = ms(data?.load_duration);
+  return {
+    ok: true, model, verdict: report.verdict, state: report.state, loaded: report.loaded, models: report.models,
+    keepAlive, loadMs, totalMs: ms(data?.total_duration),
+    promptTokens: Number(data?.prompt_eval_count) || 0, evalTokens: evalCount,
+    tokensPerSec: tokensPerSec === null ? null : Math.round(tokensPerSec * 10) / 10,
+    advice: probeAdvice(report, { loadMs, tokensPerSec }),
+  };
+}

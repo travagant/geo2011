@@ -14,7 +14,7 @@ import { init,root,data,readJson,writeJson,isId,assetInfo,saveAsset } from './st
 import { configSchema,generationSchema,chatSchema,defaults } from './schema.mjs';
 import { keyStatus,setKey } from './vault.mjs';
 import { llmChat } from './llm.mjs';
-import { llmGpuReport, unloadLlm, gpuVerdict, pickLoaded } from './llm-gpu.mjs';
+import { llmGpuReport, unloadLlm, probeLlm, gpuVerdict, pickLoaded } from './llm-gpu.mjs';
 import { loadJobs,allJobs,getJob,createJob,cancelJob,validateJobMesh } from './jobs.mjs';
 import { startRuntime,stopOwnedRuntime } from './runtime.mjs';
 import { resolveEngine,pixal3dStatus,startPixal3dRuntime } from './pixal3d.mjs';
@@ -50,6 +50,8 @@ app.get('/api/status',asyncRoute(async(req,res)=>{
 }));
 // Where the local assistant runs: GPU, partly, or CPU only (server/llm-gpu.mjs, docs/studio/LLM-GPU.md).
 app.get('/api/llm/gpu',asyncRoute(async(req,res)=>res.json(await llmGpuReport({url:config.ollamaUrl,model:config.ollamaModel}))));
+// Ask the model one question and report where it runs: the only check that works while nothing is loaded.
+app.post('/api/llm/probe',asyncRoute(async(req,res)=>res.json(await probeLlm({url:config.ollamaUrl,model:config.ollamaModel}))));
 // Free the assistant's VRAM without waiting for keep_alive (used before 3D generation and by the UI).
 app.post('/api/llm/unload',asyncRoute(async(req,res)=>res.json(await unloadLlm({url:config.ollamaUrl,model:config.ollamaModel}))));
 app.post('/api/runtime/start',asyncRoute(async(req,res)=>res.json(await startRuntime())));

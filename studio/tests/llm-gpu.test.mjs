@@ -2,7 +2,7 @@
 // every Ollama is a function that answers like /api/ps and /api/version.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { keepAliveValue, numGpuOption, baseModelName, pickLoaded, gpuVerdict, describeVerdict, llmGpuReport, unloadLlm, DEFAULT_KEEP_ALIVE } from '../server/llm-gpu.mjs';
+import { keepAliveValue, numGpuOption, baseModelName, pickLoaded, gpuVerdict, describeVerdict, llmGpuReport, unloadLlm, probeLlm, probeAdvice, DEFAULT_KEEP_ALIVE } from '../server/llm-gpu.mjs';
 import { llmChat } from '../server/llm.mjs';
 
 const U = 'http://127.0.0.1:11434';
@@ -11,7 +11,7 @@ const bad = (status) => ({ ok: false, status, json: async () => ({ error: 'no' }
 const GB = 1024 ** 3;
 
 /** Pretend Ollama: ps / version, plus a log of every request. */
-function fakeOllama({ models = [], version = '0.12.3', up = true, generate = ok({ done: true }) } = {}) {
+function fakeOllama({ models = [], version = '0.12.3', up = true, generate = ok({ done: true }), chat = { message: { content: '{"reply":"ok","actions":[]}' } } } = {}) {
   const log = [];
   const fetchFn = async (url, options = {}) => {
     const u = new URL(url);
@@ -20,7 +20,7 @@ function fakeOllama({ models = [], version = '0.12.3', up = true, generate = ok(
     if (u.pathname === '/api/ps') return ok({ models });
     if (u.pathname === '/api/version') return ok({ version });
     if (u.pathname === '/api/generate') return typeof generate === 'function' ? generate() : generate;
-    if (u.pathname === '/api/chat') return ok({ message: { content: '{"reply":"ok","actions":[]}' } });
+    if (u.pathname === '/api/chat') return typeof chat === 'function' ? chat() : ok(chat);
     return bad(404);
   };
   return { fetchFn, log };
@@ -154,4 +154,52 @@ test('llmChat sends our keep_alive and num_gpu, not a hard-coded 0', async () =>
     if (env.ASTRA_LLM_KEEP_ALIVE === undefined) delete process.env.ASTRA_LLM_KEEP_ALIVE;
     if (env.ASTRA_LLM_NUM_GPU === undefined) delete process.env.ASTRA_LLM_NUM_GPU;
   }
+});
+
+const chatMetrics = (answer = 'ok') => ({
+  message: { content: answer }, done: true,
+  load_duration: 7e9, prompt_eval_count: 12, prompt_eval_duration: 0.4e9,
+  eval_count: 32, eval_duration: 1e9, total_duration: 8.9e9,
+});
+
+test('probe: loads the model itself, then reports speed, load time and the verdict', async () => {
+  const fake = fakeOllama({ models: [{ name: 'qwen3:8b', size: 6 * GB, size_vram: 6 * GB }], chat: chatMetrics() });
+  const r = await probeLlm({ url: U, model: 'qwen3:8b', fetchFn: fake.fetchFn, env: {} });
+  assert.equal(r.ok, true);
+  assert.equal(r.verdict, 'gpu');
+  assert.equal(r.tokensPerSec, 32);
+  assert.equal(r.loadMs, 7000);
+  assert.equal(r.totalMs, 8900);
+  assert.equal(r.promptTokens, 12);
+  assert.equal(r.evalTokens, 32);
+  assert.match(r.advice, /on the GPU/);
+  assert.match(r.advice, /32 tokens\/s/);
+  assert.match(r.advice, /7\.0 s/);
+  const body = fake.log.find((x) => x.path === '/api/chat').body;
+  assert.equal(body.stream, false);
+  assert.equal(body.keep_alive, DEFAULT_KEEP_ALIVE);
+  assert.equal(body.options.num_predict, 32);
+});
+
+test('probe: a CPU verdict spells out the expected slow speed', async () => {
+  const fake = fakeOllama({ models: [{ name: 'qwen3:8b', size: 6 * GB, size_vram: 0 }], chat: { ...chatMetrics(), eval_count: 20, eval_duration: 4e9 } });
+  const r = await probeLlm({ url: U, model: 'qwen3:8b', fetchFn: fake.fetchFn, env: { ASTRA_LLM_KEEP_ALIVE: '0' } });
+  assert.equal(r.verdict, 'cpu');
+  assert.equal(r.tokensPerSec, 5);
+  assert.equal(r.keepAlive, 0);
+  assert.match(r.advice, /CPU/);
+  assert.match(r.advice, /below 15/);
+});
+
+test('probe: a card that is fine but reloads every time is called out', () => {
+  const advice = probeAdvice({ online: true, state: 'gpu', size: 1, sizeVram: 1, share: 1 }, { loadMs: 9500, tokensPerSec: 40 });
+  assert.match(advice, /keep_alive is 0/);
+});
+
+test('probe: Ollama errors and a missing model are real errors, not silent zeros', async () => {
+  const refusing = fakeOllama({ chat: () => ({ ok: false, status: 404, json: async () => ({ error: 'model "qwen3:8b" not found, try pulling it first' }) }) });
+  await assert.rejects(() => probeLlm({ url: U, model: 'qwen3:8b', fetchFn: refusing.fetchFn }), /not found/);
+  await assert.rejects(() => probeLlm({ url: U, model: '' }), /No local model/);
+  const hanging = async () => { const e = new Error('timed out'); e.name = 'TimeoutError'; throw e; };
+  await assert.rejects(() => probeLlm({ url: U, model: 'qwen3:8b', fetchFn: hanging, timeoutMs: 5000 }), /did not answer in 5 s/);
 });
