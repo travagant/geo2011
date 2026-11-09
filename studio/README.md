@@ -48,6 +48,7 @@ npm test                    # node --test tests/*.test.mjs
 | Проверка модели перед импортом | `POST /api/mesh/check {"assetId"}` → треугольники, вершины, дубликаты, UV/нормали, скелет, клипы, границы, замечания | `tests/mesh-check.test.mjs`, 10 проверок |
 | Пакет для движка | `POST /api/unity/export` → `.zip` c `Assets/<Имя>/`, `POST /api/godot/export` → `Godot/<Имя>/`; общий сборщик `server/engine-bundle.mjs`, профили — данные. В интерфейсе: шаг «Экспорт» → «Пакет для движка», переключатель Unity / Godot, «Проверить модель» и «Скачать пакет» | `tests/unity.test.mjs` (9), `tests/godot.test.mjs` (4) |
 | Модель из Кузницы | один резолвер на оба хранилища: `data/assets/<id>.glb` и `library/assets/<id>/<версия>/` (`server/model-source.mjs`) | `tests/model-source.test.mjs`, 5 проверок |
+| Режим промпта | `promptMode: "product" \| "literal"` в задании: «как в базе» (перевод + обёртка) или текст как написан. В интерфейсе — переключатель в панели «Концепт» | `tests/prompt.test.mjs`, 7 проверок; разбор — `docs/studio/PROMPTS.md` |
 | Нативная проверка GLB (Rust) | `npm run native:build`, затем `d3mesh verify файл.glb` | `tests/native.test.mjs` (паритет — когда собран) |
 | Disciples 3 | отложен, модуль в `server/experimental/` | 8 проверок |
 

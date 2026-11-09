@@ -6,6 +6,7 @@ import { hunyuanWorkflow,hunyuanMultiViewWorkflow,MV_CHECKPOINT,sdxlWorkflow } f
 import {getViewsService} from './views.mjs';
 import WebSocket from 'ws';
 import { llmChat } from './llm.mjs';
+import { needsTranslation } from './prompt.mjs';
 import { prepareConcept } from './preprocess.mjs';
 import {validateGeneratedMesh,maxMeshBytes} from './mesh-validation.mjs';
 import {acquireEngineGpu} from './gpu-handover.mjs';
@@ -49,15 +50,17 @@ async function uploadViews(j,config,signal){
 async function conceptFromPrompt(j,config,signal,nodes){
   const cp=nodes.CheckpointLoaderSimple?.input?.required?.ckpt_name?.[0]||[];if(!cp.includes(config.imageCheckpoint))throw new Error('Text input requires an installed SDXL checkpoint.');
   let englishPrompt=j.prompt;
-  if(/[^\x00-\x7F]/.test(j.prompt)){
+  // promptMode 'literal': текст уходит в SDXL как написан — без перевода LLM и без обёртки.
+  const literal=j.promptMode==='literal';
+  if(!literal&&needsTranslation(j.prompt)){
    await update(j,{message:'Translating the concept with the local LLM',progress:0});
    const response=await llmChat({...config,provider:'ollama'},{message:'Translate the concept description into English for SDXL, keeping the meaning. Return a concept action with the English prompt. Description: '+j.prompt,context:'',history:[]});
    signal.throwIfAborted();englishPrompt=response.actions.find(a=>a.type==='concept')?.prompt;
    if(!englishPrompt)throw new Error('The local LLM did not return an English concept. Click "Refine with AI" or use an English description.');
-   await update(j,{englishPrompt});
+   await update(j,{englishPrompt,promptMode:'product'});
   }
   await update(j,{message:'Creating the concept image · SDXL',progress:0});
-  const outputs=await waitPrompt(j,config,sdxlWorkflow(englishPrompt,config.imageCheckpoint,j.seed,'astra/'+j.id),signal,'Concept image');
+  const outputs=await waitPrompt(j,config,sdxlWorkflow(englishPrompt,config.imageCheckpoint,j.seed,'astra/'+j.id,{mode:literal?'literal':'product'}),signal,'Concept image');
   const item=Object.values(outputs).flatMap(x=>x.images||[])[0];if(!item)throw new Error('SDXL did not return an image.');
   const img=await downloadOutput(config,item,'.png','Concept');await update(j,{concept:img});return img.id;
 }

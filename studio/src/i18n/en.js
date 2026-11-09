@@ -2411,4 +2411,9 @@ export default {
   "unity.failed": "The check failed: {error}",
   "unity.needAsset": "Build a version of the asset first",
   "unity.checked": "Checked: {tri} triangles, {vert} vertices",
+
+  // Concept prompt mode: base wrapping vs the text as written
+  "app.concept.promptMode.product": "Base behaviour",
+  "app.concept.promptMode.literal": "As written",
+  "app.concept.promptMode.note": "Base behaviour translates the text into English and wraps it as a product photo. As written sends your text to SDXL unchanged: with Russian text the result differs, because SDXL understands English only.",
 };

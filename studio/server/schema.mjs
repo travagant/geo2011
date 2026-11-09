@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { buildSdxlPrompt, SDXL_NEGATIVE, SDXL_SAMPLER } from './prompt.mjs';
 export const localUrl=z.string().url().refine(v=>{try {const u=new URL(v);return u.protocol==='http:'&&['127.0.0.1','localhost','[::1]'].includes(u.hostname)&&!u.username&&!u.password&&!u.search&&!u.hash;}catch{return false;}},'Use a local HTTP address (127.0.0.1 or localhost).');
 export const configSchema=z.object({ollamaUrl:localUrl,ollamaModel:z.string().max(150),comfyUrl:localUrl,shapeCheckpoint:z.string().max(200),imageCheckpoint:z.string().max(200),provider:z.enum(['ollama','openai','anthropic']),openaiModel:z.string().max(100),anthropicModel:z.string().max(100)}).strict();
 export const generationSchema=z.object({imageId:z.string().uuid().optional(),prompt:z.string().max(4000).default(''),quality:z.enum(['draft','standard','high']).default('standard'),shapeModel:z.enum(['default','hunyuan21']).default('default'),meshLevel:z.number().finite().min(-1).max(1).default(0),backgroundMode:z.enum(['auto','alpha','keep']).default('auto'),hazeFilter:z.enum(['auto','on','off']).default('auto'),seed:z.number().int().min(0).max(2147483647).default(42),
@@ -6,7 +7,9 @@ export const generationSchema=z.object({imageId:z.string().uuid().optional(),pro
  viewSetId:z.string().uuid().optional(),
  // Shape engine: 'hunyuan' (default - the previous API behaviour), 'pixal3d' (docs/forge/pixal3d.md) or 'auto' (Pixal3D if installed, otherwise Hunyuan).
  // For 'pixal3d' the quality, shapeModel and meshLevel fields are not used.
- engine:z.enum(['auto','hunyuan','pixal3d']).default('hunyuan')}).refine(x=>x.imageId||x.viewSetId||x.prompt.trim(),'Upload a concept or write a description.')
+ engine:z.enum(['auto','hunyuan','pixal3d']).default('hunyuan'),
+ // 'product' — как в базовой версии (перевод на английский + обёртка), 'literal' — текст как написан.
+ promptMode:z.enum(['product','literal']).default('product')}).refine(x=>x.imageId||x.viewSetId||x.prompt.trim(),'Upload a concept or write a description.')
  // The exhaust haze filter is passed to scripts/prepare_concept.py inside backgroundMode: '<background>:haze=<on|off>' ('auto' is the Python default).
  .transform(x=>x.hazeFilter==='auto'?x:{...x,backgroundMode:`${x.backgroundMode}:haze=${x.hazeFilter}`});
 export const chatSchema=z.object({message:z.string().min(1).max(6000),context:z.string().max(15000).default(''),history:z.array(z.object({role:z.enum(['user','assistant']),content:z.string().max(6000)})).max(12).default([])});
@@ -86,11 +89,13 @@ export function pixal3dWorkflow(images,{seed=1000,prefix='astra/pixal3d',targetF
  g['27']={class_type:'Trellis2ExportMesh',inputs:{trimesh:['26',0],filename_prefix:prefix,file_format:'glb'}};
  return g;
 }
-export function sdxlWorkflow(prompt,checkpoint,seed,prefix){return {
+// promptMode: 'product' — как в базовой версии (обёртка «предмет на белом фоне»),
+// 'literal' — текст пользователя уходит в CLIP как есть (server/prompt.mjs).
+export function sdxlWorkflow(prompt,checkpoint,seed,prefix,options={}){const built=buildSdxlPrompt(prompt,{mode:options.mode==='literal'?'literal':'product'}),sampler={...SDXL_SAMPLER,...(options.sampler||{})};return {
  '1':{class_type:'CheckpointLoaderSimple',inputs:{ckpt_name:checkpoint}},
- '2':{class_type:'CLIPTextEncode',inputs:{clip:['1',1],text:'single product photograph, exactly one object, one view only, '+prompt+', full object visible, isolated on solid white background, centered composition, clean silhouette'}},
- '3':{class_type:'CLIPTextEncode',inputs:{clip:['1',1],text:'contact sheet, collage, grid, tiles, panels, multiple views, multi-view, different angles, variations, comparison, split screen, storyboard, text, watermark, cropped, multiple objects, blurry, scene, background, pedestal'}},
- '4':{class_type:'EmptyLatentImage',inputs:{width:768,height:768,batch_size:1}},
- '5':{class_type:'KSampler',inputs:{model:['1',0],positive:['2',0],negative:['3',0],latent_image:['4',0],seed,steps:25,cfg:6,sampler_name:'dpmpp_2m',scheduler:'karras',denoise:1}},
+ '2':{class_type:'CLIPTextEncode',inputs:{clip:['1',1],text:built.text}},
+ '3':{class_type:'CLIPTextEncode',inputs:{clip:['1',1],text:options.negative??SDXL_NEGATIVE}},
+ '4':{class_type:'EmptyLatentImage',inputs:{width:sampler.width,height:sampler.height,batch_size:1}},
+ '5':{class_type:'KSampler',inputs:{model:['1',0],positive:['2',0],negative:['3',0],latent_image:['4',0],seed,steps:sampler.steps,cfg:sampler.cfg,sampler_name:sampler.sampler_name,scheduler:sampler.scheduler,denoise:1}},
  '6':{class_type:'VAEDecode',inputs:{samples:['5',0],vae:['1',2]}},
  '7':{class_type:'SaveImage',inputs:{images:['6',0],filename_prefix:prefix}}};}

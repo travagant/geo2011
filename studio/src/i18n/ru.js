@@ -2409,4 +2409,9 @@ export default {
   "unity.failed": "Проверка не прошла: {error}",
   "unity.needAsset": "Сначала соберите версию ассета",
   "unity.checked": "Проверено: {tri} треугольников, {vert} вершин",
+
+  // Concept prompt mode: base wrapping vs the text as written
+  "app.concept.promptMode.product": "Как в базе",
+  "app.concept.promptMode.literal": "Как написано",
+  "app.concept.promptMode.note": "«Как в базе» — перевод на английский и обёртка «предмет на белом фоне». «Как написано» — текст уходит в SDXL без изменений: для русского результата отличается, потому что SDXL понимает только английский.",
 };
