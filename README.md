@@ -22,6 +22,7 @@ The point is to support a future program that, like dis3tool, exports glTF but
 | `Neutrals/*` | bundled units: `character_*.g` (geometry), `*.gltf`/`*.bin` (dis3tool export), `*.scene`, `*.ac`, `Aliases/*`, textures. |
 | `docs/FORMATS.md` | reverse-engineering notes for `.g`, `.gltf`, `.ac`, `.scene`. |
 | `d3tool/vdpack.py` | the `.vdpack` mod archive (one file = a whole unit folder): `vdpack list/extract/validate/manifest/pack/scan`. |
+| `d3studio/` | **own asset studio** (local web app, standard library only): concept image on the local generation server → assets → `d3tool export` into Disciples 3 files. See `docs/studio/PLAN.md`. |
 | `d3tool/char.py` | the `.char` unit profile: `char show/list/find/validate/set-id`. |
 | `d3tool/weights.py` | skin weights of a `.g`: `weights <g> [--against <g>]`. |
 | `Profiles/` | the retail unit profiles (874 `.char`: 214 units + their `desc`/`stats`/`sound` fragments). |
@@ -35,6 +36,23 @@ The point is to support a future program that, like dis3tool, exports glTF but
 | `tests/corpus_parity.py` | benchmark: forward export vs the bundled dis3tool references. |
 | `tests/anim_audit.py` | animation-only audit: import/export completeness + round-trip over every unit. |
 | `gltf/`, `out_rev/` | checked-in sample output (forward and reverse export of the AirElemental); regenerable, kept for diffing. |
+
+## The studio (`d3studio`)
+
+A local web app that turns a text concept into a picture on the local generation
+server (any ComfyUI-compatible one: plain ComfyUI on `:8188`, or the engine on
+`:8192`) and then hands a glTF/GLB to `d3tool export` so the result comes out as
+the game's own `.g`/`.scene`/`.ac`/`.a`. Standard library only — no pip install
+needed to run it from a checkout.
+
+```bash
+python3 -m d3studio serve --open          # http://127.0.0.1:8300
+python3 -m d3studio serve --comfy http://127.0.0.1:8188 --root ./studio-data
+python3 tests/test_studio.py              # 16 checks, no GPU and no network needed
+```
+
+Data (SQLite library, pictures, exports) lives in `studio-data/`; it is a scratch
+folder and is listed in `.gitignore`.
 
 ## Install / run
 

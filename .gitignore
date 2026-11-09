@@ -18,6 +18,9 @@ release/d3tool-dist-exe/
 .mypy_cache/
 .ruff_cache/
 
+# the studio's own library (SQLite, pictures, exports) is user data
+/studio-data/
+
 # connector downloads / scratch copies of user assets
 /google_drive/
 /bug-report/

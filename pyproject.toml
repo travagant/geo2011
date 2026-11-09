@@ -18,7 +18,11 @@ classifiers = [
 
 [project.scripts]
 d3tool = "d3tool.cli:main"
+d3studio = "d3studio.__main__:main"
 
 [tool.setuptools]
 py-modules = []
-packages = ["d3tool"]
+packages = ["d3tool", "d3studio"]
+
+[tool.setuptools.package-data]
+d3studio = ["web/*"]

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>d3studio</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <span class="logo">d3</span>
+    <div>
+      <h1>d3studio</h1>
+      <p class="sub">концепт на видеокарте → glTF → файлы Disciples 3</p>
+    </div>
+  </div>
+  <div class="status" id="status">
+    <span class="pill" id="engine-pill">движок: проверяю…</span>
+    <span class="pill" id="project-pill">проект: —</span>
+  </div>
+</header>
+
+<main>
+  <section class="card">
+    <div class="card-head">
+      <h2>Что нарисовать</h2>
+      <div class="row">
+        <select id="project-select" title="Проект"></select>
+        <button class="ghost" id="new-project">+ проект</button>
+      </div>
+    </div>
+
+    <label class="field">
+      <span>Описание (по-английски лучше понимает)</span>
+      <textarea id="prompt" rows="3" placeholder="medieval knight with sword and shield, game character, white background"></textarea>
+    </label>
+    <label class="field">
+      <span>Чего не должно быть</span>
+      <input id="negative" type="text" placeholder="blurry, extra limbs, text">
+    </label>
+
+    <div class="grid">
+      <label class="field"><span>Ширина</span><input id="width" type="number" value="1024" min="64" max="2048" step="8"></label>
+      <label class="field"><span>Высота</span><input id="height" type="number" value="1024" min="64" max="2048" step="8"></label>
+      <label class="field"><span>Шагов</span><input id="steps" type="number" value="30" min="1" max="150"></label>
+      <label class="field"><span>CFG</span><input id="cfg" type="number" value="7" min="0" max="30" step="0.5"></label>
+      <label class="field"><span>Seed (пусто — случайный)</span><input id="seed" type="number" min="0" placeholder="случайный"></label>
+      <label class="field"><span>Чекпойнт</span><select id="checkpoint"></select></label>
+    </div>
+
+    <div class="row end">
+      <button class="primary" id="draw">Нарисовать концепт</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>Задания</h2>
+      <button class="ghost" id="refresh">Обновить</button>
+    </div>
+    <div id="jobs" class="jobs"></div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>Ассеты проекта</h2>
+      <label class="ghost file">
+        Загрузить .glb/.gltf
+        <input id="upload" type="file" accept=".glb,.gltf,.png,.jpg,.jpeg,.webp">
+      </label>
+    </div>
+    <div id="assets" class="assets"></div>
+    <div id="exports" class="exports"></div>
+  </section>
+
+  <section class="card settings">
+    <div class="card-head"><h2>Настройки</h2></div>
+    <div class="grid">
+      <label class="field"><span>Сервер генерации</span><input id="comfy-url" type="text"></label>
+      <label class="field"><span>Папка d3tool (пусто — эта же)</span><input id="d3tool-path" type="text"></label>
+    </div>
+    <div class="row end"><button class="ghost" id="save-settings">Сохранить</button></div>
+  </section>
+</main>
+
+<div id="toast" class="toast" hidden></div>
+<script src="/app.js"></script>
+</body>
+</html>
