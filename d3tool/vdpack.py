@@ -375,6 +375,7 @@ def plan_bundle(folder, base=None, prefix: Optional[str] = None) -> dict:
                        else None) or _scene_prefix(pairs) or ""
     where = where.strip("\\")
     existing = {_norm_name(n).lower() for n, _ in base_pairs}
+    base_bytes = {_norm_name(n).lower(): d for n, d in base_pairs}
     textures: Dict[str, List[str]] = {}     # archive folder -> texture stems
     for name, _ in base_pairs:
         norm = _norm_name(name)
@@ -405,9 +406,18 @@ def plan_bundle(folder, base=None, prefix: Optional[str] = None) -> dict:
             # unit's own folder first: these are the names a rename can take,
             # and every one of them is a path the pack's `index` already lists.
             entry["alternatives"] = here[:4]
+    by_leaf = {n.replace("/", "\\").split("\\")[-1].lower(): d
+               for n, d in pairs}
+    stale = [e["path"] for e in entries
+             if e["kind"] == "replaces"
+             and base_bytes.get(e["path"].lower()) is not None
+             and base_bytes[e["path"].lower()] != by_leaf.get(e["file"].lower())]
     return {"prefix": where, "entries": entries, "added": added,
             "replaced": [e for e in entries if e["kind"] == "replaces"],
-            "missing": sorted(missing), "has_base": bool(base_pairs)}
+            "missing": sorted(missing), "has_base": bool(base_pairs),
+            "index_present": any(_norm_name(n).lower() == "index"
+                                 for n, _ in base_pairs),
+            "payloads_changed": sorted(stale)}
 
 
 # --------------------------------------------------------------------------- #
@@ -544,6 +554,8 @@ def diff_entries(base, other) -> Dict[str, object]:
     changed = sorted(n for n in set(lmap) & set(rmap) if lmap[n] != rmap[n])
     order_left = [_norm_name(n) for n, _ in left if _norm_name(n) in rmap]
     order_right = [_norm_name(n) for n, _ in right if _norm_name(n) in lmap]
+    index_left = lmap.get("index")
+    index_right = rmap.get("index")
     return {
         "base": len(left),
         "other": len(right),
@@ -552,6 +564,9 @@ def diff_entries(base, other) -> Dict[str, object]:
         "changed": changed,
         "unchanged": len(order_left) - len(changed),
         "reordered": order_left != order_right,
+        "index_present": index_right is not None,
+        "index_changed": (index_left is not None and index_right is not None
+                          and index_left != index_right),
         "bytes": (sum(len(d) for _, d in left), sum(len(d) for _, d in right)),
     }
 
@@ -601,12 +616,32 @@ def shape_verdict(result: Dict[str, object]) -> List[Tuple[str, str]]:
             "the shared paths changed order — rebuild with "
             "`vdpack pack <folder> --like <this pack>` so the entry order and "
             "the opaque `index` stay on the confirmed shape"))
-    if not added and not removed and not result.get("reordered"):
+    changed = result.get("changed") or []
+    if (changed and result.get("index_present")
+            and not result.get("index_changed")):
+        lines.append((
+            "warn",
+            f"{len(changed)} payload(s) replaced while the `index` entry was "
+            f"carried over byte for byte. The index is a per-file hash "
+            f"manifest (MD5 and SHA-256; the packer keeps the implementation "
+            f"in `.\\vd_hash.cpp`), and the loader validates the file list "
+            f"before it mounts anything, reporting `has wrong index`, `not "
+            f"found indexed file` or `unindexed file`. A pack that replaces "
+            f"payloads and keeps the old index is therefore the first "
+            f"suspect when a unit disappears."))
+    elif changed and result.get("index_present") and result.get("index_changed"):
+        lines.append((
+            "warn",
+            "the `index` entry was rewritten — nothing in this toolkit can "
+            "recompute the hashes it records yet, so it is only correct if it "
+            "came from exactly this file set"))
+    if (not added and not removed and not result.get("reordered")
+            and not (changed and result.get("index_present")
+                     and not result.get("index_changed"))):
         lines.append((
             "ok",
             f"same {result.get('other', 0)} path(s) in the same order, "
-            f"{len(result.get('changed') or [])} payload(s) replaced — the "
-            f"confirmed shape"))
+            f"{len(changed)} payload(s) replaced — the confirmed shape"))
     return lines
 
 

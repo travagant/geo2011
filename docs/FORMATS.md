@@ -1286,8 +1286,14 @@ have an `id` that differs from their file name, so the name is irrelevant.
 `d3tool/char.py` parses the format, `vdpack validate` checks a packed
 profile's includes and `characters\…` references like any other unit-local
 reference, and `d3tool char set-id` performs exactly that one-string patch.
-The port's archive also holds one opaque entry named
-`index` (20 362 bytes) that no tool has decoded — here it is an ordinary file,
-so `extract` → `pack` preserves it verbatim, but a pack assembled from loose
-folder content simply has none (unverified in game).  Keep that in mind before
-promising a runtime-clean mod archive.
+The port's archive also holds one entry named `index` (20 362 bytes) that
+no reader decodes — here it is an ordinary file, so `extract` → `pack`
+preserves it verbatim, but a pack assembled from loose folder content simply
+has none.  §6d identifies it: a mod descriptor plus a **per-file hash
+manifest** (MD5 and SHA-256) that the loader validates before mounting, which
+makes an inherited `index` over changed payloads a defect rather than a
+formality.  `vdpack diff` and `vdpack plan` say so explicitly now — a payload
+count with the original `index` still in place reads as a warning naming the
+loader's own messages (`has wrong index`, `not found indexed file`,
+`unindexed file`), and `plan` prints which payloads differ from the ones the
+pack's index describes.

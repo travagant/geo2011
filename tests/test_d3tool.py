@@ -4112,6 +4112,59 @@ def test_pe_find_resolves_a_string_its_xref_and_the_disassembly():
         assert binary.section_of(0x900000) == (None, None)
 
 
+def test_vdpack_diff_flags_an_inherited_index_over_new_payloads():
+    """The `index` entry is a per-file hash manifest (MD5 + SHA-256, written by
+    the packer's `vd_hash.cpp`) and the loader validates it before mounting, so
+    a pack that replaces payloads while carrying the original index is not the
+    confirmed shape — it is the first suspect when a unit disappears."""
+    from d3tool import vdpack as vmod
+    base = [("index", b"opaque"), ("resources\\U\\a.g", b"old"),
+            ("resources\\U\\a.t", b"atlas")]
+    replaced = [("index", b"opaque"), ("resources\\U\\a.g", b"new"),
+                ("resources\\U\\a.t", b"atlas")]
+    result = vmod.diff_entries(base, replaced)
+    assert result["index_present"] is True
+    assert result["index_changed"] is False
+    assert result["changed"] == ["resources\\U\\a.g"]
+    grades = [grade for grade, _ in vmod.shape_verdict(result)]
+    assert "warn" in grades
+    assert "ok" not in grades          # it is not the confirmed shape any more
+    text = " ".join(line for _grade, line in vmod.shape_verdict(result))
+    assert "index" in text and "hash manifest" in text
+    # a rewritten index is reported as a different, weaker claim
+    rewritten = [("index", b"other"), ("resources\\U\\a.g", b"new"),
+                 ("resources\\U\\a.t", b"atlas")]
+    again = vmod.diff_entries(base, rewritten)
+    assert again["index_changed"] is True
+    lines = " ".join(line for _g, line in vmod.shape_verdict(again))
+    assert "rewritten" in lines
+    # and with no index at all, the old reading stands
+    plain = vmod.diff_entries([("a.g", b"1")], [("a.g", b"2")])
+    assert plain["index_present"] is False
+    assert [grade for grade, _ in vmod.shape_verdict(plain)] == ["ok"]
+
+
+def test_vdpack_plan_notices_payloads_the_index_no_longer_describes():
+    """`plan` lines a folder up against a pack; when the folder's bytes differ
+    from the ones the pack's `index` was written for, that is the fact to say
+    out loud, not the path count."""
+    from d3tool import vdpack as vmod
+    base = [("index", b"opaque"), ("resources\\U\\a.g", b"old"),
+            ("resources\\U\\a.t", b"atlas")]
+    same = vmod.plan_bundle([("a.g", b"old"), ("a.t", b"atlas")], base)
+    assert same["index_present"] is True
+    assert same["payloads_changed"] == []
+    edited = vmod.plan_bundle([("a.g", b"new"), ("a.t", b"atlas")], base)
+    assert edited["payloads_changed"] == ["resources\\U\\a.g"]
+    assert edited["added"] == []
+    # without an index there is nothing to go stale, even though the report
+    # still says which payloads differ (the CLI gates the warning on this)
+    plain = vmod.plan_bundle([("a.g", b"new")],
+                             [("resources\\U\\a.g", b"old")])
+    assert plain["index_present"] is False
+    assert plain["payloads_changed"] == ["resources\\U\\a.g"]
+
+
 def test_scene_gains_a_gobj_for_a_part_it_cannot_bind():
     """The engine binds the i-th mesh part to the i-th `gobj`, in order — the
     LOD scenes prove it, since their gobj names (`empire_angel_wing`) never

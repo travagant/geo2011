@@ -1,0 +1,57 @@
+function head guess: 0x4206e0  (from 0x4207dc)
+
+0x004206e0  push     -1
+0x004206e2  push     0x88f8e0  ; .text+0x48e8e0
+0x004206e7  mov      eax, dword ptr fs:[0]
+0x004206ed  push     eax
+0x004206ee  mov      dword ptr fs:[0], esp
+0x004206f5  sub      esp, 0x1c
+0x004206f8  mov      eax, dword ptr [esp + 0x2c]
+0x004206fc  push     ebx
+0x004206fd  push     ebp
+0x004206fe  push     esi
+0x004206ff  push     edi
+0x00420700  mov      dword ptr [esp + 0x1c], ecx
+0x00420704  xor      edi, edi
+0x00420706  push     eax
+0x00420707  lea      ecx, [esp + 0x14]
+0x0042070b  mov      dword ptr [esp + 0x14], edi
+0x0042070f  call     0x4018c0  ; .text+0x8c0
+0x00420714  mov      eax, dword ptr [esp + 0x10]
+0x00420718  cmp      eax, edi
+0x0042071a  mov      dword ptr [esp + 0x34], edi
+0x0042071e  je       0x420737  ; .text+0x1f737
+0x00420720  cmp      byte ptr [eax], 0
+0x00420723  je       0x420737  ; .text+0x1f737
+0x00420725  lea      ecx, [esp + 0x10]
+0x00420729  call     0x404ba0  ; .text+0x3ba0
+0x0042072e  lea      ecx, [esp + 0x10]
+0x00420732  call     0x409c90  ; .text+0x8c90
+0x00420737  mov      dword ptr [esp + 0x14], edi
+0x0042073b  mov      esi, dword ptr [esp + 0x40]
+0x0042073f  mov      eax, dword ptr [esi]
+0x00420741  xor      ecx, ecx
+0x00420743  cmp      eax, -1
+0x00420746  sete     cl
+0x00420749  mov      bl, 1
+0x0042074b  mov      byte ptr [esp + 0x34], bl
+0x0042074f  dec      ecx
+0x00420750  test     ecx, 0x482000  ; .text+0x81000
+0x00420756  jne      0x4207c2  ; .text+0x1f7c2
+0x00420758  push     0x8c6bd0  ; "index"
+0x0042075d  lea      edx, [esp + 0x14]
+0x00420761  push     edx
+0x00420762  lea      eax, [esp + 0x44]
+0x00420766  push     eax
+0x00420767  call     0x409b50  ; .text+0x8b50
+0x0042076c  add      esp, 0xc
+0x0042076f  push     eax
+0x00420770  lea      ecx, [esp + 0x18]
+0x00420774  mov      byte ptr [esp + 0x38], 2
+0x00420779  call     0x4018c0  ; .text+0x8c0
+0x0042077e  mov      eax, dword ptr [esp + 0x3c]
+0x00420782  cmp      eax, edi
+0x00420784  mov      byte ptr [esp + 0x34], bl
+0x00420788  je       0x42079d  ; .text+0x1f79d
+0x0042078a  dec      byte ptr [eax - 1]
+0x0042078d  jne      0x42079d  ; .text+0x1f79d

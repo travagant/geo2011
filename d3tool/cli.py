@@ -1984,6 +1984,15 @@ def _vdpack(args) -> int:
             else:
                 ui.info("    nothing in the pack carries this name — ship it "
                         "loose (see the layout below)")
+        if plan["index_present"] and plan["payloads_changed"]:
+            ui.warn(f"{len(plan['payloads_changed'])} payload(s) differ from "
+                    f"the pack's, and its `index` still describes the old "
+                    f"ones — the index is a per-file hash manifest (MD5 and "
+                    f"SHA-256) that the loader validates before mounting, so a "
+                    f"pack built like this is the first suspect when the unit "
+                    f"does not appear")
+            for path in plan["payloads_changed"][:3]:
+                ui.info(f"    differs  {path}")
         if base is not None and plan["missing"]:
             for name in plan["missing"][:5]:
                 ui.info(f"stays vanilla  {name}")
