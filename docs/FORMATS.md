@@ -1041,6 +1041,55 @@ chain at 0x419963 continues through 0x41b030, a vector splice, to a virtual
 canonical rendering of the list.  Once that is named, an index can be
 *recomputed*, and a pack that carries modified payloads becomes mountable.
 
+## 6d. The packer is readable too — and it writes the `index`
+
+Two further builds of the editor were provided: `TOOLKIT_EXTENDED.EXE` and
+`TOOLKIT_CRACKED.EXE`, both 6 070 784 B, differing in 45 163 bytes.  Neither is
+protected: four sections, `.text` 4 993 024 B at entropy **6.57**, `.rdata` at
+5.63, and the strings are there — `vdpack` ×9, `index` ×29, `Hash1` ×2,
+`resources\` ×127, `material0_diffuse`, `weights_on_vertex`.  So the packer side
+of every open question is reachable from a file, and the *cracked* build is not
+needed for it: the extended one is just as readable, and nothing here depends on
+the protection being removed.  (`okidifox.dll`, 8 358 576 B, is a different
+story: `UPX0`/`UPX1` with 7.94 entropy and the same patched header as
+`ijaqemox.dll`, so the game's engine *module* still only exists in clear inside
+a running process — the exe of §6c and these toolkits cover the rest.)
+
+What the packer says about the `index`:
+
+* **`.d_hash.cpp`** is compiled in (string at 0x8c6158, asserted from
+  0x40b2dc, 0x40b351, 0x40f564 and 0x40f60c).  The module carries **MD5**
+  (round table from 0x40aa09, init 0x67452301 at 0x40b280), **SHA-256**
+  (K[0] 0x428a2f98 at 0x40b5ea) and **CRC32** (polynomial 0xEDB88320 at
+  0x12e17).
+* The index is **written as text**: the builder at 0x41eeb0 registers the keys
+  `name`, `UUID`, `Type`, `File` (ids 0x32–0x35) against the resource ids
+  `MOD_INDEX_NAME`, `MOD_INDEX_UUID`, `MOD_INDEX_TYPE`, `MOD_INDEX_FILE`
+  (0x8c6d70–0x8c6db0), and `UUID = "` (0x8c6c08) is the serialised form.
+* The two hashes are written per file by the routine at 0x41d860: `Hash1` at
+  0x41dd0b, `Hash2` at 0x41dbbc, and a **48-byte** digest — twelve dwords —
+  is copied into both fields from a buffer built around the call at 0x41d886.
+  Sixteen plus thirty-two is MD5 plus SHA-256, which is the pairing the text
+  form implies: `Hash1="…32 hex…"`, `Hash2="…64 hex…"`.  The per-file record
+  these live in is **76 bytes** in memory (`add esi, 0x4c` in the vector
+  splice at 0x41af40).
+* `can't calculate file hash for: '%s'` (0x8c6dc0, used at 0x41f571) is the
+  failure path when a file named by the index is not readable.
+* The packer can build the whole thing headless: the `-createindex` switch
+  (0x8c65b8) is read at 0x412515, and `:index` (0x8c6eb4) is opened at
+  0x4207dc — the pack read/write path.  The editor's own packs are
+  `toolkit_system.vdpack` and `toolkit_resources.vdpack` (0x8c6d2c, 0x8c6d50).
+
+So an `index` is not a mystery any more, it is a *derived artefact*: a textual
+table per file — name, uuid, type, `Hash1` = MD5 of the content, `Hash2` =
+SHA-256 of the content — serialised and then stored in the pack, which is why
+the stored bytes are uniform (4 738 of them for 27 files and 1 674 bytes of
+names).  Two things remain before `d3tool` can emit one: the storage transform
+in the 0x4207dc path, and the exact grammar of the text (field order, quoting,
+separators) from the 0x41eeb0 builder.  With those, a pack carrying modified
+payloads can have a *correct* index computed for it, which is the difference
+between a pack the engine mounts and one it rejects as `has wrong index`.
+
 ## 6. The `.vdpack` mod archive
 
 A retail install keeps a unit as a loose folder; mods ship the whole tree as
