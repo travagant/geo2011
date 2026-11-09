@@ -26,6 +26,8 @@ d3studio/            1ivq-sM76QfVbU10zCR2P2BFKEoR-8R73
 | `README.md` (`1MR_mg7lQyPljkorrMC1ro7AXRx8Oh7_i`) | `02-документы` | описание студии: Godot и Unity, что переписано, как запускать |
 | `DRIVE.md` (`1O87zmj0MKzNA2HDYD0DHiIdijRotJaAm`) | `02-документы` | это правило: наша папка отдельно от авторской, структура |
 | `AUDIT-ASTRAFORGE-0.6.15.md` (`11wuvKJVZquhH2VV6E0GCxPpt4z7g-00E`) | `02-документы` | наш аудит последней версии автора: закрытый код, лицензии, что берём себе |
+| `NATIVE.md` (`1PBUlV7VSjjxwl08tizXZ5tolw7mBNKAa`) | `02-документы` | нативная часть на Rust: что есть, как собрать, что дальше |
+| `d3studio-src-0.3.2.zip` (`1RCKqaRU0VI9mkPQK4PmdtxYNyPIWjtJS`) | `01-исходники` | коммит `daa7931`: проверка модели перед импортом + `native/d3mesh` (Rust) |
 
 В **авторскую** папку `AstraForge` (не нашу) положено то, что принадлежит автору:
 
