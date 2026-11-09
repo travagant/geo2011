@@ -439,6 +439,11 @@ def run(args) -> int:
     link.port = port
     print(f"сервер  : http://127.0.0.1:{port}  (только этот ПК)")
     report.append(f"port:    {port}")
+    # The hand-off keeps failing, so the report itself carries both halves: the
+    # address (below, once a tunnel answers) and the token here. A user who can
+    # attach this one file has handed over the whole channel — no copying, no
+    # hunting for two values in two places.
+    report.append(f"token:   {link.token}")
     for line in tried:
         report.append(f"port try: {line}")
 
@@ -580,6 +585,7 @@ def _announce(url, token, transport, report, finish, httpd, unverified=False):
         print(" Проще: перетащи в чат один файл")
         print(f"   {send_me}")
         print("   (там эта же строка; можно и просто скопировать её выше)")
+    print(f" Или приложи файл {LINK_DIR / 'last-attempt.txt'} — в нём адрес и токен.")
     print("")
     print(" Окно не закрывай: пока оно открыто — канал жив. Enter = закрыть.")
     print(" Если в чате скажут «канал не отвечает» — проверь номер сборки выше:") 

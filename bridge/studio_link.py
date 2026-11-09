@@ -650,6 +650,10 @@ class Handler(BaseHTTPRequestHandler):
  <tr><th>адрес API</th><td><code>/cmd?token=…&amp;op=…</code></td></tr>
  <tr><th>студия</th><td><code>{self.link.studio_url}</code></td></tr>
 </table>
+<p class="note">Если ты открыл эту страницу по адресу вида <code>*.e2b.app</code> —
+ это копия сервера в песочнице Арены, а не на твоём компьютере: твою студию она
+ не видит и не увидит. Настоящий мост — это окно <code>Start studio link.cmd</code>
+ на твоём ПК, и он печатает строку <code>link &lt;адрес&gt; &lt;токен&gt;</code>.</p>
 <p class="note">Токен печатается в окне, которое запустило мост
  (<code>bridge\\.link\\token.txt</code> на твоём ПК) — в этой странице его нет
  намеренно. Без токена любой запрос к <code>/cmd</code> получает 403.</p>

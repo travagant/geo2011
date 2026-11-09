@@ -7146,3 +7146,70 @@ def test_link_leaves_one_file_to_drag_into_the_chat():
     assert "verdict: ok" in text
     assert verdicts == [(0, "ok")]
     (link_up.LINK_DIR / "SEND-ME.txt").unlink()
+
+
+def test_last_attempt_carries_both_halves_of_the_channel():
+    """The user already sends `last-attempt.txt` when something fails — it is the
+    file he knows how to attach. So it must contain both the address and the
+    token; otherwise the report says "530" and the session still cannot try, and
+    the conversation turns into "send me the line" three times in a row."""
+    import argparse
+    import builtins
+    import importlib
+
+    sys.path.insert(0, os.path.join(REPO, "bridge"))
+    link_up = importlib.import_module("link_up")
+    studio_link = importlib.import_module("studio_link")
+
+    headers = []
+
+    class FakeProc:
+        def poll(self):
+            return None
+
+        def terminate(self):
+            pass
+
+        def wait(self, timeout=0):
+            return 0
+
+        def kill(self):
+            pass
+
+    real_transports = link_up.transports
+    real_clip = link_up.copy_to_clipboard
+    real_input, real_print = builtins.input, builtins.print
+    with tempfile.TemporaryDirectory() as d:
+        link_dir = pathlib.Path(d, ".link")
+        link_dir.mkdir()
+        real_up_dir, real_link_dir = link_up.LINK_DIR, studio_link.LINK_DIR
+        link_up.LINK_DIR = studio_link.LINK_DIR = link_dir
+        studio = pathlib.Path(d, "AstraForge")
+        (studio / "runtime" / "ComfyUI").mkdir(parents=True)
+        config = pathlib.Path(d, "config.json")
+        with open(config, "w", encoding="utf-8") as fh:
+            json.dump({"studio": str(studio)}, fh)
+        try:
+            link_up.transports = lambda exe, port: [
+                ("fake tunnel", lambda: (FakeProc(), f"http://127.0.0.1:{port}",
+                                         link_dir / "fake.log"))]
+            link_up.copy_to_clipboard = lambda text: True
+            builtins.input = lambda *a, **kw: headers.append(a) or (_ for _ in ())
+            builtins.print = lambda *a, **kw: None
+            code = link_up.run(argparse.Namespace(
+                config=str(config), studio="", studio_url="http://127.0.0.1:3210",
+                ports=[3294, 3295], cloudflared="", no_download=True, probe_tries=1))
+        finally:
+            link_up.transports, link_up.copy_to_clipboard = real_transports, real_clip
+            builtins.input, builtins.print = real_input, real_print
+            link_up.LINK_DIR, studio_link.LINK_DIR = real_up_dir, real_link_dir
+
+        report = (link_dir / "last-attempt.txt").read_text(encoding="utf-8")
+        assert code == 0, report
+        assert "token:   " in report
+        assert "url:     http://127.0.0.1:" in report
+        assert "build:   " + studio_link.build_marker() in report
+        # and the one-file hand-off next to it says the same
+        send_me = (link_dir / "SEND-ME.txt").read_text(encoding="utf-8")
+        assert send_me.splitlines()[0].startswith("link http://127.0.0.1:")
+        assert send_me.splitlines()[1] == "build: " + studio_link.build_marker()
