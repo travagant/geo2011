@@ -6146,6 +6146,30 @@ def test_vdpack_scan_crosses_a_run_log_against_the_packs():
         assert "the scan found a pack for it at" in text
 
 
+def test_vdpack_pack_names_the_mod_after_its_file():
+    """The loader resolves `sModifications=mod:<name>` to `Mods\\<name>.vdpack`,
+    so a manifest built from scratch has to call itself what the file is
+    called — otherwise the archive and the game disagree about its name."""
+    from d3tool import vdpack
+    folder = os.path.join(REPO, "Neutrals", "AirElemental")
+    with tempfile.TemporaryDirectory() as d:
+        out = os.path.join(d, "AirElemental.vdpack")
+        assert climod._run(["vdpack", "pack", folder, "-o", out]) == 0
+        doc = vdpack.index_document(list(vdpack.read_vdpack(out).files().items()))
+        assert doc.name == "AirElemental"
+        assert doc.type == "Mod"
+        named = os.path.join(d, "something-else.vdpack")
+        assert climod._run(["vdpack", "pack", folder, "-o", named,
+                            "--name", "Ruru"]) == 0
+        doc = vdpack.index_document(
+            list(vdpack.read_vdpack(named).files().items()))
+        assert doc.name == "Ruru"
+        # rebuilding an archive that already carries an identity keeps it
+        files = list(vdpack.read_vdpack(named).files().items())
+        again = vdpack.index_document(vdpack.reindex_pack(files, name="Ignored"))
+        assert again.name == "Ruru"
+
+
 if __name__ == "__main__":
     # Keep this at the very end: `main()` collects every module-level
     # `test_*` function, so tests defined below an earlier guard would never

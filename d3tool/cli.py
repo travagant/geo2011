@@ -2257,10 +2257,14 @@ def _vdpack(args) -> int:
             ui.fail(f"{args.folder} already carries an `index` entry")
             return 1
         files = files + [taken]
-    if reindex:
-        files = vdmod.reindex_pack(files)      # no-op when it is already right
     out = args.out or (os.path.basename(os.path.normpath(args.folder)) +
                        ".vdpack")
+    if reindex:
+        # the loader is asked for a mod by the name in `sModifications` and
+        # mounts `Mods\<name>.vdpack`, so a pack built from scratch names
+        # itself after the file it is written to
+        identity = args.name or os.path.splitext(os.path.basename(out))[0]
+        files = vdmod.reindex_pack(files, name=identity)  # no-op when right
     blob = vdmod.build_vdpack(files)
     # Every pack the Heroes-VII port examined carries one `index`
     # resource; same-path replacement inside such a pack is game-confirmed,
@@ -2717,6 +2721,13 @@ def _build_parser() -> argparse.ArgumentParser:
         "--no-reindex", dest="reindex", action="store_false",
         help="carry the manifest over untouched (only correct when the "
              "payloads are the ones it already describes)")
+    p_vp.add_argument(
+        "--name", metavar="MOD",
+        help="the mod's `Name` in the `index` it writes (default: the output "
+             "file's name minus .vdpack) — the loader resolves "
+             "`sModifications=mod:<MOD>` to `Mods\\<MOD>.vdpack`, so a "
+             "manifest naming itself something else is a mod the game has to "
+             "be told about twice")
     p_vp.add_argument(
         "--keep-index", metavar="ARCHIVE",
         help="copy the `index` manifest of an existing pack into the "

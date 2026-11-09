@@ -825,14 +825,21 @@ def index_report(files) -> Dict[str, object]:
     return report
 
 
-def reindex_pack(files, seed: int = INDEX_SEED) -> List[Tuple[str, bytes]]:
+def reindex_pack(files, seed: int = INDEX_SEED,
+                 name: Optional[str] = None) -> List[Tuple[str, bytes]]:
     """``files`` with a manifest written for those exact bytes.
 
     The archive's own identity (``Name``/``UUID``/``Type``) is taken from the
     manifest it already carries when there is one, so rebuilding a mod's pack
-    keeps the mod's name; otherwise a fresh one is generated.  The `index`
-    entry keeps its position when the archive has one and goes to the front
-    when it does not, which is where every observed pack keeps it.
+    keeps the mod's name; otherwise ``name`` is used, and a fresh UUID is
+    generated.  The `index` entry keeps its position when the archive has one
+    and goes to the front when it does not, which is where every observed pack
+    keeps it.
+
+    ``name`` matters for a pack built from scratch: the loader is asked for a
+    mod by the name in ``sModifications`` and mounts ``Mods\\<name>.vdpack``,
+    so a manifest calling itself ``mod`` makes the file and the archive
+    disagree about what the mod is.  `vdpack pack` passes its output's stem.
     """
     pairs = _pairs(files)
     keep = None
@@ -840,7 +847,7 @@ def reindex_pack(files, seed: int = INDEX_SEED) -> List[Tuple[str, bytes]]:
         keep = index_document(pairs)
     except ValueError:
         keep = None
-    _text, blob = build_index(pairs, keep=keep, seed=seed)
+    _text, blob = build_index(pairs, name=name, keep=keep, seed=seed)
     out: List[Tuple[str, bytes]] = []
     placed = False
     for name, data in pairs:

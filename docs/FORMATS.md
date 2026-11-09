@@ -1392,6 +1392,45 @@ d3tool vdpack scan "…\Disciples III Rebirth" --log "…\run.log" --strict
 #     D3_test_faction6_mod.vdpack with `vdpack pack --like … --reindex`
 ```
 
+### Why a loose file cannot replace one the packs already carry
+
+The verification of §6g is not a property of a pack — it is a property of the
+*open*: whoever opens a resource by path names it, the resource manager finds a
+source for that path, and the bytes it serves are hashed and compared with the
+digest an index records for it.  From the retail executable:
+
+```
+0x490ca0  <open by path>                       ; ebp+8 = path, ebp+0xc = open flags
+0x490d75    mov byte [ebp-0x11], 0             ; "verify" flag, decided below
+0x490daf    call 0x416710                      ; resolver: which source, which id,
+                                               ;   which expected digest, verify or not
+0x490df7    mov byte [ebp-0x11], 0             ; flags & 2 -> never verify
+0x490ecd / 0x490fa6 / 0x491056   call 0x492600 ; one per source, only if the flag is set
+
+0x492600  <verify id against the expected digest>
+0x492643    call [vtbl+0x70]                   ; size the manager reports
+0x49267b    call [vtbl+0x64]                   ; the bytes the manager serves
+0x4926e0    call 0x40a550                      ; MD5  (IV 67452301 EFCDAB89 98BADCFE 10325476)
+0x4926eb    call 0x40e520                      ; the second digest, MD5+SHA-256 pair
+0x4926f8    call 0x4129e0                      ; compared with the expected one
+0x4926ff    jne  0x49270d                      ; -> Index error : str_not_valid_hash_for_file : <path>
+```
+
+So the digest is taken over **whatever the manager served**, and the expected
+digest comes from the index that lists the path.  A loose file has no index of
+its own, so the byte comparison still runs against the record the retail packs
+carry — an edited `.g` dropped into `resources\characters\empire\inquisitor\`
+can therefore never match, and the loader keeps answering
+`str_not_valid_hash_for_file` and serving nothing.  The only way an edited file
+becomes legal is for an index to state its new hash, and the only container
+whose index the loader reads besides the retail packs is **a mod `.vdpack`**.
+That is the whole reason the format exists, and why `vdpack pack` writes the
+manifest by default.
+
+`flags & 2` on the open is an engine-internal "do not verify" bit (the resolver
+clears the flag when it takes it); nothing in `user.ini` reaches it, so it is
+not a switch a modder can flip.
+
 ## 6. The `.vdpack` mod archive
 
 A retail install keeps a unit as a loose folder; mods ship the whole tree as
