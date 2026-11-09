@@ -9,10 +9,11 @@ import { createHash, randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { data, assetInfo, writeJson } from './storage.mjs';
+import { resolveModelSource, MODEL_EXTENSIONS } from './model-source.mjs';
 import { checkMesh } from './mesh-check.mjs';
 
 /** Форматы, которые Unity (или glTFast) импортирует без сторонних конвертеров. */
-export const UNITY_MODEL_EXTENSIONS = ['.glb', '.gltf', '.obj'];
+export const UNITY_MODEL_EXTENSIONS = MODEL_EXTENSIONS;
 
 /**
  * Кириллица в латиницу: папка в Unity должна переживать Windows, macOS и сборку под телефон,
@@ -109,10 +110,11 @@ export function unityReadme({ name, files, asset, mesh }) {
  * @returns {Promise<{id,name,url,output,files:{path,bytes,sha256}[],bytes}>}
  */
 export async function buildUnityBundle({ assetId, textures = [], name, dir } = {}) {
-  const asset = await assetInfo(assetId);
-  const extension = unityModelExtension(asset.extension);
-  const modelFile = path.join(data, 'assets', asset.id + extension);
-  const folder = unityName(name || asset.name || asset.id);
+  const source = await resolveModelSource(assetId);
+  const extension = unityModelExtension(source.extension);
+  const modelFile = source.file;
+  const asset = { id: assetId, name: source.name, extension };
+  const folder = unityName(name || source.name || assetId);
   const outDir = dir || path.join(data, 'exports');
 
   const entries = [{ abs: modelFile, rel: `Assets/${folder}/Models/${folder}${extension}` }];
@@ -177,6 +179,7 @@ export async function buildUnityBundle({ assetId, textures = [], name, dir } = {
     unity: { min_version: '2022.3', importer: 'com.unity.cloud.gltfast', scale: '1 unit = 1 meter', forward: '-Z' },
     name: folder,
     asset: { id: asset.id, name: asset.name || '', extension },
+    source: { origin: source.origin, version: source.version },
     mesh,
     files: [...files, { path: readmePath, role: 'readme' }, { path: manifestPath, role: 'manifest' }],
   };

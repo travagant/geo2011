@@ -1,11 +1,11 @@
 // Step 7 (Export): profiles, export job, result folder, download and validation rows.
 import React, { useEffect, useMemo, useState } from 'react';
-import { Package, Loader2, Download, Copy, FolderOpen } from 'lucide-react';
+import { Package, Loader2, Download, Copy, FolderOpen, Boxes, ShieldCheck } from 'lucide-react';
 import {
   exportProfilesFor, EXPORT_PROFILES, findOutput, dirOf, outputEntries, isActiveStatus, formatDate, fileNameOf,
   exportPlan, stepTitle,
 } from './forge-core.js';
-import { exportAsset, outputUrl, fetchJsonFile, getJob } from './forge-api.js';
+import { exportAsset, outputUrl, fetchJsonFile, getJob, checkModel, unityBundle } from './forge-api.js';
 import { Section, Notice, ChecksList, JobInline, ResultImages, useForge } from './ForgeUi.jsx';
 import { t, useT } from '../i18n/index.js';
 
@@ -68,6 +68,10 @@ export default function StepExport() {
   const [profile, setProfile] = useState(profiles[0]?.id || 'godot');
   const [busy, setBusy] = useState(false);
   const [validation, setValidation] = useState(null);
+  // Unity: our own package (server/unity.mjs) and pre-import check (server/mesh-check.mjs).
+  const [unityBusy, setUnityBusy] = useState('');
+  const [unityReport, setUnityReport] = useState(null);
+  const [unityPacked, setUnityPacked] = useState(null);
 
   const job = useMemo(() => sortedJobs.find((j) => j.assetId === assetId && isExportJob(j)) || null, [sortedJobs, assetId]);
   const active = job && isActiveStatus(job.status);
@@ -116,6 +120,41 @@ export default function StepExport() {
     }
   }
 
+  async function checkUnityModel() {
+    setUnityBusy('check');
+    try {
+      const report = await checkModel(assetId);
+      setUnityReport(report);
+      notify(t('unity.checked', { tri: report.triangles, vert: report.vertices }));
+    } catch (e) {
+      setUnityReport(null);
+      notify(t('unity.failed', { error: e.message }), true);
+    } finally {
+      setUnityBusy('');
+    }
+  }
+
+  async function packUnity() {
+    setUnityBusy('pack');
+    try {
+      const bundle = await unityBundle(assetId);
+      setUnityPacked(bundle);
+      if (bundle.mesh?.checked) setUnityReport({ ...bundle.mesh });
+      const link = document.createElement('a');
+      link.href = bundle.url;
+      link.download = bundle.name;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      notify(t('unity.ready', { name: bundle.name }));
+    } catch (e) {
+      notify(t('unity.failed', { error: e.message }), true);
+    } finally {
+      setUnityBusy('');
+    }
+  }
+
+  const unityFindings = Array.isArray(unityReport?.findings) ? unityReport.findings : [];
   const exportsList = Array.isArray(asset?.exports) ? [...asset.exports].reverse() : [];
   // The server exports the latest completed version: show its recipe before exporting.
   const plan = exportPlan(asset, kind);
@@ -205,6 +244,38 @@ export default function StepExport() {
           </div>
         </Section>
       )}
+      <Section title={t('unity.title')} aside={<span className="forge-stats">{t('unity.hint')}</span>}>
+        <div className="two-fields">
+          <button type="button" className="secondary" disabled={offline || !assetId || !!unityBusy} onClick={checkUnityModel}>
+            {unityBusy === 'check' ? <Loader2 size={14} className="spin" /> : <ShieldCheck size={14} />}
+            {unityBusy === 'check' ? t('unity.checking') : t('unity.check')}
+          </button>
+          <button type="button" className="primary" disabled={offline || !assetId || !!unityBusy} onClick={packUnity}>
+            {unityBusy === 'pack' ? <Loader2 size={14} className="spin" /> : <Boxes size={14} />}
+            {unityBusy === 'pack' ? t('unity.packing') : t('unity.download')}
+          </button>
+        </div>
+        {!assetId && <p className="field-note">{t('unity.needAsset')}</p>}
+        {unityReport && (
+          <p className="field-note">
+            {t('unity.findings')}: {t('unity.checked', { tri: unityReport.triangles ?? 0, vert: unityReport.vertices ?? 0 })}
+          </p>
+        )}
+        {unityFindings.length > 0 && (
+          <ul className="forge-warnings">
+            {unityFindings.map((f, i) => (
+              <li key={i} className={'unity-finding ' + (f.level || 'info')}>{f.text}</li>
+            ))}
+          </ul>
+        )}
+        {unityReport && !unityFindings.length && <p className="field-note">{t('unity.clean')}</p>}
+        {unityPacked && (
+          <p className="field-note">
+            {t('unity.ready', { name: unityPacked.name })}
+            {unityPacked.bytes ? ' · ' + Math.max(1, Math.round(unityPacked.bytes / 1024)) + ' KB' : ''}
+          </p>
+        )}
+      </Section>
       {offline && <Notice>{t('export.offline')}</Notice>}
     </>
   );

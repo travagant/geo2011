@@ -2392,4 +2392,18 @@ export default {
   "sprite.error.frames": "Некорректные параметры кадров.",
   "sprite.error.size": "Некорректный размер спрайтов.",
   "sprite.error.folder": "Некорректное имя папки.",
+
+  // Unity-пакет и проверка модели перед импортом (server/unity.mjs, server/mesh-check.mjs)
+  "unity.title": "Unity",
+  "unity.hint": "Модель, текстуры, манифест и инструкция импорта одним архивом: Assets/<Имя>/",
+  "unity.check": "Проверить модель",
+  "unity.checking": "Проверяю…",
+  "unity.download": "Скачать пакет для Unity",
+  "unity.packing": "Собираю пакет…",
+  "unity.ready": "Пакет собран: {name}",
+  "unity.findings": "Проверка модели",
+  "unity.clean": "Замечаний нет",
+  "unity.failed": "Проверка не прошла: {error}",
+  "unity.needAsset": "Сначала соберите версию ассета",
+  "unity.checked": "Проверено: {tri} треугольников, {vert} вершин",
 };

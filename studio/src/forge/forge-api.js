@@ -6,6 +6,22 @@ import { t } from '../i18n/index.js';
 
 export const FORGE_BASE = '/api/forge';
 
+/** Unity bundle and model check live outside /api/forge: our modules server/unity.mjs and server/mesh-check.mjs. */
+export const unityPaths = {
+  check: () => '/mesh/check',
+  bundle: () => '/unity/export',
+};
+
+/** Pre-import model check: triangles, vertices, UV, rig, findings. */
+export async function checkModel(assetId) {
+  return api(unityPaths.check(), { method: 'POST', body: JSON.stringify({ assetId }) });
+}
+
+/** Build the Unity package (.zip) and return {url, name, mesh}. */
+export async function unityBundle(assetId, textures = []) {
+  return api(unityPaths.bundle(), { method: 'POST', body: JSON.stringify({ assetId, textures }) });
+}
+
 /** Message of the "forge module not installed on the server" error (current language). */
 export const notReadyMessage = () => t('forge.api.notReady');
 const networkMessage = () => t('forge.api.network');

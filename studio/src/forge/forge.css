@@ -742,6 +742,12 @@
   line-height: 1.5;
   color: #d8c48e;
 }
+.unity-finding.blocker {
+  color: #e08c7a;
+}
+.unity-finding.info {
+  color: #9fb19a;
+}
 .forge-checks {
   border: 1px solid #3f4c40;
   border-radius: 5px;

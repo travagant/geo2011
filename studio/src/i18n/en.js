@@ -2394,4 +2394,18 @@ export default {
   "sprite.error.frames": "Invalid frame parameters.",
   "sprite.error.size": "Invalid sprite size.",
   "sprite.error.folder": "Invalid folder name.",
+
+  // Unity bundle and pre-import model check (server/unity.mjs, server/mesh-check.mjs)
+  "unity.title": "Unity",
+  "unity.hint": "Model, textures, manifest and import guide in one archive: Assets/<Name>/",
+  "unity.check": "Check the model",
+  "unity.checking": "Checking…",
+  "unity.download": "Download the Unity package",
+  "unity.packing": "Packing…",
+  "unity.ready": "Package ready: {name}",
+  "unity.findings": "Model check",
+  "unity.clean": "No findings",
+  "unity.failed": "The check failed: {error}",
+  "unity.needAsset": "Build a version of the asset first",
+  "unity.checked": "Checked: {tri} triangles, {vert} vertices",
 };

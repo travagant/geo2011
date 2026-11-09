@@ -46,7 +46,8 @@ npm test                    # node --test tests/*.test.mjs
 |---|---|---|
 | Студия и конвейер | `npm start` → `http://127.0.0.1:3210` | `npm test` |
 | Проверка модели перед импортом | `POST /api/mesh/check {"assetId"}` → треугольники, вершины, дубликаты, UV/нормали, скелет, клипы, границы, замечания | `tests/mesh-check.test.mjs`, 10 проверок |
-| Unity-пакет | `POST /api/unity/export {"assetId","textures"}` → `.zip` с `Assets/<Имя>/` | `tests/unity.test.mjs`, 9 проверок |
+| Unity-пакет | `POST /api/unity/export {"assetId","textures"}` → `.zip` с `Assets/<Имя>/`; в интерфейсе — шаг «Экспорт» → блок **Unity** («Проверить модель», «Скачать пакет для Unity») | `tests/unity.test.mjs`, 9 проверок |
+| Модель из Кузницы | один резолвер на оба хранилища: `data/assets/<id>.glb` и `library/assets/<id>/<версия>/` (`server/model-source.mjs`) | `tests/model-source.test.mjs`, 5 проверок |
 | Нативная проверка GLB (Rust) | `npm run native:build`, затем `d3mesh verify файл.glb` | `tests/native.test.mjs` (паритет — когда собран) |
 | Disciples 3 | отложен, модуль в `server/experimental/` | 8 проверок |
 
@@ -85,7 +86,7 @@ Assets/Knight-of-Death/
 * брендинг внутри i18n (`src/i18n/*.json`), `x-astra-client` → наш заголовок (5 файлов + 2 теста);
 * установщик (`installer/`, `ai/skills`, `data/runtime/custom_nodes`) — материал базовой версии,
   студия работает и без него, если ComfyUI и модели уже стоят;
-* кнопка Unity в интерфейсе — маршруты `/api/unity/export` и `/api/mesh/check` готовы, шаг экспорта
-  в мастере пока только Godot;
+* Unity-пакет в мастере пока отдельным блоком на шаге «Экспорт», а не профилем экспорта рядом с Godot
+  (профиль потребует шага в конвейере Кузницы);
 * нативная часть: собран только первый шаг (`d3mesh verify`), остальные по плану — `docs/studio/NATIVE.md`;
 * Godot-пакет (`forge-pipeline.mjs`, профиль `godot`) — базовый, наш ещё не переписан.

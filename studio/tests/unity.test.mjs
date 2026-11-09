@@ -37,8 +37,8 @@ test('unityName даёт имя папки без пробелов и служе
 
 test('unityModelExtension пропускает модели и объясняет отказ для остального', () => {
   for (const ext of ['.glb', '.GLTF', '.obj']) assert.equal(unityModelExtension(ext), ext.toLowerCase());
-  assert.throws(() => unityModelExtension('.fbx'), /В Unity уходит модель/);
-  assert.throws(() => unityModelExtension(''), /В Unity уходит модель/);
+  assert.throws(() => unityModelExtension('.fbx'), /уходит модель/);
+  assert.throws(() => unityModelExtension(''), /уходит модель/);
 });
 
 test('isTextureFile: png/jpg/tga да, модель нет', () => {
@@ -100,7 +100,7 @@ test('текстуры едут в Textures/ рядом с моделью', asyn
 test('не-модель и не-текстура — понятная ошибка, а не пустой пакет', async () => {
   const dir = await tempDir();
   const sheet = await saveAsset(Buffer.from('<svg/>'), '.svg', 'Sheet');
-  await assert.rejects(() => buildUnityBundle({ assetId: sheet.id, dir }), (e) => e.status === 400 && /В Unity уходит модель/.test(e.message));
+  await assert.rejects(() => buildUnityBundle({ assetId: sheet.id, dir }), (e) => e.status === 400 && /уходит модель/.test(e.message));
 
   const asset = await modelAsset('Mech');
   const bad = await saveAsset(Buffer.from('{}'), '.json', 'Meta');
