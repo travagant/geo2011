@@ -1,4 +1,5 @@
 """Self-contained tests for the d3tool package (run with `python3 tests/`)."""
+import base64
 import copy
 import dataclasses
 import hashlib
@@ -9,6 +10,7 @@ import shutil
 import tempfile
 import struct
 import sys
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -6168,6 +6170,202 @@ def test_vdpack_pack_names_the_mod_after_its_file():
         files = list(vdpack.read_vdpack(named).files().items())
         again = vdpack.index_document(vdpack.reindex_pack(files, name="Ignored"))
         assert again.name == "Ruru"
+
+
+def test_bridge_finds_exports_and_builds_the_right_commands():
+    """The AstraForge bridge only builds command lines and reads reports — so
+    the parts that can be wrong without a GPU or Blender are testable here:
+    which export it picks, what it tells Blender, and what it gates on."""
+    import json
+    sys.path.insert(0, os.path.join(REPO, "bridge"))
+    import astra_d3
+    from d3tool import vdpack
+
+    with tempfile.TemporaryDirectory() as d:
+        assets = os.path.join(d, "data", "library", "assets")
+        old = os.path.join(assets, "11111111-1111-1111-1111-111111111111",
+                           "versions", "v1", "old.glb")
+        new = os.path.join(assets, "22222222-2222-2222-2222-222222222222",
+                           "exports", "knight.glb")
+        for path in (old, new):
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "wb") as fh:
+                fh.write(b"glTF")
+        os.utime(old, (1000, 1000))
+        os.utime(new, (2000, 2000))
+        rows = astra_d3.discover_glbs(assets)
+        assert [os.path.basename(r["path"]) for r in rows] == ["knight.glb",
+                                                                "old.glb"]
+        assert rows[0]["asset"] == "22222222-2222-2222-2222-222222222222"
+        assert rows[0]["is_export"] and not rows[1]["is_export"]
+        assert astra_d3.newest_glb(assets)["path"] == new
+        assert astra_d3.discover_glbs(os.path.join(d, "nope")) == []
+
+        donor = os.path.join(d, "inquisitor")
+        os.makedirs(donor)
+        cfg = astra_d3.Config({
+            "studio": os.path.join(d, "studio"),
+            "blender": os.path.join(d, "blender.exe"),
+            "assets": assets,
+            "donor": donor,
+            "mods": os.path.join(d, "Mods"),
+            "mod_name": "AstraInq",
+            "reference_pack": os.path.join(d, "ruru.vdpack"),
+            "d3tool_repo": REPO,
+            "python": "py",
+        })
+        cmd = astra_d3.blender_command(cfg, new, "character_empire_inquisitor")
+        assert cmd[0].endswith("blender.exe") and cmd[1] == "-b"
+        assert "--factory-startup" in cmd and "--python" in cmd
+        assert cmd[cmd.index("--python") + 1].endswith("build_d3.py")
+        tail = cmd[cmd.index("--") + 1:]
+        assert tail[0] == new
+        assert tail[1].endswith(os.path.join("inquisitor",
+                                             "character_empire_inquisitor.g"))
+        assert tail[2].endswith(".build.json")
+        assert tail[tail.index("--donor") + 1] == donor
+        assert tail[tail.index("--weights") + 1] == "AUTO"
+        assert tail[tail.index("--d3tool") + 1] == REPO
+        assert "--no-anim" not in tail
+        cfg["anim"] = False
+        assert "--no-anim" in astra_d3.blender_command(cfg, new, "u")
+        cfg["anim"] = True
+
+        pack = astra_d3.pack_command(cfg)
+        assert pack[:3] == ["py", "-m", "d3tool"]
+        assert "pack" in pack and "--name" in pack
+        assert pack[pack.index("--name") + 1] == "AstraInq"
+        assert pack[pack.index("--like") + 1] == cfg["reference_pack"]
+        assert pack[pack.index("-o") + 1].endswith("AstraInq.vdpack")
+        scan = astra_d3.scan_command(cfg)
+        assert scan[-1] == "--json" and "scan" in scan
+        # a missing report is not an exception: the caller reports the failure
+        assert astra_d3.read_build_report(os.path.join(d, "nothing.json")) == {}
+
+        # the gate reads `vdpack scan --json`, so build one for real
+        folder = os.path.join(REPO, "Neutrals", "AirElemental")
+        files = vdpack.reindex_pack(vdpack.pack_folder(folder))
+        good = os.path.join(d, "good.vdpack")
+        with open(good, "wb") as fh:
+            fh.write(vdpack.build_vdpack(files))
+        stale = os.path.join(d, "stale.vdpack")
+        with open(stale, "wb") as fh:
+            fh.write(vdpack.build_vdpack(
+                [(n, b + b"\x00") if n.lower().endswith(".g") else (n, b)
+                 for n, b in files]))
+        clean = {"packs": [vdpack.scan_pack(good)], "findings": []}
+        assert astra_d3.scan_verdict(clean)[0] is True
+        rows = [vdpack.scan_pack(good), vdpack.scan_pack(stale)]
+        findings = vdpack.scan_findings(rows)
+        payload = {"packs": rows,
+                   "findings": [{"level": lvl, "text": txt}
+                                for lvl, txt in findings]}
+        ok, messages = astra_d3.scan_verdict(json.dumps(payload))
+        assert ok is False
+        assert any("str_not_valid_hash_for_file" in m for m in messages)
+        assert astra_d3.scan_verdict("not json")[0] is False
+        assert astra_d3.scan_verdict({})[0] is False
+
+
+def test_studio_link_is_a_token_gated_local_executor():
+    """The link is the only part of this repository that runs on the user's
+    machine while a remote session drives it, so what is pinned down here is
+    the contract: no token, no answer; nothing outside the allowed folders;
+    long work returns a job id instead of blocking the request."""
+    import importlib
+    import json
+    import pathlib
+    import threading
+    import urllib.error
+    import urllib.parse
+    import urllib.request
+    from http.server import ThreadingHTTPServer
+
+    sys.path.insert(0, os.path.join(REPO, "bridge"))
+    link_mod = importlib.import_module("studio_link")
+    astra_d3 = link_mod.astra_d3
+
+    with tempfile.TemporaryDirectory() as d:
+        state = pathlib.Path(d, "state")
+        state.mkdir()
+        link_mod.LINK_DIR = state
+        link_mod.TOKEN_FILE = state / "token.txt"
+        link_mod.JOBS_DIR = state / "jobs"
+        link_mod.JOBS_DIR.mkdir()
+
+        studio = pathlib.Path(d, "AstraForge")
+        (studio / "data" / "library" / "assets").mkdir(parents=True)
+        donor = pathlib.Path(d, "inquisitor")
+        donor.mkdir()
+        (donor / "character_x.g").write_bytes(b"GM")
+        cfg = astra_d3.Config({"studio": str(studio), "donor": str(donor),
+                               "mods": str(pathlib.Path(d, "Mods")),
+                               "assets": str(studio / "data" / "library" / "assets")})
+        cfg["d3tool_repo"] = REPO
+        cfg.resolve()
+        link = link_mod.Link(cfg, 0, "http://127.0.0.1:9")   # nothing listens there
+        assert len(link.token) >= 16
+
+        link_mod.Handler.link = link
+        httpd = ThreadingHTTPServer(("127.0.0.1", 0), link_mod.Handler)
+        port = httpd.server_address[1]
+        threading.Thread(target=httpd.serve_forever, daemon=True).start()
+
+        def call(op, **params):
+            query = urllib.parse.urlencode({"token": link.token, "op": op, **params})
+            try:
+                with urllib.request.urlopen(
+                        f"http://127.0.0.1:{port}/cmd?{query}", timeout=30) as resp:
+                    return resp.status, json.loads(resp.read().decode())
+            except urllib.error.HTTPError as exc:
+                return exc.code, json.loads(exc.read().decode())
+
+        try:
+            query = urllib.parse.urlencode({"token": "wrong", "op": "hello"})
+            try:
+                urllib.request.urlopen(f"http://127.0.0.1:{port}/cmd?{query}",
+                                       timeout=10)
+                raise AssertionError("a wrong token must not be answered")
+            except urllib.error.HTTPError as exc:
+                assert exc.code == 403
+
+            status, body = call("hello")
+            assert status == 200 and body["ok"]
+            assert body["result"]["studio_api"]["status"] == 0     # studio is down
+            assert body["result"]["port"] == 0
+
+            status, body = call("read", path=os.path.join(REPO, "README.md"),
+                                max="80")
+            assert body["ok"] and "geo2011" in body["result"]["text"]
+
+            for escape in ("/etc/passwd", str(pathlib.Path(d, "outside.txt"))):
+                status, body = call("read", path=escape)
+                assert status == 400 and "outside the folders" in body["error"]
+
+            target = str(studio / "note.txt")
+            status, body = call("write", path=target,
+                                b64=base64.b64encode(b"hello").decode())
+            assert body["ok"] and pathlib.Path(target).read_text() == "hello"
+
+            status, body = call("d3tool", args="vdpack --help")
+            assert body["ok"] and body["result"]["exit"] == 0
+
+            status, body = call("build")            # no GLB anywhere: a job fails
+            assert body["ok"] and body["result"]["job"]
+            job_id = body["result"]["job"]
+            for _ in range(50):
+                status, body = call("job", id=job_id)
+                if body["result"]["status"] != "running":
+                    break
+                time.sleep(0.1)
+            assert body["result"]["status"] == "failed"
+            assert "no GLB" in body["result"]["result"]["reason"]
+
+            status, body = call("nonsense")
+            assert status == 400 and "unknown op" in body["error"]
+        finally:
+            httpd.shutdown()
+            httpd.server_close()
 
 
 if __name__ == "__main__":

@@ -27,6 +27,7 @@ The point is to support a future program that, like dis3tool, exports glTF but
 | `Profiles/` | the retail unit profiles (874 `.char`: 214 units + their `desc`/`stats`/`sound` fragments). |
 | `docs/PORT_ANALYSIS_COMPARE_RU.md` | cross-check of the Heroes-VII `Port` archive against this toolkit (the `.a` grammar taken from the official Max exporter, `.g` bind conventions, what was adopted). |
 | `blender/io_scene_d3unit/` | the Blender add-on (import `.g`/`.a`/`.scene` → armature + animation, export back). |
+| `bridge/` | AstraForge → unit → `.vdpack` bridge. `astra_d3.py doctor/list/build/pack/run/watch` drives Blender headless with the add-on and gates the pack on `vdpack scan`; `studio_link.py` + `studio-link.ps1` let a session drive that over a localhost link (see `bridge/README.md`, `bridge/QUICKSTART.ru.md`). |
 | `tests/blender_addon_test.py` | headless Blender suite (21 scenarios, operator-driven). |
 | `tests/blender_corpus_test.py` | every shipped unit through import → export in Blender, re-parsed and compared with its donor (~5 s per unit). |
 | `d3tool/` | the Python toolkit (bidirectional: glTF↔original format). |
