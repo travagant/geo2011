@@ -357,10 +357,18 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     args.ports = [int(p) for p in args.ports.split(",") if p.strip()]
     try:
-        return run(args)
+        code = run(args)
     except KeyboardInterrupt:
         print("\nостановлено")
         return 0
+    # Double-clicking this .py (when .cmd is blocked by policy) has no console
+    # wrapper to hold the window; Start studio link.cmd sets D3_LINK_NO_PAUSE.
+    if code != 0 and os.name == "nt" and not os.environ.get("D3_LINK_NO_PAUSE"):
+        try:
+            input("\nEnter — закрыть ")
+        except (EOFError, KeyboardInterrupt):
+            pass
+    return code
 
 
 if __name__ == "__main__":

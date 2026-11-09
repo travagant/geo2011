@@ -4,6 +4,7 @@ rem prints the line to paste into the chat. ASCII only: the Russian messages com
 rem from link_up.py, which prints them through the Windows console API.
 setlocal
 cd /d "%~dp0"
+set "D3_LINK_NO_PAUSE=1"
 title AstraForge - Arena link
 set "PYEXE="
 where py >nul 2>&1 && set "PYEXE=py -3"
