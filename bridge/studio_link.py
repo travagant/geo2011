@@ -423,6 +423,10 @@ OPS = {
 class Handler(BaseHTTPRequestHandler):
     link: Link = None
     server_version = "studio-link/1.0"
+    # HTTP/1.1 with an explicit Content-Length on every answer (see `_send`):
+    # a proxy in front of us — cloudflared, an ssh tunnel — behaves better when
+    # the origin speaks keep-alive, and a wrong length would hang a client
+    protocol_version = "HTTP/1.1"
 
     def log_message(self, fmt, *args):  # keep stdout for the operator
         pass
