@@ -28,6 +28,7 @@ d3studio/            1ivq-sM76QfVbU10zCR2P2BFKEoR-8R73
 | `AUDIT-ASTRAFORGE-0.6.15.md` (`11wuvKJVZquhH2VV6E0GCxPpt4z7g-00E`) | `02-документы` | наш аудит последней версии автора: закрытый код, лицензии, что берём себе |
 | `NATIVE.md` (`1PBUlV7VSjjxwl08tizXZ5tolw7mBNKAa`) | `02-документы` | нативная часть на Rust: что есть, как собрать, что дальше |
 | `d3studio-src-0.3.2.zip` (`1RCKqaRU0VI9mkPQK4PmdtxYNyPIWjtJS`) | `01-исходники` | коммит `daa7931`: проверка модели перед импортом + `native/d3mesh` (Rust) |
+| `d3studio-src-0.3.3.zip` (`1GnaWViXjnocYBvkRbe0muvAyX_2t1fCp`) | `01-исходники` | коммит `cc87f51`: Unity в интерфейсе, резолвер модели из Кузницы |
 
 В **авторскую** папку `AstraForge` (не нашу) положено то, что принадлежит автору:
 
