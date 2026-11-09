@@ -31,6 +31,8 @@ d3studio/            1ivq-sM76QfVbU10zCR2P2BFKEoR-8R73
 | `d3studio-src-0.3.3.zip` (`1GnaWViXjnocYBvkRbe0muvAyX_2t1fCp`) | `01-исходники` | коммит `cc87f51`: Unity в интерфейсе, резолвер модели из Кузницы |
 | `d3studio-src-0.3.4.zip` (`1BZdMfQhfNPG0tZGl1wNg6Hrn8pZMasyj`) | `01-исходники` | коммит `ffe0c15`: один сборщик пакетов для Unity и Godot |
 | `d3studio-src-0.3.5.zip` (`1EWp7Vin9oPVbhQ65aieX7iQ1PgvkWsHo`) | `01-исходники` | коммит `c0eba11`: режим промпта `product` / `literal` |
+| `d3studio-src-0.3.6.zip` (`1ZmgTNMwLIXgrjZVlF5bnHqelNGleqIzk`) | `01-исходники` | коммит `7985ffc`: где считает локальная модель, `keep_alive` 5m, выгрузка VRAM перед 3D |
+| `LLM-GPU.md` (`1AZ307BUsaJqekGSfjHqNVFJyC6K56F8_`) | `02-документы` | почему локальная модель уходит на процессор и как проверить |
 | `PROMPTS.md` (`1ZCjYDtvcQtaOC4DyEbv_t4CjTlxdBcPb`) | `02-документы` | разбор промптов автора: цензуры нет, есть переписывание |
 
 В **авторскую** папку `AstraForge` (не нашу) положено то, что принадлежит автору:
