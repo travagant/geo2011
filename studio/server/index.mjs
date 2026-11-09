@@ -18,8 +18,8 @@ import { loadJobs,allJobs,getJob,createJob,cancelJob,validateJobMesh } from './j
 import { startRuntime,stopOwnedRuntime } from './runtime.mjs';
 import { resolveEngine,pixal3dStatus,startPixal3dRuntime } from './pixal3d.mjs';
 import {prepareConcept} from './preprocess.mjs';
+import {buildUnityBundle,UNITY_MODEL_EXTENSIONS} from './unity.mjs';
 import {optimizeMeshes} from './optimize.mjs';
-import {exportAsset,exportMeta,insideDir} from './d3tool.mjs';
 await init();await loadJobs();
 let config=configSchema.parse({...defaults,...await readJson(path.join(data,'config.json'),{})});
 const app=express();const port=Number(process.env.PORT)||3210;
@@ -53,10 +53,9 @@ app.post('/api/assets',upload.single('file'),asyncRoute(async(req,res)=>{
 }));
 app.get('/api/assets/:id',asyncRoute(async(req,res)=>{const info=await assetInfo(req.params.id);res.sendFile(path.join(data,'assets',info.id+info.extension));}));
 app.post('/api/exports',upload.single('file'),asyncRoute(async(req,res)=>{const file=req.file;if(!file)throw new Error('No export file');const ext=path.extname(file.originalname).toLowerCase();if(!['.glb','.obj','.json','.png','.webm','.zip','.tres'].includes(ext))throw new Error('Unsupported export format');const id=randomUUID();const name=file.originalname.replace(/[<>:"/\\|?*\x00-\x1f]/g,'_').slice(-150);await fs.writeFile(path.join(data,'exports',id+ext),file.buffer);await writeJson(path.join(data,'exports',id+'.meta.json'),{name,extension:ext});res.json({url:'/api/exports/'+id,name});}));
-app.post('/api/d3/export',asyncRoute(async(req,res)=>{const {assetId}=z.object({assetId:z.string()}).strict().parse(req.body);const info=await assetInfo(assetId);const meta=await exportAsset(info);res.json({id:meta.id,assetId:meta.assetId,name:meta.name,files:meta.files.map(f=>({path:f,url:'/api/d3/export/'+meta.id+'/file/'+f.split('/').map(encodeURIComponent).join('/')})),output:meta.output});}));
-app.get('/api/d3/export/:id',asyncRoute(async(req,res)=>res.json(await exportMeta(req.params.id))));
-// путь файла берём из адреса целиком: экспорт пишет подпапки, и только insideDir решает, что можно отдать
-app.get(/^\/api\/d3\/export\/([0-9a-f-]{36})\/file\/(.+)$/,asyncRoute(async(req,res)=>{const meta=await exportMeta(req.params[0]);const rel=decodeURIComponent(req.params[1]);res.sendFile(insideDir(meta.dir,rel));}));
+// Unity-пакет: .glb + текстуры + манифест + README в одном .zip (server/unity.mjs).
+app.post('/api/unity/export',asyncRoute(async(req,res)=>{const {assetId,textures=[],name}=z.object({assetId:z.string(),textures:z.array(z.string()).max(20).optional(),name:z.string().max(120).optional()}).parse(req.body||{});res.json(await buildUnityBundle({assetId,textures,name}));}));
+app.get('/api/unity/formats',(req,res)=>res.json({models:UNITY_MODEL_EXTENSIONS,min_version:'2022.3',importer:'com.unity.cloud.gltfast'}));
 app.get('/api/exports/:id',asyncRoute(async(req,res)=>{if(!isId(req.params.id))return res.status(400).end();const info=await readJson(path.join(data,'exports',req.params.id+'.meta.json'),null);if(!info)return res.status(404).end();res.download(path.join(data,'exports',req.params.id+info.extension),info.name);}));
 app.get('/api/jobs',(req,res)=>res.json(allJobs()));
 app.post('/api/jobs',asyncRoute(async(req,res)=>{if(llmBusy)throw new Error('Wait for the AI reply.');if(allJobs().filter(j=>['running','queued'].includes(j.status)).length>=4)throw new Error('The queue is full. Wait for a job to finish.');const input=generationSchema.parse(req.body);input.engine=resolveEngine(input.engine);if(input.viewSetId){const set=await viewSets.getSet(input.viewSetId);if(!set.canBuild)throw new Error('The views are not ready yet: wait for view generation to finish or add a front view.');if(!input.imageId&&set.frontAssetId)input.imageId=set.frontAssetId;}if(input.imageId){const info=await assetInfo(input.imageId);if(!['.png','.jpg','.jpeg','.webp'].includes(info.extension))throw new Error('Generation needs a concept in image form.');}res.status(202).json(await createJob(input,config));}));

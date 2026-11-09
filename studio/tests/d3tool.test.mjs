@@ -1,4 +1,4 @@
-// Мост в Disciples 3 (server/d3tool.mjs): запуск `python -m d3tool export`, список файлов,
+// Мост в Disciples 3 (server/experimental/d3tool.mjs) — отключён от студии, но не потерян: запуск `python -m d3tool export`, список файлов,
 // понятные ошибки и защита от выхода за папку экспорта. Поддельный пакет `d3tool` пишется
 // во временную папку — настоящий репозиторий и настоящие юниты для этого не нужны.
 import test from 'node:test';
@@ -8,7 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 
-import { runD3Export, listFiles, insideDir, safeName, isModelFile, exportAsset, exportMeta } from '../server/d3tool.mjs';
+import { runD3Export, listFiles, insideDir, safeName, isModelFile, exportAsset, exportMeta } from '../server/experimental/d3tool.mjs';
 import { data } from '../server/storage.mjs';
 
 const PY = process.env.PYTHON || (process.platform === 'win32' ? 'python' : 'python3');

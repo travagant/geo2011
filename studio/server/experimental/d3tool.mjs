@@ -1,3 +1,9 @@
+// ЭКСПЕРИМЕНТ, НЕ ПОДКЛЮЧЁН К СТУДИИ (решение владельца 09.11.2026).
+// Формат Disciples 3 до конца не известен: изменённый ванильный юнит роняет игру, поэтому
+// экспорт в .g/.scene/.ac/.a из студии убран — студия развивается по Godot и Unity.
+// Модуль сохранён как есть, чтобы не потерять проверенную работу: когда формат подтвердится,
+// маршруты из server/index.mjs возвращаются тремя строками. Ниже — исходное описание.
+//
 // glTF/GLB → файлы Disciples 3 через наш собственный `d3tool`.
 //
 // Это первое, чего у базовой версии 0.3.0 не было и быть не могло: её конвейер заканчивался
@@ -12,7 +18,7 @@ import { spawn } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { root, data } from './storage.mjs';
+import { root, data } from '../storage.mjs';
 
 export const MODEL_EXTENSIONS = ['.glb', '.gltf'];
 export const DEFAULT_PYTHON = process.env.D3TOOL_PYTHON || 'python';
