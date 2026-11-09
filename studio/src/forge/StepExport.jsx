@@ -5,7 +5,7 @@ import {
   exportProfilesFor, EXPORT_PROFILES, findOutput, dirOf, outputEntries, isActiveStatus, formatDate, fileNameOf,
   exportPlan, stepTitle,
 } from './forge-core.js';
-import { exportAsset, outputUrl, fetchJsonFile, getJob, checkModel, unityBundle } from './forge-api.js';
+import { exportAsset, outputUrl, fetchJsonFile, getJob, checkModel, engineBundle } from './forge-api.js';
 import { Section, Notice, ChecksList, JobInline, ResultImages, useForge } from './ForgeUi.jsx';
 import { t, useT } from '../i18n/index.js';
 
@@ -69,6 +69,7 @@ export default function StepExport() {
   const [busy, setBusy] = useState(false);
   const [validation, setValidation] = useState(null);
   // Unity: our own package (server/unity.mjs) and pre-import check (server/mesh-check.mjs).
+  const [bundleEngine, setBundleEngine] = useState('unity');
   const [unityBusy, setUnityBusy] = useState('');
   const [unityReport, setUnityReport] = useState(null);
   const [unityPacked, setUnityPacked] = useState(null);
@@ -137,7 +138,7 @@ export default function StepExport() {
   async function packUnity() {
     setUnityBusy('pack');
     try {
-      const bundle = await unityBundle(assetId);
+      const bundle = await engineBundle(bundleEngine, assetId);
       setUnityPacked(bundle);
       if (bundle.mesh?.checked) setUnityReport({ ...bundle.mesh });
       const link = document.createElement('a');
@@ -245,6 +246,24 @@ export default function StepExport() {
         </Section>
       )}
       <Section title={t('unity.title')} aside={<span className="forge-stats">{t('unity.hint')}</span>}>
+        <div className="forge-sources" role="radiogroup" aria-label={t('unity.engine')}>
+          {['unity', 'godot'].map((id) => (
+            <button
+              key={id}
+              type="button"
+              role="radio"
+              aria-checked={bundleEngine === id}
+              className={bundleEngine === id ? 'active' : ''}
+              onClick={() => setBundleEngine(id)}
+            >
+              <Boxes size={16} />
+              <span>
+                {id === 'unity' ? 'Unity' : 'Godot'}
+                <small>{t('unity.engine.' + id)}</small>
+              </span>
+            </button>
+          ))}
+        </div>
         <div className="two-fields">
           <button type="button" className="secondary" disabled={offline || !assetId || !!unityBusy} onClick={checkUnityModel}>
             {unityBusy === 'check' ? <Loader2 size={14} className="spin" /> : <ShieldCheck size={14} />}

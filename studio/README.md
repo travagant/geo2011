@@ -46,10 +46,24 @@ npm test                    # node --test tests/*.test.mjs
 |---|---|---|
 | Студия и конвейер | `npm start` → `http://127.0.0.1:3210` | `npm test` |
 | Проверка модели перед импортом | `POST /api/mesh/check {"assetId"}` → треугольники, вершины, дубликаты, UV/нормали, скелет, клипы, границы, замечания | `tests/mesh-check.test.mjs`, 10 проверок |
-| Unity-пакет | `POST /api/unity/export {"assetId","textures"}` → `.zip` с `Assets/<Имя>/`; в интерфейсе — шаг «Экспорт» → блок **Unity** («Проверить модель», «Скачать пакет для Unity») | `tests/unity.test.mjs`, 9 проверок |
+| Пакет для движка | `POST /api/unity/export` → `.zip` c `Assets/<Имя>/`, `POST /api/godot/export` → `Godot/<Имя>/`; общий сборщик `server/engine-bundle.mjs`, профили — данные. В интерфейсе: шаг «Экспорт» → «Пакет для движка», переключатель Unity / Godot, «Проверить модель» и «Скачать пакет» | `tests/unity.test.mjs` (9), `tests/godot.test.mjs` (4) |
 | Модель из Кузницы | один резолвер на оба хранилища: `data/assets/<id>.glb` и `library/assets/<id>/<версия>/` (`server/model-source.mjs`) | `tests/model-source.test.mjs`, 5 проверок |
 | Нативная проверка GLB (Rust) | `npm run native:build`, затем `d3mesh verify файл.glb` | `tests/native.test.mjs` (паритет — когда собран) |
 | Disciples 3 | отложен, модуль в `server/experimental/` | 8 проверок |
+
+## Пакет для движка: что именно уезжает
+
+Движки отличаются только раскладкой папок и инструкцией, поэтому сборщик один
+(`server/engine-bundle.mjs`), а профили — данные:
+
+| Движок | Куда распаковывать | Модель и текстуры | Импортёр | С чего начинать в движке |
+|---|---|---|---|---|
+| Unity | `Assets/<Имя>/` | `Models/`, `Textures/` | `com.unity.cloud.gltfast` | Package Manager → Add package by name |
+| Godot | `Godot/<Имя>/` | `models/`, `textures/` | встроенный glTF | скопировать папку в проект, `.glb` импортируется сам |
+
+В README внутри пакета — шаги под конкретный движок: масштаб 1 юнит = 1 метр, направление лица `-Z`,
+материалы (`StandardMaterial3D` в Godot / конверсия в URP-HDRP в Unity), клипы (`AnimationPlayer` /
+пакет анимаций), и честное «коллизию Godot не создаёт — добавьте `StaticBody3D` + `CollisionShape3D`.
 
 ## Unity: что именно уезжает в движок
 

@@ -19,6 +19,7 @@ import { startRuntime,stopOwnedRuntime } from './runtime.mjs';
 import { resolveEngine,pixal3dStatus,startPixal3dRuntime } from './pixal3d.mjs';
 import {prepareConcept} from './preprocess.mjs';
 import {buildUnityBundle,UNITY_MODEL_EXTENSIONS} from './unity.mjs';
+import {buildGodotBundle,GODOT_ENGINE} from './godot.mjs';
 import {checkMesh} from './mesh-check.mjs';
 import {resolveModelSource} from './model-source.mjs';
 import {optimizeMeshes} from './optimize.mjs';
@@ -59,6 +60,8 @@ app.post('/api/exports',upload.single('file'),asyncRoute(async(req,res)=>{const 
 app.post('/api/mesh/check',asyncRoute(async(req,res)=>{const {assetId}=z.object({assetId:z.string()}).parse(req.body||{});const source=await resolveModelSource(assetId);if(source.extension==='.obj')throw Object.assign(new Error('Проверка сделана для GLB: .obj разбирает сам движок'),{status:400});const report=checkMesh(await fs.readFile(source.file));res.json({asset:{id:assetId,name:source.name,extension:source.extension,origin:source.origin,version:source.version},...report});}));
 // Unity-пакет: .glb + текстуры + манифест + README в одном .zip (server/unity.mjs).
 app.post('/api/unity/export',asyncRoute(async(req,res)=>{const {assetId,textures=[],name}=z.object({assetId:z.string(),textures:z.array(z.string()).max(20).optional(),name:z.string().max(120).optional()}).parse(req.body||{});res.json(await buildUnityBundle({assetId,textures,name}));}));
+app.post('/api/godot/export',asyncRoute(async(req,res)=>{const {assetId,textures=[],name}=z.object({assetId:z.string(),textures:z.array(z.string()).max(20).optional(),name:z.string().max(120).optional()}).parse(req.body||{});res.json(await buildGodotBundle({assetId,textures,name}));}));
+app.get('/api/godot/formats',(req,res)=>res.json({models:UNITY_MODEL_EXTENSIONS,min_version:GODOT_ENGINE.meta.min_version,importer:GODOT_ENGINE.meta.importer}));
 app.get('/api/unity/formats',(req,res)=>res.json({models:UNITY_MODEL_EXTENSIONS,min_version:'2022.3',importer:'com.unity.cloud.gltfast'}));
 app.get('/api/exports/:id',asyncRoute(async(req,res)=>{if(!isId(req.params.id))return res.status(400).end();const info=await readJson(path.join(data,'exports',req.params.id+'.meta.json'),null);if(!info)return res.status(404).end();res.download(path.join(data,'exports',req.params.id+info.extension),info.name);}));
 app.get('/api/jobs',(req,res)=>res.json(allJobs()));

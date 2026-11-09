@@ -12,14 +12,26 @@ export const unityPaths = {
   bundle: () => '/unity/export',
 };
 
+/** One route per engine (server/unity.mjs, server/godot.mjs); the payload is the same. */
+export const bundlePaths = {
+  unity: '/unity/export',
+  godot: '/godot/export',
+};
+
 /** Pre-import model check: triangles, vertices, UV, rig, findings. */
 export async function checkModel(assetId) {
   return api(unityPaths.check(), { method: 'POST', body: JSON.stringify({ assetId }) });
 }
 
-/** Build the Unity package (.zip) and return {url, name, mesh}. */
+/** Build the engine package (.zip) and return {url, name, engine, mesh}. */
+export async function engineBundle(engine, assetId, textures = []) {
+  const url = bundlePaths[engine] || bundlePaths.unity;
+  return api(url, { method: 'POST', body: JSON.stringify({ assetId, textures }) });
+}
+
+/** Build the Unity package (kept for older callers). */
 export async function unityBundle(assetId, textures = []) {
-  return api(unityPaths.bundle(), { method: 'POST', body: JSON.stringify({ assetId, textures }) });
+  return engineBundle('unity', assetId, textures);
 }
 
 /** Message of the "forge module not installed on the server" error (current language). */

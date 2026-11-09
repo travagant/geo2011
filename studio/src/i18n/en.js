@@ -2396,8 +2396,11 @@ export default {
   "sprite.error.folder": "Invalid folder name.",
 
   // Unity bundle and pre-import model check (server/unity.mjs, server/mesh-check.mjs)
-  "unity.title": "Unity",
-  "unity.hint": "Model, textures, manifest and import guide in one archive: Assets/<Name>/",
+  "unity.title": "Engine package",
+  "unity.hint": "Model, textures, manifest and import guide in one archive",
+  "unity.engine": "Engine",
+  "unity.engine.unity": "glTFast, Assets/<Name>/",
+  "unity.engine.godot": "built-in import, Godot/<Name>/",
   "unity.check": "Check the model",
   "unity.checking": "Checking…",
   "unity.download": "Download the Unity package",

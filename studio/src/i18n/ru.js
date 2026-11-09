@@ -2394,8 +2394,11 @@ export default {
   "sprite.error.folder": "Некорректное имя папки.",
 
   // Unity-пакет и проверка модели перед импортом (server/unity.mjs, server/mesh-check.mjs)
-  "unity.title": "Unity",
-  "unity.hint": "Модель, текстуры, манифест и инструкция импорта одним архивом: Assets/<Имя>/",
+  "unity.title": "Пакет для движка",
+  "unity.hint": "Модель, текстуры, манифест и инструкция импорта одним архивом",
+  "unity.engine": "Движок",
+  "unity.engine.unity": "glTFast, Assets/<Имя>/",
+  "unity.engine.godot": "встроенный импорт, Godot/<Имя>/",
   "unity.check": "Проверить модель",
   "unity.checking": "Проверяю…",
   "unity.download": "Скачать пакет для Unity",
