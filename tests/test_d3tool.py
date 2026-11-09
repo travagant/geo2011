@@ -6368,6 +6368,77 @@ def test_studio_link_is_a_token_gated_local_executor():
             httpd.server_close()
 
 
+def test_link_up_reads_the_tunnel_address_and_proves_it():
+    """The launcher is the one piece that has to work on a machine we cannot
+    see, so its two fallible steps — reading cloudflared's address out of its
+    own log, and proving that address answers before it is handed over — are
+    pinned here. The address is printed in a box, and a quick tunnel prints it
+    long before it is routable, so a regex on a single line or a bare
+    'the process started' is not enough."""
+    import importlib
+    import pathlib
+    import threading
+    import time
+    from http.server import ThreadingHTTPServer
+
+    sys.path.insert(0, os.path.join(REPO, "bridge"))
+    link_up = importlib.import_module("link_up")
+    astra_d3 = link_up.astra_d3
+    studio_link = link_up.studio_link
+
+    with tempfile.TemporaryDirectory() as d:
+        state = pathlib.Path(d, "state")
+        state.mkdir()
+        studio_link.LINK_DIR = state
+        studio_link.TOKEN_FILE = state / "token.txt"
+        studio_link.JOBS_DIR = state / "jobs"
+        studio_link.JOBS_DIR.mkdir()
+
+        # 1. an address in cloudflared's box art, and the newest one wins
+        log = pathlib.Path(d, "tunnel.log")
+        log.write_text(
+            "INF Requesting new quick Tunnel on trycloudflare.com...\n"
+            "+--------------------------------------------------------------------+\n"
+            "|  https://plain-owl-marks-the-spot.trycloudflare.com                 |\n"
+            "+--------------------------------------------------------------------+\n"
+            "INF Registered tunnel connection connIndex=0 location=waw02\n",
+            encoding="utf-8")
+        assert link_up.url_from_log(log) == \
+            "https://plain-owl-marks-the-spot.trycloudflare.com"
+        with open(log, "a", encoding="utf-8") as fh:
+            fh.write("INF retry: https://second-name-here.trycloudflare.com\n")
+        assert link_up.url_from_log(log).endswith("second-name-here.trycloudflare.com")
+        assert link_up.url_from_log(pathlib.Path(d, "nothing.log")) == ""
+
+        # 2. a port nothing holds, and one that is already taken is skipped
+        assert link_up.free_port((3299, 3300)) in (3299, 3300)
+
+        cfg = astra_d3.Config({"studio": str(pathlib.Path(d, "AstraForge"))})
+        cfg.resolve()
+        exe = pathlib.Path(d, "AstraForge", "runtime", "cloudflared", "cloudflared.exe")
+        exe.parent.mkdir(parents=True)
+        exe.write_bytes(b"MZ")
+        assert link_up.find_cloudflared(cfg["studio"]) == str(exe)
+
+        # 3. probe: yes against a real link server, no against a dead port
+        link = studio_link.Link(cfg, 0, "http://127.0.0.1:9")
+        studio_link.Handler.link = link
+        httpd = ThreadingHTTPServer(("127.0.0.1", 0), studio_link.Handler)
+        port = httpd.server_address[1]
+        threading.Thread(target=httpd.serve_forever, daemon=True).start()
+        try:
+            assert link_up.probe(f"http://127.0.0.1:{port}", link.token,
+                                 tries=1, gap=0.1) == "ok"
+            dead = link_up.probe("http://127.0.0.1:9", link.token, tries=1, gap=0.1)
+            assert dead.startswith("not reachable"), dead
+            wrong = link_up.probe(f"http://127.0.0.1:{port}", "wrong-token",
+                                  tries=1, gap=0.1)
+            assert wrong != "ok", wrong
+        finally:
+            httpd.shutdown()
+            httpd.server_close()
+
+
 if __name__ == "__main__":
     # Keep this at the very end: `main()` collects every module-level
     # `test_*` function, so tests defined below an earlier guard would never

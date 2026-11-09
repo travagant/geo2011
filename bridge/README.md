@@ -13,9 +13,10 @@ the studio. The studio stays stock and can be updated; nothing in
 
 There are two ways to use it, and they share every line of the export path:
 
-- **A session drives your PC.** `studio-link.ps1` runs `studio_link.py` on your
-  machine (localhost only), opens a temporary cloudflared tunnel, and prints a
-  URL + token. Paste that single line into the chat and the session can list
+- **A session drives your PC.** `Start studio link.cmd` runs `link_up.py` on your
+  machine (localhost only), opens a temporary cloudflared tunnel, **proves the
+  address answers** (a quick tunnel prints it before it is routable, and on a
+  network that drops QUIC it never is), and prints a URL + token. Paste that single line into the chat and the session can list
   assets, start generations, read logs, run the Blender export and pack the mod
   — the studio stays on your GPU, nothing is uploaded anywhere else.
 - **You drive it.** `astra_d3.py run` on your machine, same steps, no tunnel.
@@ -36,8 +37,8 @@ Mods\<name>.vdpack   gated by `d3tool vdpack scan --strict`
 | --- | --- |
 | `astra_d3.py` | the CLI: `doctor`, `list`, `build`, `pack`, `run`, `watch`, `config` |
 | `studio_link.py` | the link server the session talks to: `serve`, `selftest`, `token` |
-| `studio-link.ps1` | double-click launcher: finds Python, starts the server, opens the tunnel, prints URL + token |
-| `Start studio link.cmd` | the thing to double-click |
+| `link_up.py` | what the launcher runs: server in-process, cloudflared, the probe, the printed line, `last-attempt.txt` |
+| `Start studio link.cmd` | the thing to double-click (ASCII wrapper, `pause` on every exit) |
 | `build_d3.py` | runs inside Blender (`--python build_d3.py -- …`); imports the GLB, prepares it, calls `export_unit`, writes a JSON report |
 | `config.example.json` | every knob; copy to `config.json` (git-ignored) and edit `donor`/`mods` |
 
