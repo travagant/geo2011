@@ -19,6 +19,7 @@ import { startRuntime,stopOwnedRuntime } from './runtime.mjs';
 import { resolveEngine,pixal3dStatus,startPixal3dRuntime } from './pixal3d.mjs';
 import {prepareConcept} from './preprocess.mjs';
 import {buildUnityBundle,UNITY_MODEL_EXTENSIONS} from './unity.mjs';
+import {checkMesh} from './mesh-check.mjs';
 import {optimizeMeshes} from './optimize.mjs';
 await init();await loadJobs();
 let config=configSchema.parse({...defaults,...await readJson(path.join(data,'config.json'),{})});
@@ -53,6 +54,8 @@ app.post('/api/assets',upload.single('file'),asyncRoute(async(req,res)=>{
 }));
 app.get('/api/assets/:id',asyncRoute(async(req,res)=>{const info=await assetInfo(req.params.id);res.sendFile(path.join(data,'assets',info.id+info.extension));}));
 app.post('/api/exports',upload.single('file'),asyncRoute(async(req,res)=>{const file=req.file;if(!file)throw new Error('No export file');const ext=path.extname(file.originalname).toLowerCase();if(!['.glb','.obj','.json','.png','.webm','.zip','.tres'].includes(ext))throw new Error('Unsupported export format');const id=randomUUID();const name=file.originalname.replace(/[<>:"/\\|?*\x00-\x1f]/g,'_').slice(-150);await fs.writeFile(path.join(data,'exports',id+ext),file.buffer);await writeJson(path.join(data,'exports',id+'.meta.json'),{name,extension:ext});res.json({url:'/api/exports/'+id,name});}));
+// Проверка модели перед импортом в движок (server/mesh-check.mjs): считаем по файлу, а не по словам генератора.
+app.post('/api/mesh/check',asyncRoute(async(req,res)=>{const {assetId}=z.object({assetId:z.string()}).parse(req.body||{});const asset=await assetInfo(assetId);const file=path.join(data,'assets',asset.id+asset.extension);const report=checkMesh(await fs.readFile(file));res.json({asset:{id:asset.id,name:asset.name||'',extension:asset.extension},...report});}));
 // Unity-пакет: .glb + текстуры + манифест + README в одном .zip (server/unity.mjs).
 app.post('/api/unity/export',asyncRoute(async(req,res)=>{const {assetId,textures=[],name}=z.object({assetId:z.string(),textures:z.array(z.string()).max(20).optional(),name:z.string().max(120).optional()}).parse(req.body||{});res.json(await buildUnityBundle({assetId,textures,name}));}));
 app.get('/api/unity/formats',(req,res)=>res.json({models:UNITY_MODEL_EXTENSIONS,min_version:'2022.3',importer:'com.unity.cloud.gltfast'}));

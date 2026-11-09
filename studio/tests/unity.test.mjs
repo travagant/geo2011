@@ -9,6 +9,7 @@ import { randomUUID } from 'node:crypto';
 import JSZip from 'jszip';
 import { buildUnityBundle, unityName, unityReadme, isTextureFile, unityModelExtension } from '../server/unity.mjs';
 import { data, saveAsset } from '../server/storage.mjs';
+import { buildGlb } from './helpers/glb.mjs';
 
 /** Минимальный, но настоящий GLB: заголовок glTF, чтобы файл не был пустышкой. */
 function glb(size = 512) {
@@ -115,4 +116,31 @@ test('unityReadme без текстур не врёт про них', () => {
   assert.match(text, /Rock\.obj/);
   assert.match(text, /текстур в пакете нет/);
   assert.ok(!text.includes('undefined'));
+});
+
+test('проверка модели едет внутрь пакета: треугольники и замечания в манифесте и README', async () => {
+  const dir = await tempDir();
+  const asset = await saveAsset(buildGlb({ uvs: false }), '.glb', 'Shield');
+  const result = await buildUnityBundle({ assetId: asset.id, dir });
+  const zip = await JSZip.loadAsync(await fs.readFile(path.join(dir, result.id + '.zip')));
+  const manifest = JSON.parse(await zip.file('Assets/Shield/d3studio.bundle.json').async('string'));
+  assert.equal(manifest.mesh.checked, true);
+  assert.equal(manifest.mesh.triangles, 12);
+  assert.equal(manifest.mesh.vertices, 8);
+  assert.equal(manifest.mesh.attributes.uv, false);
+  assert.ok(manifest.mesh.findings.some((f) => f.code === 'no-uv'));
+  const readme = await zip.file('Assets/Shield/README.txt').async('string');
+  assert.match(readme, /12 треугольников/);
+  assert.match(readme, /Нет UV/);
+  await fs.rm(dir, { recursive: true, force: true });
+});
+
+test('модель с блокером не упаковывается, а объясняет причину', async () => {
+  const dir = await tempDir();
+  const asset = await saveAsset(buildGlb({ positions: [], indices: [] }), '.glb', 'Empty');
+  await assert.rejects(
+    () => buildUnityBundle({ assetId: asset.id, dir }),
+    (error) => error.status === 400 && /не годится для движка/.test(error.message) && /ни одного треугольника/.test(error.message),
+  );
+  await fs.rm(dir, { recursive: true, force: true });
 });

@@ -40,6 +40,16 @@ npm test                    # node --test tests/*.test.mjs
 требует заголовок `x-astra-client` (его ставит `src/api.js`) — так было в базовой версии, и это
 правильно для приложения без паролей.
 
+## Что умеет сегодня
+
+| Что | Как | Проверка |
+|---|---|---|
+| Студия и конвейер | `npm start` → `http://127.0.0.1:3210` | `npm test` |
+| Проверка модели перед импортом | `POST /api/mesh/check {"assetId"}` → треугольники, вершины, дубликаты, UV/нормали, скелет, клипы, границы, замечания | `tests/mesh-check.test.mjs`, 10 проверок |
+| Unity-пакет | `POST /api/unity/export {"assetId","textures"}` → `.zip` с `Assets/<Имя>/` | `tests/unity.test.mjs`, 9 проверок |
+| Нативная проверка GLB (Rust) | `npm run native:build`, затем `d3mesh verify файл.glb` | `tests/native.test.mjs` (паритет — когда собран) |
+| Disciples 3 | отложен, модуль в `server/experimental/` | 8 проверок |
+
 ## Unity: что именно уезжает в движок
 
 `POST /api/unity/export {"assetId": "…", "textures": ["…"]}` собирает один `.zip`:
@@ -52,7 +62,12 @@ Assets/Knight-of-Death/
   README.txt                     — шаги импорта: glTFast, Scale Factor = 1, конверсия материалов
 ```
 
-Ответ: `{id, name, url, output, files, bytes}`; `url` отдаёт архив обычным
+В манифест и в `README.txt` пакета попадает **проверка модели** (`server/mesh-check.mjs`):
+треугольники, вершины, дубликаты после сварки, есть ли UV и нормали, скелет, клипы, границы,
+неравномерный масштаб узлов. Модель с блокером (пустая, не треугольники, больше 2,5 млн
+треугольников) **не пакуется** — возвращается 400 с причиной.
+
+Ответ: `{id, name, url, output, files, mesh, bytes}`; `url` отдаёт архив обычным
 `GET /api/exports/<id>` с именем файла. Требования к модели — `.glb`, `.gltf`, `.obj`
 (`GET /api/unity/formats`), остальное отклоняется с текстом, а не пустым архивом. Имя папки
 санитизируется и транслитерируется (`Боец с копьём` → `Boec-s-kopem`), потому что кириллица в
@@ -70,5 +85,7 @@ Assets/Knight-of-Death/
 * брендинг внутри i18n (`src/i18n/*.json`), `x-astra-client` → наш заголовок (5 файлов + 2 теста);
 * установщик (`installer/`, `ai/skills`, `data/runtime/custom_nodes`) — материал базовой версии,
   студия работает и без него, если ComfyUI и модели уже стоят;
-* кнопка Unity в интерфейсе — маршрут уже есть, шаг экспорта в мастере пока только Godot;
+* кнопка Unity в интерфейсе — маршруты `/api/unity/export` и `/api/mesh/check` готовы, шаг экспорта
+  в мастере пока только Godot;
+* нативная часть: собран только первый шаг (`d3mesh verify`), остальные по плану — `docs/studio/NATIVE.md`;
 * Godot-пакет (`forge-pipeline.mjs`, профиль `godot`) — базовый, наш ещё не переписан.

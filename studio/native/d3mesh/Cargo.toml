@@ -1,0 +1,19 @@
+[package]
+name = "d3mesh"
+version = "0.1.0"
+edition = "2021"
+description = "d3studio native core: fast GLB container check for the asset pipeline"
+license = "MIT"
+
+# Никаких зависимостей: собирается без сети (`cargo build --release --offline`),
+# на машине без crates.io. Всё, что нужно на этом шаге, — std.
+[dependencies]
+
+[[bin]]
+name = "d3mesh"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = 3
+lto = true
+panic = "abort"

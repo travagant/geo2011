@@ -9,6 +9,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { data, assetInfo, writeJson } from './storage.mjs';
+import { checkMesh } from './mesh-check.mjs';
 
 /** Форматы, которые Unity (или glTFast) импортирует без сторонних конвертеров. */
 export const UNITY_MODEL_EXTENSIONS = ['.glb', '.gltf', '.obj'];
@@ -63,7 +64,7 @@ async function hashFile(file) {
 }
 
 /** Текст инструкции, которая едет внутрь пакета (её читают в Unity, не в студии). */
-export function unityReadme({ name, files, asset }) {
+export function unityReadme({ name, files, asset, mesh }) {
   const models = files.filter((f) => UNITY_MODEL_EXTENSIONS.includes(path.extname(f)));
   const textures = files.filter((f) => isTextureFile(path.extname(f)));
   return [
@@ -74,6 +75,15 @@ export function unityReadme({ name, files, asset }) {
     `  Textures/   ${textures.join(', ') || '— (текстур в пакете нет)'}`,
     '  d3studio.bundle.json   манифест: откуда модель, размеры, контрольные суммы',
     '',
+    ...(mesh?.checked ? [
+      `Проверка модели: ${mesh.triangles} треугольников, ${mesh.vertices} вершин`
+        + (mesh.materials !== undefined ? `, материалов ${mesh.materials}` : '')
+        + (mesh.rigged ? ', со скелетом' : '')
+        + (mesh.clips ? `, клипов ${mesh.clips}` : ''),
+      ...mesh.findings.filter((f) => f.level !== 'info').map((f) => `  ! ${f.text}`),
+      ...(mesh.findings.some((f) => f.level !== 'info') ? [] : ['  замечаний нет']),
+      '',
+    ] : [`Проверка модели: не выполнялась (${mesh?.reason || 'файл не GLB'}).`, '']),
     'Как импортировать (Unity 2022.3 и новее):',
     '  1. Package Manager → + → Add package by name → com.unity.cloud.gltfast (glTFast).',
     '     Без него .glb в проект не попадёт; .obj Unity импортирует сама.',
@@ -116,6 +126,36 @@ export async function buildUnityBundle({ assetId, textures = [], name, dir } = {
     entries.push({ abs: file, rel: `Assets/${folder}/Textures/${unityName(texture.name || texture.id)}${texture.extension.toLowerCase()}` });
   }
 
+  const modelBuffer = await fs.readFile(modelFile);
+  let mesh = { checked: false, reason: 'не GLB' };
+  if (extension !== '.obj') {
+    let report = null;
+    try {
+      report = checkMesh(modelBuffer);
+    } catch (error) {
+      mesh = { checked: false, reason: error.message };
+    }
+    if (report) {
+      if (!report.ok) {
+        const blockers = report.findings.filter((f) => f.level === 'blocker').map((f) => f.text).join(' ');
+        throw Object.assign(new Error(`Модель не годится для движка: ${blockers}`), { status: 400 });
+      }
+      mesh = {
+        checked: true,
+        triangles: report.triangles,
+        vertices: report.vertices,
+        uniqueVertices: report.uniqueVertices,
+        materials: report.materials,
+        textures: report.textures,
+        attributes: report.attributes,
+        rigged: report.rigged,
+        clips: report.clips,
+        bounds: report.bounds,
+        findings: report.findings,
+      };
+    }
+  }
+
   const files = [];
   const zip = new JSZip();
   for (const entry of entries) {
@@ -126,7 +166,7 @@ export async function buildUnityBundle({ assetId, textures = [], name, dir } = {
   }
 
   const readmePath = `Assets/${folder}/README.txt`;
-  const readme = unityReadme({ name: folder, files: files.map((f) => path.basename(f.path)), asset });
+  const readme = unityReadme({ name: folder, files: files.map((f) => path.basename(f.path)), asset, mesh });
   zip.file(readmePath, readme, { binary: false });
 
   const manifestPath = `Assets/${folder}/d3studio.bundle.json`;
@@ -137,6 +177,7 @@ export async function buildUnityBundle({ assetId, textures = [], name, dir } = {
     unity: { min_version: '2022.3', importer: 'com.unity.cloud.gltfast', scale: '1 unit = 1 meter', forward: '-Z' },
     name: folder,
     asset: { id: asset.id, name: asset.name || '', extension },
+    mesh,
     files: [...files, { path: readmePath, role: 'readme' }, { path: manifestPath, role: 'manifest' }],
   };
   zip.file(manifestPath, JSON.stringify(manifest, null, 2), { binary: false });
@@ -157,6 +198,7 @@ export async function buildUnityBundle({ assetId, textures = [], name, dir } = {
     url: '/api/exports/' + id,
     output: `Assets/${folder}`,
     files: [...files, { path: readmePath, role: 'readme' }, { path: manifestPath, role: 'manifest' }],
+    mesh: { checked: mesh.checked, triangles: mesh.triangles, vertices: mesh.vertices, findings: mesh.findings },
     bytes,
   };
 }
