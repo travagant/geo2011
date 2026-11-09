@@ -251,8 +251,21 @@ def build_vdpack(files: Sequence[Tuple[str, bytes]],
     return bytes(index) + bytes(payload)
 
 
+def _manifest_readable(pack: "Vdpack") -> bool:
+    """Does this archive carry a manifest this toolkit can read and rewrite?
+
+    Only then can a rebuild keep the mod's ``Name``/``UUID``/``Type``; an
+    archive whose `index` is a blob of unknown provenance is left exactly as
+    it is, because replacing it would throw away the only copy.
+    """
+    try:
+        return index_document(list(pack.files().items())) is not None
+    except ValueError:
+        return False
+
+
 def pack_like(source: "Vdpack", files, drop=(),
-              reindex: bool = False) -> Tuple[bytes, List[str]]:
+              reindex: bool = True) -> Tuple[bytes, List[str]]:
     """Rebuild a pack with `source`'s entry order, names, flags and `index`.
 
     The only in-game-confirmed shape is *the same paths, different payloads*,
@@ -298,10 +311,12 @@ def pack_like(source: "Vdpack", files, drop=(),
             used.add(key)
         entries.append((entry.name, blob, entry.flags))
     extra = sorted(k for k in folder if k not in used and k != INDEX_ENTRY)
-    if reindex:
+    if reindex and _manifest_readable(source):
         # Same paths, same order, different payloads is only half the shape:
-        # the manifest has to agree with the new bytes, or the loader answers
-        # `has wrong index` before it mounts the archive.
+        # the manifest has to agree with the new bytes, or the loader logs
+        # `Index error : str_not_valid_hash_for_file` and hands nothing back.
+        # A source that carries no manifest is left alone — inventing one
+        # there would change the shape the caller asked to reproduce.
         flags = {_norm_name(n).lower(): f for n, _, f in entries}
         entries = [(n, b, flags.get(_norm_name(n).lower(), 0))
                    for n, b in reindex_pack([(n, b) for n, b, _ in entries])]
@@ -685,15 +700,34 @@ def _digests(blob: bytes) -> Tuple[str, str]:
     return hashlib.md5(blob).hexdigest(), hashlib.sha256(blob).hexdigest()
 
 
-def _indexed(name: str) -> bool:
+def _prefixed(pairs) -> bool:
+    """Does this archive spell its entries as ``resources\\...`` paths?
+
+    A pack the engine mounts does (every observed one, `index` and a root
+    marker aside); a folder packed straight out of a unit directory spells
+    ``Aliases\\attack00.alias`` instead.  The two need different answers to
+    "what belongs in the manifest", so the rule follows what is there.
+    """
+    return any(_norm_name(name).lower().startswith("resources\\")
+               for name, _data in pairs)
+
+
+def _indexed(name: str, prefixed: bool = True) -> bool:
     """Does a path belong in the manifest?
 
-    `index` cannot hash itself, and a root-level marker (`russian.txt` in
-    every observed pack) is not part of the resource tree the loader walks, so
-    neither is listed.
+    `index` cannot hash itself, and in a pack whose entries are ``resources``
+    paths the manifest lists exactly those: `russian.txt`, the root marker
+    every observed pack carries, is not among the 26 records of a 28-entry
+    pack.  A pack with no ``resources`` prefix at all (a folder packed as-is)
+    lists everything, because dropping half of it would be worse than listing
+    it.
     """
     norm = _norm_name(name).lower()
-    return norm != INDEX_ENTRY and "\\" in norm
+    if norm == INDEX_ENTRY:
+        return False
+    if not prefixed:
+        return True
+    return norm.startswith("resources\\")
 
 
 def build_index(files, name: Optional[str] = None,
@@ -719,11 +753,18 @@ def build_index(files, name: Optional[str] = None,
     if not type_:
         type_ = "Mod"
     lines = [f'Name = "{name}";', f'UUID = "{uuid}";', f'Type = "{type_}";']
-    for path, blob in _pairs(files):
-        if not _indexed(path):
-            continue
+    # The packer writes the `File` records sorted by path, not in archive
+    # order (a shipped pack proves it: its archive runs descending, its
+    # manifest ascending).  Keeping that order is what makes a rewrite of an
+    # already-correct manifest byte-identical to the one it replaces, so a
+    # rebuild with unchanged payloads does not churn.
+    pairs = _pairs(files)
+    prefixed = _prefixed(pairs)
+    records = sorted((_norm_name(path), blob) for path, blob in pairs
+                     if _indexed(path, prefixed))
+    for path, blob in records:
         md5, sha256 = _digests(blob)
-        lines.append(f'File = "{_norm_name(path)}", "{md5}", "{sha256}";')
+        lines.append(f'File = "{path}", "{md5}", "{sha256}";')
     text = "\n".join(lines) + "\n"
     return text, encode_index(text, seed)
 
@@ -777,9 +818,10 @@ def index_report(files) -> Dict[str, object]:
         md5, sha256 = _digests(blob)
         if md5 != record.md5 or sha256 != record.sha256:
             report["mismatched"].append(record.path)
+    prefixed = _prefixed(pairs)
     report["unlisted"] = sorted(n for n, _ in pairs
-                                if _indexed(n) and _norm_name(n).lower()
-                                not in listed)
+                                if _indexed(n, prefixed) and _norm_name(n)
+                                .lower() not in listed)
     return report
 
 

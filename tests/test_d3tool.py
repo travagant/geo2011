@@ -5071,71 +5071,60 @@ def test_vdpack_manifest_of_folder_and_archive_match():
     assert vdpack.manifest(no_tex)["references"]["problems"]
 
 
-def test_vdpack_pack_can_keep_the_opaque_index():
-    """A pack's `index` can be carried over from the pack it replaces
-    (`--keep-index`), and a pack built without one has to say so — the loader
-    validates the archive against that manifest."""
+def test_vdpack_pack_writes_a_manifest_and_can_carry_one_instead():
+    """`vdpack pack` writes the `index` manifest by default, because the
+    loader compares the archive against it — `--no-reindex` turns that off and
+    says so, and `--keep-index` carries a proven pack's manifest over instead."""
     import contextlib
     import io
     from d3tool import vdpack
     folder = os.path.join(REPO, "Neutrals", "AirElemental")
     with tempfile.TemporaryDirectory() as d, \
             contextlib.redirect_stdout(io.StringIO()) as buf:
-        # a stock pack has no `index` and warns about it
+        # the default: a manifest written for these bytes, and it verifies
         plain = os.path.join(d, "plain.vdpack")
         assert climod._run(["vdpack", "pack", folder, "-o", plain]) == 0
-        assert "no `index` entry" in buf.getvalue()
-        # the reference archive: a folder copy plus the opaque resource
-        shared = os.path.join(d, "shared")
-        for name, data in vdpack.pack_folder(folder):
-            os.makedirs(os.path.dirname(os.path.join(shared, *name.split("/"))),
-                        exist_ok=True)
-            open(os.path.join(shared, *name.split("/")), "wb").write(data)
-        reference = os.path.join(d, "reference.vdpack")
-        assert climod._run(["vdpack", "pack", shared, "-o", reference]) == 0
-        # a pack that already carries the resource keeps it through a repack
-        blob = vdpack.parse_vdpack(open(reference, "rb").read())
-        assert len(blob) == len(vdpack.pack_folder(shared))
-        # ... now hand the `index` to a pack built from a plain folder
-        with_index = os.path.join(d, "indexed.vdpack")
+        assert "every payload matches its MD5 and SHA-256" in buf.getvalue()
+        built = vdpack.read_vdpack(plain)
+        report = vdpack.index_report(list(built.files().items()))
+        assert report["decoded"], report["error"]
+        assert report["records"] == len(vdpack.pack_folder(folder))
+        assert not (report["mismatched"] or report["unlisted"]
+                    or report["missing"])
+        # ... and the archive it lives in reproduces byte for byte when the
+        # manifest is recomputed, so the default costs nothing on a rebuild
+        again = vdpack.build_vdpack(vdpack.reindex_pack(
+            list(built.files().items())))
+        assert again == open(plain, "rb").read()
+        # opting out is allowed, and then it has to say so
+        bare = os.path.join(d, "bare.vdpack")
         buf.seek(0)
         buf.truncate()
-        assert climod._run(["vdpack", "pack", folder, "-o", with_index,
-                            "--keep-index", reference]) == 1, \
-            "the reference carries no `index`, so there is nothing to keep"
+        assert climod._run(["vdpack", "pack", folder, "-o", bare,
+                            "--no-reindex"]) == 0
         assert "no `index` entry" in buf.getvalue()
-        # build a real one: rebuild the reference with an `index` resource
-        raw = bytearray(open(reference, "rb").read())
-        pack = vdpack.parse_vdpack(bytes(raw))
-        entries = [(e.name, pack.payload(e)) for e in pack.entries]
-        entries.append(("index", b"opaque-index-payload"))
-        archive = os.path.join(d, "withindex.vdpack")
-        open(archive, "wb").write(vdpack.build_vdpack(entries))
         assert vdpack.index_entry(
-            list(vdpack.read_vdpack(archive).files().items())) is not None
-        # keep it in a pack built from a folder that has none
-        out = os.path.join(d, "kept.vdpack")
+            list(vdpack.read_vdpack(bare).files().items())) is None
+        # `--keep-index` carries one over verbatim (no rewrite unless asked)
+        kept = os.path.join(d, "kept.vdpack")
         buf.seek(0)
         buf.truncate()
-        assert climod._run(["vdpack", "pack", folder, "-o", out,
-                            "--keep-index", archive]) == 0
+        assert climod._run(["vdpack", "pack", folder, "-o", kept,
+                            "--keep-index", plain]) == 0
+        carried = vdpack.index_entry(
+            list(vdpack.read_vdpack(kept).files().items()))
+        original = vdpack.index_entry(list(built.files().items()))
+        assert carried is not None and carried[1] == original[1]
         assert "no `index` entry" not in buf.getvalue()
-        kept = vdpack.read_vdpack(out)
-        assert not kept.parse_error, kept.parse_error
-        index = vdpack.index_entry(list(kept.files().items()))
-        assert index is not None and index[1] == b"opaque-index-payload"
-        # the manifest of that pack records the resource
-        assert vdpack.manifest(
-            list(kept.files().items()))["index"]["bytes"] == len(
-                b"opaque-index-payload")
-        # a folder that already has an `index` file is refused (`pack` would
-        # silently end up with two)
-        dupe = os.path.join(d, "dupe")
-        shutil.copytree(folder, dupe)
-        open(os.path.join(dupe, "index"), "wb").write(b"ours")
-        assert climod._run(["vdpack", "pack", dupe, "-o",
-                            os.path.join(d, "dupe.vdpack"),
-                            "--keep-index", archive]) == 1
+        # asking for it explicitly keeps the mod's identity and fixes hashes
+        fixed = os.path.join(d, "fixed.vdpack")
+        assert climod._run(["vdpack", "pack", folder, "-o", fixed,
+                            "--keep-index", plain, "--reindex"]) == 0
+        report = vdpack.index_report(
+            list(vdpack.read_vdpack(fixed).files().items()))
+        assert report["decoded"] and not report["mismatched"]
+        assert report["document"].uuid == vdpack.parse_index(
+            vdpack.decode_index(original[1])).uuid
 
 
 def test_vdpack_manifest_cli_writes_json():
@@ -5156,7 +5145,10 @@ def test_vdpack_manifest_cli_writes_json():
         out = os.path.join(d, "manifest.json")
         assert climod._run(["vdpack", "manifest", archive, "-o", out]) == 0
         written = json.load(open(out, encoding="utf-8"))
-        assert written["entries"] == doc["entries"]
+        # the archive carries an `index` manifest of its own (`vdpack pack`
+        # writes one by default); the loose folder does not
+        assert [e for e in written["entries"] if e["path"] != "index"] \
+            == doc["entries"]
         assert written["source"] == "air.vdpack"
         # a damaged archive is refused, not half-reported
         damaged = os.path.join(d, "damaged.vdpack")

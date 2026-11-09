@@ -2126,13 +2126,19 @@ def _vdpack(args) -> int:
     if not files:
         ui.fail(f"{args.folder} has no files to pack")
         return 1
+    # Writing the manifest is the default, because the loader compares every
+    # payload against it.  Two flags override that: `--no-reindex`, and
+    # `--keep-index`, whose whole point is to carry one over verbatim.
+    reindex = True if args.reindex is None else args.reindex
+    if args.keep_index and args.reindex is None:
+        reindex = False
     if args.like:
         source = vdmod.read_vdpack(args.like)
         if source.parse_error:
             ui.fail(f"{args.like}: {source.parse_error}")
             return 1
         blob, extra = vdmod.pack_like(source, files, drop=args.drop,
-                                      reindex=args.reindex)
+                                      reindex=reindex)
         for name in extra:
             ui.warn(f"{name}: not in {os.path.basename(args.like)}, dropped — "
                     "a pack that adds paths is not the confirmed shape")
@@ -2164,10 +2170,17 @@ def _vdpack(args) -> int:
             ui.ok(f"{name.split(chr(92))[-1]}: {before} -> {after} bytes — "
                   "everything else carried over byte for byte")
         audit = vdmod.index_report(list(check.files().items()))
-        if args.reindex:
-            ui.ok("`index` rewritten for these bytes: "
-                  f"{audit['records']} record(s), every payload matches its "
-                  "MD5 and SHA-256")
+        if reindex:
+            kept = vdmod.index_entry(list(source.files().items()))
+            same = (kept is not None
+                    and vdmod.index_entry(list(check.files().items())) == kept)
+            if same:
+                ui.ok("`index` left exactly as it was — it already describes "
+                      "these bytes")
+            else:
+                ui.ok("`index` rewritten for these bytes: "
+                      f"{audit['records']} record(s), every payload matches "
+                      "its MD5 and SHA-256")
         elif audit["decoded"] and (audit["mismatched"] or audit["unlisted"]):
             ui.warn(f"the carried-over `index` no longer describes this "
                     f"archive: {len(audit['mismatched'])} payload(s) differ "
@@ -2191,8 +2204,8 @@ def _vdpack(args) -> int:
             ui.fail(f"{args.folder} already carries an `index` entry")
             return 1
         files = files + [taken]
-    if args.reindex:
-        files = vdmod.reindex_pack(files)
+    if reindex:
+        files = vdmod.reindex_pack(files)      # no-op when it is already right
     out = args.out or (os.path.basename(os.path.normpath(args.folder)) +
                        ".vdpack")
     blob = vdmod.build_vdpack(files)
@@ -2201,11 +2214,11 @@ def _vdpack(args) -> int:
     # a pack that added paths is not.  Say so instead of implying that any
     # archive this tool writes will be mounted.
     if vdmod.index_entry(files) is None:
-        ui.warn("no `index` entry: every retail and ported pack carries one "
-                "(the mod's per-file MD5/SHA-256 manifest) and the loader "
-                "validates the archive against it — pass `--reindex` to write "
-                "one, or `--keep-index <existing.vdpack>` to carry over the "
-                "manifest of the pack this one replaces")
+        ui.warn("no `index` entry (`--no-reindex`): every retail and ported "
+                "pack carries the mod's per-file MD5/SHA-256 manifest and the "
+                "loader compares the archive against it, answering `Index "
+                "error : str_not_valid_hash_for_file` / `Unindexed file` for "
+                "anything that disagrees — drop the flag to have one written")
     # never ship an archive this toolkit cannot read back
     check = vdmod.parse_vdpack(blob)
     if check.parse_error or len(check) != len(files):
@@ -2609,11 +2622,17 @@ def _build_parser() -> argparse.ArgumentParser:
              "names, flags and `index`, only the payloads from the folder — "
              "the one form replacement that is confirmed to load in game")
     p_vp.add_argument(
-        "--reindex", action="store_true",
-        help="write a correct `index` manifest for the files that go in "
-             "(MD5 + SHA-256 each) — required for any set of bytes that is "
-             "not byte-identical to the one the carried-over manifest "
-             "describes, since the loader validates the archive against it")
+        "--reindex", dest="reindex", action="store_true", default=None,
+        help="write the `index` manifest for the files that go in (MD5 + "
+             "SHA-256 each, sorted by path) — the default, because the loader "
+             "compares every payload against it and answers `Index error : "
+             "str_not_valid_hash_for_file : <path>` when they disagree. A "
+             "rewrite of an already-correct manifest is byte-identical, so "
+             "this costs nothing on a pack that was consistent to begin with")
+    p_vp.add_argument(
+        "--no-reindex", dest="reindex", action="store_false",
+        help="carry the manifest over untouched (only correct when the "
+             "payloads are the ones it already describes)")
     p_vp.add_argument(
         "--keep-index", metavar="ARCHIVE",
         help="copy the `index` manifest of an existing pack into the "

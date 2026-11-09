@@ -1168,7 +1168,10 @@ File = "resources\\Characters\\Empire\\Inquisitor\\x.g", "<32 hex>", "<64 hex>";
 
 `Name`/`UUID`/`Type` are the mod's identity, and one `File` line follows per
 indexed resource: the path in archive spelling, the **MD5** of the payload,
-then its **SHA-256**, lowercase.  In `ruru.vdpack` all **26** records verify
+then its **SHA-256**, lowercase.  The records are **sorted by path**, not in
+archive order — a shipped pack proves it: its archive runs descending, its
+manifest ascending — which is what lets a rewrite of a correct manifest be
+byte-identical to the one it replaces.  In `ruru.vdpack` all **26** records verify
 against the payloads they name — no exceptions — and the two entries that are
 *not* listed are `index` itself and the root-level `russian.txt`.  So the
 manifest covers the resource tree, not the archive.
@@ -1190,11 +1193,18 @@ pack:
 
 Which means the "replace only, never add" rule that this toolkit enforced was
 a limitation of *our* side, not the engine's: nothing in the archive format
-forbids a new path, it just needs a `File` record.  `d3tool` writes those now —
-`vdpack index <pack>` decodes and verifies a manifest, `vdpack pack --reindex`
-and `vdpack pack --like <pack> --reindex` build one for the exact bytes that
-land (keeping the mod's `Name`/`UUID`/`Type`), and `vdpack diff` grades a
-rebuilt pack against the two questions above instead of guessing.
+forbids a new path, it just needs a `File` record.  `d3tool` writes those now, and since §6g it does so **by default**:
+`vdpack pack` and `vdpack pack --like <pack>` build the manifest for the exact
+bytes that land (keeping the mod's `Name`/`UUID`/`Type`), `vdpack index <pack>`
+decodes and verifies one, and `vdpack diff` grades a rebuilt pack against the
+two questions above instead of guessing.  `--no-reindex` carries the old
+manifest over untouched, and `--keep-index <pack>` copies one in verbatim;
+both are the "I know what I am doing" switches, and a pack that carries a
+manifest describing other bytes is exactly the crash in §6g.
+
+Rewriting an already-correct manifest changes nothing: `reindex_pack` on
+`ruru.vdpack` gives back the whole 3.5 MB pack **byte for byte**, so the
+default costs nothing on a pack that was consistent to begin with.
 
 ## 6g. The crash dump: the hash check is enforced, and it is why the unit dies
 
@@ -1252,7 +1262,9 @@ computes MD5 + SHA-256, compares, logs `str_not_valid_hash_for_file`, and
 **returns nothing for that file** → whatever asked for the asset builds its
 state from the hole → the access violation.  A unit that "does not appear" and
 a game that "just crashes on this unit" are the same event seen from two
-places, and `vdpack pack --like <pack> --reindex` is the fix for both.
+places, and `vdpack pack --like <pack>` is the fix for both — it writes the
+manifest for the payloads it ships, and that is now the default rather than a
+flag.
 
 `tools/dmp_find.py` reads this back out of any dump the user produces
 (`info`, `modules`, `exception`, `stack`, `strings`, `mem`), so the next
