@@ -267,6 +267,22 @@ studio's own path does not use it — it takes geometry from `AstraForgeMesh`
 (Marching Cubes) and paints in Blender (`paint_from_concept`); the rasterizer
 belongs to a separately installed `ComfyUI-Hunyuan3DWrapper`.
 
+**A reinstall is the one thing that used to undo all of this**, and it is fixed at
+the source: `pascal.py` patches `installer\Install.ps1` so the wheel index follows
+the card's compute capability (`cu126` below `sm_75`, `cu128` above), and so
+"torch is installed" is decided by `sm_61` being in `torch.cuda.get_arch_list()`
+rather than by `import torch` succeeding. On Pascal the import always succeeds —
+that is exactly why the old check never repaired anything. The patch is
+idempotent and keeps `Install.ps1.bak`.
+
+`CUDA-fix-1080Ti.cmd` is the one double-click for a GTX 1080 Ti: it runs
+`pascal.py --auto` (find the studio, patch the installer, print which index the
+card gets), then hands the wheel work to `CUDA-fix-torch.cmd` — one repair
+implementation, not two — and finally `setx`s `PYTORCH_CUDA_ALLOC_CONF` and
+`TORCH_CUDA_ARCH_LIST=6.1` so every process the studio spawns inherits them. The
+symptom, the reasoning and what this card cannot do (`flash-attn`, bf16 weights,
+1024 px SDXL) are in `Pascal-1080Ti.md`.
+
 ## The studio's "Connections" window is not the control channel
 
 `provider` is `ollama | openai | anthropic` (`server/schema.mjs`), and the keys

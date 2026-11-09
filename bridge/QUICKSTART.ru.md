@@ -147,7 +147,7 @@ py bridge\astra_d3.py watch --interval 10
 | В чате адрес «не отвечает» | Окно с `.cmd` закрыто — туннель умер. Запусти снова, адрес будет другой. |
 | `blender not found` | Впиши `blender` в `bridge\config.json`. Если студийный Blender 5.0 падает на аддоне — поставь 4.2 LTS и укажи её. |
 | `the GLB has no mesh data` | В студии сначала «Generate 3D», потом Export. |
-| `no kernel image is available` | торч на карте без Pascal: установщик студии (`installer/Install.ps1`) даёт любой видеокарте индекс `cu128`, а в нём нет `sm_61`. Двойной клик по `CUDA-check.cmd` — покажет виноватое окружение; затем `CUDA-fix-torch.cmd` поставит torch `cu126` и сам проверит ядром. Подробно — раздел «CUDA» ниже. |
+| `no kernel image is available` | торч на карте без Pascal: установщик студии (`installer/Install.ps1`) даёт любой видеокарте индекс `cu128`, а в нём нет `sm_61`. Для 1080 Ti один двойной клик — **`CUDA-fix-1080Ti.cmd`**: правит сам установщик (чтобы переустановка не вернула cu128) и ставит torch `cu126` с проверкой ядром. Хочешь по шагам — `CUDA-check.cmd`, затем `CUDA-fix-torch.cmd`. Подробно — раздел «CUDA» ниже. |
 | `str_not_valid_hash_for_file` в игре | Мод собран не через `vdpack` (loose-файлы) или без `--like`. Мост такой пак не пропустит — гейт `vdpack scan` вернёт ошибку. |
 | `intersects other mods` | В `Mods` два мода с одинаковыми путями. |
 | мод есть, юнита нет | В `user.ini` нет `sModifications=mod:<имя>` (имя = имя файла `.vdpack`). |
