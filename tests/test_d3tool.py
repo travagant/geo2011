@@ -4112,6 +4112,84 @@ def test_pe_find_resolves_a_string_its_xref_and_the_disassembly():
         assert binary.section_of(0x900000) == (None, None)
 
 
+def _tiny_minidump(path):
+    """A minidump carrying one module, one memory range and one exception."""
+    import struct
+    module_name = "D:\\Game\\DisciplesIII12.exe"
+    utf = module_name.encode("utf-16-le") + b"\x00\x00"
+
+    header = 32
+    directory = header
+    streams = 3                                   # (type, payload bytes)
+    body = b""
+    # layout: [header][dir][module list][module name][memory][exception]
+    dir_size = 12 * 3                      # three streams
+    mod_rva = header + dir_size
+    name_rva = mod_rva + 4 + 108
+    mod_list = struct.pack("<I", 1) + struct.pack(
+        "<QIIII", 0x400000, 0x2000, 0, 0, name_rva) + b"\x00" * (108 - 24)
+    name = struct.pack("<I", len(utf)) + utf
+    mem_rva = name_rva + len(name)
+    code = b"\x55\x8b\xec\xc3" + b"\x90" * 12
+    mem = struct.pack("<I", 1) + struct.pack("<QII", 0x400010, len(code), 0)
+    code_rva = mem_rva + len(mem)
+    mem = mem[:-4] + struct.pack("<I", code_rva)   # where its bytes live
+    ctx = bytearray(0xcc)
+    struct.pack_into("<I", ctx, 0xb8, 0x400011)   # eip inside the code
+    struct.pack_into("<I", ctx, 0xc4, 0x100000)   # esp
+    exc_rva = code_rva + len(code)
+    exc = struct.pack("<II", 0x1ee0, 0) + struct.pack(
+        "<IIQQII", 0xC0000005, 0, 0, 0x400011, 2, 0) + struct.pack(
+        "<15Q", 0, 0xA6000CB3, *([0] * 13)) + struct.pack(
+        "<II", len(ctx), 0)                        # context rva fixed below
+    ctx_rva = exc_rva + len(exc)
+    exc = exc[:-8] + struct.pack("<II", len(ctx), ctx_rva)
+    directory_bytes = b"".join(struct.pack("<III", kind, size, rva)
+                               for kind, size, rva in
+                               ((4, len(mod_list), mod_rva),
+                                (5, len(mem), mem_rva),
+                                (6, len(exc), exc_rva)))
+    head = struct.pack("<4sIIIIIQ", b"MDMP", 0, 3, directory, 0, 0, 0)
+    blob = (head + directory_bytes + mod_list + name + mem + code + exc
+            + bytes(ctx))
+    open(path, "wb").write(blob)
+    return blob
+
+
+def test_dmp_find_reads_a_minidump_the_way_a_crash_is_read():
+    """A crash is read through three things: which module and offset faulted,
+    what the exception says was being touched, and what the engine had left in
+    memory.  All three come out of the streams, so the parser is testable on a
+    dump this test writes itself."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "dmp_find", os.path.join(REPO, "tools", "dmp_find.py"))
+    dmp = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(dmp)
+    with tempfile.TemporaryDirectory() as d:
+        path = os.path.join(d, "tiny.dmp")
+        _tiny_minidump(path)
+        dump = dmp.Minidump(path)
+        assert [m[0] for m in dump.modules] == [0x400000]
+        assert dump.modules[0][2] == "D:\\Game\\DisciplesIII12.exe"
+        assert dump.module_at(0x400100)[0] == 0x400000
+        assert dump.name_of(0x400011).startswith("D:\\Game\\DisciplesIII12.exe+")
+        # the memory list maps a virtual address to the bytes carried for it
+        assert dump.read(0x400010, 1) == b"\x55"
+        assert dump.read(0x900000) is None          # not in this dump
+        exc = dump.exception()
+        assert exc["code"] == 0xC0000005
+        assert dump.registers(exc["context"][1], exc["context"][0])["eip"] \
+            == 0x400011
+        # the reading a crash report actually needs
+        assert dmp.EXCEPTIONS[exc["code"]] == "access violation"
+        assert exc["params"][1] == 0xA6000CB3       # the address touched
+        code, start = dump.window(0x400011)      # clipped to what is carried
+        assert start == 0x400010 and code[:4] == b"\x55\x8b\xec\xc3"
+        # strings() walks the dumped ranges only, never the file's own bytes
+        assert all(addr >= 0x400010 for addr, _text in dump.strings(4))
+
+
 def test_vdpack_index_is_a_decodable_manifest_the_loader_checks():
     """`index` is not opaque: it is a text manifest behind an eight byte
     header and an LCG keystream — `Name`/`UUID`/`Type`, one `File` line per

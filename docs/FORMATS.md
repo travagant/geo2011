@@ -1176,11 +1176,13 @@ manifest covers the resource tree, not the archive.
 Two questions the game answers differently, and both matter when planning a
 pack:
 
-* **A payload whose bytes no longer match its recorded digest is not known to
-  block anything.**  The Angel pack replaced both of its `.g` payloads and
-  kept the original `index`, and its battle loaded with the rebuilt geometry
-  on screen.  A stale manifest describes bytes that are not in the archive;
-  it is a consistency problem to fix, not the smoking gun.
+* **A payload whose bytes no longer match its recorded digest is rejected
+  outright.**  This was written as "probably fine" for one release, on the
+  strength of the Angel pack (both `.g` payloads replaced, original `index`,
+  battle loaded).  A crash dump of the shipping build (§6g) settled it the
+  other way: the engine logs `Index error : str_not_valid_hash_for_file :
+  <path>` and does not hand the file's data to the caller.  The digest is
+  compared, not merely recorded.
 * **A path with no `File` record is the failure.**  That is what the port did
   when it added entries, and the game showed no units — with `Unindexed file
   '%s'` (0x41a583) as the loader's own wording, and `Not found indexed file
@@ -1193,6 +1195,69 @@ forbids a new path, it just needs a `File` record.  `d3tool` writes those now �
 and `vdpack pack --like <pack> --reindex` build one for the exact bytes that
 land (keeping the mod's `Name`/`UUID`/`Type`), and `vdpack diff` grades a
 rebuilt pack against the two questions above instead of guessing.
+
+## 6g. The crash dump: the hash check is enforced, and it is why the unit dies
+
+A minidump of the shipping build (`DisciplesIII.dmp`, 639 667 B) closes the
+question §6f left open.  What it says:
+
+| field | value |
+|---|---|
+| process | `D:\Disciples III Rebirth\DisciplesIII12.exe`, base 0x400000, 14 446 592 B — a *Rebirth* repack, not the retail `DisciplesIII.exe` of §6c |
+| exception | `0xC0000005` access violation, **read** at `0xA6000CB3` |
+| faulting | `DisciplesIII12.exe+0x208D44`, thread `0x1ee0` |
+| registers | `eax` = the bad address, `ecx` = 0, `esi` = `0x14A70020`, `ebp` = 0 |
+| modules | 89, and **no `okidifox.dll`, no StarForce** — this build carries no protector, so the dump answers loader questions and nothing about UPX |
+
+The faulting code, from the 256 bytes of code the dump happens to carry:
+
+```
+0x608d1c  mov  ecx,[esp+0x5c]      ; an object the caller passed
+0x608d20  mov  eax,[ecx+4]        ; a count
+0x608d29  imul eax,eax,0x33       ; * 51
+0x608d2c  lea  eax,[eax+esi+0x30] ; + base + 0x30
+0x608d44  movzx ebx,byte ptr [eax+ecx]   ; ecx = 0 on the first pass
+```
+
+`[ecx+4]` holds `0x3F1A…` — a float bit pattern, not a count — so the scaled
+offset wraps and the first byte read lands at `0xA6000CB3`.  The object was
+never the structure this code expected, because the resource it was built from
+had already been rejected.  Two log lines were live in memory at the time:
+
+```
+[EE] resources\characters\empire\inquisitor\character_empire_inquisitor.scene
+   : resources\characters\empire\inquisitor\character_empire_inquisitor.g
+   : Index error : str_not_valid_hash_for_file
+   : resources\characters\empire\inquisitor\character_empire_inquisitor.g
+...a_back_land_empire_02.g : 0 triangles in object: 'trees_02_2' with material: 1
+```
+
+and the mod list on the stack held both `mod:D3_test_faction6_mod` and
+`mod:ruru`.
+
+That message is not a mystery in the executable either.  `Index error : %s : %s`
+is at 0x87835c; the identifier `str_not_valid_hash_for_file` at 0x88555c, pushed
+at **0x49270d**; and the function it is the failure branch of compares the
+48-byte digest of the payload against the manifest's (`0x4129e0` compares
+sixteen bytes at a time and returns non-zero when they *differ*):
+
+```
+0x4926f8  call 0x4129e0     ; digests differ?
+0x4926fd  test al, al
+0x4926ff  jne  0x49270d     ; yes -> Index error, and no data returned
+```
+
+So the chain is: a pack whose `index` describes other bytes → the loader
+computes MD5 + SHA-256, compares, logs `str_not_valid_hash_for_file`, and
+**returns nothing for that file** → whatever asked for the asset builds its
+state from the hole → the access violation.  A unit that "does not appear" and
+a game that "just crashes on this unit" are the same event seen from two
+places, and `vdpack pack --like <pack> --reindex` is the fix for both.
+
+`tools/dmp_find.py` reads this back out of any dump the user produces
+(`info`, `modules`, `exception`, `stack`, `strings`, `mem`), so the next
+question — which function, on which asset — starts from evidence rather than
+from a guess.
 
 ## 6. The `.vdpack` mod archive
 
