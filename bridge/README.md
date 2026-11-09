@@ -77,6 +77,23 @@ is how a POST reaches the studio — the link performs it locally.
 | `build`, `pack`, `run` | Blender export / pack / both — return a job id |
 | `job&id=`, `jobs_local` | what a background job has done so far |
 
+Announcing the address, instead of copying it
+--------------------------------------------
+
+A tunnel address exists only in the window that started it, next to a token that
+lives in `.link\token.txt`, and four runs in a row ended with "the bridge is on,
+test it" and no address. So the bridge now announces itself: after every address
+it finds (`state: candidate`), and again once the address is verified
+(`state: verified`, then every 60 s while the window stays open), it posts one
+small message to a topic that this copy knows from `.link\rendezvous.txt`.
+
+That file is written into the bundle, never into the repository, and the topic
+name is the secret — the message contains the token, so the topic is treated
+like the token. Two public relays are tried (`ntfy.sh`, then `ntfy.envs.net`);
+the session reads both with one GET and takes the newest `verified` line. If
+announcing fails the window says so and the manual line still works, so nothing
+is lost — the copy becomes a fallback instead of the only way.
+
 Transport order — one is not a plan, trycloudflare answers 530 often enough:
 cloudflared QUIC, cloudflared HTTP/2, `ssh -p 443 -R0:…` to pinggy,
 `ssh -R 80:…` to localhost.run. `ssh` is taken from PATH or from

@@ -6429,7 +6429,18 @@ def test_link_up_reads_the_tunnel_address_and_proves_it():
         assert link_up.url_from_log(ssh_admin) == "https://abcd1234.lhr.life"
 
         # 2. a port nothing holds, and one that is already taken is skipped
-        assert link_up.free_port((3299, 3300)) in (3299, 3300)
+        # a port pair chosen here, not a fixed one: the test must not depend on
+        # what else is listening in the sandbox that runs it
+        import socket as _socket
+
+        def spare():
+            with _socket.socket() as sock:
+                sock.bind(("127.0.0.1", 0))
+                return sock.getsockname()[1]
+
+        first, second = spare(), spare()
+        assert link_up.port_busy(first) is False
+        assert link_up.free_port((first, second)) in (first, second)
 
         cfg = astra_d3.Config({"studio": str(pathlib.Path(d, "AstraForge"))})
         cfg.resolve()
@@ -7228,3 +7239,68 @@ def test_last_attempt_carries_both_halves_of_the_channel():
         send_me = (link_dir / "SEND-ME.txt").read_text(encoding="utf-8")
         assert send_me.splitlines()[0].startswith("link http://127.0.0.1:")
         assert send_me.splitlines()[1] == "build: " + studio_link.build_marker()
+
+
+def test_the_bridge_announces_its_own_address_to_the_session():
+    """The hand-off, without a human: the bridge posts one line to a topic only
+    this copy knows, and the session reads that topic with a GET.
+
+    Not a convenience. Copying an address out of a window failed four runs in a
+    row — the address only exists there, next to a token that exists somewhere
+    else — so the two facts are now announced together, by the bridge, the
+    moment an address appears (candidate first, because a 520 seen from the
+    user's network is not a 520 seen from outside).
+    """
+    import importlib
+    import threading
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+    sys.path.insert(0, os.path.join(REPO, "bridge"))
+    link_up = importlib.import_module("link_up")
+
+    seen = []
+
+    class Sink(BaseHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+        def do_POST(self):                       # noqa: N802
+            size = int(self.headers.get("Content-Length") or 0)
+            seen.append((self.path, self.rfile.read(size).decode("utf-8")))
+            self.send_response(200)
+            self.send_header("Content-Length", "2")
+            self.end_headers()
+            self.wfile.write(b"{}")
+
+    sink = ThreadingHTTPServer(("127.0.0.1", 0), Sink)
+    threading.Thread(target=sink.serve_forever, daemon=True).start()
+    port = sink.server_address[1]
+
+    with tempfile.TemporaryDirectory() as d:
+        rendezvous = pathlib.Path(d, "rendezvous.txt")
+        rendezvous.write_text("# baked into the bundle, never into git\n"
+                              "topic: astraforge-probe-42\n", encoding="utf-8")
+        real_file, real_url = link_up.RENDEZVOUS_FILE, link_up.PUBLISH_URL
+        link_up.RENDEZVOUS_FILE = rendezvous
+        link_up.PUBLISH_URL = f"http://127.0.0.1:{port}/{{topic}}"
+        try:
+            assert link_up.rendezvous_topic() == "astraforge-probe-42"
+            ok, detail = link_up.publish("state: verified\nurl: https://x.lhr.life\n"
+                                         "token: SECRET-0123456789\nbuild: 15\n")
+            # a full URL in the file is understood too, and reduced to the topic
+            rendezvous.write_text("url: https://ntfy.sh/astraforge-probe-43/\n",
+                                  encoding="utf-8")
+            assert link_up.rendezvous_topic() == "astraforge-probe-43"
+            # no file at all: not an error, just "nothing to announce to"
+            rendezvous.unlink()
+            missing_ok, missing_detail = link_up.publish("x")
+        finally:
+            link_up.RENDEZVOUS_FILE, link_up.PUBLISH_URL = real_file, real_url
+            sink.shutdown()
+
+    assert ok is True, detail
+    assert missing_ok is False and "rendezvous" in missing_detail
+    assert len(seen) == 1, seen
+    path, body = seen[0]
+    assert path == "/astraforge-probe-42"
+    assert "token: SECRET-0123456789" in body and "url: https://x.lhr.life" in body

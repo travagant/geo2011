@@ -81,6 +81,74 @@ TUNNEL_SUFFIXES = (".lhr.life", ".lhr.rocks", ".loca.lt", ".pinggy.link",
                    ".localhost.run")
 
 
+# The hand-off, without a human: the bridge announces its own address to a topic
+# that only this copy knows (written into `rendezvous.txt` at bundle time and
+# never into the repository). The session reads the topic with one GET, so the
+# two things that kept failing — finding the window and copying two values out
+# of it — stop being the user's job at all.
+RENDEZVOUS_FILE = LINK_DIR / "rendezvous.txt"
+# Two public relays, because one is not a plan: if his network cannot reach the
+# first, the second usually answers, and the session reads both.
+PUBLISH_BASES = ("https://ntfy.sh/{topic}", "https://ntfy.envs.net/{topic}")
+PUBLISH_URL = PUBLISH_BASES[0]          # kept as one name: tests pin it
+PUBLISH_EVERY = 60.0
+
+
+def rendezvous_topic(path=None) -> str:
+    """The topic name from ``rendezvous.txt``: ``topic:`` or a full ``url:``."""
+    path = Path(path or RENDEZVOUS_FILE)
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        lowered = line.lower()
+        for prefix in ("topic:", "url:"):
+            if lowered.startswith(prefix):
+                value = line.split(":", 1)[1].strip().rstrip("/")
+                return value.rsplit("/", 1)[-1]
+    return ""
+
+
+def publish(message: str, topic: str = "", timeout: float = 10.0) -> tuple:
+    """``(ok, detail)`` — announce one message where the session can read it."""
+    topic = topic or rendezvous_topic()
+    if not topic:
+        return False, "нет rendezvous.txt"
+    problems = []
+    for base in (PUBLISH_URL,) + tuple(b for b in PUBLISH_BASES if b != PUBLISH_URL):
+        request = urllib.request.Request(
+            base.format(topic=topic), data=message.encode("utf-8"), method="POST",
+            headers={"Title": "astraforge studio link", "Tags": "bridge,robot"})
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as resp:
+                return True, f"{base.split('/')[2]} HTTP {resp.status}"
+        except Exception as exc:      # noqa: BLE001 - the chat line still works
+            problems.append(f"{base.split('/')[2]}: {type(exc).__name__}")
+    return False, ", ".join(problems)
+
+
+def _announce_topic(line: str, say=print) -> None:
+    """Announce now, then every minute while the window stays open."""
+    topic = rendezvous_topic()
+    if not topic:
+        return
+    ok, detail = publish(line, topic)
+    say(f"объявлено для чата: {'да' if ok else 'НЕТ'} ({detail})")
+    if not ok:
+        return
+
+    def keep_alive():
+        while True:
+            time.sleep(PUBLISH_EVERY)
+            publish(line, topic)
+
+    threading.Thread(target=keep_alive, daemon=True).start()
+
+
 def url_from_log(path: Path) -> str:
     """The newest public address a tunnel client logged, or ''.
 
@@ -519,6 +587,12 @@ def run(args) -> int:
                 _kill(proc)
                 continue
             print(f"    адрес: {url}")
+            # tell the session the moment an address exists, before the probe:
+            # a 520 seen from here is not a 520 seen from outside
+            ok, detail = publish(f"state: candidate\nbuild: {build}\nurl: {url}\n"
+                                 f"token: {link.token}\ntransport: {name}\n")
+            print("    объявлено для чата: " + ("да" if ok else f"нет ({detail})"))
+            report.append(f"{name}: announce {'ok' if ok else 'failed: ' + detail}")
             outcome = probe_detail(url, link.token, tries=args.probe_tries)
             print(f"    проверка снаружи: {outcome['tries']} попыток, "
                   f"ответ {outcome['detail']}")
@@ -527,6 +601,8 @@ def run(args) -> int:
             if outcome["body"]:
                 report.append(f"    body: {outcome['body'][:400]}")
             if outcome["ok"]:
+                publish(f"state: verified\nbuild: {build}\nurl: {url}\n"
+                        f"token: {link.token}\ntransport: {name}\n")
                 winner = (name, proc, url, log_path)
                 # the tunnel is up; now say whether the studio itself answers
                 through = probe_detail(url, link.token, tries=2, gap=1.0,
@@ -557,6 +633,9 @@ def run(args) -> int:
             return _announce(url, link.token, name, report, finish, httpd)
         if live:
             report.append("urls:    " + "  ".join(u for _, _, u, _ in live_all))
+            publish(f"state: unverified\nbuild: {build}\n"
+                    f"urls: {', '.join(u for _, _, u, _ in live_all)}\n"
+                    f"token: {link.token}\n")
         return _announce(live[2] if live else "", link.token,
                          live[0] if live else "", report, finish, httpd,
                          unverified=True)
@@ -614,6 +693,11 @@ def _announce(url, token, transport, report, finish, httpd, unverified=False):
         print(f" Канал проверен ({transport}): адрес отвечает снаружи."
               + ("  Строка в буфере." if copied else ""))
     print(f" Сборка: {build}  (папка {REPO_DIR})")
+    _announce_topic(f"state: {'unverified' if unverified else 'verified'}\n"
+                    f"build: {build}\nurl: {url}\ntoken: {token}\n"
+                    f"transport: {transport}\n")
+    print(" Копировать ничего не обязательно: если выше «объявлено: да»,")
+    print(" я возьму адрес сам — просто напиши в чат «смотри».")
     print(" Строка для чата:")
     print("   " + line)
     if send_me is not None:
