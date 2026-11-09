@@ -267,13 +267,25 @@ studio's own path does not use it — it takes geometry from `AstraForgeMesh`
 (Marching Cubes) and paints in Blender (`paint_from_concept`); the rasterizer
 belongs to a separately installed `ComfyUI-Hunyuan3DWrapper`.
 
-**A reinstall is the one thing that used to undo all of this**, and it is fixed at
-the source: `pascal.py` patches `installer\Install.ps1` so the wheel index follows
-the card's compute capability (`cu126` below `sm_75`, `cu128` above), and so
-"torch is installed" is decided by `sm_61` being in `torch.cuda.get_arch_list()`
-rather than by `import torch` succeeding. On Pascal the import always succeeds —
-that is exactly why the old check never repaired anything. The patch is
-idempotent and keeps `Install.ps1.bak`.
+**The installer itself is the cause, and 0.6.12 makes it worse than a wrong
+wheel**: a card below compute 7.5 is dropped from `$s.gpu` (`$s.gpuOld = $s.gpu;
+$s.gpu = $null`), so the studio decides there is no NVIDIA GPU and installs a
+CPU-only torch. `pascal.py` fixes that at the source — six named patches across
+`installer\Install.ps1` and `installer\engine\engine.ps1`:
+
+* the index follows the card (`cu126` below `sm_75`, `cu128` above);
+* the card is marked Pascal instead of being declared absent;
+* "torch is installed" means `sm_61` is in `torch.cuda.get_arch_list()`, not that
+  `import torch` passed — on Pascal the import always passes, which is why the
+  old check never repaired anything;
+* the engine's pre-downloaded `cu128` wheel file is not used, and both venvs get
+  the pinned `torch==2.8.0 / torchvision==0.23.0 / torchaudio==2.8.0` trio with
+  `--reinstall-package`, because PEP 440 considers `torch==2.8.0` satisfied by
+  `2.8.0+cu128` and a plain install would change nothing while looking fine.
+
+Each patch is idempotent, keeps a `.bak`, and a patch whose anchor is missing is
+reported as skipped instead of mangling the file — the installer differs between
+0.3.0 and 0.6.12 and both are handled.
 
 `CUDA-fix-1080Ti.cmd` is the one double-click for a GTX 1080 Ti: it runs
 `pascal.py --auto` (find the studio, patch the installer, print which index the

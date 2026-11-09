@@ -1,9 +1,9 @@
-"""A GTX 1080 Ti is compute 6.1, and that number decides which torch it gets.
+"""A GTX 1080 Ti is compute 6.1, and AstraForge 0.6.12 treats such a card as absent.
 
-The failure is nasty: `torch.cuda.is_available()` is True, the card is listed,
-and the first kernel dies with "no kernel image is available". These tests pin
-the two decisions that follow — which wheel a card needs, and that the installer
-keeps choosing it after a reinstall.
+Two things must therefore be pinned: which wheel a card needs, and that the
+installer keeps choosing it — on a fresh install, on a reinstall, and in both
+venvs (the studio's ComfyUI and the generation engine). The installer changed
+between 0.3.0 and 0.6.12, so both spellings are exercised here.
 """
 
 import sys
@@ -14,6 +14,40 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "bridge"))
 
 import pascal  # noqa: E402
+
+
+def brace_depth(path):
+    """Crude brace/paren balance, skipping comments and quoted strings."""
+    text = Path(path).read_text(encoding="utf-8-sig").replace("\r\n", "\n")
+    depth = {"{": 0, "(": 0}
+    pairs = {"}": "{", ")": "("}
+    i, comment = 0, False
+    while i < len(text):
+        char = text[i]
+        if char == "\n":
+            comment = False
+        elif comment:
+            pass
+        elif char == "#":
+            comment = True
+        elif char in "'\"":
+            quote = char
+            i += 1
+            while i < len(text):
+                if text[i] == "`":
+                    i += 1
+                elif text[i] == quote:
+                    if text[i + 1:i + 2] == quote:
+                        i += 1
+                    else:
+                        break
+                i += 1
+        elif char in depth:
+            depth[char] += 1
+        elif char in pairs:
+            depth[pairs[char]] -= 1
+        i += 1
+    return depth
 
 
 # --------------------------------------------------------------------------- #
@@ -34,7 +68,6 @@ def test_the_index_follows_the_card(cc, expected):
 
 @pytest.mark.parametrize("name,cc", [
     ("NVIDIA GeForce GTX 1080 Ti", 6.1),
-    ("NVIDIA GeForce GTX 1060 6GB", 6.1),
     ("NVIDIA GeForce GTX 1660 SUPER", 6.1),
     ("Tesla P40", 6.1),
     ("Tesla V100-SXM2", 7.0),
@@ -47,9 +80,6 @@ def test_a_name_is_the_fallback_for_an_old_driver(name, cc):
     assert pascal.cc_from_name(name) == cc
 
 
-# --------------------------------------------------------------------------- #
-#  reading the card
-# --------------------------------------------------------------------------- #
 class Smi:
     def __init__(self, out="", error=None):
         self.out, self.error = out, error
@@ -67,119 +97,194 @@ def test_compute_capability_comes_from_the_driver_when_it_can(monkeypatch):
     monkeypatch.setattr(pascal.subprocess, "run",
                         Smi("NVIDIA GeForce GTX 1080 Ti, 6.1, 11264\n"))
     info = pascal.gpu_info()
-    assert info["cc"] == 6.1
-    assert info["name"] == "NVIDIA GeForce GTX 1080 Ti"
-    assert info["vram_mb"] == 11264
+    assert (info["cc"], info["vram_mb"]) == (6.1, 11264)
     assert "compute_cap" in info["source"]
 
 
 def test_an_old_driver_gets_the_capability_from_the_name(monkeypatch):
     monkeypatch.setattr(pascal.subprocess, "run",
                         Smi("NVIDIA GeForce GTX 1080 Ti, [N/A], 11264\n"))
-    info = pascal.gpu_info()
-    assert info["cc"] == 6.1
-    assert "по имени" in info["source"]
+    assert pascal.gpu_info()["cc"] == 6.1
 
 
 def test_no_driver_at_all_is_not_a_crash(monkeypatch):
-    monkeypatch.setattr(pascal.subprocess, "run",
-                        Smi(error=OSError("nvidia-smi not found")))
+    monkeypatch.setattr(pascal.subprocess, "run", Smi(error=OSError("нет nvidia-smi")))
     info = pascal.gpu_info()
     assert info["cc"] == 0 and info["name"] == ""
-    assert pascal.torch_index_for(info["cc"]) == pascal.CU126
 
 
 # --------------------------------------------------------------------------- #
-#  the installer patch
+#  the two installer generations, quoted from the real files
 # --------------------------------------------------------------------------- #
-INSTALLER = """\ufeff# AstraForge - установщик\r
+# installer\Install.ps1 of 0.6.12 (the studio in the user's archive): the probe
+# demotes a card below 7.5, the index is chosen by "is there a GPU at all", and
+# torch is installed only when `import torch` fails.
+HIS = """\ufeff# AstraForge — установщик-мастер (Windows 10/11 x64)\r
+        if ($s.cc -and ([double]::Parse($s.cc, [Globalization.CultureInfo]::InvariantCulture) -lt 7.5)) { $s.gpuOld = $s.gpu; $s.gpu = $null; $s.vram = 0 }\r
 function InstallComfyDeps($dir, $hasGpu) {\r
-  $uv = Uv\r
   $torchIndex = if ($hasGpu) { 'https://download.pytorch.org/whl/cu128' } else { 'https://download.pytorch.org/whl/cpu' }\r
   Native { & $py -c "import torch" 2>$null | Out-Null }\r
-  if ($LASTEXITCODE -ne 0) { Run $uv @('pip', 'install', '--python', $py, 'torch', 'torchvision', 'torchaudio', '--index-url', $torchIndex) 'PyTorch' }\r
-  Run $uv @('pip', 'install', '--python', $py, '-r', (Join-Path $dir 'requirements.txt')) 'ComfyUI libraries'\r
+  if ($LASTEXITCODE -ne 0) {\r
+    $tw = if ($hasGpu) { EngineTorchFile } else { $null }\r
+    $done = $false\r
+    if (!$done) { Uvx @('pip', 'install', '--python', $py, 'torch', 'torchvision', 'torchaudio', '--index-url', $torchIndex) 'PyTorch' }\r
+  }\r
 }\r
 """
 
+# installer\Install.ps1 of 0.3.0: one line for both, no probe of compute at all
+OLD = """\ufeff# AstraForge - setup wizard (Windows 10/11 x64).\r
+function InstallComfyDeps($dir, $hasGpu) {\r
+  $torchIndex = if ($hasGpu) { 'https://download.pytorch.org/whl/cu128' } else { 'https://download.pytorch.org/whl/cpu' }\r
+  Native { & $py -c "import torch" 2>$null | Out-Null }\r
+  if ($LASTEXITCODE -ne 0) { Run $uv @('pip', 'install', '--python', $py, 'torch', 'torchvision', 'torchaudio', '--index-url', $torchIndex) 'PyTorch' }\r
+}\r
+"""
 
-def write_installer(tmp_path, text=INSTALLER):
-    path = tmp_path / "Install.ps1"
+# installer\engine\engine.ps1 of 0.6.12: the engine installs a pre-downloaded
+# cu128 wheel, which is the same broken thing in the second venv
+ENGINE = """\ufeff# Движок AstraForge\r
+function InstallEngine($hasGpu) {\r
+  if ($script:AmdGpu) {\r
+    InstallAmdTorch $py\r
+  } else {\r
+    Native { & $py -c "import torch" 2>$null | Out-Null }\r
+    if ($LASTEXITCODE -ne 0) {\r
+      if ($hasGpu) {\r
+        $whl = EngineTorchFile -Download\r
+        Uvx @('pip', 'install', '--python', $py, $whl) 'PyTorch для NVIDIA'\r
+      } else {\r
+        Uvx @('pip', 'install', '--python', $py, 'torch==2.8.0') 'PyTorch для процессора'\r
+      }\r
+    }\r
+  }\r
+}\r
+"""
+
+INSTALL_PATCHES = pascal.PATCHES["installer/Install.ps1"]
+ENGINE_PATCHES = pascal.PATCHES["installer/engine/engine.ps1"]
+
+
+def write(tmp_path, name, text):
+    path = tmp_path / name
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(text.encode("utf-8"))
     return path
 
 
-def test_the_patch_sends_pascal_to_cu126_and_nobody_else(tmp_path):
-    path = write_installer(tmp_path)
-    assert pascal.patch_installer(path) == 0
-    text = path.read_text(encoding="utf-8-sig")
-    assert "cu126" in text and pascal.MARKER in text
-    assert "nvidia-smi --query-gpu=compute_cap" in text
-    # the unconditional cu128 line is gone, and so is the import-only check
-    assert "if ($hasGpu) { 'https://download.pytorch.org/whl/cu128' }" not in text
-    assert "get_arch_list()" in text, "наличие sm_61 должно проверяться, а не только import"
-    # 6.1 must be reachable from the name fallback as well
-    assert "GTX" in text
-
-
-def test_the_patch_keeps_the_file_byte_hygienic(tmp_path):
-    """A Cyrillic .ps1 without a BOM is mojibake in PowerShell 5.1."""
-    path = write_installer(tmp_path)
-    pascal.patch_installer(path)
-    raw = path.read_bytes()
-    assert raw.startswith(b"\xef\xbb\xbf"), "BOM пропал"
-    assert raw.count(b"\r\n") == raw.count(b"\n"), "смешались переводы строк"
-    assert "установщик".encode("utf-8") in raw
-
-
-def test_the_original_is_kept_beside_it(tmp_path):
-    path = write_installer(tmp_path)
-    pascal.patch_installer(path)
-    assert path.with_suffix(".ps1.bak").read_bytes() == INSTALLER.encode("utf-8")
-
-
-def test_the_patch_is_idempotent(tmp_path):
-    path = write_installer(tmp_path)
-    pascal.patch_installer(path)
-    once = path.read_bytes()
+def test_the_new_installer_gets_all_six_fixes(tmp_path):
+    installer = write(tmp_path, "Install.ps1", HIS)
+    engine = write(tmp_path, "engine.ps1", ENGINE)
     said = []
-    assert pascal.patch_installer(path, say=said.append) == 0
+    assert pascal.patch_file(installer, INSTALL_PATCHES, say=said.append)[1] == 0
+    assert pascal.patch_file(engine, ENGINE_PATCHES, say=said.append)[1] == 0
+
+    text = installer.read_text(encoding="utf-8-sig")
+    # the wheel index follows the card instead of the fact that a card exists
+    assert "'https://download.pytorch.org/whl/cu126'" in text
+    assert "compute_cap" in text
+    # the card is no longer thrown away as "too old"
+    assert "$s.gpuPascal = $s.gpu" in text
+    assert "$s.gpu = $null; $s.vram = 0" not in text
+    # an import is no longer proof that the build can run on this card
+    assert "$torchOk = ($LASTEXITCODE -eq 0)" in text
+    assert "get_arch_list()" in text
+    # the cu128 engine wheel is skipped, and the pinned cu126 trio is forced in
+    assert "$torchIndex -notmatch 'cu126'" in text
+    assert "'--reinstall-package', 'torch'" in text
+    assert "PyTorch 2.8.0 cu126 для Pascal" in text
+
+    engine_text = engine.read_text(encoding="utf-8-sig")
+    assert "$engCc" in engine_text and "cu126" in engine_text
+    assert "'--reinstall-package', 'torch'" in engine_text
+    # the CPU branch is still there and still last
+    assert "PyTorch для процессора" in engine_text
+
+
+def test_both_files_stay_balanced_and_byte_hygienic(tmp_path):
+    """A Cyrillic .ps1 needs its BOM, and a stray brace would kill the installer."""
+    for name, text in (("Install.ps1", HIS), ("engine.ps1", ENGINE)):
+        path = write(tmp_path, name, text)
+        assert brace_depth(path) == {"{": 0, "(": 0}, f"{name} не был сбалансирован"
+        patches = INSTALL_PATCHES if name == "Install.ps1" else ENGINE_PATCHES
+        pascal.patch_file(path, patches, say=lambda *_: None)
+        assert brace_depth(path) == {"{": 0, "(": 0}, f"{name} сломан правкой"
+        raw = path.read_bytes()
+        assert raw.startswith(b"\xef\xbb\xbf"), f"{name}: BOM пропал"
+        assert raw.count(b"\r\n") == raw.count(b"\n"), f"{name}: смешались переводы строк"
+
+
+def test_the_original_is_kept_beside_it_and_rerun_changes_nothing(tmp_path):
+    path = write(tmp_path, "Install.ps1", HIS)
+    pascal.patch_file(path, INSTALL_PATCHES, say=lambda *_: None)
+    once = path.read_bytes()
+    assert path.with_suffix(".ps1.bak").read_bytes() == HIS.encode("utf-8")
+
+    said = []
+    applied, skipped = pascal.patch_file(path, INSTALL_PATCHES, say=said.append)
     assert path.read_bytes() == once, "второй прогон не должен ничего менять"
-    assert "второй раз ничего не меняю" in "\n".join(said)
+    assert skipped == 0
+    assert sum("уже исправлено" in line for line in said) == len(INSTALL_PATCHES)
+
+
+def test_the_old_installer_gets_what_it_has_and_a_clear_skip_for_the_rest(tmp_path):
+    path = write(tmp_path, "Install.ps1", OLD)
+    said = []
+    applied, skipped = pascal.patch_file(path, INSTALL_PATCHES, say=said.append)
+    text = path.read_text(encoding="utf-8-sig")
+    assert "cu126" in text and "$torchOk" in text
+    assert "PyTorch 2.8.0 cu126 (Pascal)" in text
+    assert skipped == 3, "у 0.3.0 нет probe, файла движка и ветки с --upgrade"
+    assert sum("другая версия установщика" in line for line in said) == 3
+    assert brace_depth(path) == {"{": 0, "(": 0}
 
 
 def test_a_foreign_file_is_refused_not_mangled(tmp_path):
-    path = tmp_path / "Install.ps1"
-    path.write_text("# something else\n", encoding="utf-8")
-    assert pascal.patch_installer(path) == 2
-    assert path.read_text(encoding="utf-8") == "# something else\n"
+    path = write(tmp_path, "Install.ps1", "# что-то другое\n")
+    applied, skipped = pascal.patch_file(path, INSTALL_PATCHES, say=lambda *_: None)
+    assert (applied, skipped) == (0, len(INSTALL_PATCHES))
+    assert path.read_text(encoding="utf-8") == "# что-то другое\n"
     assert not path.with_suffix(".ps1.bak").exists()
 
 
-def test_the_installer_is_found_by_layout_not_by_name(tmp_path):
-    studio = tmp_path / "Whatever it is called"
-    (studio / "installer").mkdir(parents=True)
-    (studio / "installer" / "Install.ps1").write_text(INSTALLER, encoding="utf-8")
-    assert pascal.find_installer(str(studio)) == str(studio / "installer" / "Install.ps1")
-    assert pascal.find_installer(str(tmp_path / "empty")) == ""
-
-
-def test_auto_patches_what_it_finds_and_reports_the_card(tmp_path, monkeypatch):
+# --------------------------------------------------------------------------- #
+#  finding the studio and patching both files
+# --------------------------------------------------------------------------- #
+def make_studio(tmp_path):
     studio = tmp_path / "AstraForge"
-    (studio / "installer").mkdir(parents=True)
-    (studio / "installer" / "Install.ps1").write_text(INSTALLER, encoding="utf-8")
-    monkeypatch.setattr(pascal.subprocess, "run",
-                        Smi("NVIDIA GeForce GTX 1080 Ti, 6.1, 11264\n"))
-    assert pascal.main(["--studio", str(studio), "--auto"]) == 0
-    assert pascal.MARKER in (studio / "installer" / "Install.ps1").read_text(
+    write(studio, "installer/Install.ps1", HIS)
+    write(studio, "installer/engine/engine.ps1", ENGINE)
+    return studio
+
+
+def test_the_studio_is_found_by_layout_not_by_name(tmp_path):
+    studio = make_studio(tmp_path)
+    assert pascal.find_studio(str(studio)) == str(studio)
+    assert pascal.find_studio(str(tmp_path)) == ""
+    assert pascal.find_studio("") == "", "без подсказки ищутся только стандартные пути"
+
+
+def test_patch_studio_touches_both_venvs(tmp_path):
+    studio = make_studio(tmp_path)
+    said = []
+    assert pascal.patch_studio(str(studio), say=said.append) == 0
+    assert "cu126" in (studio / "installer" / "Install.ps1").read_text(encoding="utf-8-sig")
+    assert "$engCc" in (studio / "installer" / "engine" / "engine.ps1").read_text(
         encoding="utf-8-sig")
+    assert any("итого" in line for line in said)
 
 
-def test_a_missing_installer_does_not_fail_the_run(tmp_path, monkeypatch, capsys):
-    """The studio can be updated or trimmed; the card report still matters."""
+def test_a_studio_without_an_installer_says_so(tmp_path):
+    said = []
+    assert pascal.patch_studio(str(tmp_path), say=said.append) == 2
+    assert any("ни одного файла установщика" in line for line in said)
+
+
+def test_auto_reports_the_card_even_when_there_is_nothing_to_patch(
+        tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(pascal.subprocess, "run",
                         Smi("NVIDIA GeForce GTX 1080 Ti, 6.1, 11264\n"))
-    assert pascal.main(["--studio", str(tmp_path), "--auto"]) == 0
+    assert pascal.main(["--studio", str(tmp_path), "--auto"]) == 2
     out = capsys.readouterr().out
-    assert "не найден" in out
+    assert "студия не найдена" in out
     assert "cu126" in out

@@ -1,12 +1,12 @@
 # GTX 1080 Ti: что сломано, почему и как это закрыть
 
-Карта **видна**, CUDA **доступна**, и всё равно падает. Это не драйвер и не
-поломка студии. Виновата одна строка установщика, которая на любую видеокарту
-кладёт один и тот же PyTorch.
+Карта видна, CUDA доступна, и всё равно не работает. В AstraForge 0.6.12 дело не
+в драйвере и не в студии: установщик **объявляет такую карту отсутствующей**, а
+всё, что он на неё ставит, всё равно собрано не под неё.
 
 ## Симптом
 
-В логе ComfyUI:
+Лог ComfyUI или движка:
 
 ```
 Total VRAM 11264 MB, total RAM ... GB
@@ -14,92 +14,95 @@ pytorch version: 2.8.0+cu128
 RuntimeError: CUDA error: no kernel image is available for execution on the device
 ```
 
-`no kernel image is available` — это буквально «в вызванной CUDA-программе нет
-машинного кода для этой карты». При этом `torch.cuda.is_available()` отвечает
-`True`: проверка «есть ли GPU» проходит, а исполнять нечего. Отличить по
-`/api/status`: `gpu.vram_total` заполнен, а `torch_vram_total: 0` — torch ни разу
-не выделял память.
+Или наоборот — тише и хуже: в окне установщика «Видеокарта NVIDIA GeForce GTX
+1080 Ti не подходит для генерации», ставится облегчённый набор, а в
+`runtime\ComfyUI\.venv` оказывается **torch для процессора**, хотя карта на месте.
 
 ## Почему
 
-| Что нужно | 1080 Ti (Pascal, sm_61) |
-|---|---|
-| Ядра в wheel'е torch | `cu128` собран под `sm_70…sm_120`. Кода для `sm_61` внутри нет вовсе |
-| bf16 | появился в Ampere (sm_80). На Pascal таких инструкций нет, PyTorch их не эмулирует |
-| flash-attn | требует Ampere+, под sm_61 не собирается |
-| xformers `memory_efficient_attention` | на sm_61 отсутствует или нестабилен |
+В `installer\Install.ps1` (0.6.12) две строки решают всё:
 
-Нужен wheel, внутри которого есть `sm_61` — линейка **cu126**, последняя с
-`sm_50…sm_120`. Никакая настройка студии этого не заменяет.
+```powershell
+if ($s.cc -and (... -lt 7.5)) { $s.gpuOld = $s.gpu; $s.gpu = $null; $s.vram = 0 }
+$torchIndex = if ($hasGpu) { 'https://download.pytorch.org/whl/cu128' } else { '.../cpu' }
+```
 
-## Что именно исправлено в коде
+1. Всё, что ниже compute 7.5, выбрасывается из `$s.gpu` — установщик считает,
+   что NVIDIA нет, и ставит CPU-сборку.
+2. Даже если карту оставить, индекс `cu128` собран под `sm_70…sm_120`. Pascal —
+   это `sm_61`: `torch.cuda.is_available()` отвечает `True`, карта в списке, а
+   первое же ядро падает с `no kernel image is available`.
 
-`installer\Install.ps1`, функция `InstallComfyDeps`. Две правки:
+Плюс третье место: движок генерации (`installer\engine\engine.ps1`) ставит
+**скачанный заранее файл** `torch-2.8.0+cu128` из `installer\manifest.json` — тот
+же неподходящий wheel, только во втором venv.
 
-1. Индекс PyTorch выбирается по compute capability карты, а не по факту «GPU есть»:
+Всё это не «настройка», а выбор файла. `cu126` — последняя линейка, в которой
+есть `sm_50…sm_120`, поэтому на такой карте работает именно она.
 
-   ```powershell
-   $torchIndex = if (!$hasGpu) { '.../whl/cpu' }
-                 elseif ($cc -gt 0 -and $cc -lt 7.5) { '.../whl/cu126' }
-                 else { '.../whl/cu128' }
-   ```
+## Что исправляет `pascal.py`
 
-   `$cc` берётся из `nvidia-smi --query-gpu=compute_cap`, а если драйвер стар и
-   такого поля не отдаёт — по имени карты (`GTX 10xx` → 6.1).
+Шесть правок, каждая с именем в отчёте, каждая идемпотентна, рядом остаётся
+`.bak`. Якоря подобраны так, что правка **не находит строку — она пропускается**
+с пометкой «другая версия установщика», а не портит файл.
 
-2. torch ставится не только когда падает `import torch`. На Pascal импорт как
-   раз проходит, поэтому старая проверка никогда не переставляла wheel. Теперь
-   проверяется `sm_61` в `torch.cuda.get_arch_list()` — сборка обязана содержать
-   код для карты, а не просто импортироваться. Иначе переустановка студии снова
-   кладёт cu128 поверх рабочего cu126.
+`installer\Install.ps1`:
 
-Обе правки — в `bridge\pascal.py`. Рядом кладётся `.bak`, повторный прогон
-ничего не меняет. Сам wheel `pascal.py` не ставит: этим занимается
-`cuda_check.py fix-torch`, который уже умеет гасить студию, ставить cu126,
-перебирать варианты и проверять ядро на живой карте. Двух реализаций нет.
+| правка | было | стало |
+|---|---|---|
+| индекс PyTorch | `hasGpu` → `cu128` | по compute capability: `< 7.5` → `cu126`, иначе `cu128` |
+| признак «torch стоит» | `import torch` прошёл | плюс `sm_61` в `torch.cuda.get_arch_list()` |
+| файл движка | всегда `EngineTorchFile` (cu128) | на Pascal не берётся |
+| установка из индекса | `torch torchvision torchaudio` | `torch==2.8.0 torchvision==0.23.0 torchaudio==2.8.0` + `--reinstall-package` |
+| проверка карты | `$s.gpu = $null` (карта «старая») | карта остаётся, помечается `$s.gpuPascal`, в окне предупреждение |
+
+`installer\engine\engine.ps1`: на Pascal движок ставит torch `2.8.0+cu126` из
+индекса вместо скачанного cu128-файла.
+
+Почему `--reinstall-package`: по PEP 440 `torch==2.8.0` **удовлетворяется**
+уже стоящим `2.8.0+cu128`, и uv на такой запрос ничего не переставляет. Без
+этого флага починка выглядела бы успешной и не меняла ничего.
+
+Сам wheel `pascal.py` не ставит: этим занимается `cuda_check.py fix-torch`
+(гасит студию, ставит cu126, проверяет ядром на карте). Реализация одна.
 
 ## Как запустить
 
-Двойной клик по **`bridge\CUDA-fix-1080Ti.cmd`**. Он делает:
+Двойной клик по **`bridge\CUDA-fix-1080Ti.cmd`**:
 
-1. `pascal.py --auto` — находит студию (`D:\AstraForge`, `C:\AstraForge`, либо
-   откуда запущено), исправляет `installer\Install.ps1`, печатает карту и
+1. `pascal.py --auto` — находит студию, правит установщик, печатает карту и
    индекс, который ей положен;
-2. `CUDA-fix-torch.cmd` — ставит torch/torchvision/torchaudio с индекса `cu126`
-   и проверяет результат матричным умножением на GPU;
-3. `setx` для пользователя:
-   - `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` — меньше фрагментации
-     на 11 ГБ;
-   - `TORCH_CUDA_ARCH_LIST=6.1` — под это должны собираться C++-расширения.
+2. `CUDA-fix-torch.cmd` — ставит `torch 2.8.0+cu126` в ComfyUI студии и
+   проверяет матричным умножением на GPU;
+3. `setx` для пользователя: `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`
+   (меньше фрагментации на 11 ГБ) и `TORCH_CUDA_ARCH_LIST=6.1`.
 
-Проверить, что получилось, ничего не меняя:
+Проверить, ничего не меняя:
 
 ```cmd
 py -3 bridge\cuda_check.py check --studio D:\AstraForge
 ```
 
-В отчёте (`bridge\cuda-report.txt`) нужна строка arch list с `sm_61` и вердикт
-`[OK]`.
+В `bridge\cuda-report.txt` нужна строка arch list с `sm_61` и вердикт `[OK]`.
 
 ## Чего на этой карте не будет
 
-- **Pixal3D / Trellis2.** `installer\pixal3d\pixal3d.ps1` жёстко требует
-  `flash_attn-2.8.3` и `+cu128`, а веса идут в bf16
-  (`ss_flow_img_dit_1_3B_64_bf16`, `slat_flow_img2shape_dit_1_3B_*_bf16`).
-  flash-attn под sm_61 не собирается, bf16 на Pascal не исполняется. Это не
-  «докрутить флаг», это другой класс карт. Для мешей остаётся путь Hunyuan3D.
-- **SDXL на 1024 px.** 11 ГБ не хватает: держи 832–896 px, иначе OOM или
-  выгрузка в RAM и минуты на картинку.
+- **Pixal3D / Trellis2.** Установщик сам не предлагает их ниже compute 8.0
+  (`installer\pixal3d\pixal3d.ps1`), и это правильно: там `flash_attn-2.8.3` и
+  bf16-веса. flash-attn под `sm_61` не собирается, bf16 на Pascal не исполняется.
+  Для мешей остаётся Hunyuan3D.
+- **SDXL на 1024 px.** 11 ГБ не хватает: 832–896 px, иначе OOM или выгрузка в
+  RAM и минуты на картинку.
 - **xformers-ускорение.** Если `ComfyUI-MVAdapter` упадёт на
-  `memory_efficient_attention` — это отдельная правка в
-  `mvadapter/models/attention_processor.py` (откат на `sdpa`). Скажи, сделаю.
+  `memory_efficient_attention` — это отдельная правка
+  (`mvadapter/models/attention_processor.py`, откат на `sdpa`). Скажи, сделаю.
 
-## Если переустанавливаешь студию с нуля
+## Если ставишь студию заново
 
-Запусти `CUDA-fix-1080Ti.cmd` **после** установщика: он исправит `Install.ps1`
-и поставит правильный torch. Либо исправь установщик заранее — тогда он сам
-поставит cu126:
+Запусти `CUDA-fix-1080Ti.cmd` **после** установщика: он исправит оба файла и
+поставит правильный torch. Либо исправь установщик заранее — тогда он сам
+поставит cu126 с самого начала:
 
 ```cmd
-py -3 bridge\pascal.py --patch-installer "D:\AstraForge\installer\Install.ps1"
+py -3 bridge\pascal.py --studio D:\AstraForge --auto
 ```

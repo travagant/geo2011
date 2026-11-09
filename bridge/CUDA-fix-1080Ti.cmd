@@ -4,7 +4,8 @@ rem with any video card a cu128 torch, and cu128 has no sm_61 kernels: the card 
 rem seen, then the first kernel dies with "no kernel image is available".
 rem
 rem This does two things and hands the wheel work to the tested tool:
-rem   1. patches installer\Install.ps1 so a reinstall keeps using cu126;
+rem   1. patches the studio's installer (Install.ps1 and engine.ps1) so a
+rem      reinstall keeps using cu126, generation engine included;
 rem   2. runs CUDA-fix-torch.cmd, which puts cu126 torch in and proves it on the GPU.
 setlocal
 cd /d "%~dp0"
@@ -24,7 +25,7 @@ if not defined PYEXE (
 )
 
 echo.
-echo === 1/2  installer: pick torch by the card's compute capability
+echo === 1/2  installer: pick torch by the card, stop calling it too old
 %PYEXE% "%~dp0pascal.py" --auto
 set "CODE=%ERRORLEVEL%"
 if not "%CODE%"=="0" (

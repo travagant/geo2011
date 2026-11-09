@@ -1,26 +1,34 @@
-"""GTX 1080 Ti is compute 6.1, and the studio's installer hands it a wheel that
-has no code for this card.
+"""A GTX 1080 Ti is compute 6.1, and AstraForge 0.6.12 decides that such a card
+is not worth supporting.
 
-The single line responsible, `installer\\Install.ps1` -> `InstallComfyDeps`:
+Two lines in the studio are responsible, and both are about the same thing:
 
-    $torchIndex = if ($hasGpu) { 'https://download.pytorch.org/whl/cu128' } else { '.../cpu' }
+* `installer\\Install.ps1`, the GPU probe — a card below compute 7.5 is demoted
+  (`$s.gpuOld = $s.gpu; $s.gpu = $null`), so the installer concludes there is no
+  NVIDIA GPU at all and installs a CPU-only PyTorch;
+* `$torchIndex = if ($hasGpu) { '.../whl/cu128' } else { '.../whl/cpu' }` — and
+  `cu128` is built for `sm_70 … sm_120`. Pascal is `sm_61`, so even when the card
+  is used, every kernel call dies with "no kernel image is available" while
+  `torch.cuda.is_available()` keeps answering `True`.
 
-`cu128` carries `sm_70 … sm_120`. On Pascal every kernel call then dies with
-"no kernel image is available for execution on the device" while
-`torch.cuda.is_available()` keeps answering `True` — the card is seen, the
-kernels are absent.
+`cu126` is the last wheel line that still carries `sm_50 … sm_120`, so the fix is
+to stop treating "old" as "absent" and let the index follow the card:
 
-Two consequences, two jobs, both here:
+* keep the card, mark it Pascal, choose `cu126` for both venvs (the studio's
+  ComfyUI and the generation engine), and skip the pre-downloaded `cu128` wheel
+  file that the engine would otherwise install;
+* reinstall torch when `sm_61` is missing from `torch.cuda.get_arch_list()` and
+  not merely when `import torch` fails — on Pascal the import always succeeds,
+  which is why a reinstall used to undo the repair;
+* leave what genuinely cannot work alone: Pixal3D already gates itself on
+  compute 8.0 (`installer\\pixal3d\\pixal3d.ps1`), flash-attn has no Pascal build.
 
-* the index must follow the *card*, not the fact that a card exists
-  (`torch_index_for`), and
-* a reinstall must be able to repair a Pascal machine, so the "is torch
-  installed" test has to ask about `sm_61` and not only about `import torch`
-  (`patch_installer`, idempotent, keeps a `.bak`).
+Every patch is idempotent, named in the report, and keeps a `.bak`. A patch that
+does not find its anchor is reported as skipped instead of mangling the file:
+the installer differs between 0.3.0 and 0.6.12, and both are handled here.
 
-Installing the wheel itself is not repeated here: `cuda_check.py fix-torch`
-already does that (shutdown, cu126, fallbacks, a real matmul on the card). This
-module makes the installer agree with it, so the next reinstall does not undo it.
+Installing the wheel itself is not repeated here — `cuda_check.py fix-torch`
+already does that (shutdown, cu126, fallbacks, a real matmul on the card).
 """
 
 from __future__ import annotations
@@ -28,14 +36,12 @@ from __future__ import annotations
 import argparse
 import re
 import subprocess
-import sys
 from pathlib import Path
 
 CU126 = "https://download.pytorch.org/whl/cu126"
 CU128 = "https://download.pytorch.org/whl/cu128"
 CPU = "https://download.pytorch.org/whl/cpu"
 
-# Names are the fallback: `--query-gpu=compute_cap` needs a fresh driver.
 NAME_TO_CC = (
     (re.compile(r"GTX\s+(10|16)\d0|TITAN\s+X|Quadro\s+(P|M)\d|Tesla\s+(P|M)\d"), 6.1),
     (re.compile(r"TITAN\s+V|V100"), 7.0),
@@ -53,8 +59,7 @@ def torch_index_for(cc: float) -> str:
     the last line that still carries `sm_50 … sm_120`. ``0`` means "could not
     tell", and the older index is then the safe answer — it contains kernels for
     every architecture, so an unknown card gets a working build instead of a
-    broken one. The only card that must never land here is `cpu`, and that is
-    decided by `$hasGpu`, not by this function.
+    broken one. "No GPU at all" is a different question, answered by `$hasGpu`.
     """
     if cc <= 0:
         return CU126
@@ -95,92 +100,206 @@ def gpu_info(smi: str = "nvidia-smi") -> dict:
 
 
 # --------------------------------------------------------------------------- #
-#  the installer
+#  how each piece of PowerShell asks the driver what the card can do
 # --------------------------------------------------------------------------- #
-ANCHOR = ("  $torchIndex = if ($hasGpu) { 'https://download.pytorch.org/whl/cu128' } "
-          "else { 'https://download.pytorch.org/whl/cpu' }")
-REPLACEMENT = r"""  # Pascal (GTX 10xx, compute 6.1) has no kernels in cu128: torch.cuda works,
-  # yet every kernel call dies with "no kernel image is available". cu126 is the
-  # last line compiled for sm_50..sm_120, so the index follows the card.
+CC_SNIPPET = """\
   $cc = 0.0
   try {
     $cap = (& nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2>$null | Select-Object -First 1)
-    if ($cap -and ($cap -match '(\d+(\.\d+)?)')) { $cc = [double]$Matches[1] }
+    if ("$cap".Trim() -match '^(\\d+\\.\\d+)$') { $cc = [double]::Parse($Matches[1], [Globalization.CultureInfo]::InvariantCulture) }
   } catch {}
-  if ($cc -eq 0) {
-    try {
-      $nm = (& nvidia-smi --query-gpu=name --format=csv,noheader 2>$null | Select-Object -First 1)
-      if ($nm -match 'GTX\s+(10|16)\d0|TITAN\s+X|Quadro\s+(P|M)\d') { $cc = 6.1 }
-    } catch {}
-  }
-  $torchIndex = if (!$hasGpu) { 'https://download.pytorch.org/whl/cpu' }
-                elseif ($cc -gt 0 -and $cc -lt 7.5) { 'https://download.pytorch.org/whl/cu126' }
-                else { 'https://download.pytorch.org/whl/cu128' }"""
+"""
 
-# Second half of the same bug: torch is installed only when `import torch` fails,
-# so an existing cu128 install is never revisited. On Pascal the import succeeds
-# and every kernel still dies — the exact state a reinstall has to be able to fix.
-ANCHOR_TORCH = """  Native { & $py -c "import torch" 2>$null | Out-Null }
+# --- installer\Install.ps1 -------------------------------------------------- #
+# 1. the index itself (identical line in 0.3.0 and 0.6.12)
+A_INDEX = ("  $torchIndex = if ($hasGpu) { 'https://download.pytorch.org/whl/cu128' } "
+           "else { 'https://download.pytorch.org/whl/cpu' }")
+R_INDEX = r"""  # Pascal (GTX 10xx, compute 6.1) has no kernels in cu128: torch.cuda works,
+  # yet every kernel call dies with "no kernel image is available". cu126 is the
+  # last line compiled for sm_50..sm_120, so the index follows the card.
+""" + CC_SNIPPET + r"""  $torchIndex = 'https://download.pytorch.org/whl/cu128'
+  if (!$hasGpu) { $torchIndex = 'https://download.pytorch.org/whl/cpu' }
+  elseif ($cc -gt 0 -and $cc -lt 7.5) { $torchIndex = 'https://download.pytorch.org/whl/cu126' }"""
+
+# 2. "torch is installed" must mean "it has kernels for this card"
+A_TORCH_OLD = """  Native { & $py -c "import torch" 2>$null | Out-Null }
   if ($LASTEXITCODE -ne 0) { Run $uv @('pip', 'install', '--python', $py, 'torch', 'torchvision', 'torchaudio', '--index-url', $torchIndex) 'PyTorch' }"""
-REPLACEMENT_TORCH = r"""  Native { & $py -c "import torch" 2>$null | Out-Null }
+R_TORCH_OLD = r"""  Native { & $py -c "import torch" 2>$null | Out-Null }
   $torchOk = ($LASTEXITCODE -eq 0)
   if ($torchOk -and $cc -gt 0 -and $cc -lt 7.5) {
-    # An import proves nothing on Pascal: ask the build whether sm_61 is inside.
+    # an import proves nothing on Pascal: ask the build whether sm_61 is inside
     $sm = (& $py -c "import torch;print('sm_61' in torch.cuda.get_arch_list())" 2>$null)
     if ("$sm".Trim() -ne 'True') { $torchOk = $false }
   }
-  if (!$torchOk) { Run $uv @('pip', 'install', '--python', $py, 'torch', 'torchvision', 'torchaudio', '--index-url', $torchIndex, '--upgrade') 'PyTorch' }"""
+  if (!$torchOk) {
+    if ($torchIndex -match 'cu126') {
+      # pinned and forced: `torch==2.8.0` is satisfied by `2.8.0+cu128`, so a
+      # plain install would leave the broken wheel where it is
+      Run $uv @('pip', 'install', '--python', $py, 'torch==2.8.0', 'torchvision==0.23.0', 'torchaudio==2.8.0', '--index-url', $torchIndex, '--reinstall-package', 'torch', '--reinstall-package', 'torchvision', '--reinstall-package', 'torchaudio') 'PyTorch 2.8.0 cu126 (Pascal)'
+    } else { Run $uv @('pip', 'install', '--python', $py, 'torch', 'torchvision', 'torchaudio', '--index-url', $torchIndex) 'PyTorch' }
+  }"""
 
-PATCHES = ((ANCHOR, REPLACEMENT), (ANCHOR_TORCH, REPLACEMENT_TORCH))
-MARKER = "$cc -lt 7.5"          # proof that this patch has been applied
+A_TORCH_NEW = """  Native { & $py -c "import torch" 2>$null | Out-Null }
+  if ($LASTEXITCODE -ne 0) {
+"""
+R_TORCH_NEW = r"""  Native { & $py -c "import torch" 2>$null | Out-Null }
+  $torchOk = ($LASTEXITCODE -eq 0)
+  if ($torchOk -and $cc -gt 0 -and $cc -lt 7.5) {
+    # an import proves nothing on Pascal: ask the build whether sm_61 is inside
+    $sm = (& $py -c "import torch;print('sm_61' in torch.cuda.get_arch_list())" 2>$null)
+    if ("$sm".Trim() -ne 'True') { $torchOk = $false }
+  }
+  if (!$torchOk) {
+"""
+
+# 3. the pre-downloaded wheel file is cu128 — useless on Pascal
+A_TW = "    $tw = if ($hasGpu) { EngineTorchFile } else { $null }"
+R_TW = """    # the engine file is a cu128 wheel: on Pascal it is exactly the broken one
+    $tw = if ($hasGpu -and $torchIndex -notmatch 'cu126') { EngineTorchFile } else { $null }"""
+
+# 4. the index fallback: the pins and the force that Pascal needs, or uv keeps
+#    the resident cu128 (PEP 440 considers `torch==2.8.0` satisfied by `2.8.0+cu128`)
+A_FALLBACK = "    if (!$done) { Uvx @('pip', 'install', '--python', $py, 'torch', 'torchvision', 'torchaudio', '--index-url', $torchIndex)"
+R_FALLBACK = r"""    if (!$done -and $torchIndex -match 'cu126') { Uvx @('pip', 'install', '--python', $py, 'torch==2.8.0', 'torchvision==0.23.0', 'torchaudio==2.8.0', '--index-url', $torchIndex, '--reinstall-package', 'torch', '--reinstall-package', 'torchvision', '--reinstall-package', 'torchaudio') 'PyTorch 2.8.0 cu126 для Pascal (GTX 10xx)' }
+    elseif (!$done) { Uvx @('pip', 'install', '--python', $py, 'torch', 'torchvision', 'torchaudio', '--index-url', $torchIndex)"""
+
+# 5. the probe demotes the card; it should mark it instead
+A_PROBE = ("        if ($s.cc -and ([double]::Parse($s.cc, [Globalization.CultureInfo]::InvariantCulture) "
+           "-lt 7.5)) { $s.gpuOld = $s.gpu; $s.gpu = $null; $s.vram = 0 }")
+R_PROBE = r"""        # Pascal (6.x) и Volta (7.0) не имеют ядер в cu128, но имеют в cu126: карту не
+        # выбрасываем (иначе ставится torch для процессора), а помечаем для индекса.
+        if ($s.cc -and ([double]::Parse($s.cc, [Globalization.CultureInfo]::InvariantCulture) -lt 7.5)) {
+          $s.gpuPascal = $s.gpu
+          Say ('  [!]     ' + $s.gpu + ' (compute ' + $s.cc + '): Pascal/Volta — PyTorch будет cu126, генерация пойдёт; Pixal3D и flash-attn этой карте недоступны') 'Yellow'
+        }"""
+
+# --- installer\engine\engine.ps1 -------------------------------------------- #
+A_ENGINE = """    if ($LASTEXITCODE -ne 0) {
+      if ($hasGpu) {
+        $whl = EngineTorchFile -Download"""
+R_ENGINE = r"""    if ($LASTEXITCODE -ne 0) {
+      # the engine wheel in the manifest is cu128 (sm_75+): on Pascal it installs
+      # and then dies with "no kernel image", so such a card gets cu126 instead
+      $engCc = 0.0
+      try {
+        $cap = (& nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2>$null | Select-Object -First 1)
+        if ("$cap".Trim() -match '^(\d+\.\d+)$') { $engCc = [double]::Parse($Matches[1], [Globalization.CultureInfo]::InvariantCulture) }
+      } catch {}
+      if ($hasGpu -and $engCc -gt 0 -and $engCc -lt 7.5) {
+        Uvx @('pip', 'install', '--python', $py, 'torch==2.8.0', 'torchvision==0.23.0', 'torchaudio==2.8.0', '--index-url', 'https://download.pytorch.org/whl/cu126', '--reinstall-package', 'torch', '--reinstall-package', 'torchvision', '--reinstall-package', 'torchaudio') 'PyTorch 2.8.0 cu126 для Pascal (GTX 10xx)'
+      } elseif ($hasGpu) {
+        $whl = EngineTorchFile -Download"""
 
 
-def find_installer(start: str = "") -> str:
-    for base in (start, r"D:\AstraForge", r"C:\AstraForge"):
-        if not base:
-            continue
-        path = Path(base, "installer", "Install.ps1")
-        if path.is_file():
-            return str(path)
-    return ""
+class Patch:
+    """One named fix; several spellings because the installer changed versions."""
+
+    def __init__(self, label, marker, *variants):
+        self.label, self.marker = label, marker
+        self.variants = variants      # (anchor, replacement)
+
+    def apply(self, text):
+        """Second run must change nothing: the replacement carries its own mark."""
+        if self.marker in text:
+            return text, "уже исправлено"
+        for anchor, replacement in self.variants:
+            if anchor in text:
+                return text.replace(anchor, replacement, 1), "исправлено"
+        return text, "пропущено (нет такой строки — другая версия установщика)"
 
 
-def patch_installer(path, say=print) -> int:
-    """Pick torch by compute capability. Idempotent, keeps a ``.bak``."""
+PATCHES = {
+    "installer/Install.ps1": (
+        Patch("индекс PyTorch выбирается по карте",
+              "elseif ($cc -gt 0 -and $cc -lt 7.5) { $torchIndex", (A_INDEX, R_INDEX)),
+        Patch("torch переставляется, если в сборке нет sm_61",
+              "$torchOk = ($LASTEXITCODE -eq 0)",
+              (A_TORCH_OLD, R_TORCH_OLD), (A_TORCH_NEW, R_TORCH_NEW)),
+        Patch("файл движка (cu128) не берётся на Pascal",
+              "$torchIndex -notmatch 'cu126'", (A_TW, R_TW)),
+        Patch("на Pascal ставится закреплённый набор cu126",
+              "PyTorch 2.8.0 cu126 для Pascal", (A_FALLBACK, R_FALLBACK)),
+        Patch("видеокарта не объявляется неподходящей",
+              "$s.gpuPascal = $s.gpu", (A_PROBE, R_PROBE)),
+    ),
+    "installer/engine/engine.ps1": (
+        Patch("движок ставится из cu126 на Pascal",
+              "$engCc -gt 0 -and $engCc -lt 7.5", (A_ENGINE, R_ENGINE)),
+    ),
+}
+
+
+def patch_file(path, patches, say=print) -> tuple:
+    """Apply patches to one PowerShell file. Returns (applied, skipped)."""
     target = Path(path)
-    say(f"файл   : {target}")
     try:
         raw = target.read_bytes()
     except OSError as exc:
-        say(f"не читается: {exc}")
-        return 2
+        say(f"  {target.name}: не читается ({exc})")
+        return 0, len(patches)
     crlf = b"\r\n" in raw
     bom = raw.startswith(b"\xef\xbb\xbf")   # PowerShell 5.1 needs it for Cyrillic
     text = raw.decode("utf-8-sig").replace("\r\n", "\n")
-    if MARKER in text:
-        say("уже исправлен — второй раз ничего не меняю")
-        return 0
-    if ANCHOR not in text:
-        say("не нашла строку выбора индекса — это не 0.3.0 или файл уже правили")
-        say("искала: " + ANCHOR.strip())
+
+    changed, applied, skipped = False, 0, 0
+    for patch in patches:
+        new_text, verdict = patch.apply(text)
+        if verdict == "исправлено":
+            changed = True
+            applied += 1
+        elif verdict.startswith("пропущено"):
+            skipped += 1
+        else:
+            applied += 1
+        say(f"  · {patch.label}: {verdict}")
+        text = new_text
+
+    if changed:
+        backup = target.with_suffix(target.suffix + ".bak")
+        if not backup.exists():
+            backup.write_bytes(raw)
+            say(f"  копия: {backup.name}")
+        if crlf:
+            text = text.replace("\n", "\r\n")
+        target.write_bytes((b"\xef\xbb\xbf" if bom else b"") + text.encode("utf-8"))
+    return applied, skipped
+
+
+def patch_studio(studio: str, say=print) -> int:
+    """Patch every installer file that exists under the studio."""
+    root = Path(studio)
+    if not root.is_dir():
+        say(f"студия не найдена: {studio}")
         return 2
-    backup = target.with_suffix(target.suffix + ".bak")
-    if not backup.exists():
-        backup.write_bytes(raw)
-        say(f"копия  : {backup.name}")
-    done = 0
-    for anchor, replacement in PATCHES:
-        if anchor in text:
-            text = text.replace(anchor, replacement, 1)
-            done += 1
-    if crlf:
-        text = text.replace("\n", "\r\n")
-    target.write_bytes((b"\xef\xbb\xbf" if bom else b"") + text.encode("utf-8"))
-    say(f"исправлено: {done} из {len(PATCHES)} — индекс выбирается по compute "
-        "capability (Pascal → cu126); наличие sm_61 проверяется, а не только import")
-    if done < len(PATCHES):
-        say("второе место не нашлось: torch останется ставиться только при неудачном import")
+    total_applied, total_skipped, touched = 0, 0, 0
+    for relative, patches in PATCHES.items():
+        path = root / relative
+        if not path.is_file():
+            say(f"{relative}: нет такого файла — пропускаю")
+            continue
+        touched += 1
+        say(f"{relative}")
+        applied, skipped = patch_file(path, patches, say)
+        total_applied += applied
+        total_skipped += skipped
+    if not touched:
+        say("ни одного файла установщика не нашлось — правка не применена")
+        return 2
+    say(f"\nитого: исправлено {total_applied}, пропущено {total_skipped}")
+    if total_skipped:
+        say("пропущенные — не ошибка: другая версия установщика. "
+            "torch всё равно поставит CUDA-fix-torch.cmd")
     return 0
+
+
+def find_studio(start: str = "") -> str:
+    for base in (start, r"D:\AstraForge", r"C:\AstraForge"):
+        if not base:
+            continue
+        path = Path(base)
+        if (path / "installer" / "Install.ps1").is_file():
+            return str(path)
+    return ""
 
 
 def report_card(say=print) -> dict:
@@ -192,17 +311,20 @@ def report_card(say=print) -> dict:
 
 
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description="GTX 1080 Ti (Pascal, sm_61): "
-                                                 "правка установщика AstraForge")
+    parser = argparse.ArgumentParser(
+        description="GTX 1080 Ti (Pascal, sm_61): правка установщика AstraForge")
     parser.add_argument("--studio", default="", help="папка студии")
-    parser.add_argument("--patch-installer", default="", metavar="Install.ps1")
+    parser.add_argument("--patch-installer", default="", metavar="Install.ps1",
+                        help="исправить один файл (без engine.ps1)")
     parser.add_argument("--card", action="store_true", help="только показать карту")
     parser.add_argument("--auto", action="store_true",
                         help="найти студию, исправить установщик, показать карту")
     args = parser.parse_args(argv)
 
     if args.patch_installer:
-        return patch_installer(args.patch_installer)
+        applied, skipped = patch_file(args.patch_installer,
+                                      PATCHES["installer/Install.ps1"])
+        return 0 if applied or not skipped else 2
     if args.card:
         report_card()
         return 0
@@ -210,13 +332,13 @@ def main(argv=None) -> int:
         parser.print_help()
         return 0
 
-    installer = find_installer(args.studio)
-    code = 0
-    if installer:
-        code = patch_installer(installer)
-    else:
-        print("установщик не найден (искала <студия>\\installer\\Install.ps1) — "
-              "пропускаю, на работу студии это не влияет")
+    studio = find_studio(args.studio)
+    if not studio:
+        print("студия не найдена: искала installer\\Install.ps1 в "
+              f"{args.studio or 'папке вызова'}, D:\\AstraForge, C:\\AstraForge")
+        report_card()
+        return 2
+    code = patch_studio(studio)
     print()
     report_card()
     return code
