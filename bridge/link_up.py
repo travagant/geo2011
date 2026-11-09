@@ -158,7 +158,7 @@ def _spawn(cmd: list, log_path: Path) -> subprocess.Popen:
     return proc
 
 
-def _wait_for_url(proc, log_path: Path, seconds=90) -> str:
+def _wait_for_url(proc, log_path: Path, seconds=45) -> str:
     deadline = time.time() + seconds
     while time.time() < deadline:
         if proc.poll() is not None:
@@ -195,7 +195,7 @@ def start_ssh(port: int, host: str = "nokey@localhost.run") -> tuple:
            "-o", "ServerAliveInterval=20", "-o", "ExitOnForwardFailure=yes",
            "-R", f"80:127.0.0.1:{port}", host]
     proc = _spawn(cmd, log_path)
-    url = _wait_for_url(proc, log_path, seconds=60)
+    url = _wait_for_url(proc, log_path, seconds=45)
     return proc, url, log_path
 
 
