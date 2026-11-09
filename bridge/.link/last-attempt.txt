@@ -1,0 +1,22 @@
+when:    2026-11-09 02:56:24
+build:   12
+bridge:  /home/user/geo2011
+studio:  /tmp/tmpn084fwpg/AstraForge  (exists: True)
+port:    3295
+token:   4XlUKEa0x_hWKVaPvJ6vvx-5QxjW50GN
+local:   ok
+cloudflared: (none)
+fake: url=http://127.0.0.1:3295 exit=None log=/home/user/geo2011/bridge/.link/fake.log
+fake: probe status=200 detail=ok tries=1
+    body: {
+  "ok": true,
+  "op": "ping",
+  "result": {
+    "build": "12",
+    "bridge": "/home/user/geo2011/bridge",
+    "port": 3295
+  }
+}
+hello through the tunnel: status=200 ok=True detail=ok
+url:     http://127.0.0.1:3295
+verdict: ok

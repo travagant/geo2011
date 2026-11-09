@@ -22,9 +22,3 @@ release/d3tool-dist-exe/
 /google_drive/
 /bug-report/
 /deliver/
-
-# the bridge keeps the machine-specific paths out of git
-/bridge/config.json
-
-# link state: token, tunnel log, background job records
-/bridge/.link/

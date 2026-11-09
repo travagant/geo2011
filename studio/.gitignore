@@ -1,8 +1,0 @@
-node_modules/
-.venv/
-*.bak
-data/runtime/ComfyUI/
-data/runtime/python/
-data/runtime/uv/
-data/runtime/blender/
-data/runtime/engine/

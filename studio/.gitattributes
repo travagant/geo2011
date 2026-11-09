@@ -1,5 +1,0 @@
-# Windows scripts must keep CRLF on checkout
-*.cmd text eol=crlf
-*.bat text eol=crlf
-*.ps1 text eol=crlf
-*.cs text eol=crlf
