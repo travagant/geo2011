@@ -6410,6 +6410,13 @@ def test_link_up_reads_the_tunnel_address_and_proves_it():
         assert link_up.url_from_log(log).endswith("second-name-here.trycloudflare.com")
         assert link_up.url_from_log(pathlib.Path(d, "nothing.log")) == ""
 
+        # the ssh fallback prints its address in prose, not in a box
+        ssh_log = pathlib.Path(d, "tunnel-ssh.log")
+        ssh_log.write_text("** your connection id is 8f2c, please mention it\n"
+                           "abcd1234.lhr.life tunneled with tls termination, "
+                           "https://abcd1234.lhr.life\n", encoding="utf-8")
+        assert link_up.url_from_log(ssh_log) == "https://abcd1234.lhr.life"
+
         # 2. a port nothing holds, and one that is already taken is skipped
         assert link_up.free_port((3299, 3300)) in (3299, 3300)
 
@@ -6434,6 +6441,16 @@ def test_link_up_reads_the_tunnel_address_and_proves_it():
             wrong = link_up.probe(f"http://127.0.0.1:{port}", "wrong-token",
                                   tries=1, gap=0.1)
             assert wrong != "ok", wrong
+            # a 530/1033 from Cloudflare means "connector not attached yet" and
+            # is retried; anything else stops at once. Both keep the body,
+            # because 530 and "bad token" mean very different things.
+            detail = link_up.probe_detail(f"http://127.0.0.1:{port}", "wrong-token",
+                                          tries=2, gap=0.05)
+            assert detail["ok"] is False and detail["status"] == 403
+            assert "bad token" in detail["body"]
+            good = link_up.probe_detail(f"http://127.0.0.1:{port}", link.token,
+                                        tries=1, gap=0.1)
+            assert good["ok"] is True and good["status"] == 200
         finally:
             httpd.shutdown()
             httpd.server_close()
