@@ -280,7 +280,10 @@ def _handler_for(app: StudioServer):
             return {"exports": folders}
 
         def api_list_jobs(self, body, params, query):
-            limit = int((query.get("limit") or [50])[0])
+            try:
+                limit = max(1, min(500, int((query.get("limit") or [50])[0])))
+            except (TypeError, ValueError):
+                limit = 50
             project = (query.get("project") or [None])[0]
             return {"jobs": app.store.jobs(limit=limit, project_id=project)}
 
