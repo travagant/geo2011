@@ -41,6 +41,7 @@ Mods\<name>.vdpack   gated by `d3tool vdpack scan --strict`
 | `Start studio link.cmd` | the thing to double-click (ASCII wrapper, `pause` on every exit) |
 | `build_d3.py` | runs inside Blender (`--python build_d3.py -- …`); imports the GLB, prepares it, calls `export_unit`, writes a JSON report |
 | `config.example.json` | every knob; copy to `config.json` (git-ignored) and edit `donor`/`mods` |
+| `Get-model.cmd`, `get_model.py` | download a GGUF from Hugging Face into the studio, register it in Ollama (resume, sha256, GGUF header) |
 
 The bridge never imports Blender or the add-on: it builds command lines, runs
 them, and reads their reports. That is why it is testable without a GPU
@@ -294,6 +295,36 @@ implementation, not two — and finally `setx`s `PYTORCH_CUDA_ALLOC_CONF` and
 `TORCH_CUDA_ARCH_LIST=6.1` so every process the studio spawns inherits them. The
 symptom, the reasoning and what this card cannot do (`flash-attn`, bf16 weights,
 1024 px SDXL) are in `Pascal-1080Ti.md`.
+
+## Models: a `.gguf` on disk is not a model yet
+
+The studio's LLM goes through Ollama (`ollamaUrl` → `/api/chat`, `ollamaModel` in
+`data\config.json`), so a file dropped into a folder is invisible until Ollama
+knows it. `Get-model.cmd` does the whole path in one double-click:
+
+```
+Get-model.cmd                  → the defiant preset: Q4_K_M, 6.98 GB
+Get-model.cmd defiant-xs       → IQ4_XS, 520 MB smaller (11 GB of VRAM, remember)
+Get-model.cmd https://huggingface.co/owner/repo --file name.gguf
+```
+
+It downloads to `<студия>\data\models\gguf`, **resumes** a broken transfer
+(run it again and it continues), verifies the size and SHA-256 from the Hugging
+Face API before touching Ollama, reads `general.architecture` out of the GGUF
+header, then runs `ollama create <name> -f Modelfile` (`num_ctx 8192`,
+`temperature 0.8`). The name it prints is what you pick in «Подключения» → модель
+Ollama. A file whose architecture this Ollama cannot run is reported as such
+here — with the LM Studio/llama.cpp alternative — instead of failing later in
+the chat.
+
+Keep the chat model unloaded while generating: `setx OLLAMA_KEEP_ALIVE 0`, or a
+9B model holds ~7 GB of the 11 GB and SDXL starts swapping.
+
+For a plain SDXL checkpoint (`.safetensors`, not GGUF) this is not the tool: put
+the file into `<студия>\data\models\checkpoints`, restart the studio, and it
+appears in the checkpoint list — the studio reads that list from
+`/object_info/ImageOnlyCheckpointLoader`, and the choice is stored as
+`imageCheckpoint`.
 
 ## The studio's "Connections" window is not the control channel
 
