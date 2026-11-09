@@ -25,6 +25,14 @@ d3studio/            1ivq-sM76QfVbU10zCR2P2BFKEoR-8R73
 | `d3studio-src-0.3.1.zip` (`1qeDdxfEKFJO2QVU_rkDPYjcqBYfZr-P8`) | `01-исходники` | коммит `724df4f`: `studio/` (основа — AstraForge 0.3.0, MIT), `d3studio/` (лёгкий режим), `docs/studio/` целиком (BASE, PLAN, DRIVE); без `node_modules`, `dist`, `__pycache__`, выгрузок `data/` |
 | `README.md` (`1MR_mg7lQyPljkorrMC1ro7AXRx8Oh7_i`) | `02-документы` | описание студии: Godot и Unity, что переписано, как запускать |
 | `DRIVE.md` (`1O87zmj0MKzNA2HDYD0DHiIdijRotJaAm`) | `02-документы` | это правило: наша папка отдельно от авторской, структура |
+| `AUDIT-ASTRAFORGE-0.6.15.md` (`11wuvKJVZquhH2VV6E0GCxPpt4z7g-00E`) | `02-документы` | наш аудит последней версии автора: закрытый код, лицензии, что берём себе |
+
+В **авторскую** папку `AstraForge` (не нашу) положено то, что принадлежит автору:
+
+| Файл | id | Что |
+|---|---|---|
+| `AstraForge-0.6.15-source.tar.gz` | `1fXfOjxNpUSrh4sxXsxDqqSdAbFd5wNWw` | снимок исходников релиза v0.6.15 с codeload (1,9 МБ); код внутри = 0.3.0 |
+| `AstraForge-releases-0.4.6-0.6.15.txt.gz` | `1f3j6hipFuSy7N1axg3z8AzZhPxfdS-lZ` | описания 33 выпусков из GitHub Releases |
 
 `BASE.md` и `PLAN.md` отдельными файлами не залились: фильтр коннектора их отклоняет по содержимому
 (не наша ошибка и не повод переписывать текст) — оба лежат внутри архива исходников в
