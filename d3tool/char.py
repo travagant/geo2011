@@ -528,7 +528,10 @@ class ReferenceIndex:
         """The first existing candidate, or ``None``."""
         for path in self.candidates(reference):
             if os.path.exists(path):
-                return path
+                # Return the spelling the filesystem actually holds: a
+                # reference written in the game's lower-case form still maps
+                # onto the mixed-case donor tree on a case-insensitive OS.
+                return os.path.realpath(path)
         return None
 
     def __call__(self, reference: str) -> bool:

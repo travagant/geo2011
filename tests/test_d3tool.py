@@ -920,7 +920,9 @@ def test_validate_gltf_accepts_the_bundled_reference_files():
         if errs:
             bad.append((os.path.relpath(p, REPO), errs))
         if warns:
-            warned[os.path.relpath(p, REPO)] = warns
+            # glTF paths are forward-slash everywhere except a Windows
+            # relpath, which would key this table with backslashes.
+            warned[os.path.relpath(p, REPO).replace(os.sep, "/")] = warns
     assert not bad, bad
     assert warned == {
         "Empire/Rod-1/character_empire_rod-1.gltf": 1,
@@ -1006,15 +1008,15 @@ def test_import_refuses_an_unparsable_g():
         p = os.path.join(td, "garbage.g")
         open(p, "wb").write(junk)
         r = subprocess.run([sys.executable, "-m", "d3tool", "dump", p],
-                           capture_output=True, text=True, cwd=REPO,
-                           check=False)
+                           capture_output=True, text=True, encoding="utf-8",
+                           cwd=REPO, check=False)
         assert r.returncode == 1, r.stdout
         assert "unparsed" in r.stdout + r.stderr
         good = os.path.join(REPO, "Neutrals", "Wildboar",
                             "character_neutrals_wildboar.g")
         r2 = subprocess.run([sys.executable, "-m", "d3tool", "dump", good],
-                            capture_output=True, text=True, cwd=REPO,
-                            check=False)
+                            capture_output=True, text=True, encoding="utf-8",
+                            cwd=REPO, check=False)
         assert r2.returncode == 0, r2.stderr
         assert json.loads(r2.stdout)["vertex_count"] > 0
 
@@ -6171,3 +6173,7 @@ def test_vdpack_pack_names_the_mod_after_its_file():
         files = list(vdpack.read_vdpack(named).files().items())
         again = vdpack.index_document(vdpack.reindex_pack(files, name="Ignored"))
         assert again.name == "Ruru"
+
+
+if __name__ == "__main__":
+    sys.exit(main())

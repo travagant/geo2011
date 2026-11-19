@@ -485,11 +485,13 @@ def find_texture_file(name: str, folders: Sequence[str]) -> Optional[str]:
         if exact:
             p = os.path.join(folder, exact)
             if os.path.isfile(p):
-                return p
+                return os.path.realpath(p)
         for ext in (".t", ".dds", ".tga", ".png", ".jpg", ".jpeg", ".bmp"):
             p = os.path.join(folder, stem + ext)
             if os.path.isfile(p):
-                return p
+                # A case-insensitive filesystem answers to ``a.t`` even when
+                # the file is ``A.t``; report the spelling on disk.
+                return os.path.realpath(p)
         try:
             listing = os.listdir(folder)
         except OSError:
