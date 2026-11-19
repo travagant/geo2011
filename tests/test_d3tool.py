@@ -3020,6 +3020,99 @@ def test_same_motion_ignores_only_the_round_trip_noise():
     assert not animmod.same_motion(left, right)
 
 
+def test_same_motion_sees_a_vertex_morph_edit():
+    """A moved shape key changes no bone sample, so the morph track must be
+    compared too — otherwise `_anim_bytes` keeps the donor's `.a` and the
+    artist's edit never reaches the game."""
+    run = os.path.join(REPO, "Empire", "Cleric",
+                       "character_empire_cleric_run.a")
+    left = animmod.parse_anim(open(run, "rb").read())
+    right = animmod.parse_anim(open(run, "rb").read())
+    assert animmod.same_motion(left, right)
+    positions = bytearray(right.morphs[0].positions)
+    struct.pack_into("<f", positions, 0,
+                    struct.unpack_from("<f", positions, 0)[0] + 1.0)
+    right.morphs[0].positions = bytes(positions)
+    assert not animmod.same_motion(left, right)
+    # frame/vertex/name shape is structure, not noise
+    right = animmod.parse_anim(open(run, "rb").read())
+    right.morphs[0].name += "_x"
+    assert not animmod.same_motion(left, right)
+
+
+def test_morph_stream_name_survives_a_blender_resave():
+    """Blender renames the shape keys and its glTF writer drops the dis3tool
+    bufferView names, so the stream is stamped on the mesh datablock and read
+    back from ``extras.d3unit_morph``."""
+    from d3tool import cli
+    tmp = tempfile.mkdtemp(prefix="d3morphname_")
+    try:
+        gl = os.path.join(tmp, "cleric.gltf")
+        cli._export_gl(os.path.join(REPO, "Empire", "Cleric",
+                                    "character_empire_cleric.g"),
+                       os.path.join(REPO, "Empire", "Cleric",
+                                    "character_empire_cleric_run.a"),
+                       gl, None, quiet=True)
+        with open(gl, encoding="utf-8") as fh:
+            doc = json.load(fh)
+        # what Blender hands back: no morph_* bufferView names, the stream
+        # spelling only on the mesh extras
+        for bv in doc["bufferViews"]:
+            if str(bv.get("name", "")).startswith("morph_"):
+                del bv["name"]
+        for mesh in doc["meshes"]:
+            if any(p.get("targets") for p in mesh["primitives"]):
+                mesh.setdefault("extras", {})[
+                    "d3unit_morph"] = "empire_cleric_cloth"
+        with open(gl, "w", encoding="utf-8") as fh:
+            json.dump(doc, fh)
+        m = gltf.load_gltf(gl)
+        subs = [s for s in m.submodels if s.target_positions]
+        assert len(subs) == 1, [s.mesh_name for s in m.submodels]
+        assert subs[0].morph_name == "empire_cleric_cloth", subs[0].morph_name
+        assert not m.target_positions
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_only_the_stream_that_owns_the_morphs_is_rebuilt():
+    """The concat export lifts the *last* stream's morphs (Cleric: `_run.a`,
+    25 frames).  `_iadd.a` keeps its own 356-frame track verbatim: writing the
+    glTF's 25 frames into it would truncate the animation."""
+    from d3tool import cli
+    tmp = tempfile.mkdtemp(prefix="d3morphsplit_")
+    try:
+        gl = os.path.join(tmp, "cleric.gltf")
+        cli._export_gl(os.path.join(REPO, "Empire", "Cleric",
+                                    "character_empire_cleric.g"),
+                       os.path.join(REPO, "Empire", "Cleric",
+                                    "character_empire_cleric_run.a"),
+                       gl, None, quiet=True)
+        m = gltf.load_gltf(gl)
+        run = animmod.parse_anim(open(os.path.join(
+            REPO, "Empire", "Cleric", "character_empire_cleric_run.a"),
+            "rb").read())
+        iadd = animmod.parse_anim(open(os.path.join(
+            REPO, "Empire", "Cleric", "character_empire_cleric_iadd.a"),
+            "rb").read())
+        assert gltf._morph_trailing(m, run, strict=True) == run.trailing
+        assert gltf._morph_trailing(m, iadd, strict=True) is None
+        # an edited shape key rebuilds the owning stream, not the other one
+        sub = next(s for s in m.submodels if s.target_positions)
+        raw = bytearray(sub.target_positions[0])
+        struct.pack_into("<f", raw, 0,
+                         struct.unpack_from("<f", raw, 0)[0] + 1.0)
+        sub.target_positions[0] = bytes(raw)
+        rebuilt = gltf._morph_trailing(m, run, strict=True)
+        assert rebuilt is not None and rebuilt != run.trailing
+        assert gltf._morph_trailing(m, iadd, strict=True) is None
+        track = next(t for t in animmod._scan_morph_tracks(rebuilt)
+                     if t.name == "empire_cleric_cloth")
+        assert track.vertex_count == 264 and track.frame_count == 25
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def test_an_unedited_animation_is_written_back_byte_for_byte():
     """Export the Inquisitor without touching the rig: `.a` and `.ac` must not
     change at all.  A near-copy of the animation is one more file that differs

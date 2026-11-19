@@ -545,7 +545,13 @@ def test_rigid_unit_roundtrip():
 def test_morph_unit_roundtrip():
     if not os.path.isfile(MORPH):
         raise AssertionError("morph sample missing")
-    import_unit(MORPH)
+    root = import_unit(MORPH)
+    info = addon.unitprops.get_info(root) or {}
+    # both deformer parts must know the `.a` stream their shape keys belong to
+    eq(info.get("morphs"), 2, "stamped morph streams")
+    cloaked = bpy.data.objects["empire_hierophant_cloak"]
+    eq(cloaked.data.get(addon.unitprops.MORPH_PROP), "empire_hierophant_cloak",
+       "cloak stream")
     out = out_dir("morph")
     g_path = os.path.join(out, os.path.basename(MORPH))
     export_unit(g_path)
@@ -554,6 +560,44 @@ def test_morph_unit_roundtrip():
     eq(b.name, a.name, "container name")
     eq(len(b.parts), len(a.parts), "part count")
     assert_(b.vertex_count > 0, "geometry written")
+
+    # an untouched round trip keeps every animation stream byte for byte
+    src_dir = os.path.dirname(MORPH)
+    for name in ("character_empire_hierophant_iadd.a",
+                 "character_empire_hierophant_run.a"):
+        with open(os.path.join(src_dir, name), "rb") as fh:
+            refused = fh.read()
+        with open(os.path.join(out, name), "rb") as fh:
+            written = fh.read()
+        eq(written, refused, name)
+
+    # ...and an edited shape key lands in the stream that owns the morphs.
+    # `_run.a` carries the 25 frames the reference glTF lifted; `_iadd.a`'s
+    # 360-frame track exists only in the donor and must stay verbatim.
+    run_path = os.path.join(out, "character_empire_hierophant_run.a")
+    iadd_path = os.path.join(out, "character_empire_hierophant_iadd.a")
+    src_run = animmod.parse_anim(open(run_path, "rb").read())
+    src_iadd = open(iadd_path, "rb").read()
+    key = cloaked.data.shape_keys.key_blocks["target_0"]
+    key.data[0].co.x += 1.0
+    export_unit(g_path)
+    eq(open(iadd_path, "rb").read(), src_iadd,
+       "the 360-frame iadd morph track is not the lifted one")
+    after = animmod.parse_anim(open(run_path, "rb").read())
+    before_track = next(t for t in src_run.morphs
+                        if t.name == "empire_hierophant_cloak")
+    after_track = next(t for t in after.morphs
+                       if t.name == "empire_hierophant_cloak")
+    eq(len(after_track.positions), len(before_track.positions),
+       "morph payload size")
+    changed = [(k, struct.unpack_from("<f", before_track.positions, k)[0],
+                struct.unpack_from("<f", after_track.positions, k)[0])
+               for k in range(0, len(before_track.positions), 4)
+               if before_track.positions[k:k + 4]
+               != after_track.positions[k:k + 4]]
+    eq(len(changed), 1, f"exactly one float moved: {changed[:4]}")
+    k, before, after_value = changed[0]
+    near(after_value, before + 1.0, 1e-5, f"edited shape key at {k}")
 
 
 def _dominant_signature(ob):
