@@ -424,6 +424,65 @@ def _stamp_diffuse_names(target: str, meshes, derived=None) -> tuple:
     return stamped, [n for n in missing if n in {ob.name for ob in meshes}]
 
 
+def _stamp_morph_names(target: str, meshes) -> int:
+    """Write every morph part's `.a` stream into the glTF as mesh extras.
+
+    The add-on's importer stamps the stream on the mesh datablock; Blender's
+    glTF writer does not guarantee that custom property reaches the mesh
+    extras (and ``targetNames`` only carries the renamed shape keys), so the
+    value is written here explicitly — exactly like the texture names.
+    ``d3tool.gltf._morph_stream_name`` reads it back, which is what lets an
+    edited shape key land in the right trailing stream of the ``.a``.
+    """
+    import json
+    wanted = []
+    for ob in meshes:
+        try:
+            value = ob.data.get(unitprops.MORPH_PROP)
+        except Exception:  # noqa: BLE001
+            value = None
+        if value:
+            wanted.append((ob, str(value)))
+    if not wanted:
+        return 0
+    try:
+        with open(target, "r", encoding="utf-8") as fh:
+            doc = json.load(fh)
+    except (OSError, ValueError):
+        return 0
+    nodes = doc.get("nodes") or []
+    meshes_json = doc.get("meshes") or []
+    node_mesh = {}
+    for node in nodes:
+        if "mesh" in node:
+            node_mesh.setdefault(node.get("name") or "", node["mesh"])
+    by_mesh = {}
+    for i, mesh in enumerate(meshes_json):
+        by_mesh.setdefault(mesh.get("name"), i)
+    stamped = 0
+    for ob, value in wanted:
+        mi = node_mesh.get(ob.name)
+        try:
+            data_name = ob.data.name
+        except Exception:  # noqa: BLE001
+            data_name = ""
+        if mi is None and data_name:
+            mi = node_mesh.get(data_name)
+        if mi is None:
+            mi = by_mesh.get(data_name)
+        if mi is None:
+            mi = by_mesh.get(ob.name)
+        if mi is None or mi >= len(meshes_json):
+            continue
+        meshes_json[mi].setdefault("extras", {})["d3unit_morph"] = value
+        stamped += 1
+    if not stamped:
+        return 0
+    with open(target, "w", encoding="utf-8") as fh:
+        json.dump(doc, fh)
+    return stamped
+
+
 def export_unit(context, path: str, use_anim: bool = True, weights: int = 0,
                 donor_dir: str = "", quiet: bool = False,
                 keep_temp: bool = False) -> dict:
@@ -509,6 +568,10 @@ def export_unit(context, path: str, use_anim: bool = True, weights: int = 0,
         if stamped:
             print(f"[d3unit] named the texture of {stamped} part(s) in the "
                   f"glTF (d3unit_diffuse)")
+        morph_parts = _stamp_morph_names(target, meshes)
+        if morph_parts:
+            print(f"[d3unit] kept the morph-stream name of {morph_parts} "
+                  f"part(s) in the glTF (d3unit_morph)")
         for ob_name, atlas in sorted(derived.items()):
             notes.append(f"texture from the material: {ob_name} -> {atlas}")
             print(f"[d3unit] {notes[-1]}")

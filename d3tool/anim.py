@@ -247,6 +247,22 @@ def same_motion(left: "AnimFile", right: "AnimFile",
             for x, y in zip(fa, fb):
                 if abs(float(x) - float(y)) > tol:
                     return False
+    # A vertex-morph stream is animation too: a Blender round trip that moved
+    # a shape key changes no bone sample, so ignoring these let the donor's
+    # `.a` mask the edit entirely.
+    if len(left.morphs) != len(right.morphs):
+        return False
+    for ma, mb in zip(left.morphs, right.morphs):
+        if (ma.name != mb.name or ma.frame_count != mb.frame_count
+                or ma.vertex_count != mb.vertex_count
+                or len(ma.positions) != len(mb.positions)):
+            return False
+        if ma.positions == mb.positions:
+            continue
+        for (x,), (y,) in zip(struct.iter_unpack("<f", ma.positions),
+                              struct.iter_unpack("<f", mb.positions)):
+            if abs(x - y) > tol:
+                return False
     return True
 
 

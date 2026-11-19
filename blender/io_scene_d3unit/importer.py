@@ -204,6 +204,102 @@ def _stamp_part_materials(meshes, parts) -> int:
     return used
 
 
+def _gltf_document(path: str):
+    """The JSON dict of a ``.gltf`` or ``.glb`` file (``{}`` on failure)."""
+    import json
+    import struct
+    try:
+        with open(path, "rb") as fh:
+            data = fh.read()
+        if data[:4] == b"glTF":
+            off = 12
+            while off + 8 <= len(data):
+                length, ctype = struct.unpack_from("<II", data, off)
+                if ctype == 0x4E4F534A:          # 'JSON'
+                    return json.loads(data[off + 8:off + 8 + length]
+                                      .decode("utf-8"))
+                off += 8 + length
+            return {}
+        return json.loads(data.decode("utf-8"))
+    except (OSError, ValueError, struct.error):
+        return {}
+
+
+def _morph_streams(path: str) -> dict:
+    """``{part name: `.a` morph stream}`` read from a glTF's target views.
+
+    A dis3tool export names every morph target's bufferView
+    ``morph_<stream>_<k>``; this is the only place the stream name exists
+    before Blender renames the shape keys.  Both the node name (what the
+    importer calls the object) and the mesh name are mapped, so the stamp
+    survives the importer's naming choices.
+    """
+    doc = _gltf_document(path)
+    if not doc:
+        return {}
+    accessors = doc.get("accessors") or []
+    views = doc.get("bufferViews") or []
+    meshes = doc.get("meshes") or []
+    node_mesh = {}
+    for node in doc.get("nodes") or []:
+        if "mesh" in node:
+            node_mesh.setdefault(node["mesh"], node.get("name") or "")
+    out = {}
+    for mi, mesh in enumerate(meshes):
+        stream = ""
+        for prim in mesh.get("primitives") or []:
+            for target in prim.get("targets") or []:
+                ai = target.get("POSITION")
+                if ai is None or ai >= len(accessors):
+                    continue
+                bi = accessors[ai].get("bufferView")
+                if bi is None or bi >= len(views):
+                    continue
+                name = views[bi].get("name", "")
+                if name.startswith("morph_") \
+                        and name.rsplit("_", 1)[1].isdigit():
+                    stream = name[len("morph_"):].rsplit("_", 1)[0]
+                    break
+            if stream:
+                break
+        if not stream:
+            continue
+        for key in (node_mesh.get(mi), mesh.get("name")):
+            if key:
+                out.setdefault(key, stream)
+    return out
+
+
+def _stamp_morph_streams(gltf_path: str, meshes) -> int:
+    """Record each morph part's `.a` stream on its mesh datablock.
+
+    The shape keys themselves are renamed by Blender's importer, so the
+    link between a mesh and the trailing stream of the `.a` would be lost
+    on the way back.  ``extras.d3unit_morph`` carries it through the glTF
+    (see :func:`d3tool.gltf._morph_stream_name`), which is what makes an
+    edited shape key reach the game file instead of the donor's frames.
+    """
+    streams = _morph_streams(gltf_path)
+    if not streams:
+        return 0
+    used = 0
+    for ob in meshes:
+        stream = streams.get(ob.name)
+        if not stream:
+            try:
+                stream = streams.get(ob.data.name)
+            except Exception:  # noqa: BLE001
+                stream = ""
+        if not stream:
+            continue
+        try:
+            ob.data[unitprops.MORPH_PROP] = stream
+            used += 1
+        except Exception:  # noqa: BLE001 - a stamp must never fail an import
+            pass
+    return used
+
+
 def _select_only(context, objects):
     for ob in context.scene.objects:
         ob.select_set(False)
@@ -292,6 +388,7 @@ def import_unit(context, path: str, use_anim: bool = True,
         packed = _pack_images(context, tmp, pack) if use_textures else 0
         _drop_broken_images(context)
         _stamp_part_materials(meshes, _part_materials(path))
+        morphs = _stamp_morph_streams(gltf_path, meshes)
         # material0, material1, … across the unit, in part order: Blender would
         # otherwise hand out material0, material0.001, material0.002 for the
         # parts of one unit and the artist cannot tell the weapon's material
@@ -315,6 +412,8 @@ def import_unit(context, path: str, use_anim: bool = True,
         info["textures"] = packed
         info["frames"] = frames
         info["meshes"] = len(meshes)
+        if morphs:
+            info["morphs"] = morphs
         # before the tagging below: the metadata is what the exporter and the
         # UI read back, so a warning has to be in it, not just in the log
         notice = lod_notice(base, folder)

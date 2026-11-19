@@ -33,6 +33,12 @@ PART_PROP = "d3unit_part"  # True on every mesh that belongs to the unit
 # from the part's own attribute, honoured on export by writing
 # `extras.d3unit_diffuse` into the glTF (`d3tool/gltf.py`).
 DIFFUSE_PROP = "d3unit_diffuse"
+# the `.a` vertex-morph stream a morph-deformer part's shape keys belong to.
+# dis3tool names the glTF target bufferViews `morph_<stream>_<k>`; Blender's
+# importer renames the shape keys, so the stream is stamped on the *mesh
+# datablock* (which the exporter writes as `extras.d3unit_morph`) and read
+# back by `d3tool.gltf._morph_stream_name`.
+MORPH_PROP = "d3unit_morph"
 # which unit a part belongs to (the `.g` base): several units may live in one
 # scene, and an export must pick only its own meshes
 OWNER_PROP = "d3unit_owner"

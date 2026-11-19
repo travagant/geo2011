@@ -294,14 +294,47 @@ def _effective_diffuse(override: str, image: str, donor_name: str) -> str:
     return override
 
 
-def _morph_targets_raw(gltf: dict, buf: bytes, targets) -> Tuple[str, List[bytes]]:
+def _morph_stream_name(gltf: dict, mesh: Optional[dict]) -> str:
+    """Which `.a` morph stream a glTF mesh's targets belong to.
+
+    dis3tool names each target's bufferView ``morph_<stream>_<k>``.  That
+    name does not survive a Blender round trip — the importer renames the
+    shape keys ``target_0``… and the exporter writes its own, unnamed
+    views — so the add-on stamps the stream on the mesh datablock
+    (``extras.d3unit_morph``).  ``targetNames`` is honoured as a last
+    resort for files that kept the dis3tool spelling in the shape keys.
+    """
+    for t in (mesh or {}).get("primitives") or []:
+        for target in t.get("targets") or []:
+            ai = target.get("POSITION")
+            if ai is None:
+                continue
+            acc = gltf["accessors"][ai]
+            nm = gltf["bufferViews"][acc["bufferView"]].get("name", "")
+            if nm.startswith("morph_") and nm.rsplit("_", 1)[1].isdigit():
+                return nm[len("morph_"):].rsplit("_", 1)[0]
+    extras = (mesh or {}).get("extras") or {}
+    stamped = extras.get("d3unit_morph")
+    if isinstance(stamped, str) and stamped.strip():
+        return stamped.strip()
+    for nm in extras.get("targetNames") or []:
+        nm = str(nm or "")
+        if nm.startswith("morph_") and nm.rsplit("_", 1)[1].isdigit():
+            return nm[len("morph_"):].rsplit("_", 1)[0]
+    return ""
+
+
+def _morph_targets_raw(gltf: dict, buf: bytes, targets,
+                       mesh: Optional[dict] = None) -> Tuple[str, List[bytes]]:
     """Verbatim per-frame POSITION bytes of a mesh's morph targets.
 
     dis3tool writes each baked `.a` morph frame as one glTF target whose
     POSITION accessor is the raw frame positions unmodified; the target's
     bufferView is named ``morph_<stream>_<k>``, which names the `.a` stream.
+    A Blender re-save loses that name, so ``mesh`` (the mesh the targets
+    belong to) is consulted for the stream the add-on stamped on the
+    datablock instead.
     """
-    name = ""
     frames: List[bytes] = []
     for t in targets or []:
         ai = t.get("POSITION")
@@ -318,11 +351,7 @@ def _morph_targets_raw(gltf: dict, buf: bytes, targets) -> Tuple[str, List[bytes
             frames.append(b"".join(
                 buf[off + k * stride:off + k * stride + 12]
                 for k in range(count)))
-        if not name:
-            nm = bv.get("name", "")
-            if nm.startswith("morph_") and nm.rsplit("_", 1)[1].isdigit():
-                name = nm[len("morph_"):].rsplit("_", 1)[0]
-    return name, frames
+    return _morph_stream_name(gltf, mesh), frames
 
 
 def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
@@ -513,7 +542,7 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
             snode_matrix = _node_global(sub_node)
 
         smorph_name, starget_positions = _morph_targets_raw(
-            gltf, buf, spr.get("targets"))
+            gltf, buf, spr.get("targets"), mesh_json)
         sdiffuse, slightmap, soverride, simage = _mesh_material_maps(
             gltf, mesh_json)
         srigid = swts is None and sjts is None and not sbones
@@ -555,7 +584,7 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
         ))
 
     main_morph_name, main_target_positions = _morph_targets_raw(
-        gltf, buf, prim.get("targets"))
+        gltf, buf, prim.get("targets"), mesh)
 
     # the mesh node's name, not nodes[0]: a Blender re-save reorders the
     # node array (bones first), and nodes[0] would then be a bone name
@@ -2049,6 +2078,27 @@ def _resample_split_anim(m: GltfModel,
     return out
 
 
+def _donor_morph_name(sub: GltfModel, morphs, used=()) -> str:
+    """Name the stream a morph-less glTF part belongs to, from the donor.
+
+    A Blender round trip loses the target bufferView names (the importer
+    renames the shape keys ``target_0``…), and a ``.blend`` made before the
+    add-on stamped ``d3unit_morph`` carries no name either.  The vertex count
+    is what identifies the stream in a unit's `.a`: every morph part has its
+    own, and the reference streams are one-per-part.  Only an unambiguous
+    match is accepted — a wrong name writes the part's frames into another
+    stream.
+    """
+    fresh = [t for t in morphs if t.name and t.name not in used]
+    by_count = [t for t in fresh if t.vertex_count == sub.vertex_count]
+    if len(by_count) == 1:
+        return by_count[0].name
+    for t in fresh:
+        if sub.mesh_name and t.name == sub.mesh_name:
+            return t.name
+    return ""
+
+
 def animation_from_gltf(m: GltfModel, donor: Optional["animmod.AnimFile"] = None,
                         streams: Optional[List[Tuple[str, "animmod.AnimFile"]]] = None,
                         out_name: str = "") -> "animmod.AnimFile":
@@ -2254,11 +2304,19 @@ def animation_from_gltf(m: GltfModel, donor: Optional["animmod.AnimFile"] = None
 
     # ---- trailing vertex-morph streams ----
     morphs = []  # (name, frames, vc, positions)
+    used_names = set()
     for sub in [m] + list(m.submodels):
-        if sub.target_positions and sub.morph_name:
-            morphs.append((sub.morph_name, len(sub.target_positions),
-                           sub.vertex_count,
-                           b"".join(sub.target_positions)))
+        if not sub.target_positions:
+            continue
+        morph_name = sub.morph_name
+        if not morph_name and donor is not None and not donor.raw:
+            morph_name = _donor_morph_name(sub, donor.morphs, used_names)
+        if not morph_name or morph_name in used_names:
+            continue
+        used_names.add(morph_name)
+        morphs.append((morph_name, len(sub.target_positions),
+                       sub.vertex_count,
+                       b"".join(sub.target_positions)))
     if morphs:
         dtracks = {}
         foreign = []
@@ -2303,4 +2361,8 @@ def animation_from_gltf(m: GltfModel, donor: Optional["animmod.AnimFile"] = None
         unk = struct.unpack_from("<I", donor.header, 16)[0]
     anim.header = struct.pack("<5I", magic, total - 8 - len(anim.trailing),
                               len(anim.bones), anim.frame_count, unk)
+    # keep the parsed view in step with what will be written: `same_motion`
+    # reads it to decide whether the donor's own bytes can be reused
+    if not anim.raw:
+        anim.morphs = animmod._scan_morph_tracks(anim.trailing)
     return anim
