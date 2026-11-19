@@ -22,3 +22,7 @@ release/d3tool-dist-exe/
 /google_drive/
 /bug-report/
 /deliver/
+
+# локальный конфиг OpenCode может содержать ключ Coarena/Zen — не коммитить
+opencode.json
+.auth.json
