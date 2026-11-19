@@ -1917,6 +1917,10 @@ def _split_concat_anim(anim: "animmod.AnimFile", m: GltfModel,
                                               list(db.frames), db.preamble))
     out.trailing = donor.trailing
     out.morphs = list(donor.morphs)
+    morph = _morph_trailing(m, donor, strict=True)
+    if morph is not None:
+        out.trailing = morph
+        out.morphs = animmod._scan_morph_tracks(out.trailing)
     magic, unk = 9, 15
     if len(donor.header) >= 20:
         magic = struct.unpack_from("<I", donor.header, 0)[0]
@@ -2067,6 +2071,10 @@ def _resample_split_anim(m: GltfModel,
             rb.preamble = donor.bones[pos].preamble
     out.trailing = donor.trailing
     out.morphs = list(donor.morphs)
+    morph = _morph_trailing(m, donor, strict=True)
+    if morph is not None:
+        out.trailing = morph
+        out.morphs = animmod._scan_morph_tracks(out.trailing)
     magic, unk = 9, 15
     if len(donor.header) >= 20:
         magic = struct.unpack_from("<I", donor.header, 0)[0]
@@ -2075,6 +2083,84 @@ def _resample_split_anim(m: GltfModel,
     total_len = len(animmod.write_anim(out))
     out.header = struct.pack("<5I", magic, total_len - 8 - len(out.trailing),
                              len(out.bones), out.frame_count, unk)
+    return out
+
+
+def _morph_trailing(m: GltfModel, donor, strict: bool = False) -> Optional[bytes]:
+    """The trailing block for ``m``'s morph targets, or ``None``.
+
+    ``None`` means "this part carries no morph data at all — keep the
+    donor's trailing verbatim" (the reference kept streams the glTF export
+    never lifted, e.g. DarkServant's seven foreign tracks).  Otherwise the
+    block is rebuilt stream by stream: a stream whose frames still match the
+    donor is copied as its verbatim record (byte parity), an edited one is
+    written from the glTF positions.
+
+    ``strict=True`` (the multi-stream split paths, which write one `.a` at a
+    time) refuses to touch a stream whose shape the glTF does not reproduce:
+    the glTF carries only the *last* stream's morphs
+    (:func:`d3tool.anim.concat_anims`), so the earlier streams' 300+ frame
+    tracks exist nowhere else and their donor records must survive verbatim.
+    """
+    morphs = []  # (name, frames, vc, positions)
+    used_names = set()
+    for sub in [m] + list(m.submodels):
+        if not sub.target_positions:
+            continue
+        morph_name = sub.morph_name
+        if not morph_name and donor is not None and not donor.raw:
+            morph_name = _donor_morph_name(sub, donor.morphs, used_names)
+        if not morph_name or morph_name in used_names:
+            continue
+        used_names.add(morph_name)
+        morphs.append((morph_name, len(sub.target_positions),
+                       sub.vertex_count,
+                       b"".join(sub.target_positions)))
+    if not morphs:
+        return None
+    dtracks = {}
+    foreign = []
+    if donor is not None and not donor.raw:
+        for t in donor.morphs:
+            dtracks[t.name] = t
+            if t.name not in {mm[0] for mm in morphs}:
+                foreign.append(t)
+    if not strict and not dtracks:
+        return None
+    if strict:
+        # Only the stream the glTF actually lifted may be rebuilt: a
+        # multi-stream unit exports ONE animation, and concat_anims takes the
+        # morphs from the last stream.  Every other `.a` writes its donor
+        # block verbatim — its 300+ frame tracks exist nowhere else.
+        if {mm[0] for mm in morphs} != set(dtracks):
+            return None
+        for name, nfr, vc, _mpos in morphs:
+            dt = dtracks[name]
+            if dt.frame_count != nfr or dt.vertex_count != vc:
+                return None
+    records = []
+    all_match = bool(dtracks)
+    for name, nfr, vc, mpos in morphs:
+        dt = dtracks.get(name)
+        if dt is None:
+            all_match = False
+            records.append(_morph_record(15, name, nfr, vc, mpos))
+            continue
+        if dt.frame_count != nfr or dt.vertex_count != vc \
+                or dt.positions != mpos:
+            all_match = False
+            records.append(_morph_record(dt.tag, name, nfr, vc, mpos))
+        else:
+            records.append(dt.raw_record)
+    if not records:
+        return None
+    if all_match and not foreign and donor is not None:
+        # the donor trailing reproduces byte-for-byte (covers any
+        # non-stream payload between the records too)
+        return donor.trailing
+    out = b"".join(records)
+    # foreign streams the reference kept (e.g. DarkServant): re-append
+    out += b"".join(t.raw_record for t in foreign)
     return out
 
 
@@ -2303,48 +2389,9 @@ def animation_from_gltf(m: GltfModel, donor: Optional["animmod.AnimFile"] = None
             anim = _donor_full_bones(anim, donor)
 
     # ---- trailing vertex-morph streams ----
-    morphs = []  # (name, frames, vc, positions)
-    used_names = set()
-    for sub in [m] + list(m.submodels):
-        if not sub.target_positions:
-            continue
-        morph_name = sub.morph_name
-        if not morph_name and donor is not None and not donor.raw:
-            morph_name = _donor_morph_name(sub, donor.morphs, used_names)
-        if not morph_name or morph_name in used_names:
-            continue
-        used_names.add(morph_name)
-        morphs.append((morph_name, len(sub.target_positions),
-                       sub.vertex_count,
-                       b"".join(sub.target_positions)))
-    if morphs:
-        dtracks = {}
-        foreign = []
-        if donor is not None and not donor.raw:
-            seen = set()
-            for t in donor.morphs:
-                dtracks[t.name] = t
-                if t.name not in {mm[0] for mm in morphs}:
-                    foreign.append(t)
-        records = []
-        all_match = bool(dtracks)
-        for name, nfr, vc, mpos in morphs:
-            dt = dtracks.get(name)
-            tag = dt.tag if dt is not None else 15
-            if dt is None or dt.frame_count != nfr or dt.vertex_count != vc \
-                    or dt.positions != mpos:
-                all_match = False
-                records.append(_morph_record(tag, name, nfr, vc, mpos))
-            else:
-                records.append(dt.raw_record)
-        if all_match and not foreign and donor is not None:
-            # the donor trailing reproduces byte-for-byte (covers any
-            # non-stream payload between the records too)
-            anim.trailing = donor.trailing
-        else:
-            anim.trailing = b"".join(records)
-            # foreign streams the reference kept (e.g. DarkServant): re-append
-            anim.trailing += b"".join(t.raw_record for t in foreign)
+    trailing = _morph_trailing(m, donor)
+    if trailing is not None:
+        anim.trailing = trailing
     elif donor is not None and not donor.raw and donor.morphs:
         # the glTF carries no morph targets at all: the original trailing
         # belonged to streams the reference export did not lift (foreign
