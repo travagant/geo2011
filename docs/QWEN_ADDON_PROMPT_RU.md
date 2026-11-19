@@ -13,9 +13,15 @@ opencode --model opencode/qwen3.6-plus-free
 Лимит для free-модели в `opencode.json` (добавить в блок `opencode.models`):
 
 ```json
-"qwen3.6-plus-free": {
-  "name": "Qwen 3.6 Plus Free (Zen)",
-  "limit": { "context": 131072, "output": 32768 }
+{
+  "opencode": {
+    "models": {
+      "qwen3.6-plus-free": {
+        "name": "Qwen 3.6 Plus Free (Zen)",
+        "limit": { "context": 131072, "output": 32768 }
+      }
+    }
+  }
 }
 ```
 
