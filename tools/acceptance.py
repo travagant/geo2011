@@ -16,14 +16,13 @@ import time
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 #: (имя, путь, что ждём, минимум для прохода).
-#: Числа — база этой ветки (53f1c2e), а НЕ origin/main: ветка старее main,
-#: поэтому reverse_parity тут 83/84, а test_d3tool не печатает ничего без гарда.
+#: Ветка перебазирована на origin/main (bc059d1), числа — от него.
 CHECKS = [
-    ("test_d3tool",   ["tests/test_d3tool.py"],        "200/200 и exit 0", 1),
+    ("test_d3tool",   ["tests/test_d3tool.py"],        "200/200 и exit 0", 200),
     ("corpus_parity", ["tests/corpus_parity.py"],      "84/84",            84),
-    ("reverse_parity",["tests/reverse_parity.py"],     "83/84 на базе, 84/84 после", 83),
+    ("reverse_parity",["tests/reverse_parity.py"],     "84/84",            84),
     ("addon_import",  ["tests/addon_import_test.py"],  "PASS",             1),
-    ("test_corpus",   ["tests/test_corpus.py"],        "13/16 на базе",    13),
+    ("test_corpus",   ["tests/test_corpus.py"],        "13/16 (задача 3)", 13),
 ]
 
 
@@ -68,7 +67,7 @@ def run(name: str, argv: list[str], expect: str) -> tuple[bool, str, float]:
 
 def main() -> int:
     print(f"приёмка в {REPO}")
-    print("база ветки 53f1c2e: НЕ origin/main, числа ниже — от неё\n")
+    print("база: origin/main = bc059d1 (ветка перебазирована)\n")
     failed = 0
     for name, argv, expect, need in CHECKS:
         path = os.path.join(REPO, argv[0])
