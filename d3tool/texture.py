@@ -242,6 +242,7 @@ def parse_dds(data: bytes, source: str = "") -> TextureInfo:
 
     r5g5b5 = False
     gm_format = None
+    rmask = 0
     # DDPF_RGB (0x40): an uncompressed form.  If 16-bit and the masks match
     # A1R5G5B5 we map it to the GM 16-bit form (used by UI icons).
     if pf_flags & 0x40:  # DDPF_RGB
@@ -251,13 +252,34 @@ def parse_dds(data: bytes, source: str = "") -> TextureInfo:
             r5g5b5 = True
         elif pf_bits == 32 and rmask == 0xFF0000:
             gm_format = 5  # uncompressed 32-bit A8R8G8B8-class GM code
-        else:
+        elif not (pf_bits == 24 and rmask == 0xFF0000):
             raise ValueError(f"unsupported DDS RGB format (bits={pf_bits}, "
                              f"rmask=0x{rmask:x})")
     elif fourcc in _DDS_FOURCC_TO_T:
         gm_format = _DDS_FOURCC_TO_T[fourcc]
     else:
         raise ValueError(f"unsupported DDS fourCC {fourcc!r}")
+
+    faces = 6 if _u32(data, 112) & 0x200 else 1
+    payload = data[DDS_HEADER_SIZE:]
+    if gm_format is None:
+        # One shipped file (Neutrals/OrcKing/..._sword.dds) has a header
+        # that claims 24-bit RGB while the payload is a 32-bit BGRA mip
+        # chain; its own `.t` says format 5.  Infer the real width from the
+        # payload length instead of re-encoding a shortened chain.
+        expected32 = 0
+        for i in range(max(mips, 1)):
+            wi, hi = width >> i, height >> i
+            if wi == 0 or hi == 0:
+                break
+            expected32 += wi * hi * 4
+        expected32 *= max(1, faces)
+        if pf_bits == 24 and len(payload) == expected32:
+            gm_format = 5
+
+    if gm_format is None:
+        raise ValueError(f"unsupported DDS RGB format (bits={pf_bits}, "
+                         f"rmask=0x{rmask:x})")
 
     return TextureInfo(
         width=width,
@@ -266,8 +288,8 @@ def parse_dds(data: bytes, source: str = "") -> TextureInfo:
         gm_format=gm_format,
         fourcc=fourcc,
         r5g5b5=r5g5b5,
-        faces=6 if _u32(data, 112) & 0x200 else 1,
-        payload=data[DDS_HEADER_SIZE:],
+        faces=faces,
+        payload=payload,
         source=source,
     )
 

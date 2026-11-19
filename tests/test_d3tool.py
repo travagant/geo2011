@@ -406,6 +406,36 @@ def test_texture_roundtrip_all():
     assert count >= 6, f"too few .t files found: {count}"
 
 
+def test_malformed_24bit_dds_header_with_a_32bit_payload():
+    """OrcKing's sword `.dds` declares 24-bit RGB in its header but carries a
+    32-bit mip chain; the matching `.t` says format 5.  Parsing it as 24-bit
+    truncated the chain, and a reverse export re-encoded a shorter copy."""
+    import struct
+    p = os.path.join(REPO, "Neutrals", "OrcKing",
+                     "weapon_neutrals_orcking_sword.dds")
+    data = open(p, "rb").read()
+    assert struct.unpack_from("<I", data, 88)[0] == 24
+    info = texmod.parse_dds(data, p)
+    assert info.gm_format == 5, info.gm_format
+    assert len(info.payload) == info.payload_size()
+    t_path = os.path.splitext(p)[0] + ".t"
+    assert texmod.dds_to_t(data, open(t_path, "rb").read(59), p) == \
+        open(t_path, "rb").read()
+
+    # A real 24-bit payload (three bytes per pixel) still has no GM format.
+    hdr = bytearray(data[:128])
+    struct.pack_into("<I", hdr, 12, 8)
+    struct.pack_into("<I", hdr, 16, 8)
+    struct.pack_into("<I", hdr, 28, 1)
+    struct.pack_into("<I", hdr, 88, 24)
+    try:
+        texmod.parse_dds(bytes(hdr) + b"\0" * (8 * 8 * 3), "24bit.dds")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("a genuinely 24-bit payload must be rejected")
+
+
 def test_texture_convert_file_both_directions():
     """`convert_file` handles .t->.dds and .dds->.t (payload preserved)."""
     import tempfile

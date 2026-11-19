@@ -78,12 +78,6 @@ KNOWN = {
         os.path.join("Neutrals", "WaterSnake",
                      "character_neutrals_watersnake_sea.gltf"),
     },
-    # dis3tool wrote this .dds with a 24-bit RGB header over a 32-bit payload,
-    # so its own header is self-contradictory and it cannot be trusted.  The
-    # reverse export warns and passes the shipped `.t` through instead.
-    "unparsable_dds": {
-        os.path.join("Neutrals", "OrcKing", "weapon_neutrals_orcking_sword.dds"),
-    },
 }
 
 
@@ -145,8 +139,6 @@ def test_import_every_asset():
                 f"{info.payload_size()} expected from the header")
 
     for p in _assets(".dds"):
-        if _rel(p) in KNOWN["unparsable_dds"]:
-            continue
         texmod.parse_dds(open(p, "rb").read(), p)
 
     assert not problems, "\n".join(problems)

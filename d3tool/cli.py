@@ -1116,6 +1116,15 @@ def _report_export_delta(out_dir: str, before: Set[str],
                       "not part of the unit")
 
 
+def _same_bytes(a: str, b: str) -> bool:
+    """True when two files exist and hold identical bytes."""
+    try:
+        with open(a, "rb") as fa, open(b, "rb") as fb:
+            return fa.read() == fb.read()
+    except OSError:
+        return False
+
+
 def _shrink_texture(path: str, quiet: bool) -> bool:
     """Block-compress a texture in place when it is stored as raw pixels.
 
@@ -1211,7 +1220,19 @@ def _carry_material_textures(out_dir: str, base: str,
             # ones included: an A8R8G8B8 `.t` is eight times the size of the
             # same pixels as DXT (the 683 KiB blade that is 86 KiB in the game
             # data), and the engine reads both.  The pixels do not change.
-            _shrink_texture(existing, quiet)
+            #
+            # The exception is a texture that came back byte-identical to a
+            # unit folder that ships the authoritative `.dds` beside it (a
+            # reverse export, or an untouched round-trip).  Re-encoding it
+            # would rewrite a file nothing asked to change -- OrcKing's sword
+            # is raw 32-bit in the source data, and shrinking it broke reverse
+            # parity.  A folder with only a raw `.t` is still the artist's
+            # working copy and is compressed.
+            donor_t = os.path.join(src_dir, stem + ".t") if src_dir else ""
+            donor_dds = os.path.join(src_dir, stem + ".dds") if src_dir else ""
+            if not (donor_t and os.path.isfile(donor_dds)
+                    and _same_bytes(existing, donor_t)):
+                _shrink_texture(existing, quiet)
             continue
         src_t = src_dds = src_img = None
         for d in dirs:
