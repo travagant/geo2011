@@ -165,13 +165,25 @@ def _tag(arm, meshes, info):
 
 
 def _part_materials(path: str):
-    """``[(part name, material0_diffuse), …]`` of a unit's `.g`, in order."""
+    """``[(part name, material0_diffuse), …]`` of a unit's `.g`, in order.
+
+    The name is the block's ``name`` attribute when it has one: that is what
+    the forward export calls the glTF node, and therefore what the Blender
+    object is called on the way back.  A container name can be an artefact
+    (the Angel's root is ``Myzrael_alpha``, the node is
+    ``empire_angel_hairs``), and a miss here used to fall through to binding
+    by position — which then wrote the body's atlas onto the hair object.
+    """
     try:
         gfile = bridge.module("gfile")
         data = open(path, "rb").read()
         mesh = gfile.parse_geometry_file(data)
-        return [(part.name, (part.attrs or {}).get("material0_diffuse", ""))
-                for part in gfile.iter_parts(mesh)]
+        out = []
+        for part in gfile.iter_parts(mesh):
+            attrs = part.attrs or {}
+            out.append(((attrs.get("name") or "").strip() or part.name,
+                        attrs.get("material0_diffuse", "")))
+        return out
     except Exception:  # noqa: BLE001 - metadata must never fail an import
         return []
 

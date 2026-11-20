@@ -725,12 +725,17 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
     # textures (glTF .dds -> native .t), and point the .g at the emitted file
     emitted = _export_textures(gltf_path, out_dir, base, quiet,
                                src_dir=src_dir)
-    # The texture the *body* wears, resolved through the main mesh's material
-    # chain -- not `emitted`, which is whichever image happened to convert
-    # first (compound units list one image per sub-mesh, and a failed
-    # conversion skips its turn, so the two are not the same question).
-    uri0 = _main_image_uri(gltf_path)
-    stem0 = texmod.clean_stem(uri0) if uri0 else ""
+    # The texture the *root block* wears — not `emitted`, which is whichever
+    # image happened to convert first (compound units list one image per
+    # sub-mesh, and a failed conversion skips its turn, so the two are not the
+    # same question), and not `meshes[0]` either: a unit whose root block is
+    # another mesh than the body (the Angel's root is the hair) drew the body's
+    # atlas on it.  `sm.material_diffuse` is the block that was just rebuilt.
+    stem0 = (texmod.clean_stem(sm.material_diffuse)
+             if sm.material_diffuse else "")
+    if not stem0:
+        uri0 = _main_image_uri(gltf_path)
+        stem0 = texmod.clean_stem(uri0) if uri0 else ""
     donated = str(attrs.get("material0_diffuse") or "")
     if stem0 and (not donated
                   or texmod.clean_stem(donated).lower() != stem0.lower()):
@@ -3121,8 +3126,7 @@ def _lod_sync(unit_dir: str, out_dir: Optional[str] = None,
             donor_parts = list(reference)
             moved = {i for i, p in enumerate(main_all)
                      if i >= len(donor_parts)
-                     or scenemod._part_facts(p)
-                     != scenemod._part_facts(donor_parts[i])}
+                     or not scenemod.parts_equivalent(p, donor_parts[i])}
         swaps = []
         for i, lp in enumerate(lod_parts):
             if i == 0:

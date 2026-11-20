@@ -1624,6 +1624,19 @@ def _mesh_to_skinned_blender(m: GltfModel, weights_on_vertex: int,
         parts.append(part)
         warns.extend(pwarn)
 
+    # The root block wears its own atlas, and that is not always `meshes[0]`'s:
+    # a unit whose root block is, say, the Angel's hair mesh draws `hairs`
+    # while the body is a sub-mesh.  Resolve the material from the block that
+    # actually became the root (same precedence as a part: a `d3unit_diffuse`
+    # the artist typed wins, a donor-default one yields to the material).
+    root_mat = donor.material_diffuse or m.material_diffuse
+    if 0 in pair_of_slot:
+        moved_mat = _effective_diffuse(sub0.material_override,
+                                       sub0.material_image,
+                                       donor.material_diffuse)
+        if moved_mat:
+            root_mat = moved_mat
+
     mesh = SkinnedMesh(
         name=donor.name or m.mesh_name,
         geometry_file=donor.geometry_file,
@@ -1637,7 +1650,7 @@ def _mesh_to_skinned_blender(m: GltfModel, weights_on_vertex: int,
         weights_on_vertex=w_root,
         parts=parts,
         morph=bool(donor.morph),
-        material_diffuse=donor.material_diffuse or m.material_diffuse,
+        material_diffuse=root_mat,
         lm_uv=_pick_lm(donor.lm_uv, m.lm_uv, len(root_verts)),
         lightmap=donor.lightmap or m.lightmap,
         attr_items=list(donor.attr_items),

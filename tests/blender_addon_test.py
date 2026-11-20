@@ -232,6 +232,24 @@ def test_import_structure():
     assert_(os.path.isfile(info.get("g", "")), "source .g recorded")
 
 
+def fcurves_of(action):
+    """Every F-curve of ``action``, slotted or not.
+
+    Blender 4.4+ moved an action's curves into layers/strips/channelbags;
+    ``Action.fcurves`` still answers on 4.x and early 5.x for legacy actions
+    and is gone in 5.2, where an action is always layered.  The add-on writes
+    whichever the running Blender has, so the test reads both.
+    """
+    curves = list(getattr(action, "fcurves", ()) or ())
+    if curves:
+        return curves
+    for layer in getattr(action, "layers", ()) or ():
+        for strip in getattr(layer, "strips", ()) or ():
+            for bag in getattr(strip, "channelbags", ()) or ():
+                curves.extend(bag.fcurves)
+    return curves
+
+
 def test_import_animation_and_fps():
     arm = import_unit()
     eq(bpy.context.scene.render.fps, 30, "scene fps")
@@ -239,10 +257,12 @@ def test_import_animation_and_fps():
     start, end = action.frame_range
     # Angel's Idle+Attack+Run+Damage+Death = 64+84+28+32+55 frames
     eq(round(end - start) + 1, 263, "concatenated frame count")
-    kinds = {fc.data_path.split(".")[-1] for fc in action.fcurves}
+    curves = fcurves_of(action)
+    assert_(curves, "the imported action has no F-curves")
+    kinds = {fc.data_path.split(".")[-1] for fc in curves}
     assert_(kinds & {"rotation_quaternion", "rotation_euler"}, "no rotation")
     assert_("location" in kinds, "no translation")
-    interp = {kp.interpolation for fc in action.fcurves
+    interp = {kp.interpolation for fc in curves
               for kp in fc.keyframe_points}
     eq(interp, {"LINEAR"}, "key interpolation")
 

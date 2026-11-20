@@ -567,6 +567,53 @@ def _part_facts(part) -> Tuple:
     return (tris, verts, weights, nbones, os.path.splitext(tex)[0].lower())
 
 
+def _live_tris(part) -> int:
+    """Triangles that cover a pixel, deduplicated the way the glTF writer does.
+
+    A `.g` may carry a triangle that names one vertex twice, or a reversed
+    winding twin of a neighbour; neither renders, and Blender's glTF export
+    drops both.  Counting the raw index block then makes an *untouched* round
+    trip look like an edit (the Angel body: 5062 shipped vs 5050 rebuilt) and
+    the exporter restates a `gobj` the game already had right.
+    """
+    idx = list(getattr(part, "indices", None) or ())
+    seen = set()
+    seen_tris = set()
+    for t in range(0, len(idx) - 2, 3):
+        tri = (idx[t], idx[t + 1], idx[t + 2])
+        if len(set(tri)) != 3:
+            continue
+        key = frozenset(tri)
+        if key in seen_tris:
+            continue
+        seen_tris.add(key)
+        seen.add(tri)
+    return len(seen)
+
+
+def parts_equivalent(part, donor) -> bool:
+    """Would ``part`` restate ``donor``'s `gobj`, or does it still match?
+
+    The texture, the influence width and the bone table are exact: they are
+    what the engine builds the vertex declaration and the draw call from, and
+    a replaced weapon changes at least the first.  The two counts are not:
+    Blender re-splits a handful of vertices at UV seams (the Angel body comes
+    back with 6 more than it went in with) and drops non-drawing triangles, so
+    a part that nobody edited drifts by a few on every round trip.  Comparing
+    them with the same tolerance the corpus sweep uses keeps an untouched unit
+    byte for byte while still noticing a mesh that was replaced or retopologised.
+    """
+    tris, verts, weights, nbones, tex = _part_counts(part)
+    dtris, dverts, dweights, dnbones, dtex = _part_counts(donor)
+    if weights != dweights or nbones != dnbones:
+        return False
+    if os.path.splitext(tex)[0].lower() != os.path.splitext(dtex)[0].lower():
+        return False
+    if _live_tris(part) != _live_tris(donor):
+        return False
+    return abs(verts - dverts) <= max(8, dverts // 50)
+
+
 def refresh_part_gobjs(text: str, parts,
                        reference=None) -> Tuple[str, List[str]]:
     """Re-state every `gobj`'s material and counts from the part it binds.
@@ -624,7 +671,7 @@ def refresh_part_gobjs(text: str, parts,
     if reference is not None:
         donor = list(reference)
         for i, part in enumerate(list(parts)):
-            if i >= len(donor) or _part_facts(part) != _part_facts(donor[i]):
+            if i >= len(donor) or not parts_equivalent(part, donor[i]):
                 moved.add(i)
     changed: List[str] = []
     for node, part in pairs:
