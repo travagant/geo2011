@@ -246,6 +246,10 @@ def _per_slot_textures(gltf, mesh_json) -> Dict[int, str]:
     out: Dict[int, str] = {}
     mats = gltf.get("materials", [])
     for index, prim in enumerate(mesh_json.get("primitives") or []):
+        override = (prim.get("extras") or {}).get(DIFFUSE_EXTRAS)
+        if override:
+            out[index] = str(override)
+            continue
         mi = prim.get("material")
         if mi is None or mi >= len(mats):
             continue
@@ -276,7 +280,8 @@ def _mesh_material_maps(gltf, mesh_json):
             image = _texture_uri(gltf, pbr["baseColorTexture"]["index"])
         if "normalTexture" in mat:
             lightmap = _texture_uri(gltf, mat["normalTexture"]["index"])
-    override = _extras_diffuse(gltf, mesh_json)
+    override = (_extras_diffuse(gltf, mesh_json)
+                or (pr.get("extras") or {}).get(DIFFUSE_EXTRAS) or "")
     if override:
         # spelled the way the attribute block wants it (``<stem>.tga``)
         override = (override if os.path.splitext(override)[1].lower()

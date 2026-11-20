@@ -26,6 +26,27 @@ The point is to support a future program that, like dis3tool, exports glTF but
 | `d3tool/weights.py` | skin weights of a `.g`: `weights <g> [--against <g>]`. |
 | `Profiles/` | the retail unit profiles (874 `.char`: 214 units + their `desc`/`stats`/`sound` fragments). |
 | `docs/PORT_ANALYSIS_COMPARE_RU.md` | cross-check of the Heroes-VII `Port` archive against this toolkit (the `.a` grammar taken from the official Max exporter, `.g` bind conventions, what was adopted). |
+
+### Blender: model placement (experimental)
+
+In the Disciples III sidebar, under **Model and skeleton placement**, choose a
+new mesh as **Model** and an existing body mesh as **Reference body**. **Place
+Model at Reference** moves the model's bounding-box centre and bottom to the
+reference; it does not rotate, resize, rig or change weights. Adjust those
+manually. Use Object Mode and keep a backup of the project.
+
+Select the imported armature and use **Center Unit for Editing** to move the
+unit's object hierarchy into a reversible working position; **Extra turn**
+adds a vertical rotation in degrees (e.g. 90 or -90 for a sideways rest pose).
+Use **Restore Original Placement** to leave the mode. The add-on temporarily
+removes this work transform during its own export and restores it afterwards,
+even on export failure. Other exporters do not know about the work mode. Bind
+new meshes to the armature before export so they belong to the unit. The mode
+supports object and bone animation through a temporary parent object, but
+refuses roots with external parents or constraints. Select the two meshes with
+the reference active as an alternative to choosing both fields. Test on a
+copy: Blender and in-game results depend on the rig and model.
+
 | `blender/io_scene_d3unit/` | the Blender add-on (import `.g`/`.a`/`.scene` → armature + animation, export back). |
 | `tests/blender_addon_test.py` | headless Blender suite (21 scenarios, operator-driven). |
 | `tests/blender_corpus_test.py` | every shipped unit through import → export in Blender, re-parsed and compared with its donor (~5 s per unit). |
@@ -752,3 +773,31 @@ whole unit.
   block-compressed `.t` — the engine reads no other container.
 
 See `docs/FORMATS.md` for details.
+
+### Updating the loose game index (Blender)
+
+In the Disciples III sidebar, under **Game index (loose files)**, select the
+existing file named `index` and the **actual game unit folder** under
+`resources` (e.g. `resources/Characters/Empire/Inquisitor`). Click **Update
+Game Index** after copying the final files there. Alternatively enable **Update
+after export** when exporting directly into that same folder; exports elsewhere
+will not update the index and will show a warning. It does not copy files.
+
+By default only existing index records matching files directly in that folder
+are updated. The opt-in **Add referenced auto textures (experimental)** also
+adds missing `d3unit_<hash>.t` records when a `.g` in the folder references
+them. Other unindexed files are listed, not added; subfolders and `.vdpack`
+archives are not modified. Adding new records has not yet been verified in
+the game. A timestamped backup is made beside the index before each change;
+close the game first and retain your own backup too. Matching hashes do not
+guarantee model validity or that the game will mount a particular index.
+Select the index and resource tree used by the game; a staging copy is not
+automatically installed.
+
+Automatic diffuse extraction supports directly linked XNALara Diffuse and
+Principled Base Color images, including per-material texture slots on a new
+mesh. Unsupported or ambiguous inputs fail instead of guessing. Auto texture
+names are derived from their source bytes; a conflicting existing file is not
+overwritten. Export to a separate working folder: model and animation files
+may still be replaced when exporting to an existing folder, and explicit atlas
+names can refer to pre-existing textures.

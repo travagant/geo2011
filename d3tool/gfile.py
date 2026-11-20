@@ -771,6 +771,17 @@ def count_mismatches(mesh) -> List[str]:
     an export can be checked *before* it reaches the game.
     """
     out: List[str] = []
+    # The first mesh header is the final 84 bytes of the preamble, not a
+    # MeshPart.part_prefix. A stale count makes the engine read vertex records
+    # as triangle indices even though the attribute-based parser succeeds.
+    preamble = getattr(mesh, "preamble", b"") or b""
+    if (getattr(mesh, "form", "classic") == "classic" and len(preamble) >= 84
+            and struct.unpack_from("<I", preamble, len(preamble) - 84)[0] == 2):
+        vc, tc = struct.unpack_from("<II", preamble, len(preamble) - 72)
+        actual = (len(mesh.vertices), len(mesh.indices) // 3)
+        if (vc, tc) != actual:
+            out.append(f"{mesh.name}: header says {vc} vertices / {tc} triangles, "
+                       f"the data holds {actual[0]} / {actual[1]}")
     for block in [mesh] + list(getattr(mesh, "parts", []) or []):
         prefix = getattr(block, "part_prefix", b"") or b""
         if len(prefix) < 28 or struct.unpack_from("<I", prefix, 0)[0] != 2:
@@ -805,6 +816,13 @@ def repair_counts(data: bytes) -> Tuple[bytes, List[str]]:
     if declared is not None and declared != blocks:
         data = set_mesh_count(data, blocks)
     out = bytearray(data)
+    preamble = getattr(mesh, "preamble", b"") or b""
+    if (getattr(mesh, "form", "classic") == "classic" and len(preamble) >= 84
+            and struct.unpack_from("<I", preamble, len(preamble) - 84)[0] == 2):
+        _, _, _, _, names_end, _ = _locate_attr_block(data)
+        start = names_end + len(preamble) - 84
+        struct.pack_into("<II", out, start + 12,
+                         len(mesh.vertices), len(mesh.indices) // 3)
     for block in [mesh] + list(getattr(mesh, "parts", []) or []):
         prefix = getattr(block, "part_prefix", b"") or b""
         if len(prefix) < 28 or struct.unpack_from("<I", prefix, 0)[0] != 2:
@@ -1056,6 +1074,10 @@ def write_geometry_file(mesh: SkinnedMesh, attrs: Dict[str, str]) -> bytes:
     else:
         preamble = _prelude_block(vc, tc) + _scene_matrix()
     preamble = _patch_preamble_mesh_count(preamble, 1 + len(mesh.parts))
+    if mesh.form == "classic" and len(preamble) >= 84:
+        # The root mesh uses the same header as a compound part, at the end
+        # of the preamble. Preserve the preceding node chain verbatim.
+        preamble = preamble[:-84] + patch_header_counts(preamble[-84:], vc, tc)
 
     chunks = [header, names]
     chunks.append(preamble)

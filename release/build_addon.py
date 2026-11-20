@@ -33,9 +33,12 @@ DIST = os.path.join(REPO, "release", "d3unit-addon")
 #: droppings are filtered out below.
 ADDON_FILES = (
     "__init__.py",
+    "alignment.py",
+    "auto_texture.py",
     "bridge.py",
     "exporter.py",
     "importer.py",
+    "index_ui.py",
     "preferences.py",
     "unitprops.py",
     "weapon.py",

@@ -37,6 +37,7 @@ animmod = addon.bridge.module("anim")
 texmod = addon.bridge.module("texture")
 frm = addon.bridge.module("frame")
 
+INQUISITOR = os.path.join(REPO, "Empire", "Inquisitor", "character_empire_inquisitor.g")
 ANGEL = os.path.join(REPO, "Empire", "Angel", "character_empire_angel.g")
 ANGEL_LOD = os.path.join(REPO, "Empire", "Angel",
                          "character_empire_angel_lod.g")
@@ -363,8 +364,12 @@ def test_export_without_import_metadata():
     export_unit(os.path.join(out, "character_empire_angel.g"))
     mesh = read_g(os.path.join(out, "character_empire_angel.g"))
     assert_([p.name for p in mesh.parts], "compound parts written")
-    assert_(os.path.isfile(os.path.join(out, "character_empire_angel.t")),
-            "texture emitted")
+    for part in all_blocks(mesh):
+        diffuse = (part.attrs or {}).get('material0_diffuse')
+        if diffuse:
+            name = texmod.clean_stem(diffuse) + '.t'
+            assert_(os.path.isfile(os.path.join(out, name)),
+                    'referenced texture was not emitted: ' + name)
 
 
 # --------------------------------------------------------------------------- #
@@ -388,9 +393,12 @@ def test_extra_skinned_mesh_becomes_a_part():
     assert_(part.vertex_count >= verts,
             f"cube lost vertices: {part.vertex_count} < {verts}")
     eq([b.name for b in part.bones], [hand.name], "bound to the hand bone")
-    eq(part.weights_on_vertex, 2, "influence slots")
-    assert_(all(max(v.bones) == 0 for v in part.vertices),
-            "every vertex indexes the part's single bone")
+    # Single-bone parts use the engine's rigid 40-byte vertex record. Two
+    # slots with one bone are not used by retail and can lose skinning.
+    eq(part.weights_on_vertex, 1, "single-bone rigid record")
+    assert_(all(not v.stored_weights and set(v.bones).issubset({0})
+                for v in part.vertices),
+            "every vertex implicitly bound to the part's single bone")
 
 
 def _rest_centroid(ob):
@@ -415,9 +423,9 @@ def test_extra_rigid_mesh_follows_its_bone():
     part = mesh.parts[-1]
     eq([b.name for b in part.bones], [hand.name],
        "rigid part bound to the bone it hangs from")
-    eq(part.weights_on_vertex, 2, "rigid part influence slots")
-    assert_(all(v.stored_weights == (1.0,) and set(v.bones) == {0}
-                for v in part.vertices), "every vertex fully on that bone")
+    eq(part.weights_on_vertex, 1, "single-bone rigid record")
+    assert_(all(not v.stored_weights and set(v.bones).issubset({0})
+                for v in part.vertices), "every vertex implicitly bound to the only bone")
     # the real question: does it come back where the artist put it?
     reset()
     import_unit(g_path)
@@ -457,6 +465,105 @@ def test_extra_mesh_with_its_own_texture():
     info = texmod.parse_t(open(emitted, "rb").read())
     assert_(info.width == 8 and info.height == 8,
             f"the user's 8x8 PNG became a {info.width}x{info.height} .t")
+
+
+def test_xps_diffuse_texture_auto_export():
+    from io_scene_d3unit import auto_texture
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    arm = import_unit()
+    folder = out_dir('xps_input_elsewhere')
+    path = os.path.join(folder, 'BaseColor.png')
+    normal_path = os.path.join(folder, 'Normal.png')
+    make_png(path, colour=(200, 100, 50, 128))
+    make_png(normal_path, colour=(0, 0, 255, 255))
+    image = bpy.data.images.load(path)
+    normal = bpy.data.images.load(normal_path)
+    image.pack()
+    os.remove(path)  # packed image must work even without the original file
+    mat = bpy.data.materials.new('XPS shader material')
+    mat.use_nodes = True
+    tree = mat.node_tree
+    group = bpy.data.node_groups.new('XPS shader test', 'ShaderNodeTree')
+    if hasattr(group, 'interface'):
+        group.interface.new_socket(name='Diffuse', in_out='INPUT', socket_type='NodeSocketColor')
+        group.interface.new_socket(name='Bump Map', in_out='INPUT', socket_type='NodeSocketColor')
+    else:
+        group.inputs.new('NodeSocketColor', 'Diffuse')
+        group.inputs.new('NodeSocketColor', 'Bump Map')
+    node = tree.nodes.new('ShaderNodeGroup'); node.node_tree = group
+    tex = tree.nodes.new('ShaderNodeTexImage'); tex.image = image
+    bump = tree.nodes.new('ShaderNodeTexImage'); bump.image = normal
+    tree.links.new(tex.outputs['Color'], node.inputs['Diffuse'])
+    tree.links.new(bump.outputs['Color'], node.inputs['Bump Map'])
+    cube = skin_to(add_cube('XPS_Arbiter', material=mat), arm, hand_bone(arm))
+    eq(auto_texture.diffuse_image(cube), image)
+    out = out_dir('xps_auto_output')
+    bpy.context.view_layer.objects.active = arm
+    export_unit(os.path.join(out, 'character_empire_angel.g'))
+    part = next(p for p in read_g(os.path.join(out, 'character_empire_angel.g')).parts if p.name == 'XPS_Arbiter')
+    diffuse = part.attrs['material0_diffuse']
+    assert_(diffuse.startswith('d3unit_'), diffuse)
+    filename = os.path.join(out, os.path.splitext(diffuse)[0] + '.t')
+    t = texmod.parse_t(open(filename, 'rb').read())
+    eq(t.fourcc, b'DXT5', 'transparent image must retain alpha')
+    os.remove(filename)
+    with open(filename, 'wb') as f: f.write(b'do not overwrite')
+    derived, payloads, warnings, failed, per_slot = auto_texture.prepare([cube])
+    try:
+        auto_texture.write_textures(out, payloads)
+        raise AssertionError('collision not detected')
+    except ValueError:
+        eq(open(filename, 'rb').read(), b'do not overwrite')
+
+
+def test_new_multimaterial_texture_export():
+    from io_scene_d3unit import auto_texture
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    arm = import_unit()
+    hand = hand_bone(arm)
+    folder = out_dir('two_new_images')
+    materials = []
+    for name, colour in [('mat_red', (220, 20, 20, 255)),
+                         ('mat_alpha', (10, 80, 220, 100))]:
+        path = os.path.join(folder, name + '.png')
+        make_png(path, colour=colour)
+        img = bpy.data.images.load(path)
+        mat = bpy.data.materials.new(name)
+        mat.use_nodes = True
+        tex = mat.node_tree.nodes.new('ShaderNodeTexImage'); tex.image = img
+        mat.node_tree.links.new(tex.outputs['Color'], mat.node_tree.nodes.get('Principled BSDF').inputs['Base Color'])
+        materials.append(mat)
+    cube = add_cube('TwoNewMaterials', material=materials[0])
+    cube.data.materials.append(materials[1])
+    cube.data.polygons[0].material_index = 1
+    skin_to(cube, arm, hand)
+    derived, payloads, warnings, failed, slots = auto_texture.prepare([cube])
+    assert_(not warnings and len(payloads) == 2, (warnings, payloads))
+    out = out_dir('two_new_materials')
+    path = os.path.join(out, 'character_empire_angel.g')
+    export_unit(path)
+    part = next(p for p in read_g(path).parts if p.name == cube.name)
+    eq(part.attrs['materials_num'], '2')
+    for i, mat in enumerate(materials):
+        eq(part.attrs['material%d_diffuse' % i], slots[cube.name][mat.name])
+        texname = os.path.splitext(slots[cube.name][mat.name])[0] + '.t'
+        eq(open(os.path.join(out, texname), 'rb').read(), payloads[texname])
+    eq(texmod.parse_t(payloads[os.path.splitext(slots[cube.name][materials[1].name])[0] + '.t']).fourcc, b'DXT5')
+    before = {n: open(os.path.join(out, n), 'rb').read() for n in payloads}
+    export_unit(path)
+    for n, data in before.items():
+        eq(open(os.path.join(out, n), 'rb').read(), data, 'repeat export preserves texture')
+    # Painting a different file yields a new content name; the previous atlas
+    # must not be overwritten even when an older model still references it.
+    image = next(n.image for n in materials[0].node_tree.nodes if n.type == 'TEX_IMAGE')
+    make_png(bpy.path.abspath(image.filepath), colour=(30, 200, 70, 255))
+    image.reload()
+    _, changed, warnings, failed, new_slots = auto_texture.prepare([cube])
+    assert_(not warnings and not failed, warnings)
+    assert_(new_slots[cube.name][materials[0].name] != slots[cube.name][materials[0].name])
+    auto_texture.write_textures(out, changed)
+    for n, data in before.items():
+        eq(open(os.path.join(out, n), 'rb').read(), data, 'changed texture leaves previous bytes untouched')
 
 
 def test_extra_mesh_with_awkward_name():
@@ -899,7 +1006,141 @@ def test_lod_import_says_it_is_the_far_model():
             info.get("warnings"))
 
 
+def test_work_placement_restores_export_and_user_edits():
+    arm = import_unit(ANGEL)
+    roots = addon.alignment._initial_roots(arm)
+    originals = {o.name: o.matrix_world.copy() for o in roots}
+    addon.alignment.begin_work(arm, 90.0)
+    assert_(addon.alignment.WORK_PROP in arm)
+    work = {o.name: o.matrix_world.copy() for o in roots}
+    with addon.alignment.original_for_export(arm):
+        for o in roots:
+            assert_(max(abs(o.matrix_world[r][c] - originals[o.name][r][c])
+                        for r in range(4) for c in range(4)) < 1e-5)
+    for o in roots:
+        assert_(max(abs(o.matrix_world[r][c] - work[o.name][r][c])
+                    for r in range(4) for c in range(4)) < 1e-5)
+    addon.alignment.end_work(arm)
+    assert_(addon.alignment.WORK_PROP not in arm)
+    for o in roots:
+        assert_(max(abs(o.matrix_world[r][c] - originals[o.name][r][c])
+                    for r in range(4) for c in range(4)) < 1e-5)
+
+
+def test_inquisitor_animated_work_placement():
+    arm = import_unit(INQUISITOR)
+    originals = {}
+    for frame in (1, 42, 150):
+        bpy.context.scene.frame_set(frame)
+        originals[frame] = arm.matrix_world.copy()
+    bpy.context.scene.frame_set(1)
+    addon.alignment.begin_work(arm, 90.0)
+    wrapper = addon.alignment._wrapper(arm)
+    delta = wrapper.matrix_world.copy()
+    for frame in (1, 42, 150):
+        bpy.context.scene.frame_set(frame)
+        expected = delta @ originals[frame]
+        assert_(max(abs(arm.matrix_world[r][c] - expected[r][c])
+                    for r in range(4) for c in range(4)) < 1e-5)
+        with addon.alignment.original_for_export(arm):
+            assert_(max(abs(arm.matrix_world[r][c] - originals[frame][r][c])
+                        for r in range(4) for c in range(4)) < 1e-5)
+    addon.alignment.end_work(arm)
+    assert_(addon.alignment.WORK_PROP not in arm)
+
+
+def test_work_placement_export_matches_original():
+    arm = import_unit(ANGEL)
+    plain = out_dir("placement_plain")
+    work = out_dir("placement_work")
+    base = "character_empire_angel"
+    export_unit(os.path.join(plain, base + ".g"))
+    bpy.context.view_layer.objects.active = arm
+    addon.alignment.begin_work(arm, 90.0)
+    before = arm.matrix_world.copy()
+    export_unit(os.path.join(work, base + ".g"))
+    assert_(addon.alignment.WORK_PROP in arm)
+    assert_(max(abs(arm.matrix_world[r][c] - before[r][c])
+                for r in range(4) for c in range(4)) < 1e-5)
+    for filename in os.listdir(plain):
+        if filename.endswith(".a"):
+            with open(os.path.join(plain, filename), 'rb') as a, open(os.path.join(work, filename), 'rb') as b:
+                assert_(a.read() == b.read(), filename + " animation changed")
+    a = read_g(os.path.join(plain, base + '.g'))
+    b = read_g(os.path.join(work, base + '.g'))
+    for left, right in zip([a] + a.parts, [b] + b.parts):
+        eq(len(left.vertices), len(right.vertices), 'vertices')
+        eq(left.indices, right.indices, 'indices')
+        for v, w in zip(left.vertices, right.vertices):
+            assert_(max(abs(x-y) for x, y in zip(v.position, w.position)) < 1e-5,
+                    'work placement shifted the exported mesh')
+
+
+def test_index_auto_after_export():
+    from d3tool import vdpack
+    import hashlib
+    arm = import_unit(ANGEL)
+    root = out_dir('index_auto_game')
+    folder = os.path.join(root, 'resources', 'Characters', 'Empire', 'Angel')
+    os.makedirs(folder, exist_ok=True)
+    index = os.path.join(root, 'index')
+    name = 'character_empire_angel.g'
+    _, initial = vdpack.build_index([('/'.join(('resources', 'Characters', 'Empire', 'Angel', name)), b'old')], name='test', uuid='test')
+    with open(index, 'wb') as f:
+        f.write(initial)
+    scene = bpy.context.scene
+    scene.d3unit_index_path = index
+    scene.d3unit_index_folder = folder
+    scene.d3unit_index_auto = True
+    try:
+        bpy.context.view_layer.objects.active = arm
+        export_unit(os.path.join(folder, name))
+        record = vdpack.parse_index(vdpack.decode_index(open(index, 'rb').read())).files[0]
+        eq(record.md5, hashlib.md5(open(os.path.join(folder, name), 'rb').read()).hexdigest())
+        assert_('backup:' in scene['d3unit_index_result'])
+        assert_(any(n.startswith('index.backup_') for n in os.listdir(root)))
+        before = open(index, 'rb').read()
+        export_unit(os.path.join(out_dir('index_wrong_target'), name))
+        eq(open(index, 'rb').read(), before)
+        assert_('index NOT updated' in scene['d3unit_index_result'])
+    finally:
+        scene.d3unit_index_auto = False
+
+
+def test_align_model_to_reference():
+    reference = add_cube("Reference")
+    reference.location = (3, 4, 5)
+    source = add_cube("New body")
+    source.location = (-2, 1, 8)
+    bpy.context.view_layer.update()
+    bpy.context.scene.d3unit_align_source = source
+    bpy.context.scene.d3unit_align_reference = reference
+    result = bpy.ops.d3unit.align_model()
+    eq(result, {'FINISHED'})
+    assert_((addon.alignment._bounds(source) -
+             addon.alignment._bounds(reference)).length < 1e-5)
+    bpy.context.scene.d3unit_align_source = None
+    bpy.context.scene.d3unit_align_reference = None
+    source.location.x -= 2
+    for ob in bpy.context.selected_objects:
+        ob.select_set(False)
+    source.select_set(True)
+    reference.select_set(True)
+    bpy.context.view_layer.objects.active = reference
+    bpy.context.view_layer.update()
+    eq(bpy.ops.d3unit.align_model(), {'FINISHED'})
+    assert_((addon.alignment._bounds(source) -
+             addon.alignment._bounds(reference)).length < 1e-5)
+
+
 TESTS = [
+    ("new multimaterial texture export", test_new_multimaterial_texture_export),
+    ("xps diffuse texture auto export", test_xps_diffuse_texture_auto_export),
+    ("index auto after export", test_index_auto_after_export),
+    ("inquisitor animated work placement", test_inquisitor_animated_work_placement),
+    ("reversible unit work placement", test_work_placement_restores_export_and_user_edits),
+    ("work placement export matches original", test_work_placement_export_matches_original),
+    ("align model to reference", test_align_model_to_reference),
     ("import builds armature, meshes and metadata", test_import_structure),
     ("import restores 30 fps animation", test_import_animation_and_fps),
     ("import packs the textures", test_import_textures_packed),
