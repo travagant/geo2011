@@ -2816,6 +2816,155 @@ def test_a_part_with_two_materials_writes_both_atlases():
     assert i3 is single and a3 is not None and w3 == ""
 
 
+def test_a_split_mesh_learns_the_material_its_donor_never_had():
+    """Splitting faces onto a new slot has to reach the attribute block.
+
+    Before 1.1.52 `_patch_material` only rewrote keys the donor already had,
+    so a body the artist split by material kept ``materials_num=1`` and the
+    second slot's faces were written as if they wore the first atlas — the
+    engine then read its per-material ranges out of the wrong counts.
+    """
+    items = [("name", "body"), ("materials_num", "1"),
+             ("material0_diffuse", "body.tga"),
+             ("material0_triangles_num", "10")]
+    attrs, out, written = gltf._patch_material(
+        dict(items), items, "", "", {1: "sword.tga"}, {0: 10, 1: 4})
+    got = dict(out)
+    assert written == ""
+    assert got["materials_num"] == "2"
+    assert got["material1_diffuse"] == "sword.tga"
+    assert got["material1_triangles_num"] == "4"
+    # the donor's own keys keep their order; the new ones are appended
+    assert [k for k, _ in out[:len(items)]] == [k for k, _ in items]
+    assert attrs["material1_triangles_num"] == "4"
+
+
+def test_a_two_primitive_mesh_merges_every_material_slot():
+    """Blender writes one primitive per material; a `.g` part is one buffer.
+
+    Reading only ``primitives[0]`` (what this loader did before 1.1.52)
+    exported half of a two-slot cube.  The merge concatenates the vertex
+    arrays in primitive order and offsets each primitive's indices by the
+    vertices already emitted; morph targets are concatenated the same way so
+    every frame stays aligned with the merged array.
+    """
+    data = bytearray()
+    views = []
+    accessors = []
+
+    def put(fmt, rows):
+        off = len(data)
+        for row in rows:
+            data.extend(struct.pack("<" + fmt * len(row), *row))
+        views.append({"buffer": 0, "byteOffset": off,
+                      "byteLength": len(data) - off})
+        return len(views) - 1
+
+    def acc(view, typ, count, comp=5126):
+        accessors.append({"bufferView": view, "componentType": comp,
+                          "type": typ, "count": count})
+        return len(accessors) - 1
+
+    def prim(tri, target, material):
+        pos = acc(put("f", tri), "VEC3", 3)
+        nrm = acc(put("f", [(0.0, 0.0, 1.0)] * 3), "VEC3", 3)
+        uv = acc(put("f", [(0.0, 0.0), (1.0, 0.0), (0.0, 1.0)]),
+                 "VEC2", 3)
+        idx = acc(put("H", [(0, 1, 2)]), "SCALAR", 3, comp=5123)
+        pr = {"attributes": {"POSITION": pos, "NORMAL": nrm,
+                             "TEXCOORD_0": uv},
+              "indices": idx, "material": material}
+        tpos = acc(put("f", target), "VEC3", 3)
+        pr["targets"] = [{"POSITION": tpos}]
+        return pr
+
+    mesh_json = {
+        "extras": {"d3unit_morph": "run"},
+        "primitives": [
+            prim([(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0)],
+                 [(0.0, 0.0, 1.0), (1.0, 0.0, 1.0), (0.0, 1.0, 1.0)], 0),
+            prim([(10.0, 0.0, 0.0), (11.0, 0.0, 0.0), (10.0, 1.0, 0.0)],
+                 [(10.0, 0.0, 2.0), (11.0, 0.0, 2.0), (10.0, 1.0, 2.0)], 1),
+        ],
+    }
+    doc = {
+        "accessors": accessors,
+        "bufferViews": views,
+        "meshes": [mesh_json],
+        "materials": [
+            {"pbrMetallicRoughness": {"baseColorTexture": {"index": 0}}},
+            {"pbrMetallicRoughness": {"baseColorTexture": {"index": 1}}},
+        ],
+        "textures": [{"source": 0}, {"source": 1}],
+        "images": [{"uri": "body.dds.png"}, {"uri": "sword.dds.png"}],
+    }
+    merged = gltf._merge_primitives(doc, bytes(data), mesh_json)
+    assert merged["positions"] == [
+        (0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0),
+        (10.0, 0.0, 0.0), (11.0, 0.0, 0.0), (10.0, 1.0, 0.0)], \
+        merged["positions"]
+    # the second primitive's local indices are offset onto its vertex slice
+    assert merged["indices"] == [0, 1, 2, 3, 4, 5], merged["indices"]
+    assert merged["material_triangles"] == {0: 1, 1: 1}
+    assert merged["material_slots"] == {0: "body.tga", 1: "sword.tga"}
+    assert merged["morph"] is True
+    assert merged["morph_name"] == "run"
+    # both primitives' targets land in the one merged frame, in vertex order
+    assert len(merged["target_positions"]) == 1
+    frame = merged["target_positions"][0]
+    assert len(frame) == 6 * 12
+    assert struct.unpack("<3f", frame[12:24]) == (1.0, 0.0, 1.0)
+    assert struct.unpack("<3f", frame[3 * 12 + 12:3 * 12 + 24]) == \
+        (11.0, 0.0, 2.0)
+
+
+def test_a_donorless_part_writes_one_range_per_material():
+    """A new mesh with two slots seeds every range the writer announces.
+
+    `_synth_part_attrs` names one range per material, and `_part_block`
+    makes the first range absorb the difference against the triangle block
+    actually written — otherwise `material0_triangles_num` states the whole
+    total over a block that also lists `material1`, and the engine reads the
+    first range one material too long.
+    """
+    sub = gltf.GltfModel(
+        mesh_name="two_slot", material_diffuse="a.tga",
+        material_slots={0: "a.tga", 1: "b.tga"},
+        material_triangles={0: 1, 1: 2},
+        indices=[0, 1, 2] * 3, vertex_count=3, weights_on_vertex=2)
+    attrs = gltf._synth_part_attrs(sub, [])
+    assert attrs["materials_num"] == "2"
+    assert attrs["material0_diffuse"] == "a.tga"
+    assert attrs["material0_triangles_num"] == "1"
+    assert attrs["material1_diffuse"] == "b.tga"
+    assert attrs["material1_triangles_num"] == "2"
+
+    part = gfile.MeshPart(
+        name="two_slot", vertex_count=3, tri_count=3,
+        vertices=[gfile.Vertex() for _ in range(3)],
+        indices=[0, 1, 2] * 3, bones=[], weights_on_vertex=2,
+        attrs=dict(attrs), attr_items=[])
+    raw = gfile._part_block(part)
+    # the synthesized prefix is 28 header bytes + a 56-byte scene block
+    count = struct.unpack_from("<I", raw, 84)[0]
+    off = 88
+    got = {}
+    for _ in range(count):
+        n = struct.unpack_from("<I", raw, off)[0]
+        off += 4
+        key = raw[off:off + n - 1].decode("latin-1")
+        off += n
+        n = struct.unpack_from("<I", raw, off)[0]
+        off += 4
+        value = raw[off:off + n - 1].decode("latin-1")
+        off += n
+        got[key] = value
+    assert got["materials_num"] == "2"
+    # 3 triangles written: material1 owns 2, so material0 must own the rest
+    assert got["material0_triangles_num"] == "1", got
+    assert got["material1_triangles_num"] == "2", got
+
+
 def test_the_lod_follows_the_main_mesh_texture():
     """All four files must agree on the weapon's atlas — the LOD included.
 

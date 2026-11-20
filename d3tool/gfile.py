@@ -909,7 +909,27 @@ def _part_block(part: MeshPart) -> bytes:
             attrs[key] = value
 
     set_count("vertexs_weights_num", str(vc))
-    set_count("material0_triangles_num", str(tc))
+    # A part rebuilt without a donor synthesizes one triangle range per
+    # material slot (see `gltf._synth_part_attrs`), and those ranges must add
+    # up to the index block actually written.  `material0` is the first range,
+    # so let it absorb the difference instead of announcing the whole total
+    # over a block that still lists the other ranges behind it.  A donated
+    # block keeps its own adjustment inside `_attr_block`, which is why this
+    # only runs when there are no donor items to preserve.
+    first_tris = None
+    if not part.attr_items:
+        tri_keys = [k for k in attrs
+                    if k.startswith("material") and k.endswith("_triangles_num")]
+        if len(tri_keys) > 1:
+            try:
+                others = sum(int(attrs[k]) for k in tri_keys
+                             if k != "material0_triangles_num")
+                if tc - others >= 0:
+                    first_tris = tc - others
+            except ValueError:
+                first_tris = None
+    set_count("material0_triangles_num",
+              str(first_tris if first_tris is not None else tc))
     set_count("bones_num", str(len(part.bones)))
     declared = attrs.get("weights_on_vertex")
     if declared is not None and \

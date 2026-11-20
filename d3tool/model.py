@@ -301,6 +301,10 @@ class GltfModel:
     # `material1` of the same attribute block, and only the first slot's atlas
     # was read before 1.1.33.
     material_slots: Dict[int, str] = field(default_factory=dict)
+    # `{primitive index: triangle count}` alongside `material_slots`: a `.g`
+    # attribute block splits one index buffer into one range per material,
+    # and every range's count must match the triangles actually written.
+    material_triangles: Dict[int, int] = field(default_factory=dict)
     lightmap: str = ""
     lm_uv: bytes = b""
     # the mesh carries morph targets (a morph-deformer sub-mesh)

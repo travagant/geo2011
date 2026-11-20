@@ -139,11 +139,18 @@ def validate_unit(arm, meshes, context=None):
         if not len(me.polygons):
             warns.append(f"'{ob.name}' has no faces and will be skipped")
             continue
-        if len(ob.material_slots) > 1:
-            warns.append(f"'{ob.name}' has {len(ob.material_slots)} material "
-                         f"slots; a .g part carries one material — only the "
-                         f"first ({ob.material_slots[0].name or 'empty'}) is "
-                         f"exported")
+        # A `.g` part splits its index block into one range per material, so
+        # several slots are fine (the add-on exports one glTF primitive per
+        # slot); an *empty* slot is not -- its faces would land in a range
+        # with no atlas.  Emptying slot 0 keeps the older wording below.
+        empty = [i for i, slot in enumerate(ob.material_slots)
+                 if slot.material is None]
+        if empty and any(i > 0 for i in empty):
+            warns.append(
+                f"'{ob.name}' has empty material slot(s) "
+                f"{', '.join(str(i) for i in empty if i > 0)} — the faces "
+                f"assigned to them export with the default material; assign "
+                f"a texture or remove the slot")
         # `.g` carries no transform: whatever the object's scale is, the
         # engine draws the part that many times bigger.  Borrowed geometry
         # keeps its own scale (a Knight sword sits at 1.802 in an Inquisitor

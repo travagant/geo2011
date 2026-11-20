@@ -471,17 +471,60 @@ def test_hidden_mesh_is_skipped():
 
 
 def test_extra_mesh_with_two_materials():
+    """A mesh split by material exports both ranges, atlases and slots.
+
+    Blender writes one glTF primitive per material slot.  Before 1.1.52 the
+    add-on read only ``primitives[0]`` on the way back, so the second slot's
+    faces vanished and the part was written with the first atlas over all of
+    them.  This cube keeps 1/6 of its faces on slot 1 and must come back as
+    ``material0`` + ``material1`` whose triangle ranges add up to its total.
+    """
     arm = import_unit()
     hand = hand_bone(arm)
+
+    def image_stem(mat):
+        if mat is None or not mat.use_nodes:
+            return ""
+        for node in mat.node_tree.nodes:
+            if node.type == "TEX_IMAGE" and node.image is not None:
+                return texmod.clean_stem(node.image.name)
+        return ""
+
+    # two materials whose atlases really differ: body (material0) + hair
+    body_mat = bpy.data.objects["empire_angel"].material_slots[0].material
+    hair_mat = next(
+        (slot.material for ob in bpy.context.scene.objects
+         for slot in getattr(ob, "material_slots", ())
+         if slot.material is not None
+         and image_stem(slot.material)
+         and image_stem(slot.material) != image_stem(body_mat)), None)
+    assert_(body_mat is not None and hair_mat is not None,
+            [image_stem(m) for m in bpy.data.materials])
     cube = add_cube("TwoMatSword")
-    cube.data.materials.append(bpy.data.materials[0]
-                               if bpy.data.materials else None)
-    cube.data.materials.append(bpy.data.materials.new("Second"))
+    cube.data.materials.append(body_mat)
+    cube.data.materials.append(hair_mat)
+    cube.data.polygons[0].material_index = 1
     skin_to(cube, arm, hand)
     out = out_dir("two_mat")
     g_path = os.path.join(out, "character_empire_angel.g")
-    export_unit(g_path)                 # warns, but must succeed
-    assert_("TwoMatSword" in part_names(read_g(g_path)), "part written")
+    export_unit(g_path)
+    g = read_g(g_path)
+    part = next(p for p in g.parts if p.name == "TwoMatSword")
+    attrs = part.attrs or {}
+    assert_(attrs.get("materials_num") == "2", attrs)
+    # slot order becomes material order: the body atlas first, the hair second
+    assert_(texmod.clean_stem(attrs["material0_diffuse"]) == image_stem(body_mat),
+            (attrs.get("material0_diffuse"), image_stem(body_mat)))
+    assert_(texmod.clean_stem(attrs["material1_diffuse"]) == image_stem(hair_mat),
+            (attrs.get("material1_diffuse"), image_stem(hair_mat)))
+    t0 = int(attrs["material0_triangles_num"])
+    t1 = int(attrs["material1_triangles_num"])
+    assert_(t1 >= 1 and t0 >= 1, (t0, t1))
+    assert_(t0 + t1 == part.tri_count == len(part.indices) // 3,
+            (t0, t1, part.tri_count))
+    # the post-write parse reproduces the split: one index block, two ranges
+    assert_(len(g.parts[-1].indices) == 3 * part.tri_count,
+            len(g.parts[-1].indices))
 
 
 def test_extra_mesh_sharing_the_body_texture():
@@ -857,7 +900,7 @@ TESTS = [
     ("awkward (non Latin-1) object names export",
      test_extra_mesh_with_awkward_name),
     ("hidden meshes are skipped", test_hidden_mesh_is_skipped),
-    ("multi-material mesh exports its first slot",
+    ("multi-material mesh exports every slot",
      test_extra_mesh_with_two_materials),
     ("extra mesh can share the body atlas",
      test_extra_mesh_sharing_the_body_texture),

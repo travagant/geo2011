@@ -160,7 +160,8 @@ def _extras_diffuse(gltf, mesh_json) -> str:
     return ""
 
 
-def _patch_material(attrs, items, mat, donor_name="", per_slot=None):
+def _patch_material(attrs, items, mat, donor_name="", per_slot=None,
+                    per_slot_tris=None):
     """Point a part's attribute block at the textures it really wears.
 
     The block is written from ``items`` (the donor's ordered ``(key, value)``
@@ -173,15 +174,20 @@ def _patch_material(attrs, items, mat, donor_name="", per_slot=None):
 
     ``per_slot`` is ``{primitive index: atlas}`` of a part that carries
     several materials (a body and a weapon sharing one mesh are ``material0``
-    and ``material1`` of one block).  Only keys the block already has are
-    rewritten there: a donor part with one material has no ``material1_*``
-    attributes to point anywhere, and inventing them would leave the triangle
-    ranges of the two materials disagreeing.
+    and ``material1`` of one block), ``per_slot_tris`` the triangle count of
+    each range.  A slot the donor block does not know gains ``materialK_*``
+    keys here: the mesh now really owns that material — the artist split it
+    off — and dropping it silently is what made a two-slot cube export with
+    one texture and the other slot's faces.  Slots the block already carries
+    are rewritten so their ranges follow the triangles actually written.
 
     Returns ``(attrs, items, written_name)``; ``written_name`` is ``""`` when
     the part already named that texture (the donor's own bytes are left alone).
     """
-    if not mat and not per_slot:
+    per_slot = per_slot or {}
+    per_slot_tris = per_slot_tris or {}
+    indexes = set(per_slot) | set(per_slot_tris)
+    if not mat and not indexes:
         return attrs, items, ""
     attrs = dict(attrs)
     out = list(items)
@@ -207,12 +213,24 @@ def _patch_material(attrs, items, mat, donor_name="", per_slot=None):
         if texmod.clean_stem(have).lower() != texmod.clean_stem(want).lower():
             set_key("material0_diffuse", want)
             written = want
-    for index, name in sorted((per_slot or {}).items()):
-        if index == 0 or not name:
+    for index in sorted(indexes):
+        if index == 0:
             continue
-        key = f"material{index}_diffuse"
-        if key in present:
-            set_key(key, texmod.clean_stem(name) + ".tga")
+        name = per_slot.get(index)
+        if name:
+            set_key(f"material{index}_diffuse",
+                    texmod.clean_stem(name) + ".tga")
+        if index in per_slot_tris:
+            set_key(f"material{index}_triangles_num",
+                    str(per_slot_tris[index]))
+    if indexes:
+        want_count = max(indexes) + 1
+        try:
+            have_count = int(attrs.get("materials_num") or "0")
+        except ValueError:
+            have_count = 0
+        if want_count > have_count:
+            set_key("materials_num", str(want_count))
     return attrs, out, written
 
 
@@ -354,6 +372,129 @@ def _morph_targets_raw(gltf: dict, buf: bytes, targets,
     return _morph_stream_name(gltf, mesh), frames
 
 
+def _per_slot_triangles(gltf: dict, mesh_json: dict) -> Dict[int, int]:
+    """``{primitive index: triangle count}`` of every primitive of a mesh.
+
+    A Blender export writes one primitive per material slot; the `.g` part
+    stores those primitives back to back, so the attribute block's
+    ``materialK_triangles_num`` ranges must mirror this mapping.  A primitive
+    without an ``indices`` accessor is non-indexed and draws its POSITION
+    accessor in sequence.
+    """
+    out: Dict[int, int] = {}
+    accessors = gltf.get("accessors") or []
+    for index, prim in enumerate(mesh_json.get("primitives") or []):
+        if prim.get("indices") is not None:
+            ai = prim["indices"]
+            count = accessors[ai]["count"] if ai < len(accessors) else 0
+        else:
+            ai = (prim.get("attributes") or {}).get("POSITION")
+            count = accessors[ai]["count"] if ai is not None \
+                and ai < len(accessors) else 0
+        out[index] = count // 3
+    return out
+
+
+def _merge_primitives(gltf: dict, buf: bytes, mesh_json: dict) -> dict:
+    """Read every primitive of a glTF mesh into one vertex/index soup.
+
+    glTF stores one primitive per material, while a `.g` part has a single
+    vertex buffer and a single index block whose triangle ranges are the
+    materials.  Reading only ``primitives[0]`` (what this loader did before
+    1.1.52) dropped every triangle the other slots owned: a two-slot cube
+    exported as one of its two halves, and a Blender re-save of a mesh the
+    artist split by material lost half its faces.  Primitive order is
+    material order, which is also the order the `.g` attribute block numbers
+    its ranges, so the merge concatenates in that order and offsets each
+    primitive's indices by the vertices already emitted.
+
+    Morph targets are concatenated the same way: each primitive's target
+    ``k`` contributes its own vertex slice, so the merged frame stays aligned
+    with the merged vertex array.  A primitive that carries fewer targets
+    than another keeps its base positions for the missing frames (that part
+    simply does not move).
+    """
+    prims = mesh_json.get("primitives") or [{}]
+    positions: List[tuple] = []
+    normals: List[tuple] = []
+    uvs: List[tuple] = []
+    indices: List[int] = []
+    weights: List[tuple] = []
+    joints: List[tuple] = []
+    lm_uv: List[tuple] = []
+    chunks = []
+    has_weights = False
+    has_lm = False
+
+    for prim in prims:
+        attrs = prim.get("attributes") or {}
+        vtf = _read_accessor(gltf, buf, attrs["POSITION"])
+        nrm = (_read_accessor(gltf, buf, attrs["NORMAL"])
+               if "NORMAL" in attrs else [(0.0, 0.0, 0.0)] * len(vtf))
+        uv = (_read_accessor(gltf, buf, attrs["TEXCOORD_0"])
+              if "TEXCOORD_0" in attrs else [(0.0, 0.0)] * len(vtf))
+        wts = (_read_accessor(gltf, buf, attrs["WEIGHTS_0"])
+               if "WEIGHTS_0" in attrs else None)
+        jts = (_read_accessor(gltf, buf, attrs["JOINTS_0"])
+               if "JOINTS_0" in attrs else None)
+        lm = (_read_accessor(gltf, buf, attrs["TEXCOORD_1"])
+              if "TEXCOORD_1" in attrs else None)
+        ind_acc = prim.get("indices")
+        ind = (list(range(len(vtf))) if ind_acc is None
+               else [x[0] for x in _read_accessor(gltf, buf, ind_acc)])
+        targets = _morph_targets_raw(gltf, buf, prim.get("targets"),
+                                     mesh_json)[1]
+        chunks.append((vtf, nrm, uv, wts, jts, lm, ind, targets))
+        has_weights = has_weights or wts is not None or jts is not None
+        has_lm = has_lm or lm is not None
+
+    offset = 0
+    target_chunks = []
+    for vtf, nrm, uv, wts, jts, lm, ind, targets in chunks:
+        n = len(vtf)
+        positions.extend(vtf)
+        normals.extend(nrm)
+        uvs.extend(uv)
+        indices.extend(i + offset for i in ind)
+        if has_weights:
+            weights.extend(wts if wts is not None
+                           else [(1.0, 0.0, 0.0, 0.0)] * n)
+            joints.extend(jts if jts is not None else [(0, 0, 0, 0)] * n)
+        if has_lm:
+            lm_uv.extend(lm if lm is not None else [(0.0, 0.0)] * n)
+        target_chunks.append((targets, vtf))
+        offset += n
+
+    target_count = max((len(frames) for frames, _vtf in target_chunks),
+                       default=0)
+    target_positions: List[bytes] = []
+    for k in range(target_count):
+        parts = []
+        for frames, vtf in target_chunks:
+            if k < len(frames):
+                parts.append(frames[k])
+            else:
+                # this primitive has no such shape key: keep it still
+                parts.append(b"".join(struct.pack("<3f", *p) for p in vtf))
+        target_positions.append(b"".join(parts))
+
+    return {
+        "positions": positions,
+        "normals": normals,
+        "uvs": uvs,
+        "indices": indices,
+        "weights": weights if has_weights else None,
+        "joints": joints if has_weights else None,
+        "lm_uv": (b"" if not has_lm else struct.pack(
+            f"<{2 * len(lm_uv)}f", *[x for pair in lm_uv for x in pair])),
+        "morph": any(bool(p.get("targets")) for p in prims),
+        "morph_name": _morph_stream_name(gltf, mesh_json),
+        "target_positions": target_positions,
+        "material_slots": _per_slot_textures(gltf, mesh_json),
+        "material_triangles": _per_slot_triangles(gltf, mesh_json),
+    }
+
+
 def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
     """Parse a dis3tool glTF export into a neutral :class:`GltfModel`.
 
@@ -441,19 +582,13 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
 
     # ---- mesh / skin ----
     mesh = gltf["meshes"][0]
-    prim = mesh["primitives"][0]
-    attrs = prim["attributes"]
-    ind_acc = prim["indices"]
-
-    vtf = _read_accessor(gltf, buf, attrs["POSITION"])
-    nrm = _read_accessor(gltf, buf, attrs["NORMAL"])
-    if "TEXCOORD_0" in attrs:
-        uv = _read_accessor(gltf, buf, attrs["TEXCOORD_0"])
-    else:
-        uv = [(0.0, 0.0)] * len(vtf)
-    wts = _read_accessor(gltf, buf, attrs["WEIGHTS_0"]) if "WEIGHTS_0" in attrs else None
-    jts = _read_accessor(gltf, buf, attrs["JOINTS_0"]) if "JOINTS_0" in attrs else None
-    indices = [x[0] for x in _read_accessor(gltf, buf, ind_acc)]
+    merged = _merge_primitives(gltf, buf, mesh)
+    vtf = merged["positions"]
+    nrm = merged["normals"]
+    uv = merged["uvs"]
+    wts = merged["weights"]
+    jts = merged["joints"]
+    indices = merged["indices"]
 
     # ---- nodes / skeleton ----
     nodes = gltf.get("nodes", [])
@@ -504,21 +639,14 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
     # standalone sub-models; mesh_to_skinned turns them into `.g` parts.
     submodels: List[GltfModel] = []
     for mi, mesh_json in enumerate(gltf.get("meshes", [])[1:], start=1):
-        spr = mesh_json["primitives"][0]
-        sattrs = spr["attributes"]
-        svtf = _read_accessor(gltf, buf, sattrs["POSITION"])
-        snrm = _read_accessor(gltf, buf, sattrs["NORMAL"])
-        suv = (_read_accessor(gltf, buf, sattrs["TEXCOORD_0"])
-               if "TEXCOORD_0" in sattrs else [(0.0, 0.0)] * len(svtf))
-        swts = (_read_accessor(gltf, buf, sattrs["WEIGHTS_0"])
-                if "WEIGHTS_0" in sattrs else None)
-        sjts = (_read_accessor(gltf, buf, sattrs["JOINTS_0"])
-                if "JOINTS_0" in sattrs else None)
-        sindices = [x[0] for x in _read_accessor(gltf, buf, spr["indices"])]
-        slm = (_read_accessor(gltf, buf, sattrs["TEXCOORD_1"])
-               if "TEXCOORD_1" in sattrs else None)
-        slm_uv = b"" if slm is None else struct.pack(
-            f"<{2 * len(slm)}f", *[x for uv2 in slm for x in uv2])
+        smerged = _merge_primitives(gltf, buf, mesh_json)
+        svtf = smerged["positions"]
+        snrm = smerged["normals"]
+        suv = smerged["uvs"]
+        swts = smerged["weights"]
+        sjts = smerged["joints"]
+        sindices = smerged["indices"]
+        slm_uv = smerged["lm_uv"]
 
         # this sub's skin = the skin of the node carrying the mesh
         sbones: List[Bone] = []
@@ -541,8 +669,8 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
                 _node_global(sub_node)):
             snode_matrix = _node_global(sub_node)
 
-        smorph_name, starget_positions = _morph_targets_raw(
-            gltf, buf, spr.get("targets"), mesh_json)
+        smorph_name = smerged["morph_name"]
+        starget_positions = smerged["target_positions"]
         sdiffuse, slightmap, soverride, simage = _mesh_material_maps(
             gltf, mesh_json)
         srigid = swts is None and sjts is None and not sbones
@@ -567,10 +695,11 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
             material_diffuse=sdiffuse,
             material_override=soverride,
             material_image=simage,
-            material_slots=_per_slot_textures(gltf, mesh_json),
+            material_slots=smerged["material_slots"],
+            material_triangles=smerged["material_triangles"],
             lightmap=slightmap,
             lm_uv=slm_uv,
-            morph=bool(spr.get("targets")),
+            morph=smerged["morph"],
             weights_on_vertex=sw_slots,
             rigid=srigid,
             accessor_wj=(list(zip(swts, sjts))
@@ -582,9 +711,6 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
             node_matrix=snode_matrix,
             node_index=sub_node,
         ))
-
-    main_morph_name, main_target_positions = _morph_targets_raw(
-        gltf, buf, prim.get("targets"), mesh)
 
     # the mesh node's name, not nodes[0]: a Blender re-save reorders the
     # node array (bones first), and nodes[0] would then be a bone name
@@ -637,7 +763,8 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
         material_diffuse=main_diffuse,
         material_override=_mo,
         material_image=_mi,
-        material_slots=_per_slot_textures(gltf, mesh),
+        material_slots=merged["material_slots"],
+        material_triangles=merged["material_triangles"],
         lightmap=main_lightmap,
         frames=frames,
         animation=anim,
@@ -645,11 +772,11 @@ def load_gltf(path: str, weights_on_vertex: int = 0) -> GltfModel:
         anim_times=chan_times,
         weights_on_vertex=w_slots,
         rigid=rigid,
-        morph=bool(prim.get("targets")),
+        morph=merged["morph"],
         accessor_wj=(list(zip(wts, jts))
                      if wts is not None and jts is not None else []),
-        morph_name=main_morph_name,
-        target_positions=main_target_positions,
+        morph_name=merged["morph_name"],
+        target_positions=merged["target_positions"],
         submodels=submodels,
         skin_joint_names=main_jnames,
         skin_ibms=main_ibms,
@@ -1438,7 +1565,7 @@ def _mesh_to_skinned_blender(m: GltfModel, weights_on_vertex: int,
                    or slot.material_diffuse)
             p_attrs, p_items, written = _patch_material(
                 slot.attrs, slot.attr_items, mat, slot.material_diffuse,
-                sub.material_slots)
+                sub.material_slots, sub.material_triangles)
             if written:
                 warns.append(
                     f"part {slot.name}: texture {written} (the mesh's own, "
@@ -1526,6 +1653,14 @@ def _mesh_to_skinned_blender(m: GltfModel, weights_on_vertex: int,
         mesh.unit_name = donor.unit_name
     if donor.attrs:
         mesh.attrs = dict(donor.attrs)
+    # The root block splits its index buffer into one range per material, the
+    # same way a part does.  A body mesh the artist split by material carries
+    # one primitive per slot, so a donor block that only knows one has to
+    # learn the others -- otherwise the extra slot's atlas and range vanish
+    # and the engine desyncs halfway through the index block.
+    mesh.attrs, mesh.attr_items, _root_written = _patch_material(
+        mesh.attrs or {}, mesh.attr_items, "", "",
+        sub0.material_slots, sub0.material_triangles)
     if donor.parts:
         mesh.trailing = donor.trailing
     mesh.blender_warnings = warns
@@ -1654,15 +1789,25 @@ def mesh_to_skinned(m: GltfModel, weights_on_vertex: int = 0,
         p_attrs = (dict(dpart.attrs) if dpart is not None
                    else _synth_part_attrs(sub, sbones))
         p_items = (list(dpart.attr_items) if dpart is not None else [])
+        want = ""
+        renamed = False
         if sub.material_diffuse:
             want = texmod.clean_stem(sub.material_diffuse) + ".tga"
             have = p_attrs.get("material0_diffuse") or p_mat or ""
-            if (os.path.splitext(os.path.basename(have))[0].lower()
-                    != os.path.splitext(os.path.basename(want))[0].lower()):
-                p_attrs, p_items, _w = _patch_material(
-                    p_attrs, p_items, want, "", sub.material_slots)
+            renamed = (os.path.splitext(os.path.basename(have))[0].lower()
+                       != os.path.splitext(os.path.basename(want))[0].lower())
+        # a mesh that carries more than one material slot needs the extra
+        # ranges even when its first atlas did not change: the donor block
+        # only knows the slots the original part had.
+        more_slots = any(k > 0 for k in (sub.material_triangles or {}))
+        if renamed or more_slots:
+            p_attrs, p_items, _w = _patch_material(
+                p_attrs, p_items, want if renamed else "", "",
+                sub.material_slots, sub.material_triangles)
+            if renamed:
                 p_mat = want
-        elif dpart is not None and dpart.material_diffuse:
+        if not sub.material_diffuse and dpart is not None \
+                and dpart.material_diffuse:
             # no texture in the scene at all (the image never loaded, or the
             # object is a graft from another unit): the donor part's name is
             # inherited, which is right by default and worth saying out loud —
@@ -1835,22 +1980,39 @@ def _synth_part_attrs(sub: GltfModel, sbones: List[Bone]) -> Dict[str, str]:
     plus the `material0_diffuse` the glTF primitive already carries (the
     per-part texture name is otherwise lost, e.g. the Leader variant
     sets reference 8 body parts each with its own texture).
+
+    A mesh with several material slots seeds every `materialK_*` pair: the
+    `.g` block splits one index buffer into per-material triangle ranges, so
+    the counts and atlases of slots 1..N have to be present from the start.
     """
-    if not sub.material_diffuse:
+    slots = dict(sub.material_slots or {})
+    tris = dict(sub.material_triangles or {})
+    first = sub.material_diffuse or slots.get(0) or ""
+    if not first:
         return {}
+    indexes = set(slots) | set(tris)
+    count = max([0] + list(indexes)) + 1
     # the attribute block carries the historical `.tga` material name --
     # dis3tool's glTF points at the same stem as `.dds`, Blender writes a
     # re-saved `.png`; the emitted `.t` always takes the stem
-    stem = texmod.clean_stem(sub.material_diffuse)
     attrs = {
         "dwNode": "375048704",
         "dwParent": "55867360",
         "name": sub.mesh_name,
         "groupname": "Scene Root",
-        "materials_num": "1",
-        "material0_diffuse": stem + ".tga",
-        "material0_triangles_num": str(len(sub.indices) // 3),
+        "materials_num": str(count),
+        "material0_diffuse": texmod.clean_stem(first) + ".tga",
+        "material0_triangles_num": str(tris.get(0, len(sub.indices) // 3)),
     }
+    for index in sorted(indexes):
+        if index == 0:
+            continue
+        name = slots.get(index) or ""
+        if name:
+            attrs[f"material{index}_diffuse"] = \
+                texmod.clean_stem(name) + ".tga"
+        if index in tris:
+            attrs[f"material{index}_triangles_num"] = str(tris[index])
     if sub.morph:
         # a morph-deformer part keeps 40-byte records and no weight keys
         attrs["morph"] = "1"
