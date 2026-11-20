@@ -26,7 +26,7 @@ package only builds and reads the Blender scene.
 bl_info = {
     "name": "Disciples III Unit (GM .g/.a/.scene/.ac/.t)",
     "author": "Arena agent / geo2011",
-    "version": (1, 1, 51),
+    "version": (1, 1, 56),
     "blender": (3, 0, 0),
     "location": "File > Import/Export > Disciples III Unit",
     "description": "Import and export Disciples III character units "
@@ -45,7 +45,7 @@ from bpy.props import (BoolProperty, FloatProperty,  # noqa: E402
 from bpy.types import Panel  # noqa: E402
 from bpy_extras.io_utils import ImportHelper  # noqa: E402
 
-from . import (bridge, exporter, importer, preferences,  # noqa: E402
+from . import (alignment, bridge, exporter, importer, index_ui, preferences,  # noqa: E402
                unitprops, weapon)
 
 
@@ -514,7 +514,10 @@ CLASSES = (
     importer.D3UNIT_OT_import,
     importer.D3UNIT_OT_import_batch,
     exporter.D3UNIT_OT_export,
+    index_ui.D3UNIT_OT_update_index,
     weapon.D3UNIT_OT_place_weapon,
+    alignment.D3UNIT_OT_align_model,
+    alignment.D3UNIT_OT_work_placement,
     D3UNIT_OT_name_texture,
     D3UNIT_OT_add_texture,
     D3UNIT_OT_apply_texture,
@@ -553,6 +556,30 @@ class D3UNIT_PT_panel(Panel):
         # was imported by this add-on and on a hand-assembled test scene alike
         ob = getattr(context, "active_object", None)
         scene = context.scene
+        box = layout.box()
+        box.label(text="Game index (loose files)", icon="FILE_TICK")
+        box.prop(scene, 'd3unit_index_path')
+        box.prop(scene, 'd3unit_index_folder')
+        box.prop(scene, 'd3unit_index_auto')
+        box.prop(scene, 'd3unit_index_add_auto')
+        box.operator('d3unit.update_index')
+        result = str(scene.get('d3unit_index_result', ''))
+        if result:
+            for line in __import__('textwrap').wrap(result, width=65):
+                box.label(text=line)
+        box = layout.box()
+        box.label(text="Model and skeleton placement", icon="ARMATURE_DATA")
+        box.prop(scene, "d3unit_align_source")
+        box.prop(scene, "d3unit_align_reference")
+        box.operator("d3unit.align_model", text="Place Model at Reference")
+        box.label(text="Moves only; adjust scale and rotation manually", icon="INFO")
+        root_for_work = unitprops.find_unit_root(context)
+        active_work = root_for_work and alignment.WORK_PROP in root_for_work
+        if not active_work:
+            box.prop(scene, "d3unit_work_angle")
+        box.operator("d3unit.work_placement", text=("Restore Original Placement" if active_work else "Center Unit for Editing"))
+        if active_work:
+            box.label(text="Export uses original position", icon="INFO")
         box = layout.box()
         box.label(text="Weapon placement", icon="SNAP_ON")
         col = box.column(align=True)
@@ -628,6 +655,10 @@ class D3UNIT_PT_panel(Panel):
 #  registration
 # --------------------------------------------------------------------------- #
 def register():
+    alignment.unregister_properties()
+    alignment.register_properties()
+    index_ui.unregister_properties()
+    index_ui.register_properties()
     for cls in CLASSES:
         try:
             bpy.utils.register_class(cls)
@@ -680,6 +711,8 @@ def register():
 
 
 def unregister():
+    alignment.unregister_properties()
+    index_ui.unregister_properties()
     for funcs, menu in ((_menu_import, bpy.types.TOPBAR_MT_file_import),
                         (_menu_export, bpy.types.TOPBAR_MT_file_export)):
         try:

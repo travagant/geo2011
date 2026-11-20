@@ -348,7 +348,8 @@ def _resource_dir_from_file(path: str, base: str) -> str:
 
 
 def _export_textures(gltf_path: str, out_dir: str, base: str,
-                     quiet: bool, src_dir: Optional[str] = None) -> Optional[str]:
+                     quiet: bool, src_dir: Optional[str] = None,
+                     protect_existing: bool = False) -> Optional[str]:
     """Emit the GM ``.t`` textures referenced by a glTF's images.
 
     dis3tool's glTF references its diffuse texture as a ``.dds``.  The GM
@@ -380,6 +381,25 @@ def _export_textures(gltf_path: str, out_dir: str, base: str,
     # output folder
     dirs = [d for d in (gltf_dir, src_dir, out_dir) if d]
     images = doc.get("images") or []
+
+    def write_payload(path, payload):
+        if not protect_existing:
+            with open(path, "wb") as fh:
+                fh.write(payload)
+            return
+        names = [n for n in os.listdir(out_dir)
+                 if n.lower() == os.path.basename(path).lower()]
+        if names:
+            actual = os.path.join(out_dir, names[0])
+            if len(names) != 1 or names[0] != os.path.basename(path) or os.path.islink(actual):
+                raise ValueError("texture filename collision: " + path)
+            with open(actual, "rb") as fh:
+                if fh.read() != payload:
+                    raise ValueError("refusing to overwrite different texture: " + path)
+            return
+        with open(path, "xb") as fh:
+            fh.write(payload)
+
     first = None
     for img in images:
         uri = img.get("uri")
@@ -442,8 +462,7 @@ def _export_textures(gltf_path: str, out_dir: str, base: str,
                 continue
             with open(src, "rb") as fh:
                 payload = fh.read()
-            with open(out_t, "wb") as fh:
-                fh.write(payload)
+            write_payload(out_t, payload)
             if not quiet:
                 ui.wrote(out_t, "copied the .t the unit ships")
             if first is None:
@@ -481,8 +500,7 @@ def _export_textures(gltf_path: str, out_dir: str, base: str,
                         ui.warn(f"{os.path.basename(src)}: not converted — "
                                 f"{exc}")
                     continue
-            with open(out_t, "wb") as fh:
-                fh.write(payload)
+            write_payload(out_t, payload)
             if not quiet:
                 ui.wrote(out_t, "converted from .dds")
             if first is None:
@@ -497,8 +515,7 @@ def _export_textures(gltf_path: str, out_dir: str, base: str,
                 ui.warn(f"{os.path.basename(src)}: {exc} — no .t written; "
                         f"the engine will miss this texture")
             continue
-        with open(out_t, "wb") as fh:
-            fh.write(payload)
+        write_payload(out_t, payload)
         if not quiet:
             ui.wrote(out_t, f"converted from {ext}"
                           + ("" if stem.lower() in
@@ -651,7 +668,9 @@ def _unit_file_for(src_dir: str, base: str, ext: str) -> str:
 
 def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
             anim: bool = True, quiet: bool = False,
-            donor_dir: Optional[str] = None) -> None:
+            donor_dir: Optional[str] = None,
+            export_gltf_images: bool = True,
+            protect_textures: bool = False) -> None:
     """Reverse export: glTF -> GM geometry (.g), scene, animation config, .a.
 
     ``donor_dir`` names the folder holding the unit's ORIGINAL game assets
@@ -723,8 +742,9 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
             attrs["material0_diffuse"] = \
                 os.path.splitext(uri0)[0] + ".tga"
     # textures (glTF .dds -> native .t), and point the .g at the emitted file
-    emitted = _export_textures(gltf_path, out_dir, base, quiet,
-                               src_dir=src_dir)
+    emitted = (_export_textures(gltf_path, out_dir, base, quiet,
+                                src_dir=src_dir, protect_existing=protect_textures)
+               if export_gltf_images else None)
     # The texture the *root block* wears — not `emitted`, which is whichever
     # image happened to convert first (compound units list one image per
     # sub-mesh, and a failed conversion skips its turn, so the two are not the
@@ -1020,7 +1040,8 @@ def _export(gltf_path: str, out_dir: str, weights_on_vertex: int,
         ui.warn(f"{base}: the LOD model was not synced ({exc}) — an added "
                 f"weapon will not show on the battlefield")
 
-    _carry_material_textures(out_dir, base, src_dir, quiet)
+    _carry_material_textures(out_dir, base, src_dir, quiet,
+                             protect_existing=protect_textures)
     _report_export_delta(out_dir, before, src_dir, quiet)
     _battle_readiness_check(out_dir, base, quiet)
     if not quiet:
@@ -1179,7 +1200,8 @@ def _write_texture(src: str, dst: str, quiet: bool, why: str) -> None:
 
 
 def _carry_material_textures(out_dir: str, base: str,
-                             src_dir: Optional[str], quiet: bool) -> None:
+                             src_dir: Optional[str], quiet: bool,
+                             protect_existing: bool = False) -> None:
     """Make the output folder carry every texture its own `.g` names.
 
     A compound unit names one diffuse per part, and a part can be re-textured
@@ -1220,7 +1242,16 @@ def _carry_material_textures(out_dir: str, base: str,
         if not stem:
             continue
         existing = os.path.join(out_dir, stem + ".t")
+        if protect_existing:
+            collisions = [n for n in os.listdir(out_dir)
+                          if n.lower() == (stem + ".t").lower()]
+            if collisions and (len(collisions) != 1
+                               or collisions[0] != stem + ".t"
+                               or os.path.islink(existing)):
+                raise ValueError("texture filename collision: " + existing)
         if os.path.isfile(existing):
+            if protect_existing:
+                continue
             # Raw-pixel atlases are re-encoded on every export, the shipped
             # ones included: an A8R8G8B8 `.t` is eight times the size of the
             # same pixels as DXT (the 683 KiB blade that is 86 KiB in the game

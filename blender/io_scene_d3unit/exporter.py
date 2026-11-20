@@ -431,6 +431,39 @@ def _stamp_diffuse_names(target: str, meshes, derived=None) -> tuple:
     return stamped, [n for n in missing if n in {ob.name for ob in meshes}]
 
 
+def _stamp_slot_textures(target, per_slot):
+    """Attach atlas names to primitives; match the actual exported material."""
+    if not per_slot:
+        return
+    with open(target, 'r', encoding='utf-8') as fh:
+        doc = json.load(fh)
+    mats = doc.get('materials') or []
+    meshes = doc.get('meshes') or []
+    seen = set()
+    used = {}
+    for node in doc.get('nodes') or []:
+        name = node.get('name')
+        if name not in per_slot or 'mesh' not in node:
+            continue
+        mi = node['mesh']
+        if mi in used and used[mi] != per_slot[name]:
+            raise ValueError('shared mesh has conflicting material textures: ' + name)
+        used[mi] = per_slot[name]
+        for prim in meshes[mi].get('primitives') or []:
+            mat_idx = prim.get('material')
+            mat_name = mats[mat_idx].get('name') if mat_idx is not None and mat_idx < len(mats) else None
+            atlas = per_slot[name].get(mat_name)
+            if not atlas:
+                raise ValueError('cannot match exported material %r on %s' % (mat_name, name))
+            prim.setdefault('extras', {})['d3unit_diffuse'] = atlas
+        seen.add(name)
+    missing = set(per_slot) - seen
+    if missing:
+        raise ValueError('cannot match exported mesh: ' + ', '.join(sorted(missing)))
+    with open(target, 'w', encoding='utf-8') as fh:
+        json.dump(doc, fh)
+
+
 def _stamp_morph_names(target: str, meshes) -> int:
     """Write every morph part's `.a` stream into the glTF as mesh extras.
 
@@ -520,8 +553,10 @@ def export_unit(context, path: str, use_anim: bool = True, weights: int = 0,
               if o.type == "MESH" and o.hide_render]
     # every object of the unit goes to the glTF (empties keep parenting
     # transforms intact), but only the visible meshes are exported as parts
+    from .alignment import WRAPPER_PROP
     objects = ([arm] if arm is not None else []) + [
-        o for o in unit_objects if o.type != "MESH" or o in meshes]
+        o for o in unit_objects if o is not arm and not o.get(WRAPPER_PROP)
+        and (o.type != "MESH" or o in meshes)]
     warns = validate_unit(arm, meshes, context)
     notes = []
     if hidden:
@@ -532,9 +567,12 @@ def export_unit(context, path: str, use_anim: bool = True, weights: int = 0,
     # A part with no name of its own is not necessarily nameless: the material
     # on it usually knows the atlas, and a packed image never reaches the glTF
     # as a URI — see `unitprops.material_texture_name`.
-    derived = {}
+    from . import auto_texture
+    derived, auto_payloads, auto_warnings, auto_failed, per_slot = auto_texture.prepare(meshes)
+    if auto_failed:
+        raise ValueError('; '.join(auto_warnings))
     for ob in meshes:
-        if str(ob.get(unitprops.DIFFUSE_PROP) or "").strip():
+        if str(ob.get(unitprops.DIFFUSE_PROP) or "").strip() or ob.name in derived or ob.name in per_slot:
             continue
         try:
             guess = unitprops.material_texture_name(
@@ -545,7 +583,7 @@ def export_unit(context, path: str, use_anim: bool = True, weights: int = 0,
             derived[ob.name] = guess
     unnamed = [o.name for o in meshes
                if not str(o.get(unitprops.DIFFUSE_PROP) or "").strip()
-               and o.name not in derived]
+               and o.name not in derived and o.name not in per_slot]
     if unnamed:
         more = "" if len(unnamed) <= 6 else f" (+{len(unnamed) - 6} more)"
         warns.append(
@@ -563,14 +601,17 @@ def export_unit(context, path: str, use_anim: bool = True, weights: int = 0,
         scene.render.fps = FPS
         scene.render.fps_base = 1.0
         target = os.path.join(tmp, base + ".gltf")
+        from .alignment import original_for_export
         with contextlib.redirect_stdout(log), \
                 contextlib.redirect_stderr(log), \
+                original_for_export(arm), \
                 _bone_parent_fixup(arm, objects):
             res = _export_gltf(context, target, objects, use_anim, base)
         if res != {"FINISHED"}:
             raise RuntimeError(f"the glTF exporter returned {res!r}")
         if not os.path.isfile(target):
             raise RuntimeError("the glTF exporter wrote no file")
+        _stamp_slot_textures(target, per_slot)
         stamped, missing = _stamp_diffuse_names(target, meshes, derived)
         if stamped:
             print(f"[d3unit] named the texture of {stamped} part(s) in the "
@@ -589,10 +630,15 @@ def export_unit(context, path: str, use_anim: bool = True, weights: int = 0,
 
         before = (set(os.listdir(out_dir)) if os.path.isdir(out_dir)
                   else set())
+        auto_texture.write_textures(out_dir, auto_payloads)
+        for name in auto_payloads:
+            notes.append('automatic diffuse texture: ' + name)
         with contextlib.redirect_stdout(log), \
                 contextlib.redirect_stderr(log):
             cli._export(target, out_dir, weights, anim=use_anim,
-                        quiet=quiet, donor_dir=donor_dir or None)
+                        quiet=quiet, donor_dir=donor_dir or None,
+                        export_gltf_images=not bool(auto_payloads),
+                        protect_textures=True)
 
         # what the export put in the folder that the unit did not have: the
         # sidebar is where a user can still do something about it
@@ -601,6 +647,9 @@ def export_unit(context, path: str, use_anim: bool = True, weights: int = 0,
         except Exception:  # noqa: BLE001 - a report must never break an export
             delta = {}
         for name in delta.get("new", []):
+            if name in auto_payloads:
+                notes.append(f"new diffuse texture required by model: {name}")
+                continue
             warns.append(
                 f"'{name}' was written but the unit did not have it — new "
                 f"data in the folder; delete it unless the model needs it")
@@ -838,6 +887,17 @@ class D3UNIT_OT_export(bpy.types.Operator, ExportHelper):
             traceback.print_exc()
             self.report({"ERROR"}, f"export failed: {exc}")
             return {"CANCELLED"}
+        if context.scene.d3unit_index_auto:
+            from . import index_ui
+            try:
+                index_result = index_ui.update(context, res['out_dir'])
+                message = index_ui.summary(index_result)
+                context.scene['d3unit_index_result'] = message
+                self.report({'WARNING'} if index_result['skipped'] else {'INFO'}, message)
+            except Exception as exc:  # export already succeeded; never claim it was rolled back
+                message = 'Export completed, but index NOT updated: ' + str(exc)
+                context.scene['d3unit_index_result'] = message
+                self.report({'WARNING'}, message)
         stats = res.get("stats") or {}
         for warning in res["warnings"][:10]:
             self.report({"WARNING"}, warning)

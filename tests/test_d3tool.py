@@ -5525,6 +5525,31 @@ def test_weights_cli_reports_and_compares():
     assert doc["diff"]["changed"] == 0 and doc["diff"]["compared"] > 4000
 
 
+def test_root_header_tracks_changed_geometry_and_repair():
+    path = os.path.join(REPO, "Empire", "Inquisitor",
+                        "character_empire_inquisitor.g")
+    original = open(path, "rb").read()
+    mesh = gfile.parse_geometry_file(original)
+    mesh.raw = b""
+    mesh.vertices.append(copy.deepcopy(mesh.vertices[-1]))
+    mesh.indices.extend([0, 1, len(mesh.vertices) - 1])
+    rebuilt = gfile.write_geometry_file(mesh, dict(mesh.attrs))
+    parsed = gfile.parse_geometry_file(rebuilt)
+    assert gfile.count_mismatches(parsed) == []
+    _, _, _, _, names_end, _ = gfile._locate_attr_block(rebuilt)
+    header = names_end + len(parsed.preamble) - 84
+    assert struct.unpack_from("<II", rebuilt, header + 12) == (3694, 4665)
+    damaged = bytearray(rebuilt)
+    struct.pack_into("<II", damaged, header + 12, 3693, 4664)
+    findings = gfile.count_mismatches(gfile.parse_geometry_file(bytes(damaged)))
+    assert len(findings) == 1 and "3693 vertices / 4664 triangles" in findings[0]
+    fixed, fixes = gfile.repair_counts(bytes(damaged))
+    assert fixes == findings and fixed == rebuilt
+    assert gfile.repair_counts(fixed) == (fixed, [])
+    assert gfile.write_geometry_file(gfile.parse_geometry_file(original),
+                                     dict(gfile.parse_geometry_file(original).attrs)) == original
+
+
 def test_writer_keeps_a_grown_part_header_in_step():
     """The engine reads the vertex/triangle pair in every sub-mesh header, so a
     rebuilt part has to carry the counts of the data behind it.  A parsed
