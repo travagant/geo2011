@@ -46,13 +46,63 @@ res = bpy.ops.d3unit.import_unit(filepath=unit)
 assert res == {"FINISHED"}, res
 res = bpy.ops.d3unit.export_unit(filepath=os.path.join(out_dir, base + ".g"))
 assert res == {"FINISHED"}, res
+log = bpy.data.texts[addon.EXPORT_LOG].as_string()
+assert 'Папка экспорта: ' + out_dir in log
+assert 'Примечания:' in log and 'Предупреждения:' in log
+assert '.t в папке экспорта:' in log or '.t только у донора:' in log or '.t в проверенных папках не найден' in log
 from d3tool import gfile
 mesh = gfile.parse_geometry_file(open(os.path.join(out_dir, base + ".g"), "rb").read())
 assert mesh.parse_error is None, mesh.parse_error
 want = [n for n in sys.argv[4].split(",") if n]
 got = [p.name for p in mesh.parts]
 assert got == want, "part order changed: %r != %r" % (got, want)
-print("ZIPOK parts=%d root_verts=%d" % (len(got) + 1, mesh.vertex_count))
+scene = bpy.context.scene
+# A first failed attempt still creates a report, even without a project.
+try:
+    assert bpy.ops.d3unit.stage_profile() == {'CANCELLED'}
+except RuntimeError:
+    pass
+assert 'Ошибка создания проекта' in bpy.data.texts[addon.new_unit_ui.REPORT].as_string()
+assert 'Ошибка создания проекта' in scene['d3unit_profile_status']
+scene.d3unit_profile_donor = sys.argv[5]
+scene.d3unit_profile_workspace = out_dir
+scene.d3unit_profile_id = 'empire_zip_test'
+scene.d3unit_profile_copy_grid = True
+assert bpy.ops.d3unit.stage_profile() == {'FINISHED'}
+profile_path = os.path.join(out_dir, 'empire_zip_test', 'resources', 'Profiles', 'empire_zip_test.char')
+from d3tool import char
+assert char.parse_char(open(profile_path, 'rb').read()).id == 'empire_zip_test'
+stats_path = os.path.join(out_dir, 'empire_zip_test', 'resources', 'Profiles', 'stats', 'empire_zip_test_stats.char')
+grid_path = os.path.join(out_dir, 'empire_zip_test', 'resources', 'Profiles', 'skills', 'empire_zip_test.grid')
+assert char.parse_char(open(stats_path, 'rb').read()).get('skill_grid') == 'empire_zip_test'
+assert b'grid "empire_zip_test"' in open(grid_path, 'rb').read()
+assert bpy.ops.d3unit.stage_empire_lists() == {'FINISHED'}
+for script in ('unit_empire.s', 'town_empire.s'):
+    staged = os.path.join(out_dir, 'empire_zip_test', 'resources', 'Profiles', 'scripts', script)
+    assert b'unit "empire_zip_test";' in open(staged, 'rb').read()
+report = bpy.data.texts[addon.new_unit_ui.REPORT].as_string()
+assert 'Проект профиля создан' in report and 'Списки Empire подготовлены' in report
+# Repeat staging to force an error; the previous project must remain intact.
+before = open(profile_path, 'rb').read()
+try:
+    assert bpy.ops.d3unit.stage_profile() == {'CANCELLED'}
+except RuntimeError:
+    pass
+assert open(profile_path, 'rb').read() == before
+report = bpy.data.texts[addon.new_unit_ui.REPORT].as_string()
+assert 'Проект профиля создан' in report and 'Ошибка создания проекта' in report
+assert 'Ошибка создания проекта' in scene['d3unit_profile_status']
+assert scene['d3unit_profile_result'] == os.path.join(out_dir, 'empire_zip_test')
+scene.d3unit_profile_id = 'different_project'
+try:
+    assert bpy.ops.d3unit.stage_empire_lists() == {'CANCELLED'}
+except RuntimeError:
+    pass
+report = bpy.data.texts[addon.new_unit_ui.REPORT].as_string()
+assert 'Ошибка подготовки списков Empire' in report and 'ID: different_project' in report
+assert 'Ошибка подготовки списков' in scene['d3unit_profile_status']
+assert scene['d3unit_profile_result'] == os.path.join(out_dir, 'empire_zip_test')
+print("ZIPOK parts=%d root_verts=%d; profile and lists staging ok" % (len(got) + 1, mesh.vertex_count))
 sys.stdout.flush()
 sys.stderr.flush()
 os._exit(0)   # bpy segfaults in its exit handlers under a plain CPython
@@ -82,14 +132,17 @@ def main() -> int:
         zpath = os.path.join(dist, "io_scene_d3unit.zip")
         unpacked = os.path.join(tmp, "installed")
         with zipfile.ZipFile(zpath) as zf:
+            assert zf.read('io_scene_d3unit/GUIDE_RU.md') == open(
+                os.path.join(REPO, 'docs', 'BLENDER_ADDON_GUIDE_RU.md'), 'rb').read()
             zf.extractall(unpacked)
         assert os.path.isfile(os.path.join(unpacked, "io_scene_d3unit",
                                            "vendor", "d3tool", "__init__.py")), \
             "the zip carries no vendored d3tool"
         out = os.path.join(tmp, "out")
         # run in the temp folder so the checkout is not on sys.path[0]
+        donor_profile = os.path.join(REPO, 'Profiles', 'empire_inquisitor.char')
         proc = subprocess.run([sys.executable, "-c", CHILD, unpacked, unit, out,
-                               want], cwd=tmp, capture_output=True, text=True)
+                               want, donor_profile], cwd=tmp, capture_output=True, text=True)
         tail = (proc.stdout + proc.stderr).strip().splitlines()[-6:]
         for line in tail:
             print("   " + line)

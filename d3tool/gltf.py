@@ -933,7 +933,7 @@ def _lanes_by_name(weights, joint_ids, joint_names):
 
 
 def _remap_slot_vertices(sub: GltfModel, slot, Q, donor_of_bone,
-                         frame_convert: bool):
+                         frame_convert: bool, inverse_blend: bool = False):
     """Rebuild one donor slot's vertices from its matched glTF mesh.
 
     A Blender re-save writes JOINTS_0 as indices into the merged
@@ -1069,16 +1069,19 @@ def _remap_slot_vertices(sub: GltfModel, slot, Q, donor_of_bone,
         k_of(nm)
 
     out: List[Vertex] = []
+    inverse_cache = {}
     for i, v in enumerate(sub.vertices):
         gw = list(v.gltf_weights)
         gj = list(v.gltf_joints)
         lanes = _lanes_by_name(gw, gj, jnames)
         pos = list(v.position[:3])
         nrm = list(v.normal[:3])
-        if frame_convert and Q and lanes:
+        if inverse_blend:
+            if not frame_convert or not Q or not lanes:
+                raise ValueError('Cannot calibrate the vertex skin frame')
+            pos, nrm = framemod.invert_blended_frame(pos, nrm, lanes, K, inverse_cache)
+        elif frame_convert and Q and lanes:
             pos = list(framemod.convert_positions(pos, lanes, K))
-            # a normal has to turn with every influence, not just the
-            # dominant joint (see d3tool.frame.convert_normal)
             nrm = list(framemod.convert_normal(nrm, lanes, K))
         dj = pairs[i] if i < len(pairs) else -1
         src_v = donor_vertices[dj] if 0 <= dj < len(donor_vertices) else None
@@ -1353,7 +1356,8 @@ def _mesh_node_index(m: GltfModel, sub: GltfModel) -> Optional[int]:
 
 
 def _mesh_to_skinned_blender(m: GltfModel, weights_on_vertex: int,
-                             donor: SkinnedMesh, anim_donors) -> SkinnedMesh:
+                             donor: SkinnedMesh, anim_donors,
+                             inverse_blend: bool = False) -> SkinnedMesh:
     """Reverse-export a Blender re-saved glTF against the original `.g`.
 
     A Blender re-save is NOT the dis3tool layout: the per-mesh skins are
@@ -1487,7 +1491,7 @@ def _mesh_to_skinned_blender(m: GltfModel, weights_on_vertex: int,
             continue
         nm, sub = pair_of_slot[si]
         verts, bones, appended = _remap_slot_vertices(
-            sub, slot.holder, Q, donor_of_bone, frame_convert)
+            sub, slot.holder, Q, donor_of_bone, frame_convert, inverse_blend)
         rebuilt[si] = (verts, bones, appended)
         if appended:
             warns.append(f"'{slot.name}': bone(s) {', '.join(appended)} "
@@ -1687,7 +1691,7 @@ def _mesh_to_skinned_blender(m: GltfModel, weights_on_vertex: int,
 
 def mesh_to_skinned(m: GltfModel, weights_on_vertex: int = 0,
                     donor: Optional[SkinnedMesh] = None,
-                    anim_donors=None) -> SkinnedMesh:
+                    anim_donors=None, inverse_blend: bool = False) -> SkinnedMesh:
     """Convert a :class:`GltfModel` into a :class:`SkinnedMesh` ready for `.g`.
 
     ``weights_on_vertex`` selects the number of influence slots written to the
@@ -1709,7 +1713,7 @@ def mesh_to_skinned(m: GltfModel, weights_on_vertex: int = 0,
     """
     if donor is not None and m.blender_layout:
         return _mesh_to_skinned_blender(m, weights_on_vertex, donor,
-                                        anim_donors or [])
+                                        anim_donors or [], inverse_blend)
     w = weights_on_vertex or m.weights_on_vertex or 2
     if donor is not None and not weights_on_vertex \
             and len(donor.vertices) == m.vertex_count:

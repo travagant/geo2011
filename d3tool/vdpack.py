@@ -1187,6 +1187,7 @@ def reference_findings(files: Dict[str, bytes]) -> ReferenceReport:
 
     report = ReferenceReport()
     findings = report.problems
+    exact_paths = {name.replace("\\", "/").lower() for name in files}
     lower = {name.replace("/", "\\").lower(): name for name in files}
     lower.update({os.path.basename(k.replace("\\", "/")).lower(): v
                   for k, v in lower.items()})
@@ -1301,7 +1302,14 @@ def reference_findings(files: Dict[str, bytes]) -> ReferenceReport:
             # the `desc`/`stats`/`sound` fragments a unit profile includes are
             # its own; the scenes, icons and fx it names may live elsewhere
             for ref in prof.includes:
-                want = os.path.basename(ref.replace("\\", "/"))
+                # Includes are relative to the profile, not to the archive
+                # root. Retail profiles commonly spell separators as `\\\\`.
+                parts = [part for part in ref.replace("\\", "/").split("/") if part]
+                want = parts[-1] if parts else ""
+                parent = name.replace("\\", "/").rsplit("/", 1)[0] if "/" in name.replace("\\", "/") else ""
+                relative = "/".join([parent, *parts]).strip("/").lower()
+                if relative in exact_paths:
+                    continue
                 if outside(ref):
                     out_of_tree(f"{base}: includes {want}", ref)
                 elif not present(want):
@@ -1316,8 +1324,11 @@ def reference_findings(files: Dict[str, bytes]) -> ReferenceReport:
                 if not norm.startswith("characters" + chr(92)):
                     continue          # fx/… and other engine-global trees
                 want = os.path.basename(norm.replace("\\", "/"))
-                if outside(ref):
-                    out_of_tree(f"{base}: {key} -> {want}", ref)
+                # Retail .char references also use doubled backslashes. For
+                # folder comparisons collapse them without changing the file.
+                normalized_ref = charmod.normalize_reference(ref)
+                if outside(normalized_ref):
+                    out_of_tree(f"{base}: {key} -> {want}", normalized_ref)
                     continue
                 if present(want):
                     continue

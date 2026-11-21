@@ -159,7 +159,7 @@ def _bounds(ob):
 class D3UNIT_OT_align_model(bpy.types.Operator):
     bl_idname = "d3unit.align_model"
     bl_label = "Place Model at Reference"
-    bl_description = "Move the new model to the reference body; does not bind, rotate or resize it"
+    bl_description = "Совместить нижние центры габаритов мешей; перенос без изменения поворота, размера или привязки к костям"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
@@ -171,10 +171,10 @@ class D3UNIT_OT_align_model(bpy.types.Operator):
             ref = context.active_object
             src = next(o for o in selected if o != ref)
         if not src or not ref or src == ref:
-            self.report({'ERROR'}, "Choose Model and Reference body, or select two meshes with the reference active")
+            self.report({'ERROR'}, "Укажите новую модель и меш-образец или выберите два меша, сделав образец активным")
             return {'CANCELLED'}
         if src.mode != 'OBJECT' or ref.mode != 'OBJECT' or src.constraints:
-            self.report({'ERROR'}, "Use Object Mode and an unconstrained source mesh")
+            self.report({'ERROR'}, "Перейдите в режим объекта; на новой модели не должно быть ограничений (constraints)")
             return {'CANCELLED'}
         try:
             matrix = src.matrix_world.copy()
@@ -191,13 +191,13 @@ class D3UNIT_OT_align_model(bpy.types.Operator):
 class D3UNIT_OT_work_placement(bpy.types.Operator):
     bl_idname = "d3unit.work_placement"
     bl_label = "Center Unit for Editing"
-    bl_description = "Move the whole unit into a reversible work position; game export uses the original placement"
+    bl_description = "Временно переместить и повернуть всего юнита для редактирования; при экспорте используется исходное положение"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         arm = unitprops.find_unit_root(context)
         if arm is None or arm.type != 'ARMATURE' or context.mode != 'OBJECT':
-            self.report({'ERROR'}, "Select the unit armature in Object Mode")
+            self.report({'ERROR'}, "Выберите скелет юнита в режиме объекта")
             return {'CANCELLED'}
         try:
             if WORK_PROP in arm:
@@ -213,9 +213,9 @@ class D3UNIT_OT_work_placement(bpy.types.Operator):
 
 
 def register_properties():
-    bpy.types.Scene.d3unit_align_source = PointerProperty(type=bpy.types.Object, name="Model", poll=lambda self, ob: ob.type == 'MESH')
-    bpy.types.Scene.d3unit_align_reference = PointerProperty(type=bpy.types.Object, name="Reference body", poll=lambda self, ob: ob.type == 'MESH')
-    bpy.types.Scene.d3unit_work_angle = FloatProperty(name="Extra turn", default=0.0, description="Additional rotation around vertical, in degrees")
+    bpy.types.Scene.d3unit_align_source = PointerProperty(type=bpy.types.Object, name="Новая модель", description="Меш, который нужно переместить; привязка к костям не изменяется", poll=lambda self, ob: ob.type == 'MESH')
+    bpy.types.Scene.d3unit_align_reference = PointerProperty(type=bpy.types.Object, name="Меш-образец", description="Существующий меш в нужном положении; это не скелет", poll=lambda self, ob: ob.type == 'MESH')
+    bpy.types.Scene.d3unit_work_angle = FloatProperty(name="Доп. поворот (°)", default=0.0, description="Временный дополнительный поворот всего юнита вокруг вертикали в градусах")
 
 
 def unregister_properties():

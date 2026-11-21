@@ -26,7 +26,7 @@ package only builds and reads the Blender scene.
 bl_info = {
     "name": "Disciples III Unit (GM .g/.a/.scene/.ac/.t)",
     "author": "Arena agent / geo2011",
-    "version": (1, 1, 56),
+    "version": (1, 1, 79),
     "blender": (3, 0, 0),
     "location": "File > Import/Export > Disciples III Unit",
     "description": "Import and export Disciples III character units "
@@ -45,7 +45,7 @@ from bpy.props import (BoolProperty, FloatProperty,  # noqa: E402
 from bpy.types import Panel  # noqa: E402
 from bpy_extras.io_utils import ImportHelper  # noqa: E402
 
-from . import (alignment, bridge, exporter, importer, index_ui, preferences,  # noqa: E402
+from . import (alignment, bridge, exporter, importer, index_ui, leader, new_leader_ui, new_unit_ui, preferences,  # noqa: E402
                unitprops, weapon)
 
 
@@ -131,27 +131,25 @@ def apply_part_texture(context, mesh=None) -> tuple:
     """
     mesh = mesh if mesh is not None else getattr(context, "object", None)
     if mesh is None or getattr(mesh, "type", "") != "MESH":
-        return False, "select the mesh part first"
+        return False, "Сначала выберите меш"
     name, path = find_part_texture(context, mesh)
     if not name:
-        return False, (f"{mesh.name} has no texture name yet — set one in the "
-                       f"panel (it is written into the .g and the .scene)")
+        return False, (f"Для {mesh.name} не задано имя текстуры — укажите его на панели")
     if not path:
-        folders = ", ".join(texture_folders(context, mesh)) or "(no folder)"
-        return False, f"{name} is not in {folders} — the export would name a file the game cannot find"
+        folders = ", ".join(texture_folders(context, mesh)) or "папки не найдены"
+        return False, f"Текстура {name} не найдена. Проверены папки: {folders}; проверьте файл .t"
     try:
         image = _blender_image(path)
     except Exception as exc:  # noqa: BLE001
-        return False, f"could not read {os.path.basename(path)}: {exc}"
+        return False, f"Не удалось прочитать {os.path.basename(path)}: {exc}"
     used = _assign_image(mesh, image)
     try:
         image.pack()
     except Exception:  # noqa: BLE001 - packing is a convenience, not a must
         pass
     if not used:
-        return False, (f"loaded {os.path.basename(path)} but {mesh.name} has "
-                       f"no material image node to put it in")
-    for area in getattr(context.screen, "areas", ()) or ():
+        return False, (f"{os.path.basename(path)} загружен, но у {mesh.name} нет узла изображения в материале")
+    for area in getattr(getattr(context, "screen", None), "areas", ()) or ():
         if area.type == "VIEW_3D":
             area.tag_redraw()
     return True, f"{mesh.name} -> {os.path.basename(path)}"
@@ -161,10 +159,9 @@ class D3UNIT_OT_apply_texture(bpy.types.Operator):
     """Show the named texture on the part (viewport = what the export writes)"""
 
     bl_idname = "d3unit.apply_texture"
-    bl_label = "Show This Texture"
-    bl_description = ("Load the texture the part is named after into its "
-                      "material, so the viewport shows what the export will "
-                      "write into the .g/.scene")
+    bl_label = "Показать текстуру на модели"
+    bl_description = ("Загрузить файл по заданному имени в узлы изображения материалов; "
+                      "если прямого подключения к Base Color нет, изменится первый узел изображения")
     bl_options = {"REGISTER", "UNDO"}
 
     def execute(self, context):
@@ -179,6 +176,7 @@ class D3UNIT_OT_apply_texture(bpy.types.Operator):
 #: warnings nobody reads, and "the export kept the donor's texture" is exactly
 #: the kind of note that has to be in the artist's face
 EXPORT_LOG = exporter.D3UNIT_EXPORT_LOG
+SELF_TEST_LOG = "d3unit donor check"
 NOTES_PROP = "d3unit_last_export"
 
 
@@ -215,20 +213,27 @@ def _draw_texture_box(layout, context, mesh) -> None:
     to say which atlas its sword wears.
     """
     tb = layout.box()
-    tb.label(text=f"Texture of {mesh.name}", icon="TEXTURE")
+    tb.label(text=f"Меш: {mesh.name}", icon="TEXTURE")
     row = tb.row(align=True)
     own = unitprops.DIFFUSE_PROP in mesh
     if own:
-        row.prop(mesh, '["' + unitprops.DIFFUSE_PROP + '"]', text="Material")
+        row.prop(mesh, '["' + unitprops.DIFFUSE_PROP + '"]', text="Имя текстуры")
     else:
-        row.label(text="(not set)")
-    op = row.operator("d3unit.name_texture", text="", icon="GREASEPENCIL")
+        row.label(text="Имя не задано")
+    op = row.operator("d3unit.name_texture", text="Задать", icon="GREASEPENCIL")
     op.value = str(mesh.get(unitprops.DIFFUSE_PROP) or "")
     tb.operator("d3unit.add_texture",
-                text="Add Texture File…  (writes <name>.t next to the unit)",
+                text="Добавить файл текстуры…",
                 icon="FILE_IMAGE")
+    folders = texture_folders(context, mesh)
+    if folders:
+        tb.label(text="Папка для нового .t:")
+        for line in __import__('textwrap').wrap(folders[0], width=45, break_long_words=True, break_on_hyphens=False):
+            tb.label(text=line)
+    else:
+        tb.label(text="Папка для текстуры пока не определена", icon="INFO")
     tb.operator("d3unit.number_materials",
-                text="Number the materials: material0, material1, …")
+                text="Пронумеровать материалы")
     hint = tb.column(align=True)
     hint.scale_y = 0.8
     if not own:
@@ -242,27 +247,27 @@ def _draw_texture_box(layout, context, mesh) -> None:
         except Exception:  # noqa: BLE001 - a panel must never raise
             from_material = ""
         if from_material:
-            hint.label(text="from the material: " + os.path.basename(from_material),
+            hint.label(text="Из материала: " + os.path.basename(from_material),
                        icon="CHECKMARK")
-            hint.label(text="the export writes this name")
+            hint.label(text="Имя может использоваться при экспорте")
         else:
             inherited = inherited_texture(context, mesh)
             if inherited:
-                hint.label(text="export keeps: " + os.path.basename(inherited),
+                hint.label(text="Будет сохранено: " + os.path.basename(inherited),
                            icon="INFO")
-                hint.label(text="set it above to change the atlas")
+                hint.label(text="Изменить имя можно выше")
             else:
-                hint.label(text="export keeps the material's texture", icon="INFO")
+                hint.label(text="Имя не определено: проверьте экспорт", icon="INFO")
         _mats = [getattr(getattr(sl, "material", None), "name", "")
                  for sl in (getattr(mesh, "material_slots", ()) or ())]
         _mats = [m for m in _mats if m]
         if _mats:
-            hint.label(text="materials: " + ", ".join(_mats), icon="MATERIAL")
+            hint.label(text="Материалы: " + ", ".join(_mats), icon="MATERIAL")
         return
     _name, _path = find_part_texture(context, mesh)
     row2 = tb.row(align=True)
     row2.enabled = bool(_name)
-    row2.operator("d3unit.apply_texture", text="Show in the Viewport",
+    row2.operator("d3unit.apply_texture", text="Показать текстуру на модели",
                   icon="IMAGE_DATA")
     if _name and _path:
         _size = ""
@@ -271,24 +276,23 @@ def _draw_texture_box(layout, context, mesh) -> None:
             _size += f", {max(1, os.path.getsize(_path) // 1024)} KB"
         except Exception:  # noqa: BLE001
             _size = ""
-        hint.label(text="file: " + os.path.basename(_path)
+        hint.label(text="Файл: " + os.path.basename(_path)
                         + (f"  ({_size})" if _size else ""), icon="CHECKMARK")
     elif _name:
-        hint.label(text="NOT in the unit folder: "
+        hint.label(text="Не найден файл: "
                         + os.path.splitext(os.path.basename(_name))[0] + ".t",
                    icon="ERROR")
     else:
-        hint.label(text="no texture named yet", icon="INFO")
+        hint.label(text="Имя текстуры пока не задано", icon="INFO")
 
 
 class D3UNIT_OT_number_materials(bpy.types.Operator):
     """Renumber the unit's materials material0, material1, … in part order"""
 
     bl_idname = "d3unit.number_materials"
-    bl_label = "Number the Materials"
-    bl_description = ("Blender hands out material0, material0.001, material0.002 "
-                      "for the parts of one unit; the .g numbers them "
-                      "material0, material1, … per part, in slot order")
+    bl_label = "Пронумеровать материалы"
+    bl_description = ("Назначить материалам имена material0, material1 и далее; "
+                      "общие материалы будут переименованы и у других объектов")
     bl_options = {"REGISTER", "UNDO"}
 
     def execute(self, context):
@@ -299,12 +303,12 @@ class D3UNIT_OT_number_materials(bpy.types.Operator):
             ob = getattr(context, "object", None)
             meshes = [ob] if ob is not None and ob.type == "MESH" else []
         if not meshes:
-            self.report({"ERROR"}, "no unit mesh in this scene")
+            self.report({"ERROR"}, "Выберите меш или импортированного юнита")
             return {"CANCELLED"}
         rows = unitprops.normalise_material_names(meshes)
         summary = "; ".join(f"{name}: {', '.join(slots) or '(none)'}"
                             for name, slots in rows)
-        self.report({"INFO"}, summary or "no materials to number")
+        self.report({"INFO"}, summary or "Нет материалов для нумерации")
         return {"FINISHED"}
 
 
@@ -312,21 +316,23 @@ class D3UNIT_OT_open_log(bpy.types.Operator):
     """Open the text block the last export (or self-test) wrote"""
 
     bl_idname = "d3unit.open_log"
-    bl_label = "Open the Export Log"
-    bl_description = "Show the last export's log and warnings"
+    bl_label = "Открыть журнал"
+    bl_description = "Показать журнал последнего экспорта или проверки в открытом Text Editor"
     bl_options = {"REGISTER"}
 
+    log_name: StringProperty(default=EXPORT_LOG, options={'HIDDEN'})
+
     def execute(self, context):
-        block = bpy.data.texts.get(EXPORT_LOG)
+        block = bpy.data.texts.get(self.log_name)
         if block is None:
-            self.report({"WARNING"}, "no export log yet")
+            self.report({"WARNING"}, "Журнал пока пуст: сначала выполните экспорт или проверку")
             return {"CANCELLED"}
-        for area in getattr(context.screen, "areas", ()) or ():
+        for area in getattr(getattr(context, "screen", None), "areas", ()) or ():
             if area.type != "TEXT_EDITOR":
                 continue
             area.spaces[0].text = block
             return {"FINISHED"}
-        self.report({"INFO"}, f"the log is in the Text editor: {EXPORT_LOG}")
+        self.report({"INFO"}, f"Откройте Text Editor и выберите текст: {self.log_name}")
         return {"FINISHED"}
 
 
@@ -334,16 +340,14 @@ class D3UNIT_OT_name_texture(bpy.types.Operator):
     """Name the texture this part wears in the game"""
 
     bl_idname = "d3unit.name_texture"
-    bl_label = "Name the Texture…"
-    bl_description = ("The name is written into the part's block in the .g, "
-                      "the same block of the _lod.g and the gobj of both "
-                      ".scene files on export")
+    bl_label = "Задать имя текстуры"
+    bl_description = ("Задать имя текстуры для этой части; пустое значение удаляет явное имя. "
+                      "Файл должен находиться рядом с юнитом")
     bl_options = {"REGISTER", "UNDO"}
 
     value: StringProperty(
-        name="Texture",
-        description="Material file name, e.g. weapon_empire_knight_sword_"
-                    "diffuse.tga (the .t next to the unit is matched by stem)",
+        name="Имя текстуры",
+        description="Например, sword_diffuse.tga; рядом с юнитом ищется файл sword_diffuse.t",
         default="")  # type: ignore[valid-type]
 
     def invoke(self, context, event):
@@ -355,7 +359,7 @@ class D3UNIT_OT_name_texture(bpy.types.Operator):
     def execute(self, context):
         ob = getattr(context, "object", None)
         if ob is None or ob.type != "MESH":
-            self.report({"ERROR"}, "select the mesh part first")
+            self.report({"ERROR"}, "Сначала выберите меш")
             return {"CANCELLED"}
         name = self.value.strip()
         try:
@@ -364,7 +368,7 @@ class D3UNIT_OT_name_texture(bpy.types.Operator):
             elif unitprops.DIFFUSE_PROP in ob:
                 del ob[unitprops.DIFFUSE_PROP]
         except Exception as exc:  # noqa: BLE001
-            self.report({"ERROR"}, f"could not store the name: {exc}")
+            self.report({"ERROR"}, f"Не удалось сохранить имя: {exc}")
             return {"CANCELLED"}
         # the name alone changes nothing on screen: load the file it points at
         # so the viewport agrees with what the export is about to write
@@ -373,7 +377,7 @@ class D3UNIT_OT_name_texture(bpy.types.Operator):
             self.report({"INFO"} if ok else {"WARNING"},
                         f"{ob.name}: {name} — {message}")
         else:
-            self.report({"INFO"}, f"{ob.name}: (none)")
+            self.report({"INFO"}, f"{ob.name}: имя удалено")
         return {"FINISHED"}
 
 
@@ -381,12 +385,9 @@ class D3UNIT_OT_add_texture(bpy.types.Operator, ImportHelper):
     """Put a texture file into the unit folder and give it to this part"""
 
     bl_idname = "d3unit.add_texture"
-    bl_label = "Add Texture File…"
-    bl_description = (
-        "Bring a texture you painted (.png/.tga/.bmp/.dds, or a .t) into the "
-        "unit's folder as <name>.t — the only form the engine reads — and "
-        "name this part after it, so the export writes the atlas into the .g, "
-        "the _lod.g and both .scene files")
+    bl_label = "Добавить файл текстуры"
+    bl_description = ("Создать .t в показанной папке юнита и назначить имя выбранному мешу. "
+                      "Файл с совпадающим именем и другим содержимым не перезаписывается")
     bl_options = {"REGISTER", "UNDO"}
 
     filename_ext = ""
@@ -400,13 +401,12 @@ class D3UNIT_OT_add_texture(bpy.types.Operator, ImportHelper):
     def execute(self, context):
         ob = getattr(context, "object", None)
         if ob is None or getattr(ob, "type", "") != "MESH":
-            self.report({"ERROR"}, "select the mesh part first")
+            self.report({"ERROR"}, "Сначала выберите меш")
             return {"CANCELLED"}
         folders = texture_folders(context, ob)
         if not folders:
             self.report({"ERROR"},
-                        "no unit folder to put the texture in — import the "
-                        "unit first, or save the .blend next to it")
+                        "Папка для текстуры не найдена: импортируйте юнита или сохраните .blend рядом с ним")
             return {"CANCELLED"}
         # the unit's own folder is the one the game reads the `.t` from
         target = folders[0]
@@ -421,13 +421,12 @@ class D3UNIT_OT_add_texture(bpy.types.Operator, ImportHelper):
         try:
             ob[unitprops.DIFFUSE_PROP] = name
         except Exception as exc:  # noqa: BLE001
-            self.report({"ERROR"}, f"could not store the texture name: {exc}")
+            self.report({"ERROR"}, f"Файл создан, но имя текстуры сохранить не удалось: {exc}")
             return {"CANCELLED"}
         ok, message = apply_part_texture(context, ob)
         self.report({"INFO"} if ok else {"WARNING"},
-                    f"{ob.name}: wrote {os.path.basename(dst)} "
-                    f"({max(1, os.path.getsize(dst) // 1024)} KB), part is "
-                    f"now {name} — {message}")
+                    f"{ob.name}: файл {os.path.basename(dst)} "
+                    f"({max(1, os.path.getsize(dst) // 1024)} КБ), имя {name} — {message}")
         return {"FINISHED"}
 
 
@@ -435,12 +434,9 @@ class D3UNIT_OT_self_test(bpy.types.Operator):
     """Re-export the imported unit without changing anything and diff it"""
 
     bl_idname = "d3unit.self_test"
-    bl_label = "Self-test: Re-export Unchanged"
-    bl_description = (
-        "Read the imported unit's .g again, write it out through the same "
-        "format path the export uses, and compare every file byte by byte.  "
-        "A unit nobody edited must come back identical: anything else here is "
-        "a defect in this add-on, not in the unit")
+    bl_label = "Проверить повторное преобразование донора"
+    bl_description = ("Проверить преобразование исходных файлов юнита через временную папку. "
+                      "Текущие изменения сцены и работа в игре не проверяются")
     bl_options = {"REGISTER"}
 
     def execute(self, context):
@@ -493,18 +489,20 @@ class D3UNIT_OT_self_test(bpy.types.Operator):
             import shutil
             shutil.rmtree(tmp, ignore_errors=True)
         text = "\n".join(lines)
-        block = bpy.data.texts.get(EXPORT_LOG)
+        block = bpy.data.texts.get(SELF_TEST_LOG)
         if block is None:
-            block = bpy.data.texts.new(EXPORT_LOG)
+            block = bpy.data.texts.new(SELF_TEST_LOG)
         block.clear()
-        block.write(text + "\n")
+        block.write("Проверка файлов донора (изменения сцены не проверяются)\n" + text + "\n")
         for line in lines[:8]:
             print(f"[d3unit] {line}")
         if bad == 0:
-            self.report({"INFO"}, "the unit re-exports byte for byte")
+            self.report({"INFO"}, "Проверенные файлы донора совпали побайтно; изменения сцены не проверялись")
             return {"FINISHED"}
-        self.report({"WARNING"}, f"{bad} file(s) came back different — see "
-                                 f"the Text block '{EXPORT_LOG}'")
+        if bad < 0:
+            self.report({"WARNING"}, f"Проверка не завершилась; откройте журнал {SELF_TEST_LOG}")
+        else:
+            self.report({"WARNING"}, f"Файлов с отличиями: {bad}; откройте журнал {SELF_TEST_LOG}")
         return {"FINISHED"}
 
 
@@ -513,8 +511,15 @@ CLASSES = (
     preferences.D3UNIT_OT_check_tool,
     importer.D3UNIT_OT_import,
     importer.D3UNIT_OT_import_batch,
+    leader.D3UNIT_OT_import_leader,
+    leader.D3UNIT_OT_export_leader,
     exporter.D3UNIT_OT_export,
     index_ui.D3UNIT_OT_update_index,
+    new_unit_ui.D3UNIT_OT_stage_profile,
+    new_unit_ui.D3UNIT_OT_stage_empire_lists,
+    new_unit_ui.D3UNIT_OT_open_profile_report,
+    new_leader_ui.D3UNIT_OT_stage_leader_visual,
+    new_leader_ui.D3UNIT_OT_bundle_leader_test,
     weapon.D3UNIT_OT_place_weapon,
     alignment.D3UNIT_OT_align_model,
     alignment.D3UNIT_OT_work_placement,
@@ -552,103 +557,198 @@ class D3UNIT_PT_panel(Panel):
 
     def draw(self, context):
         layout = self.layout
-        # weapon placement is a plain scene operation: it works on a unit that
-        # was imported by this add-on and on a hand-assembled test scene alike
-        ob = getattr(context, "active_object", None)
         scene = context.scene
-        box = layout.box()
-        box.label(text="Game index (loose files)", icon="FILE_TICK")
-        box.prop(scene, 'd3unit_index_path')
-        box.prop(scene, 'd3unit_index_folder')
-        box.prop(scene, 'd3unit_index_auto')
-        box.prop(scene, 'd3unit_index_add_auto')
-        box.operator('d3unit.update_index')
-        result = str(scene.get('d3unit_index_result', ''))
-        if result:
-            for line in __import__('textwrap').wrap(result, width=65):
-                box.label(text=line)
-        box = layout.box()
-        box.label(text="Model and skeleton placement", icon="ARMATURE_DATA")
-        box.prop(scene, "d3unit_align_source")
-        box.prop(scene, "d3unit_align_reference")
-        box.operator("d3unit.align_model", text="Place Model at Reference")
-        box.label(text="Moves only; adjust scale and rotation manually", icon="INFO")
-        root_for_work = unitprops.find_unit_root(context)
-        active_work = root_for_work and alignment.WORK_PROP in root_for_work
-        if not active_work:
-            box.prop(scene, "d3unit_work_angle")
-        box.operator("d3unit.work_placement", text=("Restore Original Placement" if active_work else "Center Unit for Editing"))
-        if active_work:
-            box.label(text="Export uses original position", icon="INFO")
-        box = layout.box()
-        box.label(text="Weapon placement", icon="SNAP_ON")
-        col = box.column(align=True)
-        col.prop(scene, "d3unit_weapon_src", text="Mesh")
-        col.prop(scene, "d3unit_weapon_ref", text="Reference")
-        opts = col.row(align=True)
-        opts.prop(scene, "d3unit_weapon_roll", text="Roll")
-        opts.prop(scene, "d3unit_weapon_flip", text="Flip")
-        src = scene.d3unit_weapon_src
-        if src is None and ob is not None and ob.type == "MESH":
-            src = ob
-        row = col.row(align=True)
-        row.enabled = src is not None
-        op = row.operator(weapon.D3UNIT_OT_place_weapon.bl_idname,
-                          text="Place on Reference", icon="SNAP_ON")
-        op.roll = scene.d3unit_weapon_roll
-        op.flip = scene.d3unit_weapon_flip
-        op.source = scene.d3unit_weapon_src.name if scene.d3unit_weapon_src else ""
-        hint = col.column(align=True)
-        hint.scale_y = 0.8
-        if src is not None:
-            hint.label(text=f"Mesh: {src.name}", icon="MESH_DATA")
-        else:
-            hint.label(text="pick the mesh to place", icon="INFO")
-        hint.label(text="grip = the object's origin")
-        hint.label(text="(or its one selected vertex)")
-
-        mesh = ob if (ob is not None and ob.type == "MESH") else None
-        if mesh is not None:
-            _draw_texture_box(layout, context, mesh)
+        ob = getattr(context, "active_object", None)
         root = unitprops.find_unit_root(context)
         info = unitprops.get_info(root) if root else {}
-        if not info:
-            layout.label(text="No unit imported yet", icon="INFO")
-            col = layout.column(align=True)
-            col.operator(importer.D3UNIT_OT_import.bl_idname,
-                         text="Import Unit…", icon="IMPORT")
-            return
+
         box = layout.box()
-        box.label(text=info.get("base", "?"),
-                  icon="ARMATURE_DATA" if root and root.type == "ARMATURE"
-                  else "MESH_DATA")
-        col = box.column(align=True)
-        col.label(text=f"Folder: {info.get('dir', '?')}")
-        anims = info.get("anims") or []
-        col.label(text=f"Animation streams: {len(anims)}")
-        if info.get("imported"):
-            col.label(text=f"Imported: {info['imported']}")
-        meshes = [o for o in context.scene.objects
-                  if o.type == "MESH" and (o is root or o.parent is root
-                                           or o.get(unitprops.PART_PROP))]
-        col.label(text=f"Meshes: {len(meshes)}")
-        notes = str(context.scene.get(NOTES_PROP) or "")
+        box.label(text="1. Импорт и экспорт", icon="IMPORT")
+        box.label(text="Импортируйте .g, затем редактируйте модель")
+        box.operator(importer.D3UNIT_OT_import.bl_idname,
+                     text="Открыть юнита (.g)…", icon="IMPORT")
+        box.operator(leader.D3UNIT_OT_import_leader.bl_idname,
+                     text="Лидер целиком (.char)…", icon="ARMATURE_DATA")
+        if info:
+            box.label(text="Юнит: " + str(info.get("base", "?")), icon="ARMATURE_DATA")
+            box.label(text="Потоков анимации: " + str(len(info.get("anims") or [])))
+            folder = str(info.get("dir") or "")
+            if folder:
+                box.label(text="Исходная папка:")
+                for line in __import__('textwrap').wrap(folder, width=45, break_long_words=True, break_on_hyphens=False):
+                    box.label(text=line)
+            if info.get("leader_reference_only"):
+                box.label(text="Экспорт лидера: эксперимент", icon="ERROR")
+                box.operator(leader.D3UNIT_OT_export_leader.bl_idname,
+                             text="Экспорт частей лидера (.zip)…", icon="EXPORT")
+                box.label(text="Только геометрия и веса; игра не проверена")
+            else:
+                export = box.operator(exporter.D3UNIT_OT_export.bl_idname,
+                                      text="Экспортировать юнита…", icon="EXPORT")
+                export.filepath = info.get("g", "")
+                box.label(text="Внимание: проверьте папку сохранения", icon="ERROR")
+                box.label(text="Можно перезаписать исходные файлы")
+                box.label(text="При ошибке часть файлов может быть записана")
+                box.operator("d3unit.self_test", text="Проверить файлы донора", icon="CHECKMARK")
+                box.label(text="Изменения сцены при этом не проверяются")
+        else:
+            box.label(text="Выберите импортированного юнита для экспорта", icon="INFO")
+        notes = str(scene.get(NOTES_PROP) or "")
         if notes:
-            nb = layout.box()
-            nb.label(text="Last export", icon="INFO")
-            for line in notes.splitlines()[:6]:
-                nb.label(text=line[:70])
-            if len(notes.splitlines()) > 6:
-                nb.label(text=f"... {len(notes.splitlines()) - 6} more "
-                              f"(Text block '{EXPORT_LOG}')")
-            nb.operator("d3unit.open_log", text="Open the Log", icon="TEXT")
-        op = layout.operator(exporter.D3UNIT_OT_export.bl_idname,
-                             text="Export Unit", icon="EXPORT")
-        op.filepath = info.get("g", "")
-        row = layout.row(align=True)
-        row.operator(importer.D3UNIT_OT_import.bl_idname, text="Re-import")
-        row.operator("d3unit.self_test", text="Self-test", icon="CHECKMARK")
-        layout.operator("d3unit.check_tool", text="Check d3tool")
+            log = box.box()
+            log.label(text="Последний экспорт: сообщения", icon="INFO")
+            lines = []
+            for message in notes.splitlines():
+                lines.extend(__import__('textwrap').wrap(message, width=45,
+                             break_long_words=True, break_on_hyphens=False) or [''])
+            for line in lines[:6]:
+                log.label(text=line)
+            if len(lines) > 6:
+                log.label(text="Остальные сообщения — в журнале")
+        if bpy.data.texts.get(EXPORT_LOG):
+            box.operator("d3unit.open_log", text="Журнал экспорта", icon="TEXT")
+        if bpy.data.texts.get(SELF_TEST_LOG):
+            op = box.operator("d3unit.open_log", text="Журнал проверки донора", icon="TEXT")
+            op.log_name = SELF_TEST_LOG
+
+        box = layout.box()
+        row = box.row()
+        row.prop(scene, 'd3unit_show_placement', text="2. Размещение модели",
+                 icon='TRIA_DOWN' if scene.d3unit_show_placement else 'TRIA_RIGHT', emboss=False)
+        if scene.d3unit_show_placement:
+            box.label(text="Совместить новую модель с образцом")
+            box.prop(scene, "d3unit_align_source", text="Новая модель")
+            box.prop(scene, "d3unit_align_reference", text="Меш-образец")
+            box.operator("d3unit.align_model", text="Переместить к образцу", icon="ORIENTATION_GLOBAL")
+            box.label(text="Только перенос: не привязывает к скелету", icon="INFO")
+            box.label(text="Масштаб и поворот настройте вручную")
+            box.separator()
+            active_work = root and alignment.WORK_PROP in root
+            box.label(text="Временное положение для редактирования")
+            if not active_work:
+                box.prop(scene, "d3unit_work_angle", text="Доп. поворот (°)")
+            box.operator("d3unit.work_placement", text=("Вернуть исходное положение" if active_work else "Удобно расположить юнита"))
+            box.label(text="Выберите скелет; режим объекта", icon="INFO")
+            if active_work:
+                box.label(text="При экспорте используется исходное положение")
+
+        box = layout.box()
+        row = box.row()
+        row.prop(scene, 'd3unit_show_texture', text="3. Текстуры и материалы",
+                 icon='TRIA_DOWN' if scene.d3unit_show_texture else 'TRIA_RIGHT', emboss=False)
+        if scene.d3unit_show_texture:
+            box.label(text="Выберите меш для настройки текстуры")
+            if ob is not None and ob.type == "MESH":
+                _draw_texture_box(box, context, ob)
+            else:
+                box.label(text="Сейчас меш не выбран", icon="INFO")
+            box.label(text="Прямая картинка Base Color: автоэкспорт")
+            box.label(text="Сложные схемы материалов проверьте вручную")
+
+        box = layout.box()
+        row = box.row()
+        row.prop(scene, 'd3unit_show_weapon', text="4. Размещение оружия",
+                 icon='TRIA_DOWN' if scene.d3unit_show_weapon else 'TRIA_RIGHT', emboss=False)
+        if scene.d3unit_show_weapon:
+            box.label(text="Совместить оружие с мешем-образцом")
+            box.prop(scene, "d3unit_weapon_src", text="Новое оружие")
+            box.prop(scene, "d3unit_weapon_ref", text="Оружие-образец")
+            opts = box.row(align=True)
+            opts.prop(scene, "d3unit_weapon_roll", text="Поворот °")
+            opts.prop(scene, "d3unit_weapon_flip", text="Перевернуть")
+            box.prop(scene, "d3unit_weapon_match_parent", text="Привязать к кости образца")
+            src = scene.d3unit_weapon_src or (ob if ob is not None and ob.type == "MESH" else None)
+            row = box.row()
+            row.enabled = src is not None
+            op = row.operator(weapon.D3UNIT_OT_place_weapon.bl_idname,
+                              text="Разместить по образцу", icon="SNAP_ON")
+            op.roll = scene.d3unit_weapon_roll
+            op.flip = scene.d3unit_weapon_flip
+            op.match_parent = scene.d3unit_weapon_match_parent
+            op.source = scene.d3unit_weapon_src.name if scene.d3unit_weapon_src else ""
+            box.label(text="Точка хвата: origin или выбранная вершина", icon="INFO")
+            box.label(text="Для исходной позы скелета выберите Rest Position")
+
+        box = layout.box()
+        row = box.row()
+        row.prop(scene, 'd3unit_show_new_profile', text="5. Новый юнит — эксперимент",
+                 icon='TRIA_DOWN' if scene.d3unit_show_new_profile else 'TRIA_RIGHT', emboss=False)
+        if scene.d3unit_show_new_profile:
+            box.label(text="Только подготовка проекта, не установка", icon="ERROR")
+            box.label(text="Выберите .char из распакованных Profiles")
+            box.prop(scene, 'd3unit_profile_donor', text="Профиль-донор")
+            box.prop(scene, 'd3unit_profile_workspace', text="Папка для проекта")
+            box.prop(scene, 'd3unit_profile_id', text="Новый ID")
+            box.label(text="ID: 2–64 символа; первая — латинская буква")
+            box.label(text="Далее: строчные латинские буквы, цифры, _")
+            hints = new_unit_ui.form_hints(scene)
+            for hint in hints:
+                box.label(text=hint, icon="INFO")
+            if not hints:
+                project_path = os.path.join(bpy.path.abspath(scene.d3unit_profile_workspace),
+                                            scene.d3unit_profile_id.strip())
+                box.label(text="Будет создана новая папка:", icon="FILE_FOLDER")
+                for line in __import__('textwrap').wrap(project_path, width=45, break_long_words=True, break_on_hyphens=False):
+                    box.label(text=line)
+                box.label(text="Пути и уникальность проверяются при создании")
+            box.prop(scene, 'd3unit_profile_copy_grid', text="Отдельная сетка навыков")
+            box.prop(scene, 'd3unit_profile_warrior_no_sets')
+            if scene.d3unit_profile_warrior_no_sets:
+                box.label(text='Warrior: модель отдельно, LOD донора', icon='ERROR')
+            box.operator('d3unit.stage_profile', text="Создать проект профиля", icon="FILE_NEW")
+            box.separator()
+            box.label(text="Только Empire: копии списков найма")
+            box.operator('d3unit.stage_empire_lists', text="Списки обычного юнита (unit)")
+            op = box.operator('d3unit.stage_empire_lists', text="Списки лидера (leader)")
+            op.leader = True
+            box.label(text="Заменяют целые скрипты, возможен конфликт", icon="ERROR")
+            box.label(text="Наём и игра ещё не проверены")
+            box.separator()
+            box.label(text="Лидер: экспериментальные визуальные файлы")
+            box.label(text="Выделите скелет и привязанные меши")
+            box.label(text="Для модели ID не длиннее 40 символов")
+            box.prop(scene, 'd3unit_visual_scene', text="Сцена донора")
+            box.operator('d3unit.stage_leader_visual', text="Подготовить визуальные файлы")
+            box.label(text="Не мод: комплектов и LOD нет", icon="ERROR")
+            box.prop(scene, 'd3unit_leader_icons')
+            box.operator('d3unit.bundle_leader_test', text="Собрать тестовый архив")
+            box.label(text="Только после проекта, списков и визуала", icon="INFO")
+            status = str(scene.get('d3unit_profile_status', ''))
+            if status:
+                for line in __import__('textwrap').wrap(status, width=45, break_long_words=True, break_on_hyphens=False):
+                    box.label(text=line, icon="INFO")
+            result = str(scene.get('d3unit_profile_result', ''))
+            if result:
+                box.label(text="Последний созданный проект:", icon="FILE_FOLDER")
+                for line in __import__('textwrap').wrap(result, width=45, break_long_words=True, break_on_hyphens=False):
+                    box.label(text=line)
+            if bpy.data.texts.get(new_unit_ui.REPORT):
+                box.operator('d3unit.open_profile_report', text="Открыть отчёт проекта", icon="TEXT")
+
+        box = layout.box()
+        row = box.row()
+        row.prop(scene, 'd3unit_show_index', text="6. Индекс игры — дополнительно",
+                 icon='TRIA_DOWN' if scene.d3unit_show_index else 'TRIA_RIGHT', emboss=False)
+        if scene.d3unit_show_index:
+            box.label(text="Меняет индекс распакованных файлов игры", icon="ERROR")
+            box.label(text="Это не индекс внутри .vdpack")
+            box.label(text="Сначала сделайте копию файлов игры")
+            box.prop(scene, 'd3unit_index_path', text="Файл index")
+            box.prop(scene, 'd3unit_index_folder', text="Папка юнита в игре")
+            box.prop(scene, 'd3unit_index_auto', text="Обновлять после экспорта")
+            if scene.d3unit_index_auto:
+                box.label(text="Автообновление без отдельного подтверждения", icon="ERROR")
+            box.prop(scene, 'd3unit_index_add_auto', text="Добавлять авто-текстуры")
+            box.label(text="Добавление текстур ещё не проверено в игре")
+            box.operator('d3unit.update_index', text="Обновить индекс", icon="FILE_TICK")
+            if bpy.data.texts.get(index_ui.REPORT):
+                op = box.operator('d3unit.open_log', text="Отчёт по индексу", icon="TEXT")
+                op.log_name = index_ui.REPORT
+            result = str(scene.get('d3unit_index_result', ''))
+            if result:
+                for line in __import__('textwrap').wrap(result, width=45, break_long_words=True, break_on_hyphens=False):
+                    box.label(text=line)
+        layout.operator("d3unit.check_tool", text="Проверить d3tool", icon="CHECKMARK")
 
 
 # --------------------------------------------------------------------------- #
@@ -659,6 +759,20 @@ def register():
     alignment.register_properties()
     index_ui.unregister_properties()
     index_ui.register_properties()
+    new_unit_ui.unregister_properties()
+    new_unit_ui.register_properties()
+    new_leader_ui.unregister_properties()
+    new_leader_ui.register_properties()
+    for name, label, default in (
+        ('d3unit_show_placement', 'Размещение модели', True),
+        ('d3unit_show_texture', 'Текстуры и материалы', True),
+        ('d3unit_show_weapon', 'Размещение оружия', False),
+        ('d3unit_show_new_profile', 'Новый юнит', False),
+        ('d3unit_show_index', 'Индекс игры', False),
+    ):
+        if hasattr(bpy.types.Scene, name):
+            delattr(bpy.types.Scene, name)
+        setattr(bpy.types.Scene, name, BoolProperty(name=label, default=default))
     for cls in CLASSES:
         try:
             bpy.utils.register_class(cls)
@@ -677,30 +791,30 @@ def register():
 
     # the weapon-placement panel remembers its reference across re-registers
     for prop in ("d3unit_weapon_src", "d3unit_weapon_ref",
-                 "d3unit_weapon_roll", "d3unit_weapon_flip"):
+                 "d3unit_weapon_roll", "d3unit_weapon_flip", "d3unit_weapon_match_parent"):
         if hasattr(bpy.types.Scene, prop):
             delattr(bpy.types.Scene, prop)
     bpy.types.Scene.d3unit_weapon_src = PointerProperty(
         type=bpy.types.Object,
         poll=lambda self, ob: ob.type == "MESH",
-        name="Mesh",
-        description="Mesh to place on the reference weapon (empty = the "
-                    "selected mesh)")
+        name="Новое оружие",
+        description="Меш для размещения; если поле пусто, используется выбранный меш")
     bpy.types.Scene.d3unit_weapon_ref = PointerProperty(
         type=bpy.types.Object,
         poll=lambda self, ob: ob.type == "MESH",
-        name="Reference weapon",
-        description="Mesh whose grip and long axis the placed mesh is aligned "
-                    "to; empty = the only weapon-like mesh in the scene")
+        name="Оружие-образец",
+        description="Меш-образец для совмещения точки хвата и длинной оси")
     bpy.types.Scene.d3unit_weapon_roll = FloatProperty(
-        name="Roll",
+        name="Поворот",
         default=0.0,
-        description="Extra spin about the reference axis, in degrees")
+        description="Дополнительный поворот вокруг продольной оси образца в градусах")
     bpy.types.Scene.d3unit_weapon_flip = BoolProperty(
-        name="Flip",
+        name="Перевернуть",
         default=False,
-        description="Turn the mesh half a circle about a perpendicular — the "
-                    "answer to a blade pointing the wrong way")
+        description="Развернуть оружие на пол-оборота, если клинок направлен не в ту сторону")
+    bpy.types.Scene.d3unit_weapon_match_parent = BoolProperty(
+        name="Привязать к кости образца", default=True,
+        description="Если образец привязан как дочерний объект к кости, сменить родителя оружия на ту же кость; группы весов не меняются")
 
     # a cheap self-check, visible in the console at start-up
     mod = bridge.load()
@@ -711,8 +825,14 @@ def register():
 
 
 def unregister():
+    for name in ('d3unit_show_placement', 'd3unit_show_texture', 'd3unit_show_weapon',
+                 'd3unit_show_new_profile', 'd3unit_show_index'):
+        if hasattr(bpy.types.Scene, name):
+            delattr(bpy.types.Scene, name)
     alignment.unregister_properties()
     index_ui.unregister_properties()
+    new_unit_ui.unregister_properties()
+    new_leader_ui.unregister_properties()
     for funcs, menu in ((_menu_import, bpy.types.TOPBAR_MT_file_import),
                         (_menu_export, bpy.types.TOPBAR_MT_file_export)):
         try:
@@ -725,7 +845,7 @@ def unregister():
         except (RuntimeError, ValueError):
             pass
     for prop in ("d3unit_weapon_src", "d3unit_weapon_ref",
-                 "d3unit_weapon_roll", "d3unit_weapon_flip"):
+                 "d3unit_weapon_roll", "d3unit_weapon_flip", "d3unit_weapon_match_parent"):
         if hasattr(bpy.types.Scene, prop):
             delattr(bpy.types.Scene, prop)
 

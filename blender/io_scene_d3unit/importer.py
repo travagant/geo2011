@@ -686,24 +686,22 @@ def _gltf_import_props():
 # --------------------------------------------------------------------------- #
 class D3UNIT_OT_import(bpy.types.Operator, ImportHelper):
     bl_idname = "d3unit.import_unit"
-    bl_label = "Import Disciples III Unit"
-    bl_description = ("Load a .g unit (with its .a animation, .ac clips and "
-                      ".t texture) for editing in Blender")
+    bl_label = "Импортировать юнита Disciples III"
+    bl_description = ("Открыть геометрию юнита и, при наличии, связанные анимации и текстуры")
     bl_options = {"UNDO", "PRESET"}
 
     filename_ext = ".g"
     filter_glob: StringProperty(default="*.g;*.gltf;*.glb;*.scene;*.ac",
                                 options={"HIDDEN"})
     use_anim: BoolProperty(
-        name="Import animation",
+        name="Импортировать анимации",
         default=True,
-        description="Load every animation stream the unit's .ac names",
+        description="Загрузить доступные потоки анимации, указанные в .ac",
     )
     use_textures: BoolProperty(
-        name="Import textures",
+        name="Импортировать текстуры",
         default=True,
-        description="Load the unit's .t atlas (converted to .dds) as a "
-                    "material texture",
+        description="Загрузить доступные текстуры юнита в материалы Blender",
     )
 
     def execute(self, context):
@@ -718,14 +716,14 @@ class D3UNIT_OT_import(bpy.types.Operator, ImportHelper):
         except Exception as exc:  # noqa: BLE001
             import traceback
             traceback.print_exc()
-            self.report({"ERROR"}, f"import failed: {exc}")
+            self.report({"ERROR"}, f"Импорт не выполнен: {exc}")
             return {"CANCELLED"}
         info = out["info"]
         self.report({"INFO"},
-                    f"Imported {info.get('base', '')}: "
-                    f"{len(out['meshes'])} mesh(es), "
-                    f"{len(info.get('anims') or [])} animation stream(s)")
-        self.report({"INFO"}, f"{info.get('frames', 0)} animation frames")
+                    f"Импортирован {info.get('base', '')}: "
+                    f"мешей: {len(out['meshes'])}, "
+                    f"потоков анимации: {len(info.get('anims') or [])}")
+        self.report({"INFO"}, f"Кадров анимации: {info.get('frames', 0)}")
         for text in info.get("warnings") or []:
             self.report({"WARNING"}, text)
         return {"FINISHED"}
@@ -738,8 +736,8 @@ class D3UNIT_OT_import_batch(bpy.types.Operator):
     bl_options = {"UNDO"}
 
     directory: StringProperty(subtype="DIR_PATH")
-    use_anim: BoolProperty(name="Import animation", default=True)
-    use_textures: BoolProperty(name="Import textures", default=True)
+    use_anim: BoolProperty(name="Импортировать анимации", default=True)
+    use_textures: BoolProperty(name="Импортировать текстуры", default=True)
 
     def invoke(self, context, event):
         context.window_manager.fileselect_add(self)

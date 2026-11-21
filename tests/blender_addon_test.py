@@ -1097,12 +1097,12 @@ def test_index_auto_after_export():
         export_unit(os.path.join(folder, name))
         record = vdpack.parse_index(vdpack.decode_index(open(index, 'rb').read())).files[0]
         eq(record.md5, hashlib.md5(open(os.path.join(folder, name), 'rb').read()).hexdigest())
-        assert_('backup:' in scene['d3unit_index_result'])
+        assert_('резервная копия:' in scene['d3unit_index_result'])
         assert_(any(n.startswith('index.backup_') for n in os.listdir(root)))
         before = open(index, 'rb').read()
         export_unit(os.path.join(out_dir('index_wrong_target'), name))
         eq(open(index, 'rb').read(), before)
-        assert_('index NOT updated' in scene['d3unit_index_result'])
+        assert_('индекс НЕ обновлён' in scene['d3unit_index_result'])
     finally:
         scene.d3unit_index_auto = False
 
@@ -1133,7 +1133,32 @@ def test_align_model_to_reference():
              addon.alignment._bounds(reference)).length < 1e-5)
 
 
+def test_stage_new_unit_profile_operator():
+    folder = out_dir('new_profile_workspace')
+    donor = os.path.join(REPO, 'Profiles', 'empire_inquisitor.char')
+    scene = bpy.context.scene
+    scene.d3unit_profile_donor = donor
+    scene.d3unit_profile_workspace = folder
+    scene.d3unit_profile_id = 'empire_stage_test'
+    eq(bpy.ops.d3unit.stage_profile(), {'FINISHED'})
+    project = os.path.join(folder, 'empire_stage_test')
+    profile_path = os.path.join(project, 'resources', 'Profiles', 'empire_stage_test.char')
+    parsed = addon.bridge.module('char').parse_char(open(profile_path, 'rb').read())
+    eq(parsed.id, 'empire_stage_test')
+    assert_('inquisitor' in parsed.unit_scene.lower())
+    assert_('Юнит НЕ зарегистрирован' in bpy.data.texts['d3unit new profile'].as_string())
+    assert_(os.path.isfile(os.path.join(project, 'resources', 'Profiles', 'desc', 'empire_stage_test_desc.char')))
+    original = open(profile_path, 'rb').read()
+    try:
+        result = bpy.ops.d3unit.stage_profile()
+    except RuntimeError:
+        result = {'CANCELLED'}
+    eq(result, {'CANCELLED'})
+    eq(open(profile_path, 'rb').read(), original, 'existing project is not overwritten')
+
+
 TESTS = [
+    ("stage new unit profile operator", test_stage_new_unit_profile_operator),
     ("new multimaterial texture export", test_new_multimaterial_texture_export),
     ("xps diffuse texture auto export", test_xps_diffuse_texture_auto_export),
     ("index auto after export", test_index_auto_after_export),

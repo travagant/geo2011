@@ -22,6 +22,13 @@ import tempfile
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 STUB = {
+    "mathutils.py": '''class Matrix:
+    pass
+
+
+class Vector:
+    pass
+''',
     "bpy/__init__.py": '''from . import props, types, utils, ops, data, app, path, context
 
 
@@ -157,7 +164,7 @@ class FakeContext:
 # a nameless part resolves to nothing, and saying so must not raise
 unnamed = FakeMesh("weapon_empire_inquisitor")
 ok, message = addon.apply_part_texture(FakeContext(unnamed), unnamed)
-assert ok is False and "no texture name" in message, (ok, message)
+assert ok is False and "не задано имя текстуры" in message, (ok, message)
 
 # a named part whose file is nowhere: same, but the message names the file
 named = FakeMesh("weapon_empire_inquisitor",
@@ -166,7 +173,7 @@ named = FakeMesh("weapon_empire_inquisitor",
 name, path = addon.find_part_texture(FakeContext(named), named)
 assert name == "weapon_empire_knight_sword_diffuse.tga", name
 ok, message = addon.apply_part_texture(FakeContext(named), named)
-assert ok is False and "not in" in message, (ok, message)
+assert ok is False and "не найдена" in message, (ok, message)
 
 # the export's own texture report: it reads the written .g back and has to name
 # every part's texture plus the ones the folder cannot supply
@@ -189,13 +196,28 @@ try:
     assert "weapon_empire_inquisitor.tga" in joined, lines
     assert any("weapon_empire_inquisitor.tga" in w for w in warns), warns
 
-    # with the atlas gone from the folder the report has to say so, by name
+    # A .t in the export folder is not mistaken for a donor-only dependency.
+    assert not any('character_empire_inquisitor.tga' in w for w in warns), warns
+    # With only the donor asset available, report the dependency, not a missing file.
     os.remove(os.path.join(work, "character_empire_inquisitor.t"))
+    warns = []
+    lines = addon.exporter._texture_lines(work, "character_empire_inquisitor",
+                                         os.path.join(repo, 'Empire', 'Inquisitor'), warns)
+    assert any('character_empire_inquisitor.tga' in w and 'только у донора' in w for w in warns), warns
+    assert any('.t только у донора:' in line for line in lines), lines
+    # A Blender-readable image is not the same thing as a game .t.
+    with open(os.path.join(work, 'character_empire_inquisitor.tga'), 'wb') as fh:
+        fh.write(b'preview only')
+    warns = []
+    addon.exporter._texture_lines(work, "character_empire_inquisitor", "", warns)
+    assert any('character_empire_inquisitor.tga' in w and '.t в папке экспорта' in w for w in warns), warns
+    os.remove(os.path.join(work, 'character_empire_inquisitor.tga'))
+    # With neither game texture nor image, report a missing texture.
     warns = []
     lines = addon.exporter._texture_lines(work, "character_empire_inquisitor",
                                          "", warns)
     assert any("character_empire_inquisitor.tga" in w and
-               "no such texture" in w for w in warns), warns
+               "не найдена" in w for w in warns), warns
 finally:
     shutil.rmtree(work, ignore_errors=True)
 # --------------------------------------------------------------------------- #

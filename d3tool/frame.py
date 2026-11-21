@@ -266,6 +266,40 @@ def convert_positions(pos: Sequence[float],
     return (acc[0] / total, acc[1] / total, acc[2] / total)
 
 
+def invert_blended_frame(pos, nrm, lanes, K, inverse_cache):
+    """Invert the blended donor-to-Blender affine map, including normals.
+
+    Averaging inverse joint matrices is not the inverse of their weighted
+    average. In particular, mixed Hips/Spine weights on Ranger set 1 exposed
+    substantial drift. Fail on missing/singular transforms rather than write
+    a silently distorted part. inverse_cache is per mesh conversion.
+    """
+    transforms = []
+    for weight, name in lanes:
+        if weight <= 0:
+            continue
+        if name not in K:
+            raise ValueError('Missing frame transform for joint: ' + name)
+        if name not in inverse_cache:
+            inverse_cache[name] = inv4(K[name])
+        transforms.append((weight, inverse_cache[name]))
+    total = sum(weight for weight, _ in transforms)
+    if total <= 1e-12:
+        raise ValueError('Vertex has no convertible skin weights')
+    forward = [[sum(weight * mat[r][c] for weight, mat in transforms) / total
+                for c in range(4)] for r in range(4)]
+    inverse = inv4(forward)
+    xyz = mvec(inverse, [*pos[:3], 1.0])[:3]
+    # Blender's imported skin bakes directions through the same blended
+    # linear frame. Undo that map and normalize (verified against donor
+    # normals on the leader reference corpus).
+    normal = [sum(inverse[i][j] * nrm[j] for j in range(3)) for i in range(3)]
+    length = math.sqrt(sum(x * x for x in normal))
+    if length <= 1e-12:
+        raise ValueError('Invalid normal in blended frame')
+    return tuple(xyz), tuple(x / length for x in normal)
+
+
 def convert_normal(nrm: Sequence[float],
                    lanes: Sequence[Tuple[float, str]],
                    K: Dict[str, Mat4],

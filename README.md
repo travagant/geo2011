@@ -14,6 +14,10 @@ Python toolkit (`d3tool/`) that can:
 The point is to support a future program that, like dis3tool, exports glTF but
 **also** needs the inverse direction (glTF → original format).
 
+## Blender add-on guide
+
+[Полное руководство по аддону 1.1.79 (русский)](docs/BLENDER_ADDON_GUIDE_RU.md) — установка, импорт/экспорт, экспериментальная сборка лидера и ограничения.
+
 ## Contents
 
 | path | what it is |
@@ -773,6 +777,17 @@ whole unit.
   block-compressed `.t` — the engine reads no other container.
 
 See `docs/FORMATS.md` for details.
+
+### Experimental new-profile staging (Blender)
+
+Under **New unit profile**, select an actual donor `.char` in a `Profiles`
+folder, an existing workspace outside game resources and a unique lowercase
+ASCII ID. **Create Profile Project** creates a new folder, copies direct
+`desc`, `stats` and `sound` includes and rewrites the root ID and include
+paths. It preserves donor resources, scenes, localization and other includes;
+it does not register, install or package a unit. The ID check only covers the
+selected Profiles tree, not installed archives or other mods. See
+`docs/NEW_UNIT_REBIRTH_RU.md` for the unverified game-side steps.
 
 ### Updating the loose game index (Blender)
 
