@@ -1066,6 +1066,13 @@ def write_geometry_file(mesh: SkinnedMesh, attrs: Dict[str, str]) -> bytes:
     else:
         header = mesh.header if len(mesh.header) == 120 else _header_block()
         names = cstr(mesh.name) + cstr(mesh.geometry_file or mesh.name)
+        # The first node chunk ends after both variable-length names. Its
+        # length excludes the initial kind/length words. A fixed template
+        # length only works for the names it was captured with: the engine
+        # otherwise skips past the mesh count and sees no mesh resources.
+        header = bytearray(header)
+        struct.pack_into("<I", header, 4, len(header) + len(names) - 8)
+        header = bytes(header)
 
     if mesh.preamble:
         # Reuse the asset-specific prelude + scene-node block verbatim so a

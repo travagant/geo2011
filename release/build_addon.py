@@ -39,6 +39,9 @@ ADDON_FILES = (
     "exporter.py",
     "importer.py",
     "index_ui.py",
+    "leader.py",
+    "new_leader_ui.py",
+    "new_unit_ui.py",
     "preferences.py",
     "unitprops.py",
     "weapon.py",
@@ -104,6 +107,10 @@ def build(out_dir: str = DIST, zip_only: bool = False) -> str:
                          os.path.join(stage, name))
         n_tool = copy_tool(os.path.join(stage, "vendor", "d3tool"))
         write_readme(os.path.join(stage, "README.txt"), version)
+        shutil.copy2(os.path.join(REPO, "docs", "ADDON_UI_RU.md"),
+                     os.path.join(stage, "INSTRUCTIONS_RU.md"))
+        shutil.copy2(os.path.join(REPO, "docs", "BLENDER_ADDON_GUIDE_RU.md"),
+                     os.path.join(stage, "GUIDE_RU.md"))
         missing = [n for n in ADDON_FILES
                    if not os.path.isfile(os.path.join(stage, n))]
         if missing:

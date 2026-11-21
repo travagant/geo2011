@@ -130,14 +130,13 @@ def validate_unit(arm, meshes, context=None):
     """Everything that would produce a broken unit, as readable warnings."""
     warns = []
     if not meshes:
-        warns.append("the armature has no mesh bound to it — there is "
-                     "nothing to export")
+        warns.append("Нет мешей для экспорта. Проверьте выбор и привязку к скелету.")
     total_verts = 0
     for ob in meshes:
         me = ob.data
         total_verts += len(me.vertices)
         if not len(me.polygons):
-            warns.append(f"'{ob.name}' has no faces and will be skipped")
+            warns.append(f"'{ob.name}': нет полигонов, меш пропущен")
             continue
         # A `.g` part splits its index block into one range per material, so
         # several slots are fine (the add-on exports one glTF primitive per
@@ -147,10 +146,9 @@ def validate_unit(arm, meshes, context=None):
                  if slot.material is None]
         if empty and any(i > 0 for i in empty):
             warns.append(
-                f"'{ob.name}' has empty material slot(s) "
-                f"{', '.join(str(i) for i in empty if i > 0)} — the faces "
-                f"assigned to them export with the default material; assign "
-                f"a texture or remove the slot")
+                f"'{ob.name}': пустые слоты материалов "
+                f"{', '.join(str(i) for i in empty if i > 0)}. "
+                "Для их полигонов используется материал по умолчанию; назначьте материал или удалите слот.")
         # `.g` carries no transform: whatever the object's scale is, the
         # engine draws the part that many times bigger.  Borrowed geometry
         # keeps its own scale (a Knight sword sits at 1.802 in an Inquisitor
@@ -158,13 +156,10 @@ def validate_unit(arm, meshes, context=None):
         sc = tuple(ob.scale)
         if any(abs(c - 1.0) > 1e-3 for c in sc):
             warns.append(
-                f"'{ob.name}' has a scale of "
-                f"{sc[0]:.3f}, {sc[1]:.3f}, {sc[2]:.3f} — a .g stores raw "
-                f"mesh data, so the part is exported that many times bigger. "
-                f"Apply it (Object > Apply > Scale) before exporting")
-        elif not ob.material_slots or ob.material_slots[0].material is None:
-            warns.append(f"'{ob.name}' has no material — its part will reuse "
-                         f"the unit's main texture")
+                f"'{ob.name}': масштаб {sc[0]:.3f}, {sc[1]:.3f}, {sc[2]:.3f}. "
+                "Проверьте размер после экспорта; при необходимости примените масштаб (Object > Apply > Scale).")
+        if not ob.material_slots or ob.material_slots[0].material is None:
+            warns.append(f"'{ob.name}': нет материала в первом слоте; проверьте текстуру после экспорта")
         if arm is None:
             # rigid unit: no skeleton to bind to, so nothing to check here
             continue
@@ -172,15 +167,9 @@ def validate_unit(arm, meshes, context=None):
                     for mod in ob.modifiers)
         if not bound:
             if ob.parent is arm and ob.parent_type == "BONE":
-                warns.append(f"'{ob.name}' is parented to the bone "
-                             f"'{ob.parent_bone}' without an Armature "
-                             f"modifier: it will be exported rigid, moving "
-                             f"with that bone")
+                warns.append(f"'{ob.name}': без Armature modifier, жёстко следует кости '{ob.parent_bone}'")
             elif ob.parent is arm:
-                warns.append(f"'{ob.name}' is parented to the armature "
-                             f"without an Armature modifier: it will be "
-                             f"exported rigid (bound to the nearest bone) "
-                             f"instead of deformed")
+                warns.append(f"'{ob.name}': нет Armature modifier; часть экспортируется жёсткой, без деформации")
             elif ob.get(unitprops.PART_PROP):
                 # A part the unit itself brought in (the Hierophant robe is a
                 # morph base, the skirt is rigid in the donor `.g`) has no
@@ -188,21 +177,17 @@ def validate_unit(arm, meshes, context=None):
                 # round trip would train the user to ignore the panel.
                 pass
             else:
-                warns.append(f"'{ob.name}' is not attached to the armature: "
-                             f"it is exported as a rigid part")
+                warns.append(f"'{ob.name}': не привязан к скелету, экспортируется как жёсткая часть")
         else:
             too_many, worst = _influence_report(ob)
             if too_many:
                 warns.append(
-                    f"'{ob.name}' has {too_many} vertex(es) with more than 4 "
-                    f"influences (max {worst}); glTF keeps the 4 strongest — "
-                    f"normalise the weights to avoid losing influence")
+                    f"'{ob.name}': вершин с более чем 4 влияниями: {too_many} (максимум {worst}); "
+                    "glTF сохраняет 4 сильнейших. Проверьте и нормализуйте веса")
         if not ob.vertex_groups and bound:
-            warns.append(f"'{ob.name}' has an Armature modifier but no vertex "
-                         f"groups — every vertex will sit at the origin in "
-                         f"game")
+            warns.append(f"'{ob.name}': есть Armature modifier, но нет групп вершин; проверьте привязку и веса")
     if total_verts == 0:
-        warns.append("the unit has no geometry at all")
+        warns.append("У юнита нет вершин")
     return warns
 
 
@@ -535,9 +520,10 @@ def export_unit(context, path: str, use_anim: bool = True, weights: int = 0,
     path = os.path.abspath(path)
     out_dir = os.path.dirname(path)
     base = os.path.splitext(os.path.basename(path))[0]
-    os.makedirs(out_dir, exist_ok=True)
-
     arm, picked, info = _pick_unit(context)
+    if info.get("leader_reference_only"):
+        raise ValueError("Экспорт собранного лидера в игру пока не поддерживается; импорт предназначен для работы в Blender")
+    os.makedirs(out_dir, exist_ok=True)
     unit_objects = picked if picked is not None else _collect_unit(arm)
     if not donor_dir:
         donor_dir = info.get("dir") or ""
@@ -560,7 +546,11 @@ def export_unit(context, path: str, use_anim: bool = True, weights: int = 0,
     warns = validate_unit(arm, meshes, context)
     notes = []
     if hidden:
-        warns.insert(0, "hidden mesh(es) skipped: " + ", ".join(hidden))
+        warns.insert(0, "Скрытые для рендера меши пропущены: " + ", ".join(hidden))
+    empty_meshes = [o.name for o in unit_objects
+                    if o.type == "MESH" and not o.hide_render and not o.data.polygons]
+    if empty_meshes:
+        warns.append("Меши без полигонов пропущены: " + ", ".join(empty_meshes))
     # A mesh imported before 1.1.27 carries no `d3unit_diffuse`; its part then
     # keeps whatever texture the material or the donor .g names, which is how
     # a grafted sword came out wearing the donor's atlas without a word.
@@ -587,10 +577,8 @@ def export_unit(context, path: str, use_anim: bool = True, weights: int = 0,
     if unnamed:
         more = "" if len(unnamed) <= 6 else f" (+{len(unnamed) - 6} more)"
         warns.append(
-            "part(s) with no texture name of their own — the export keeps "
-            "whatever the material/donor .g names: "
-            + ", ".join(unnamed[:6]) + more
-            + " (set it in the sidebar: Texture of <part>)")
+            "Не задано имя текстуры: " + ", ".join(unnamed[:6]) + more
+            + ". Может использоваться текстура материала или донора; проверьте результат.")
 
     scene = context.scene
     saved = (scene.render.fps, scene.render.fps_base, scene.frame_current,
@@ -625,7 +613,7 @@ def export_unit(context, path: str, use_anim: bool = True, weights: int = 0,
             print(f"[d3unit] {notes[-1]}")
         if missing:
             warns.append(
-                "texture name not attached to any node: "
+                "Имя текстуры не назначено узлу: "
                 + ", ".join(missing))
 
         before = (set(os.listdir(out_dir)) if os.path.isdir(out_dir)
@@ -651,8 +639,7 @@ def export_unit(context, path: str, use_anim: bool = True, weights: int = 0,
                 notes.append(f"new diffuse texture required by model: {name}")
                 continue
             warns.append(
-                f"'{name}' was written but the unit did not have it — new "
-                f"data in the folder; delete it unless the model needs it")
+                f"Создан новый файл '{name}'; проверьте, нужен ли он модели")
         for name in delta.get("rewritten", []):
             notes.append(f"rewritten: {name}")
 
@@ -676,9 +663,13 @@ def export_unit(context, path: str, use_anim: bool = True, weights: int = 0,
                 del context.scene["d3unit_last_export"]
         except Exception:  # noqa: BLE001
             pass
-        _log_to_text(f"{base} export", text + "\n" + "\n".join(warns))
-        # ...and under a stable name the sidebar's "Open the Log" can find
-        _log_to_text(D3UNIT_EXPORT_LOG, text + "\n" + "\n".join(warns))
+        report = (f"Папка экспорта: {out_dir}\n"
+                  + "\nРезультаты и диагностика:\n" + text
+                  + "\n\nПримечания:\n" + ("\n".join(notes) or "нет")
+                  + "\n\nПредупреждения:\n" + ("\n".join(warns) or "нет") + "\n")
+        _log_to_text(f"{base} export", report)
+        # Also under the stable name used by the sidebar.
+        _log_to_text(D3UNIT_EXPORT_LOG, report)
         return {"g": os.path.join(out_dir, base + ".g"),
                 "base": base, "out_dir": out_dir, "armature": arm,
                 "rigid": arm is None,
@@ -734,6 +725,21 @@ def _texture_lines(out_dir, base, donor_dir, warns):
         tex = bridge.module("texture")
     except Exception:  # noqa: BLE001 - a report must never break an export
         return []
+    def game_texture(folder, name):
+        # Preview resolution also accepts .png/.dds; the game asset is .t.
+        # Match by stem, ignoring case, without mistaking an image for a .t.
+        if not folder or not os.path.isdir(folder):
+            return ''
+        target = (tex.clean_stem(name) + '.t').lower()
+        try:
+            for entry in sorted(os.listdir(folder)):
+                path = os.path.join(folder, entry)
+                if entry.lower() == target and os.path.isfile(path):
+                    return os.path.abspath(path)
+        except OSError:
+            pass
+        return ''
+
     lines, said = [], set()
     for suffix in ("", "_lod"):
         g_path = os.path.join(out_dir, base + suffix + ".g")
@@ -742,35 +748,50 @@ def _texture_lines(out_dir, base, donor_dir, warns):
         try:
             rows = parts.texture_report(g_path, [donor_dir])
         except Exception as exc:  # noqa: BLE001
-            lines.append(f"{base}{suffix}.g: could not read the part "
-                         f"textures back ({exc})")
+            lines.append(f"{base}{suffix}.g: не удалось прочитать текстуры частей ({exc})")
             continue
         for part, diffuse, found in rows:
             if not diffuse:
                 if part not in said:
                     said.add(part)
                     warns.append(
-                        f"part '{part}' has no material0_diffuse in "
-                        f"{base}{suffix}.g — the game draws it untextured")
+                        f"В {base}{suffix}.g у части '{part}' нет material0_diffuse; проверьте текстуру в игре")
                 continue
             if found:
                 # size AND pixel layout: one atlas is 86 KiB as DXT1 and 683 KiB
                 # as raw RGBA, so a byte count alone reads like another picture
-                size = tex.describe(found, True)
-                kb = max(1, os.path.getsize(found) // 1024)
-                status = os.path.basename(found) + \
-                    (f" ({size}, {kb} KB)" if size else "")
+                try:
+                    size = tex.describe(found, True)
+                    kb = max(1, os.path.getsize(found) // 1024)
+                    status = os.path.basename(found) + (f" ({size}, {kb} KB)" if size else "")
+                except (OSError, ValueError) as exc:
+                    status = f"{os.path.basename(found)} (не удалось проверить: {exc})"
             else:
-                status = "NOT FOUND"
-            lines.append(f"  {base}{suffix}.g: {part} -> {diffuse} ({status})")
-            key = diffuse.lower()
-            if not found and key not in said:
+                status = "НЕ НАЙДЕНА"
+            local_t = game_texture(out_dir, diffuse)
+            donor_t = game_texture(donor_dir, diffuse)
+            if local_t:
+                game_status = f".t в папке экспорта: {local_t}"
+            elif donor_t:
+                game_status = f".t только у донора: {donor_t}"
+            else:
+                game_status = ".t в проверенных папках не найден"
+            lines.append(f"  {base}{suffix}.g: {part} -> {diffuse} ({status}); {game_status}")
+            key = ('texture', diffuse.lower())
+            if key not in said and not local_t:
                 said.add(key)
-                warns.append(
-                    f"part '{part}' wears {diffuse}, but no such texture is "
-                    f"next to the unit — put {os.path.splitext(diffuse)[0]}"
-                    f".t in the folder, or set another name in the panel "
-                    f"(Texture of {part})")
+                if donor_t:
+                    warns.append(
+                        f"Часть '{part}': {diffuse} — .t найден только у донора, не в папке экспорта. "
+                        "Проверьте, доступен ли он в игре или пакете мода")
+                elif found:
+                    warns.append(
+                        f"Часть '{part}': для {diffuse} найден {os.path.basename(found)}, "
+                        "но .t в папке экспорта и у донора не найден. Проверьте игровой ресурс")
+                else:
+                    warns.append(
+                        f"Часть '{part}': текстура {diffuse} не найдена. "
+                        f"Проверьте файл {os.path.splitext(diffuse)[0]}.t или задайте другое имя на панели")
     return lines
 
 
@@ -792,7 +813,7 @@ def _verify(out_dir, base):
             + [p.name for p in mesh.parts],
         }
         if mesh.parse_error:
-            out["warnings"].append(f"{base}.g does not re-parse: "
+            out["warnings"].append(f"{base}.g не удалось корректно прочитать: "
                                    f"{mesh.parse_error}")
         # The engine's loader trusts the vertex/triangle pair every sub-mesh
         # header advertises; when it disagrees with the data behind it, the
@@ -802,9 +823,9 @@ def _verify(out_dir, base):
         if check is not None:
             for line in check(mesh):
                 out["warnings"].append(
-                    f"{base}.g: {line} — the game will crash loading it")
+                    f"{base}.g: {line} — возможен сбой игры при загрузке")
     except Exception as exc:  # noqa: BLE001
-        out["warnings"].append(f"could not re-read {base}.g: {exc}")
+        out["warnings"].append(f"Не удалось повторно прочитать {base}.g: {exc}")
     # The four files of a unit describe each other, and every one of them
     # parses on its own however stale it is: only a reader that cross-checks
     # them (`d3tool audit`) sees a `gobj` still quoting the mesh it replaced, or
@@ -813,13 +834,10 @@ def _verify(out_dir, base):
     try:
         auditmod = bridge.module("audit")
         _facts, findings = auditmod.audit(out_dir)
-        for line in findings[:8]:
-            out["warnings"].append(f"audit: {line}")
-        if len(findings) > 8:
-            out["warnings"].append(
-                f"audit: … and {len(findings) - 8} more (see the log)")
-    except Exception:  # noqa: BLE001 - the audit must never fail an export
-        pass
+        for line in findings:
+            out["warnings"].append(f"Проверка связей файлов (audit): {line}")
+    except Exception as exc:  # noqa: BLE001 - the audit must never fail an export
+        out["warnings"].append(f"Проверка связей файлов (audit) не выполнена: {exc}")
     return out
 
 
@@ -837,28 +855,26 @@ def _log_to_text(name, text):
 # --------------------------------------------------------------------------- #
 class D3UNIT_OT_export(bpy.types.Operator, ExportHelper):
     bl_idname = "d3unit.export_unit"
-    bl_label = "Export Disciples III Unit"
-    bl_description = ("Write the scene's unit back into GM files "
-                      "(.g/.scene/.ac/.a + .t textures)")
+    bl_label = "Экспортировать юнита Disciples III"
+    bl_description = ("Экспортировать юнита в файлы игры; существующие файлы могут быть перезаписаны")
     bl_options = {"UNDO", "PRESET"}
 
     filename_ext = ".g"
     filter_glob: StringProperty(default="*.g", options={"HIDDEN"})
 
     use_anim: BoolProperty(
-        name="Export animation",
+        name="Экспортировать анимации",
         default=True,
-        description="Write the .a animation streams the unit's .ac names",
+        description="Экспортировать анимации вместе с моделью; отключите только если понимаете последствия",
     )
     weights: EnumProperty(
-        name="Influence slots",
-        items=[("AUTO", "Auto (from the scene)",
-                "Keep every influence the mesh actually uses"),
-               ("2", "2 influences", "Smaller vertex records"),
-               ("3", "3 influences", "The common Disciples 3 layout"),
-               ("4", "4 influences", "Widest records")],
+        name="Влияния костей на вершину",
+        items=[("AUTO", "Автоматически", "Определить число влияний по модели и донору"),
+               ("2", "2 влияния", "Запросить 2 слота влияния"),
+               ("3", "3 влияния", "Запросить 3 слота влияния"),
+               ("4", "4 влияния", "Запросить 4 слота влияния")],
         default="AUTO",
-        description="Influence slots written into the .g vertex records",
+        description="Запросить число слотов; для частей донора может сохраняться его формат. Проверяйте веса и результат",
     )
 
     def invoke(self, context, event):
@@ -884,25 +900,36 @@ class D3UNIT_OT_export(bpy.types.Operator, ExportHelper):
                               keep_temp=keep)
         except Exception as exc:  # noqa: BLE001
             import traceback
-            traceback.print_exc()
-            self.report({"ERROR"}, f"export failed: {exc}")
+            details = traceback.format_exc()
+            print(details)
+            message = (f"Экспорт не завершён: {exc}. "
+                       "Некоторые файлы могли уже записаться — проверьте папку.")
+            try:
+                context.scene["d3unit_last_export"] = message
+            except Exception:  # noqa: BLE001 - reporting must not hide the original error
+                pass
+            _log_to_text(D3UNIT_EXPORT_LOG,
+                         f"ОШИБКА ЭКСПОРТА\nЗапрошенный путь: {self.filepath}\n{message}"
+                         "\n\nТехнические подробности:\n" + details)
+            self.report({"ERROR"}, message)
             return {"CANCELLED"}
         if context.scene.d3unit_index_auto:
             from . import index_ui
             try:
                 index_result = index_ui.update(context, res['out_dir'])
-                message = index_ui.summary(index_result)
-                context.scene['d3unit_index_result'] = message
-                self.report({'WARNING'} if index_result['skipped'] else {'INFO'}, message)
             except Exception as exc:  # export already succeeded; never claim it was rolled back
-                message = 'Export completed, but index NOT updated: ' + str(exc)
-                context.scene['d3unit_index_result'] = message
+                message = 'Экспорт завершён, но индекс НЕ обновлён: ' + str(exc)
+                index_ui.record(context, message, automatic=True)
                 self.report({'WARNING'}, message)
+            else:
+                message = index_ui.summary(index_result)
+                index_ui.record(context, message, index_result, automatic=True)
+                self.report({'WARNING'} if index_result['skipped'] else {'INFO'}, message)
         stats = res.get("stats") or {}
         for warning in res["warnings"][:10]:
             self.report({"WARNING"}, warning)
         self.report({"INFO"},
-                    f"Wrote {res['base']}.g — {stats.get('parts', '?')} part(s), "
-                    f"{stats.get('vertices', '?')} vertices, "
-                    f"{stats.get('bones', '?')} bones + .scene/.ac/.a")
+                    f"Сохранён {res['base']}.g — частей: {stats.get('parts', '?')}, "
+                    f"вершин: {stats.get('vertices', '?')}, "
+                    f"костей: {stats.get('bones', '?')}")
         return {"FINISHED"}

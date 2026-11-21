@@ -55,7 +55,7 @@ class D3UNIT_PT_preferences(AddonPreferences):
         row = col.row(align=True)
         row.operator("d3unit.check_tool", text="Check d3tool")
         col.separator()
-        col.prop(self, "weights_on_vertex")
+        col.label(text="Влияния костей задаются в диалоге экспорта")
         col.prop(self, "pack_textures")
         col.prop(self, "keep_temp")
 

@@ -89,39 +89,35 @@ def _weapon_candidates(context, src):
 
 class D3UNIT_OT_place_weapon(Operator):
     bl_idname = "d3unit.place_weapon"
-    bl_label = "Place on Reference Weapon"
-    bl_description = ("Move the active mesh onto the reference weapon: its "
-                      "origin (or single selected vertex) on the reference's, "
-                      "its long axis along the reference's shaft")
+    bl_label = "Разместить оружие по образцу"
+    bl_description = ("Совместить точку хвата и длинную ось с оружием-образцом; "
+                      "может перепривязать объект к кости образца")
     bl_options = {"UNDO", "REGISTER"}
 
     source: StringProperty(
-        name="Mesh",
+        name="Новое оружие",
         default="",
-        description="Object name of the mesh to place; empty = the panel's "
-                    "Mesh field, then the active mesh",
+        description="Имя меша для размещения; если пусто, используется поле панели или активный меш",
     )
     reference: StringProperty(
-        name="Reference",
+        name="Оружие-образец",
         default="",
-        description="Object name of the reference weapon; empty = the panel's "
-                    "Reference field, else the only weapon-like mesh",
+        description="Имя меша-образца; если пусто, используется поле панели или автоматический выбор",
     )
     flip: BoolProperty(
-        name="Flip",
+        name="Перевернуть",
         default=False,
-        description="Turn the mesh half a circle about a perpendicular — the "
-                    "answer to a blade pointing the wrong way",
+        description="Развернуть оружие на пол-оборота",
     )
     roll: FloatProperty(
-        name="Roll",
+        name="Поворот",
         default=0.0,
-        description="Extra spin about the reference axis, in degrees",
+        description="Дополнительный поворот вокруг продольной оси в градусах",
     )
     match_parent: BoolProperty(
-        name="Same Bone",
+        name="Привязать к кости образца",
         default=True,
-        description="Hang the mesh from the bone the reference weapon uses",
+        description="Если образец привязан к кости, использовать ту же кость; группы весов не меняются",
     )
 
     @classmethod
@@ -163,7 +159,7 @@ class D3UNIT_OT_place_weapon(Operator):
             ref = (context.scene.objects.get(self.reference)
                    or bpy.data.objects.get(self.reference))
             if ref is None:
-                self.report({"ERROR"}, f"no object named {self.reference!r}")
+                self.report({"ERROR"}, f"Объект {self.reference!r} не найден")
                 return None
             return ref
 
@@ -191,17 +187,16 @@ class D3UNIT_OT_place_weapon(Operator):
 
         meshes = [ob.name for ob in context.scene.objects if ob.type == "MESH"]
         self.report({"ERROR"},
-                    "cannot tell which mesh is the reference weapon — pick it "
-                    "in the Reference field.  Meshes in the scene: "
-                    + (", ".join(sorted(meshes)[:12]) if meshes else "none")
+                    "Не удалось определить образец: укажите его в поле «Оружие-образец». Меши в сцене: "
+                    + (", ".join(sorted(meshes)[:12]) if meshes else "нет")
                     + (" ..." if len(meshes) > 12 else ""))
         return None
 
     def _reparent(self, src_obj, ref_obj):
         if not self.match_parent or ref_obj.parent_type != "BONE":
             return False
-        if (src_obj.parent_type, src_obj.parent_bone) == \
-                (ref_obj.parent_type, ref_obj.parent_bone):
+        if (src_obj.parent, src_obj.parent_type, src_obj.parent_bone) == \
+                (ref_obj.parent, ref_obj.parent_type, ref_obj.parent_bone):
             return False
         world = src_obj.matrix_world.copy()
         src_obj.parent = ref_obj.parent
@@ -220,28 +215,29 @@ class D3UNIT_OT_place_weapon(Operator):
                 bpy.ops.object.mode_set(mode="OBJECT")
             except RuntimeError:
                 self.report({"ERROR"},
-                            "leave Edit Mode first — the selected vertex is "
-                            "read from the mesh data")
+                            "Выйдите из Edit Mode: выбранная вершина читается из данных меша")
                 return {"CANCELLED"}
         src = self._source(context)
         if src is None or src.type != "MESH":
             self.report({"ERROR"},
-                        "no mesh to place — pick one in the panel's Mesh "
-                        "field (or select it in the viewport)")
+                        "Укажите новое оружие на панели или выберите меш")
             return {"CANCELLED"}
         ref = self._reference(context, src)
         if ref is None:
             return {"CANCELLED"}
         if ref.type != "MESH":
-            self.report({"ERROR"}, "the reference must be a mesh")
+            self.report({"ERROR"}, "Образец должен быть мешем")
+            return {"CANCELLED"}
+        if ref is src:
+            self.report({"ERROR"}, "Новое оружие и образец должны быть разными объектами")
             return {"CANCELLED"}
 
         src_points, ref_points = _points(src), _points(ref)
         if not src_points:
-            self.report({"ERROR"}, f"{src.name} has no vertices")
+            self.report({"ERROR"}, f"В меше {src.name} нет вершин")
             return {"CANCELLED"}
         if not ref_points:
-            self.report({"ERROR"}, f"{ref.name} has no vertices")
+            self.report({"ERROR"}, f"В меше {ref.name} нет вершин")
             return {"CANCELLED"}
         src_grip, src_how = _grip(src)
         ref_grip, ref_how = _grip(ref)
@@ -257,8 +253,7 @@ class D3UNIT_OT_place_weapon(Operator):
                                       float(self.roll), bool(self.flip))
         if not info.get("axis_found"):
             self.report({"WARNING"},
-                        "no long axis could be measured for one of the "
-                        "meshes — only translated the grip")
+                        "Не удалось определить длинную ось одного из мешей: совмещена только точка хвата")
 
         from mathutils import Matrix
         src.matrix_world = Matrix([list(row) for row in mat]) @ src.matrix_world
@@ -267,12 +262,12 @@ class D3UNIT_OT_place_weapon(Operator):
 
         arm = src.find_armature()
         posed = arm is not None and arm.data.pose_position == "POSE"
+        grip_labels = {"vertex": "вершина", "origin": "origin"}
         self.report({"INFO"},
-                    f"{src.name} onto {ref.name}: axes {info['angle_deg']:.1f}°"
-                    f" apart; grips from {src_how}/{ref_how}"
-                    + (", flipped" if self.flip else "")
-                    + (f", re-parented to {ref.parent_bone!r}"
-                       if moved else "")
-                    + (" — armature is posed, set Pose Position: Rest for a "
-                       "bind-pose placement" if posed else ""))
+                    f"{src.name} → {ref.name}: угол осей {info['angle_deg']:.1f}°; "
+                    f"точки хвата: {grip_labels[src_how]}/{grip_labels[ref_how]}"
+                    + (", перевёрнуто" if self.flip else "")
+                    + (f", родитель — кость {ref.parent_bone!r}" if moved else "")
+                    + ("; скелет в Pose Position — для исходной позы выберите Rest Position"
+                       if posed else ""))
         return {"FINISHED"}
